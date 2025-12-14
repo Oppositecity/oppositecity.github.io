@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Color Field">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
+  <title>Color Field</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    
+    #field {
+      position: fixed;
+      inset: 0;
+      transition: background-color 75ms;
+      background: #000;
+    }
+    
+    video, canvas { display: none; }
+    
+    .controls {
+      position: fixed;
+      bottom: calc(2rem + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      z-index: 10;
+    }
+    
+    .buttons {
+      display: flex;
+      gap: 0.75rem;
+    }
+    
+    button {
+      padding: 1rem 1.75rem;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 2rem;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    button:active {
+      background: rgba(255,255,255,0.3);
+      transform: scale(0.96);
+    }
+    
+    .color-value {
+      color: rgba(255,255,255,0.5);
+      font-family: ui-monospace, monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+    }
+    
+    .error {
+      color: rgba(255,255,255,0.9);
+      font-size: 0.9rem;
+      background: rgba(0,0,0,0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+    }
+    
+    .hidden { display: none !important; }
+    
+    .install-prompt {
+      position: fixed;
+      top: calc(1rem + env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: white;
+      padding: 0.75rem 1.25rem;
+      border-radius: 1rem;
+      font-size: 0.85rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      z-index: 100;
+    }
+    
+    .install-prompt button {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.8rem;
+      margin-left: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="field"></div>
+  <video id="video" playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  
+  <div class="controls">
+    <div id="error" class="error hidden"></div>
+    <div class="buttons">
+      <button id="startBtn">start</button>
+      <button id="modeBtn" class="hidden">average</button>
+      <button id="stopBtn" class="hidden">stop</button>
+    </div>
+    <div id="colorValue" class="color-value hidden"></div>
+  </div>
+
+  <div id="installPrompt" class="install-prompt hidden">
+    Add to home screen for fullscreen
+    <button id="installBtn">install</button>
+    <button id="dismissBtn">✕</button>
+  </div>
+
+  <script>
+    const field = document.getElementById('field');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    
+    const startBtn = document.getElementById('startBtn');
+    const modeBtn = document.getElementById('modeBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const colorValue = document.getElementById('colorValue');
+    const errorEl = document.getElementById('error');
+    const installPrompt = document.getElementById('installPrompt');
+    const installBtn = document.getElementById('installBtn');
+    const dismissBtn = document.getElementById('dismissBtn');
+    
+    let stream = null;
+    let animationId = null;
+    let mode = 'average';
+    let deferredPrompt = null;
+    
+    // PWA install handling
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installPrompt.classList.remove('hidden');
+    });
+    
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installPrompt.classList.add('hidden');
+      }
+    });
+    
+    dismissBtn.addEventListener('click', () => {
+      installPrompt.classList.add('hidden');
+    });
+    
+    // Check if running as installed PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      installPrompt.classList.add('hidden');
+    }
+    
+    async function start() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        });
+        video.srcObject = stream;
+        await video.play();
+        
+        startBtn.classList.add('hidden');
+        modeBtn.classList.remove('hidden');
+        stopBtn.classList.remove('hidden');
+        colorValue.classList.remove('hidden');
+        errorEl.classList.add('hidden');
+        
+        processFrame();
+      } catch (err) {
+        console.error(err);
+        errorEl.textContent = 'Camera access denied';
+        errorEl.classList.remove('hidden');
+      }
+    }
+    
+    function stop() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      
+      startBtn.classList.remove('hidden');
+      modeBtn.classList.add('hidden');
+      stopBtn.classList.add('hidden');
+      colorValue.classList.add('hidden');
+      field.style.backgroundColor = '#000';
+    }
+    
+    function toggleMode() {
+      mode = mode === 'average' ? 'random' : 'average';
+      modeBtn.textContent = mode;
+    }
+    
+    function processFrame() {
+      if (video.readyState === 4) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const totalPixels = data.length / 4;
+        
+        let r, g, b;
+        
+        if (mode === 'average') {
+          let sumR = 0, sumG = 0, sumB = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            sumR += data[i];
+            sumG += data[i + 1];
+            sumB += data[i + 2];
+          }
+          r = Math.round(sumR / totalPixels);
+          g = Math.round(sumG / totalPixels);
+          b = Math.round(sumB / totalPixels);
+        } else {
+          const randomPixel = Math.floor(Math.random() * totalPixels) * 4;
+          r = data[randomPixel];
+          g = data[randomPixel + 1];
+          b = data[randomPixel + 2];
+        }
+        
+        const color = `rgb(${r}, ${g}, ${b})`;
+        field.style.backgroundColor = color;
+        colorValue.textContent = color;
+        
+        // Update theme color dynamically
+        document.querySelector('meta[name="theme-color"]').content = color;
+      }
+      
+      animationId = requestAnimationFrame(processFrame);
+    }
+    
+    startBtn.addEventListener('click', start);
+    stopBtn.addEventListener('click', stop);
+    modeBtn.addEventListener('click', toggleMode);
+    
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
