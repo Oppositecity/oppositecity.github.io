@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OPPOSITE CITY</title>
+<meta name="description" content="Opposite City — an artistic agency, idea firm, and widget farm. El Segundo, CA." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --desk:#008080; --face:#c0c0c0; --hi:#ffffff; --lo:#808080; --shadow:#000000;
+    --title1:#000080; --title2:#1084d0; --text:#000000;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    background:var(--desk);
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    font-size:14px; color:var(--text);
+    -webkit-font-smoothing:none;
+  }
+  /* ---- bevel primitives ---- */
+  .out{border:2px solid; border-color:var(--hi) var(--shadow) var(--shadow) var(--hi);
+       box-shadow:inset 1px 1px 0 var(--face), inset -1px -1px 0 var(--lo);}
+  .in {border:2px solid; border-color:var(--lo) var(--hi) var(--hi) var(--lo);}
+  /* ---- desktop icons ---- */
+  #desk{position:fixed; inset:0 0 34px 0; overflow:auto;}
+  #icons{display:flex; flex-direction:column; flex-wrap:wrap; align-content:flex-start;
+         gap:4px; padding:8px; height:100%;}
+  .icon{width:84px; padding:6px 2px; text-align:center; cursor:pointer;
+        color:#fff; text-shadow:1px 1px 0 #000; user-select:none;}
+  .icon:active .glyph{filter:invert(1);}
+  .glyph{width:34px; height:28px; margin:0 auto 4px; position:relative;}
+  .glyph .tab{position:absolute; top:0; left:0; width:14px; height:6px;}
+  .glyph .body{position:absolute; top:4px; left:0; right:0; bottom:0;
+               border:1px solid #000;}
+  .icon .lbl{font-size:11px; line-height:1.15; word-wrap:break-word;}
+  /* ---- skyline desktop: the city ---- */
+  #desk{transition:background .8s; overflow-x:auto; overflow-y:hidden;}
+  #skyline{position:absolute; left:0; bottom:26px;
+           display:flex; align-items:flex-end; gap:0; padding:0 24px;
+           height:82%; min-width:max-content;}
+  .blk{display:flex; align-items:flex-end; gap:2px; position:relative;
+       padding:0 10px 24px 10px;}
+  .blk+.blk{margin-left:16px;}
+  .blk .street{position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+       font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#fff;
+       text-shadow:1px 1px 0 #000;
+       white-space:nowrap; cursor:pointer; padding:1px 7px;
+       background:rgba(0,0,0,.4);}
+  .blk .street:hover{background:rgba(0,0,0,.65);}
+  .bldg{position:relative; cursor:pointer; image-rendering:pixelated;
+        align-self:flex-end; transition:transform .1s, filter .1s;}
+  .bldg:hover{transform:translateY(-4px); filter:brightness(1.2);}
+  .bldg:active{filter:brightness(.8);}
+  .bldg canvas{display:block; image-rendering:pixelated;}
+  #skybtn{position:fixed; top:6px; right:8px; z-index:9998;
+          font-family:inherit; font-size:11px; padding:3px 8px; cursor:pointer;}
+  /* ---- windows ---- */
+  .win{position:absolute; min-width:230px; max-width:92vw;
+       background:var(--face); display:flex; flex-direction:column;
+       box-shadow:2px 2px 0 rgba(0,0,0,.4);}
+  .tbar{display:flex; align-items:center; gap:6px; padding:2px 3px;
+        background:linear-gradient(90deg,var(--title1),var(--title2));
+        color:#fff; font-weight:700; font-size:12px; cursor:move;
+        touch-action:none; user-select:none;}
+  .tbar .tt{flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+            letter-spacing:.5px;}
+  .tbtn{width:18px; height:16px; background:var(--face); color:#000;
+        font-size:11px; font-weight:700; line-height:12px; text-align:center;
+        cursor:pointer; font-family:inherit; flex:0 0 auto;}
+  .tbtn:active{border-color:var(--lo) var(--hi) var(--hi) var(--lo);}
+  .wbody{overflow:auto; padding:10px; max-height:62vh; font-size:13px;}
+  /* ---- cards ---- */
+  .card{background:var(--face); padding:8px; margin-bottom:8px; cursor:pointer;}
+  .card:last-child{margin-bottom:0;}
+  .card .nm{font-weight:700;}
+  .card .bl{margin-top:3px; line-height:1.35;}
+  .tagrow{margin-top:5px; display:flex; flex-wrap:wrap; gap:4px;}
+  .tag{font-size:10px; padding:0 4px; background:#e5e5e5; border:1px solid var(--lo);}
+  .status{font-size:10px; text-transform:uppercase; letter-spacing:1px;}
+  /* finish meter */
+  .meter{margin-top:6px; height:10px; background:#fff; position:relative;}
+  .meter .fill{position:absolute; inset:1px auto 1px 1px; background:var(--title1);}
+  .meter .pc{position:absolute; right:3px; top:-1px; font-size:9px; color:#000;}
+  /* district header inside window */
+  .dhead{font-size:11px; margin-bottom:8px; padding-bottom:6px;
+         border-bottom:1px dotted var(--lo);}
+  /* ask */
+  #askq{width:100%; padding:4px 6px; font-family:inherit; font-size:13px;
+        background:#fff; margin-bottom:8px;}
+  /* ---- taskbar ---- */
+  #taskbar{position:fixed; left:0; right:0; bottom:0; height:34px;
+           background:var(--face); display:flex; align-items:center;
+           gap:4px; padding:3px 4px; z-index:99999;}
+  .tb{height:26px; padding:0 10px; background:var(--face); font-family:inherit;
+      font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;}
+  .tb:active{border-color:var(--lo) var(--hi) var(--hi) var(--lo);}
+  #openrow{flex:1; display:flex; gap:4px; overflow-x:auto;}
+  #openrow .tb{font-weight:400; max-width:130px; overflow:hidden; text-overflow:ellipsis;}
+  #clock{font-size:11px; padding:0 8px; height:26px; display:flex; align-items:center;}
+  a{color:var(--title1);}
+  @media (max-width:600px){ .win{min-width:200px;} .wbody{max-height:56vh;}
+    .bldg{margin:0 1px;} .bldg .plaque{font-size:8px;} }
+</style>
+</head>
+<body>
+
+<div id="desk"><div id="skyline"></div></div>
+<button id="skybtn" class="out" onclick="rerollSky()">REROLL SKY</button>
+
+<div id="taskbar" class="out">
+  <button class="tb out" onclick="openDirectory()">CITY&nbsp;HALL</button>
+  <button class="tb out" onclick="openAsk()">ASK</button>
+  <button class="tb out" onclick="stumble()">STUMBLE</button>
+  <button class="tb out" onclick="toggleMayor(this)">MAYOR</button>
+  <button class="tb out" id="exportbtn" style="display:none" onclick="exportRegistry()">EXPORT&nbsp;REGISTRY</button>
+  <div id="openrow"></div>
+  <div id="clock" class="in"></div>
+</div>
+
+<script>
+/* REGISTRY:BEGIN */
+const REGISTRY = {"lexicon": "city.opposite.surface", "generated": "2026-07-11", "note": "Reconstructed and expanded 2026-07-11 from conversation record. Restores the June build (~68 surfaces) plus the tempo/rhythm clock cluster. Some finish/status values are estimates — edit in MAYOR mode. Internal-only material excluded.", "front": ["poemstore", "lexicon-devil", "the-receipt", "organology-organ", "n-10-122", "text-temperature", "poem-stream"], "districts": [{"id": "glitch", "name": "Glitch", "blurb": "post-ASCII, materialist-text toolkit — the mark engine"}, {"id": "ambient", "name": "Ambient", "blurb": "watch-don't-use-it widgets — contemplative windows"}, {"id": "language", "name": "Language", "blurb": "writing instruments & semiotic tools"}, {"id": "audio", "name": "Audio", "blurb": "instruments, sonification, found sound"}, {"id": "civic", "name": "Civic", "blurb": "sortition, El Segundo, institutions, infrastructure"}, {"id": "viz", "name": "Atlas", "blurb": "visualization & knowledge browsers"}, {"id": "press", "name": "Press", "blurb": "publishing, broadsheets, the archive"}, {"id": "forge", "name": "Forge", "blurb": "physical fabrication & spinout ventures"}, {"id": "capital", "name": "Capital", "blurb": "fundraising as artwork, the open round"}, {"id": "lgtc", "name": "LGTC", "blurb": "Language God Tax Compliance — arm's length"}], "surfaces": [{"slug": "poemstore", "name": "Poemstore", "district": "press", "status": "live", "finish": 95, "featured": true, "tags": ["typewriter", "poetry", "performance", "est. 2005"], "blurb": "Typewriter street poetry, on the spot, any topic, your price. The origin point of the modern movement — Oakland, 2005. NPR / CBS Sunday Morning / NYT / LA Times.", "url": ""}, {"slug": "poem-stream", "name": "Poem Stream", "district": "language", "status": "build", "finish": 80, "featured": true, "tags": ["keystroke", "feed", "pwa"], "blurb": "TikTok for watching poems get written. Records every keystroke — the pauses, the backspaces, the choosing — and plays the poem back at its real rhythm.", "url": ""}, {"slug": "split", "name": "SPLIT", "district": "language", "status": "live", "finish": 90, "tags": ["figure-ground", "pinwheel", "type generator", "riley"], "blurb": "Figure-ground reversal type generator. Two tones only, always exact opposites \u2014 grid and pinwheel modes, up to 48 blades per glyph. The reversal is conserved: nothing lost or added in the exchange.", "url": "https://oppositecity.github.io/split/"}, {"slug": "lexicon-devil", "name": "Lexicon Devil", "district": "language", "status": "live", "finish": 85, "featured": true, "tags": ["atproto", "self-replicating", "protocol"], "blurb": "A self-replicating lexicon for ATProto. The first record of the type contains the schema that defines it. To interact is to adopt.", "url": ""}, {"slug": "the-receipt", "name": "THE RECEIPT", "district": "civic", "status": "live", "finish": 85, "featured": true, "tags": ["vppa", "cipa", "statutory exposure"], "blurb": "A jurisdiction-aware counter of statutory privacy exposure accruing in real time as you browse. The bill nobody itemizes, itemized.", "url": ""}, {"slug": "organology-organ", "name": "Organology Organ", "district": "audio", "status": "live", "finish": 80, "featured": true, "tags": ["instrument", "stiegler", "organon"], "blurb": "An instrument about instruments — organology played as an organ.", "url": ""}, {"slug": "n-10-122", "name": "N/10^122", "district": "viz", "status": "live", "finish": 80, "featured": true, "tags": ["holographic bound", "read fraction"], "blurb": "How much of everything ever written has ever been read, against the holographic information bound of the universe. A fraction with a very long denominator.", "url": ""}, {"slug": "text-temperature", "name": "Text Temperature", "district": "language", "status": "live", "finish": 80, "featured": true, "tags": ["entropy", "measurement"], "blurb": "Reads the temperature of any passage of text — its entropy, its predictability, its heat.", "url": ""}, {"slug": "datamosh", "name": "Datamosh Workstation", "district": "glitch", "status": "live", "finish": 75, "tags": ["byte corruption", "i-frame", "pixel sort"], "blurb": "Byte corruption, I-frame destruction, pixel sorting, channel shifting, cross-file mosh. Make the medium's structure visible.", "url": ""}, {"slug": "sigil-collapse", "name": "Sigil Collapse", "district": "glitch", "status": "build", "finish": 55, "tags": ["glyph", "destruction"], "blurb": "Glyphs pushed past legibility until they collapse into sigils.", "url": ""}, {"slug": "asemic-workstation", "name": "Asemic Workstation", "district": "glitch", "status": "build", "finish": 55, "tags": ["asemic", "writing"], "blurb": "Tools for writing without semantics — mark-making in the shape of language.", "url": ""}, {"slug": "figure-ground-type", "name": "Figure-Ground Reversal Type", "district": "glitch", "status": "build", "finish": 60, "tags": ["bridget riley", "pinwheel", "op"], "blurb": "Type generator where letterform and counterform trade places. Pinwheel mode.", "url": ""}, {"slug": "top-chicken", "name": "TOP CHICKEN", "district": "glitch", "status": "live", "finish": 80, "tags": ["pixel art", "atproto did", "deterministic", "scale2x"], "blurb": "A deterministic pixel-art chicken for every ATProto DID. Empirically calibrated rarity tiers. Your identity, as poultry.", "url": ""}, {"slug": "textfield-ecology", "name": "Textfield Ecology", "district": "ambient", "status": "build", "finish": 50, "tags": ["ecosystem", "idle"], "blurb": "A text field left alone long enough develops an ecology.", "url": ""}, {"slug": "tick-table", "name": "Tick Table", "district": "ambient", "status": "build", "finish": 45, "tags": ["time", "table"], "blurb": "A table that ticks. Watch, don't use.", "url": ""}, {"slug": "aperiodic-pleroma", "name": "Aperiodic Pleroma", "district": "ambient", "status": "concept", "finish": 25, "tags": ["tiling", "fullness"], "blurb": "Aperiodic tiling as an image of fullness-without-repetition.", "url": ""}, {"slug": "bartlebluesky", "name": "Bartlebluesky", "district": "ambient", "status": "live", "finish": 75, "tags": ["atproto", "daemon", "refusal"], "blurb": "A perpetual counter of blocks on the open social web, epoch-anchored and deterministic. It would prefer not to.", "url": ""}, {"slug": "attention-tape-head", "name": "Attention / Tape-Head", "district": "ambient", "status": "concept", "finish": 30, "tags": ["diagram", "transformer"], "blurb": "The attention mechanism drawn as a tape head — reading everything at once, writing one token at a time.", "url": ""}, {"slug": "shellac", "name": "SHELLAC", "district": "ambient", "status": "live", "finish": 70, "tags": ["78rpm", "public domain", "player"], "blurb": "A player for public-domain 78s. Surface noise included; that's the medium.", "url": ""}, {"slug": "syllababbler", "name": "Syllababbler v2", "district": "language", "status": "live", "finish": 75, "tags": ["morphemes", "backtracking segmenter", "235 entries"], "blurb": "A morphophonemic babble engine over a 235-entry morpheme database with a backtracking segmenter. English before it means anything.", "url": ""}, {"slug": "aureole", "name": "Aureole", "district": "language", "status": "live", "finish": 75, "tags": ["atproto", "synonym field", "blend"], "blurb": "An ATProto synonym-field reader. Overlapping letter-blend clusters, multiplied into each other until meaning glows at the edges.", "url": ""}, {"slug": "symbol-ambiguity-dictionary", "name": "Symbol Ambiguity Dictionary", "district": "language", "status": "concept", "finish": 30, "tags": ["reference", "polysemy"], "blurb": "A dictionary organized by how many ways a symbol can be taken.", "url": ""}, {"slug": "loomstream", "name": "LoomStream", "district": "language", "status": "concept", "finish": 30, "tags": ["branching", "text"], "blurb": "Text as loom — every generation a warp, every choice a weft.", "url": ""}, {"slug": "nine", "name": "NINE", "district": "audio", "status": "build", "finish": 65, "tags": ["baseball", "oratorio", "mlb statsapi", "felt piano"], "blurb": "A box score oratorio. Nine innings scored for felt piano, choir, and marimba in modal pentatonic architecture, driven live by the MLB StatsAPI.", "url": ""}, {"slug": "jazz-curve", "name": "Jazz Curve / Scored Live Series", "district": "audio", "status": "build", "finish": 55, "tags": ["baseball", "free improvisation", "commission"], "blurb": "Baseball plus a freely improvising ensemble. The game is the score; the ensemble is the broadcast.", "url": ""}, {"slug": "kelp-rhythm-oscillator", "name": "Kelp Rhythm Oscillator", "district": "audio", "status": "live", "finish": 75, "tags": ["physics", "polyrhythm", "drum machine"], "blurb": "Five kelp strands in simulated surge, each strand a voice. Polyrhythm triggered by physics, not grid.", "url": ""}, {"slug": "listening-room", "name": "The Listening Room", "district": "audio", "status": "build", "finish": 60, "tags": ["generative composition", "spectral analysis", "timbre contracts"], "blurb": "A persistent studio environment for generative composition — spectral analysis harness, timbre contracts, and a journal addressed to future instances.", "url": ""}, {"slug": "communication-capacitors", "name": "Communication Capacitors", "district": "audio", "status": "concept", "finish": 25, "tags": ["charge", "discharge"], "blurb": "Messages stored as charge, released as sound.", "url": ""}, {"slug": "grand-coop", "name": "The Grand Co-op", "district": "civic", "status": "build", "finish": 60, "tags": ["220 e. grand", "el segundo", "fci", "master lease"], "blurb": "A food-and-commons co-op for the former Rite-Aid at 220 E. Grand. Business plan, pitch deck, and playbook exist; the city master-lease is the lever.", "url": ""}, {"slug": "slp", "name": "Swarm Litigation Protocol", "district": "civic", "status": "build", "finish": 55, "tags": ["mass arbitration", "small claims", "consumer infrastructure"], "blurb": "Coordinated small claims and mass arbitration as consumer infrastructure. A case database with swarm-eligibility ratings.", "url": ""}, {"slug": "portola", "name": "Portolá Re-enactment", "district": "civic", "status": "concept", "finish": 30, "tags": ["expedition", "critical re-enactment"], "blurb": "The 1769 expedition walked again as critical and institutional media.", "url": ""}, {"slug": "agentworld", "name": "Antikythera / Agentworld", "district": "civic", "status": "concept", "finish": 30, "tags": ["agamben", "latent space of exception"], "blurb": "Agambenian alignment theory: the latent space of exception, with literature map and proposal.", "url": ""}, {"slug": "conservatory-of-difference", "name": "Conservatory of Difference", "district": "viz", "status": "live", "finish": 80, "tags": ["synthesis", "inscribe release drift witness"], "blurb": "The totalizing synthesis of the practice, organized around Conservation of Difference and its four operations.", "url": ""}, {"slug": "lombardi-tool", "name": "Lombardi Tool", "district": "viz", "status": "concept", "finish": 30, "tags": ["network drawing", "mark lombardi"], "blurb": "Draw relationships the way Lombardi did — curves, dates, and quiet implication.", "url": ""}, {"slug": "bulla-genealogy", "name": "Bulla Genealogy", "district": "viz", "status": "build", "finish": 50, "tags": ["clay token", "alphabet", "coin", "llm token"], "blurb": "Clay token to alphabet to coin to token to token. The founding myth, drawn as a lineage.", "url": ""}, {"slug": "apx-01", "name": "Apeiroprophesizer APX-01", "district": "lgtc", "status": "live", "finish": 80, "tags": ["oracle", "64 shards", "anti-loop law"], "blurb": "A sharded oracle: 64 FORM/MATTER shards, accursed shards, possibility magnitude display, and an anti-loop law.", "url": ""}, {"slug": "organ-of-the-unsaid", "name": "Organ of the Unsaid", "district": "lgtc", "status": "live", "finish": 80, "tags": ["four stops", "inscribe release drift witness"], "blurb": "A four-stop instrument enacting the four operations. What goes unsaid still needs a pipe.", "url": ""}, {"slug": "lgtc-founding", "name": "LGTC Founding Site", "district": "lgtc", "status": "live", "finish": 75, "tags": ["508(c)(1)(a)", "broadsheet", "schedule g"], "blurb": "The founding documents of Language God Tax Compliance, including Schedule G: Contact With GOD.", "url": ""}, {"slug": "tzimtzum-doctrine", "name": "Tzimtzum as Expansion", "district": "lgtc", "status": "concept", "finish": 35, "tags": ["doctrine", "apeiroprophetics"], "blurb": "Contraction re-read as expansion into apeiroprophetics. Communication in any way is equal liturgy.", "url": ""}, {"slug": "lgtc-broadsheet", "name": "LGTC Broadsheet", "district": "press", "status": "live", "finish": 75, "tags": ["broadsheet", "founding"], "blurb": "The full founding broadsheet, set for print.", "url": ""}, {"slug": "note-of-idea", "name": "Note of Idea", "district": "capital", "status": "build", "finish": 50, "tags": ["instrument", "form"], "blurb": "A convertible note where the underlying asset is an idea. The form is the artwork.", "url": ""}, {"slug": "open-round", "name": "The Open Round", "district": "capital", "status": "build", "finish": 45, "tags": ["lean core ambitious", "founding costs"], "blurb": "Fundraising as artwork: the full founding-cost ledger at three tiers, published.", "url": ""}, {"slug": "a-corp", "name": "A-Corp Structure", "district": "capital", "status": "concept", "finish": 30, "tags": ["colorado sb26-133"], "blurb": "Institutional design under Colorado SB26-133.", "url": ""}, {"slug": "weight-shards", "name": "Weight Shards", "district": "forge", "status": "build", "finish": 50, "tags": ["k-of-n", "physical artifact", "llm weights"], "blurb": "Model weights split into distributed physical k-of-n artifacts. The model exists only when the shards convene.", "url": ""}, {"slug": "heir", "name": "HEIR", "district": "forge", "status": "build", "finish": 65, "tags": ["lora breeding", "integrated gradients", "21/21 locus recovery"], "blurb": "A breeding system for LoRA adapters. Integrated-gradient attribution maps layers to loci; recessive traits resurface.", "url": ""}, {"slug": "terroirspace", "name": "Terroirspace", "district": "forge", "status": "concept", "finish": 25, "tags": ["stratospheric fermentation", "balloon"], "blurb": "Fermentation at altitude. Terroir, but up.", "url": ""}, {"slug": "drone-clock", "name": "Timeless Drone Clock", "district": "audio", "status": "live", "finish": 70, "tags": ["time scales", "harmonic series", "drone"], "blurb": "Nine time scales from millisecond to month mapped onto a harmonic frequency series. Scrub time by hand and hear what a Monday sounds like against a Friday.", "url": ""}, {"slug": "musical-time-clock", "name": "Musical Time Machine Clock", "district": "audio", "status": "live", "finish": 75, "tags": ["polyrhythm", "bpm", "time signature", "clock"], "blurb": "A clock that tells time through polyrhythmic beats. Time-interval rings and musical beat rings at adjustable tempo, signatures, and accent patterns — hours:minutes:seconds as an inherent 1:60:3600 polyrhythm.", "url": ""}, {"slug": "glitch-word-processor", "name": "Glitch Word Processor", "district": "glitch", "status": "live", "finish": 70, "tags": ["text corruption", "break effect"], "blurb": "A word processor that corrupts as you type. The BREAK effect ported from the datamosh workstation, applied to characters and layout.", "url": ""}, {"slug": "letter-topology", "name": "Letter Topology", "district": "glitch", "status": "build", "finish": 50, "tags": ["glyph", "topology"], "blurb": "Letterforms bent and stretched until their topology, not their identity, is what you read.", "url": ""}, {"slug": "word-density-collapse", "name": "Word Density Collapse", "district": "glitch", "status": "build", "finish": 45, "tags": ["typography", "gravity"], "blurb": "Words accrete mass and collapse under their own density.", "url": ""}, {"slug": "broken-font", "name": "Generative Broken Font", "district": "glitch", "status": "build", "finish": 50, "tags": ["type design", "generative"], "blurb": "A font generator that only makes broken fonts. Every glyph is a different kind of wrong.", "url": ""}, {"slug": "pixel-converter", "name": "Pixel Art Converter", "district": "glitch", "status": "live", "finish": 70, "tags": ["quantization", "dithering", "bayer"], "blurb": "Palette quantization, Bayer dithering, downsampling. Any image into deliberate low-resolution.", "url": ""}, {"slug": "post-ascii", "name": "Post-ASCII / Combining Diacriticals", "district": "glitch", "status": "build", "finish": 50, "tags": ["unicode", "zalgo", "combining marks"], "blurb": "Stacking combining diacriticals past the point of legibility. Text that overflows its own line.", "url": ""}, {"slug": "diffusion-liminal", "name": "Diffusion Liminal States", "district": "glitch", "status": "concept", "finish": 30, "tags": ["diffusion", "latent"], "blurb": "The half-denoised in-between frames of a diffusion model, held as images in their own right.", "url": ""}, {"slug": "sunset-generator", "name": "Sunset Generator", "district": "ambient", "status": "live", "finish": 75, "tags": ["sine wave", "color", "meditative"], "blurb": "Physically accurate sunset colors driven by harmonic mathematical relationships. Left running, not used — the colors align in resonance, drift, and realign.", "url": ""}, {"slug": "astral-spirograph", "name": "Astral Spirograph", "district": "ambient", "status": "live", "finish": 65, "tags": ["spirograph", "orbit", "generative"], "blurb": "Orbital mechanics as a drawing machine. Nested rotations trace figures that never quite repeat.", "url": ""}, {"slug": "space-junk-astrology", "name": "Space-Junk Astrology", "district": "ambient", "status": "concept", "finish": 35, "tags": ["satellites", "orbital debris", "divination"], "blurb": "Horoscopes cast from the positions of orbital debris. Your fate, written in defunct satellites.", "url": ""}, {"slug": "improv-music", "name": "Improvisational Music Generator", "district": "ambient", "status": "build", "finish": 55, "tags": ["generative", "ambient"], "blurb": "A generative ensemble that improvises indefinitely. Meant to be left playing.", "url": ""}, {"slug": "hausdorff-analyzer", "name": "Hausdorff Analyzer", "district": "ambient", "status": "build", "finish": 50, "tags": ["fractal", "dimension", "measurement"], "blurb": "Measures the fractal dimension of whatever you feed it. A ruler for roughness.", "url": ""}, {"slug": "crowd-oscillator", "name": "Crowd Oscillator", "district": "ambient", "status": "concept", "finish": 30, "tags": ["crowd", "emergence", "oscillation"], "blurb": "Simulated crowds settling into and breaking out of collective oscillation.", "url": ""}, {"slug": "latent-walk", "name": "Latent Walk", "district": "language", "status": "build", "finish": 55, "tags": ["embedding", "interpolation", "semantic"], "blurb": "Walk in a straight line through embedding space and read what you pass. Meaning as terrain.", "url": ""}, {"slug": "semantic-drift", "name": "Semantic Distance", "district": "language", "status": "build", "finish": 50, "tags": ["embedding", "distance"], "blurb": "The measurable distance between what you said and what you meant.", "url": ""}, {"slug": "musiqwerty", "name": "Musiqwerty", "district": "language", "status": "build", "finish": 55, "tags": ["keyboard", "instrument", "typing"], "blurb": "The QWERTY keyboard played as a musical instrument. Type words, hear melodies determined by the letters.", "url": ""}, {"slug": "words-bsky", "name": "words.bsky Generator", "district": "language", "status": "live", "finish": 60, "tags": ["atproto", "bluesky", "handle"], "blurb": "Generates single-word Bluesky handles and the words that could still be claimed.", "url": ""}, {"slug": "irc-found-poetry", "name": "IRC As Found Poetry", "district": "language", "status": "build", "finish": 45, "tags": ["irc", "found text", "logs"], "blurb": "Old IRC logs read as accidental verse. The channel didn't know it was writing poems.", "url": ""}, {"slug": "lintis", "name": "LINTIS", "district": "language", "status": "concept", "finish": 30, "tags": ["linguistics", "tool"], "blurb": "A linguistics instrument in the house lineage — glossing the ungrammatical.", "url": ""}, {"slug": "energese", "name": "Energese", "district": "language", "status": "concept", "finish": 30, "tags": ["odum", "emergy", "energese"], "blurb": "Odum's energy-language rendered as a working notation. Value measured in embodied energy.", "url": ""}, {"slug": "sortition-congress", "name": "Sortition Congress", "district": "civic", "status": "build", "finish": 55, "tags": ["sortition", "democracy", "lottery"], "blurb": "A legislature chosen by lot instead of election. A working model of government by random sample.", "url": ""}, {"slug": "ai-congress", "name": "AI Congress Simulator", "district": "civic", "status": "build", "finish": 50, "tags": ["simulation", "deliberation", "agents"], "blurb": "A chamber of language-model legislators debating and voting. Deliberation without constituents.", "url": ""}, {"slug": "locale", "name": "Locale", "district": "civic", "status": "concept", "finish": 35, "tags": ["geofence", "bulletin", "local"], "blurb": "A geofenced bulletin board. Messages that only exist where they were left.", "url": ""}, {"slug": "universal-ordination", "name": "Universal Ordination Platform", "district": "civic", "status": "build", "finish": 50, "tags": ["lgtc", "ordination", "508(c)(1)(a)"], "blurb": "The platform by which anyone becomes clergy of the affiliated church. Ordination as a public utility.", "url": ""}, {"slug": "planetarium-bar", "name": "Planetarium Bar", "district": "civic", "status": "concept", "finish": 30, "tags": ["el segundo", "venue", "planetarium"], "blurb": "A bar that is also a planetarium. An El Segundo civic proposal.", "url": ""}, {"slug": "slop-flag", "name": "Slop Flag", "district": "audio", "status": "build", "finish": 50, "tags": ["sonification", "signal"], "blurb": "A flag that sonifies its own condition. Raised, it sounds; slack, it drones.", "url": ""}, {"slug": "cognitive-wild-west", "name": "Cognitive Wild West", "district": "audio", "status": "build", "finish": 50, "tags": ["genre mashup", "engine"], "blurb": "A genre-mashup engine that collides musical idioms until a new frontier appears.", "url": ""}, {"slug": "guitar-tuner", "name": "Guitar Tuner (20 Tunings)", "district": "audio", "status": "live", "finish": 80, "tags": ["web audio", "autocorrelation", "open tunings"], "blurb": "A precise browser tuner across 20 tunings — standard, open, modal, folk, and avant-garde (Fripp New Standard, all-fourths, Ostrich D). Sub-cent accuracy via autocorrelation.", "url": ""}, {"slug": "baseball-sonification", "name": "Baseball Sonification", "district": "audio", "status": "build", "finish": 55, "tags": ["baseball", "statsapi", "sonification"], "blurb": "A live baseball game rendered as sound. The precursor to NINE.", "url": ""}, {"slug": "highway-sound", "name": "Highway Sound Instrument", "district": "audio", "status": "build", "finish": 45, "tags": ["field recording", "traffic", "drone"], "blurb": "The sound of a highway played as an instrument. Traffic as sustained tone.", "url": ""}, {"slug": "long-synth", "name": "Long Synthesizer", "district": "audio", "status": "concept", "finish": 30, "tags": ["duration", "synthesis", "slow"], "blurb": "A synthesizer whose shortest note is longer than you'll listen. Built for durations you outlast.", "url": ""}, {"slug": "galvanic-shoreline", "name": "Galvanic Shoreline", "district": "audio", "status": "concept", "finish": 30, "tags": ["kelp", "electricity", "shore"], "blurb": "The shoreline wired for its own galvanic voltage. The tide as a slow electrical signal.", "url": ""}, {"slug": "fourier-taxonomy", "name": "Fourier Taxonomic Browser", "district": "viz", "status": "build", "finish": 50, "tags": ["fourier", "taxonomy", "browser"], "blurb": "Browse a body of knowledge by its frequency components rather than its categories.", "url": ""}, {"slug": "abhidhamma-browser", "name": "Abhidhamma Browser", "district": "viz", "status": "build", "finish": 50, "tags": ["buddhism", "abhidhamma", "ontology"], "blurb": "The Abhidhamma's catalogue of mental factors as a navigable ontology.", "url": ""}, {"slug": "bauhaus-noun-void", "name": "Bauhaus Noun Void", "district": "viz", "status": "concept", "finish": 35, "tags": ["bauhaus", "typography", "void"], "blurb": "Nouns arranged in the negative space of a Bauhaus grid.", "url": ""}, {"slug": "crop-circle-tagger", "name": "Crop Circle Tagger", "district": "viz", "status": "concept", "finish": 30, "tags": ["crop circles", "classification"], "blurb": "A classification browser for crop-circle geometry. Taxonomy for the unexplained.", "url": ""}, {"slug": "corpus", "name": "Corpus", "district": "viz", "status": "build", "finish": 45, "tags": ["atproto", "silhouette", "visualization"], "blurb": "An ATProto account rendered as a silhouette of its own posting body.", "url": ""}, {"slug": "court-sigils", "name": "Court Sigils", "district": "viz", "status": "concept", "finish": 30, "tags": ["heraldry", "basketball", "sigil"], "blurb": "Sigils generated from the geometry of a court. Heraldry for the hardwood.", "url": ""}, {"slug": "gundo-coins", "name": "Gundo Coins", "district": "forge", "status": "build", "finish": 55, "tags": ["challenge coins", "aerospace", "el segundo"], "blurb": "Hand-struck challenge coins for the El Segundo aerospace startup community. Low-risk first revenue, ready to launch.", "url": ""}, {"slug": "wallet-segundo", "name": "Wallet Segundo", "district": "forge", "status": "concept", "finish": 35, "tags": ["local currency", "digital layer", "el segundo"], "blurb": "A digital layer over a local El Segundo scrip. Bronze wallet sculptures as its physical anchor.", "url": ""}, {"slug": "drone-theater", "name": "Drone Theater", "district": "forge", "status": "concept", "finish": 25, "tags": ["drones", "performance", "sky"], "blurb": "Theater staged in the sky by a choreographed drone swarm.", "url": ""}, {"slug": "toddler-orchestra", "name": "Toddler Orchestra", "district": "forge", "status": "concept", "finish": 25, "tags": ["instruments", "children", "fabrication"], "blurb": "An orchestra of instruments designed to be playable — and survivable — by toddlers.", "url": ""}, {"slug": "fable-elevated", "name": "Fable Elevated", "district": "audio", "status": "build", "finish": 60, "tags": ["tone.js", "song generator", "ambient"], "blurb": "A song generator with a Tone.js ambient band and a Web Speech vocalist. Press one button; the building sings. Sodium-lamp aesthetic, elevation dial from buzzed to orbital.", "url": ""}, {"slug": "aeolian", "name": "AEOLIAN", "district": "audio", "status": "build", "finish": 55, "tags": ["steganography", "birdsong", "generative"], "blurb": "Generative birdsong that hides a message in its own song. The wind speaks; only the right listener decodes it.", "url": ""}, {"slug": "accursed-share", "name": "Accursed Share", "district": "press", "status": "build", "finish": 50, "tags": ["bataille", "general economy", "emergy"], "blurb": "Every process drawn as flows and storages, with the heat sink marked in red — the accursed share, the fraction that must be spent.", "url": ""}, {"slug": "suburbient", "name": "Suburbient", "district": "press", "status": "concept", "finish": 35, "tags": ["ambient", "suburb", "field"], "blurb": "An ambient-writing practice for the stucco-and-sodium landscape. The suburb as a place worth listening to.", "url": ""}, {"slug": "reg-cf-tracker", "name": "Reg CF Tracker", "district": "civic", "status": "build", "finish": 45, "tags": ["crowdfunding", "sec", "regulation"], "blurb": "A tracker for Regulation Crowdfunding raises. Watching the open rounds of everyone else.", "url": ""}, {"slug": "socal-baseball", "name": "SoCal Baseball", "district": "forge", "status": "concept", "finish": 30, "tags": ["baseball", "league", "southern california"], "blurb": "A Southern California baseball venture in the Opposite City orbit.", "url": ""}, {"slug": "sonicbrand", "name": "SonicBrand", "district": "forge", "status": "build", "finish": 55, "tags": ["data sonification", "retail", "enterprise"], "blurb": "Enterprise data sonification for retail — store activity rendered as generative music via real music theory. The productizable spinout of the sonification work.", "url": ""}, {"slug": "drai-farm", "name": "Drai Farm", "district": "forge", "status": "concept", "finish": 30, "tags": ["ai detox", "retreat", "facility"], "blurb": "An AI detox facility — a retreat for stepping away from the machines. A place to dry out from the models.", "url": ""}, {"slug": "shutter-speed", "name": "Shutter Speed", "district": "forge", "status": "build", "finish": 50, "tags": ["game", "fps", "contest"], "blurb": "A browser tapping contest measured in frames per second. How fast is your hand, really?", "url": ""}, {"slug": "asteria", "name": "Asteria", "district": "forge", "status": "live", "finish": 55, "tags": ["astrology", "alternative zodiac", "instrument"], "blurb": "An alternative zodiac built from the actual sky, with a companion instrument that reads space-junk orbits as a working horoscope.", "url": ""}, {"slug": "dog-hair-curl", "name": "Dog Hair Curl Walks", "district": "ambient", "status": "concept", "finish": 25, "tags": ["random walk", "generative", "curl"], "blurb": "Random walks in the shape of a dog's coat. Curl as trajectory.", "url": ""}]};
+/* REGISTRY:END */
+
+/* live registry: prefer surfaces.json from the host (edit the file = edit the
+   site), fall back to the inlined copy for file:// / offline. then overlay any
+   local edits made in MAYOR mode. */
+let REG = REGISTRY, D, S, EDITS = {};
+try { EDITS = JSON.parse(localStorage.getItem('oc-edits') || '{}'); } catch(e){}
+function applyEdits(){
+  REG.surfaces.forEach(s=>{ if(EDITS[s.slug]) Object.assign(s, EDITS[s.slug]); });
+  D = Object.fromEntries(REG.districts.map(d=>[d.id,d]));
+  S = REG.surfaces;
+}
+applyEdits();
+const districtColors = {glitch:'#d05050',ambient:'#50a0d0',language:'#d0a050',
+  audio:'#9060c0',civic:'#508050',viz:'#40a0a0',press:'#606060',
+  forge:'#c07030',capital:'#b0a040',lgtc:'#803060'};
+
+/* pastel bodies — fresh every load, the original mechanic */
+function pastel(){const h=Math.floor(Math.random()*360);
+  const s=40+Math.random()*30, l=75+Math.random()*15;
+  return `hsl(${h} ${s}% ${l}%)`;}
+
+/* ---- window manager ---- */
+let z=10; const openWins={};
+function mkWin(id,title,html,x,y,w){
+  if(openWins[id]){focusWin(id); return openWins[id];}
+  const el=document.createElement('div');
+  el.className='win out'; el.id='w-'+id;
+  el.style.left=(x??(20+Math.random()*Math.max(20,innerWidth-320)))+'px';
+  el.style.top =(y??(16+Math.random()*Math.max(20,innerHeight-360)))+'px';
+  if(w) el.style.width=w+'px';
+  el.innerHTML=`<div class="tbar"><span class="tt">${title}</span>
+    <button class="tbtn out" data-x aria-label="Close ${title}">×</button></div>
+    <div class="wbody" style="background:${pastel()}">${html}</div>`;
+  document.body.appendChild(el);
+  el.style.zIndex=++z;
+  el.addEventListener('pointerdown',()=>focusWin(id));
+  el.querySelector('[data-x]').addEventListener('click',e=>{e.stopPropagation();closeWin(id);});
+  drag(el, el.querySelector('.tbar'));
+  openWins[id]={el,title};
+  renderTaskbar();
+  return openWins[id];
+}
+function focusWin(id){ if(openWins[id]) openWins[id].el.style.zIndex=++z; }
+function closeWin(id){ if(!openWins[id])return;
+  openWins[id].el.remove(); delete openWins[id]; renderTaskbar(); }
+function drag(el,handle){
+  let sx,sy,ox,oy,pid=null;
+  handle.addEventListener('pointerdown',e=>{
+    if(e.target.closest('.tbtn'))return;
+    pid=e.pointerId; handle.setPointerCapture(pid);
+    sx=e.clientX; sy=e.clientY; ox=el.offsetLeft; oy=el.offsetTop;
+  });
+  handle.addEventListener('pointermove',e=>{
+    if(pid===null||e.pointerId!==pid)return;
+    el.style.left=Math.max(-el.offsetWidth+60, ox+e.clientX-sx)+'px';
+    el.style.top =Math.max(0, Math.min(innerHeight-60, oy+e.clientY-sy))+'px';
+  });
+  const end=e=>{ if(e.pointerId===pid) pid=null; };
+  handle.addEventListener('pointerup',end);
+  handle.addEventListener('pointercancel',end);
+}
+function renderTaskbar(){
+  const row=document.getElementById('openrow'); row.innerHTML='';
+  for(const id in openWins){
+    const b=document.createElement('button');
+    b.className='tb out'; b.textContent=openWins[id].title;
+    b.onclick=()=>focusWin(id); row.appendChild(b);
+  }
+}
+
+/* ---- content renderers ---- */
+function meter(f){return `<div class="meter in"><div class="fill" style="width:${f}%"></div><span class="pc">${f}</span></div>`;}
+function card(s){
+  const st=s.status==='live'?'● live':s.status==='build'?'◐ build':'○ concept';
+  return `<div class="card out" onclick="openSurface('${s.slug}')">
+    <div class="nm">${s.name} <span class="status">${st}</span></div>
+    <div class="bl">${s.blurb}</div>
+    <div class="tagrow">${(s.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    ${meter(s.finish??0)}</div>`;
+}
+let MAYOR=false;
+function esc(t){return String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function openSurface(slug){
+  const s=S.find(x=>x.slug===slug); if(!s)return;
+  if(MAYOR){ openEditor(s); return; }
+  const link=s.url?`<p style="margin-top:8px"><a href="${s.url}">OPEN →</a></p>`
+                  :`<p style="margin-top:8px;font-size:11px">not yet wired — url pending in surfaces.json</p>`;
+  mkWin('s-'+slug, s.name.toUpperCase(),
+    `<div class="dhead">${D[s.district].name} district — ${s.status} — finish ${s.finish??0}/100</div>
+     <p>${s.blurb}</p>
+     <div class="tagrow" style="margin-top:8px">${(s.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+     ${meter(s.finish??0)}${link}`, null, null, 300);
+}
+function openEditor(s){
+  const f=(k,v,ml)=> ml
+    ?`<label style="font-size:10px">${k}</label><textarea data-f="${k}" class="in" style="width:100%;font-family:inherit;font-size:12px;padding:4px;min-height:70px;background:#fff">${esc(v)}</textarea>`
+    :`<label style="font-size:10px">${k}</label><input data-f="${k}" class="in" style="width:100%;font-family:inherit;font-size:12px;padding:4px;background:#fff" value="${esc(v)}"/>`;
+  mkWin('e-'+s.slug,'EDIT: '+s.name.toUpperCase(),
+    `<div class="dhead">changes save to this browser instantly. EXPORT REGISTRY (taskbar) makes them permanent.</div>
+     ${f('name',s.name)} ${f('blurb',s.blurb,1)} ${f('tags',(s.tags||[]).join(', '))}
+     ${f('status',s.status)} ${f('finish',s.finish??0)} ${f('url',s.url||'')}
+     <div style="margin-top:8px;display:flex;gap:6px">
+       <button class="tb out" data-save>SAVE</button>
+       <button class="tb out" data-revert>REVERT</button></div>`, null, null, 300);
+  const w=openWins['e-'+s.slug].el;
+  w.querySelector('[data-save]').onclick=()=>{
+    const g=k=>w.querySelector(`[data-f="${k}"]`).value;
+    EDITS[s.slug]={name:g('name'),blurb:g('blurb'),status:g('status'),url:g('url'),
+      finish:Math.max(0,Math.min(100,parseInt(g('finish'))||0)),
+      tags:g('tags').split(',').map(t=>t.trim()).filter(Boolean)};
+    localStorage.setItem('oc-edits',JSON.stringify(EDITS));
+    applyEdits(); closeWin('e-'+s.slug); openSurfaceView(s.slug);
+  };
+  w.querySelector('[data-revert]').onclick=()=>{
+    delete EDITS[s.slug]; localStorage.setItem('oc-edits',JSON.stringify(EDITS));
+    location.reload();
+  };
+}
+function openSurfaceView(slug){ const m=MAYOR; MAYOR=false; openSurface(slug); MAYOR=m; }
+function toggleMayor(btn){
+  MAYOR=!MAYOR;
+  btn.textContent=MAYOR?'MAYOR ✎':'MAYOR';
+  btn.style.background=MAYOR?'#ffd0d0':'';
+  document.getElementById('exportbtn').style.display=MAYOR?'':'none';
+}
+function exportRegistry(){
+  const out=JSON.parse(JSON.stringify(REG));
+  out.generated=new Date().toISOString().slice(0,10);
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='surfaces.json'; a.click();
+}
+function openDistrict(id){
+  const d=D[id]; const list=S.filter(s=>s.district===id)
+    .sort((a,b)=>(b.finish??0)-(a.finish??0));
+  mkWin('d-'+id, d.name.toUpperCase(),
+    `<div class="dhead">${d.blurb} — ${list.length} surfaces</div>`+
+    list.map(card).join(''), null, null, 330);
+}
+function openDirectory(){
+  const front=REG.front.map(sl=>S.find(s=>s.slug===sl)).filter(Boolean);
+  mkWin('directory','OPPOSITE CITY — DIRECTORY',
+    `<div class="dhead">an artistic agency, idea firm, and widget farm — el segundo, ca<br>
+     ${S.length} surfaces · ${REG.districts.length} districts · registry: city.opposite.surface</div>`+
+    front.map(card).join('')+
+    `<div style="margin-top:6px;font-size:11px">districts are folders on the desktop. ASK searches. STUMBLE wanders.</div>`,
+    Math.max(10,(innerWidth-360)/2), 24, 360);
+}
+function openAsk(){
+  mkWin('ask','ASK THE CITY',
+    `<input id="askq" class="in" placeholder="type to search surfaces…"
+       oninput="renderAsk(this.value)" autocomplete="off"/>
+     <div id="askr"></div>`, null, 40, 320);
+  setTimeout(()=>document.getElementById('askq')?.focus(),50);
+}
+function renderAsk(q){
+  q=(q||'').toLowerCase().trim();
+  const r=document.getElementById('askr'); if(!r)return;
+  if(!q){r.innerHTML='';return;}
+  const hits=S.filter(s=>(s.name+' '+s.blurb+' '+(s.tags||[]).join(' ')+' '+D[s.district].name)
+    .toLowerCase().includes(q)).slice(0,12);
+  r.innerHTML=hits.length?hits.map(card).join(''):'<p>nothing in the city matches. yet.</p>';
+}
+function stumble(){ openSurface(S[Math.floor(Math.random()*S.length)].slug); }
+
+/* ---- the city: every surface is a building, all colors random ---- */
+let PAL;
+function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))>>>0;return h;}
+function rollPalette(){
+  const h=Math.floor(Math.random()*360);
+  const night=Math.random()<.35;
+  const l1=night?12+Math.random()*10:30+Math.random()*25;
+  const l2=night?22+Math.random()*12:50+Math.random()*22;
+  PAL={
+    sky:`linear-gradient(hsl(${h} ${35+Math.random()*30}% ${l1}%), hsl(${(h+30+Math.random()*60)%360} ${40+Math.random()*30}% ${l2}%) 62%, hsl(${(h+70+Math.random()*80)%360} ${45+Math.random()*35}% ${l2+14}%))`,
+    lit:`hsl(${(h+40+Math.random()*40)%360} 95% ${78+Math.random()*12}%)`,
+    dark:`hsl(${h} 22% 12%)`,
+    silhou:`hsl(${h} 28% ${night?18:32}%)`,
+    night
+  };
+  document.getElementById('desk').style.background=PAL.sky;
+}
+function bhue(slug){ return Math.floor(Math.random()*360); } // every building random, every load
+
+/* one building per surface. shape seeded by slug (stable), color random (fresh). */
+function drawSurfaceBuilding(s, px){
+  const hsh=hash(s.slug);
+  const wCells=3+(hsh%4);                          // width 3–6, stable per surface
+  const hCells=Math.max(4, Math.round(3+(s.finish||0)/5.5)); // height from finish: 4–21
+  const roof=hsh%5;                                // 0 flat 1 antenna 2 water tower 3 setback 4 crown
+  const hue=bhue(s.slug), sat=45+((hsh>>3)%40), lig=38+((hsh>>5)%28);
+  const body=`hsl(${hue} ${sat}% ${lig}%)`;
+  const shade=`hsl(${hue} ${sat}% ${Math.max(12,lig-18)}%)`;
+  const roofC=`hsl(${(hue+((hsh>>7)%80))%360} ${sat}% ${Math.min(85,lig+18)}%)`;
+  const roofH=(roof===0?0: roof===3?2:3);
+  const cw=wCells*px, ch=(hCells+roofH)*px;
+  const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+  const g=c.getContext('2d'); g.imageSmoothingEnabled=false;
+  const y0=roofH*px;
+  // body + right-edge shade for depth
+  g.fillStyle=body; g.fillRect(0,y0,cw,ch-y0);
+  g.fillStyle=shade; g.fillRect(cw-px,y0,px,ch-y0);
+  // roof features
+  g.fillStyle=roofC;
+  if(roof===1){ g.fillRect(Math.floor(cw/2)-1,0,2,roofH*px); g.fillRect(Math.floor(cw/2)-2,0,4,2);}      // antenna
+  else if(roof===2){ g.fillRect(px,px,Math.max(px,cw-3*px),roofH*px-px); g.fillRect(px+1,0,2,px);}        // water tower
+  else if(roof===3){ g.fillRect(px,0,cw-2*px,roofH*px);}                                                  // setback
+  else if(roof===4){ for(let i=0;i<wCells;i+=2) g.fillRect(i*px,px,px,roofH*px-px);}                      // crown
+  // windows: lit fraction by status; live glows, concept sits dark
+  const litFrac= s.status==='live'?0.75 : s.status==='build'?0.35 : 0.08;
+  for(let r=1;r<hCells-0;r++){
+    for(let col=0;col<wCells-1;col++){
+      const cell=(hsh + r*31 + col*7)%100;
+      g.fillStyle= cell<litFrac*100 ? PAL.lit : PAL.dark;
+      g.fillRect(col*px+2, y0+r*px+1, px-3, px-2);
+    }
+  }
+  return c;
+}
+
+/* distant silhouette layer + ground strip */
+function drawBackdrop(widthPx){
+  document.getElementById('bgcity')?.remove();
+  document.getElementById('ground')?.remove();
+  const c=document.createElement('canvas'); c.id='bgcity';
+  const H=Math.floor(innerHeight*.45);
+  c.width=widthPx; c.height=H;
+  c.style.cssText=`position:absolute;left:0;bottom:50px;height:${H}px;pointer-events:none;opacity:.55;image-rendering:pixelated;`;
+  const g=c.getContext('2d'); g.fillStyle=PAL.silhou;
+  let x=0;
+  while(x<widthPx){ const w=14+Math.random()*40, h=H*(.25+Math.random()*.7);
+    g.fillRect(x,H-h,w,h); x+=w+Math.random()*10; }
+  document.getElementById('desk').prepend(c);
+  const gr=document.createElement('div'); gr.id='ground';
+  gr.style.cssText=`position:absolute;left:0;bottom:26px;height:24px;width:${widthPx}px;background:${PAL.dark};opacity:.85;pointer-events:none;`;
+  document.getElementById('desk').prepend(gr);
+}
+
+function renderSkyline(){
+  const sky=document.getElementById('skyline'); sky.innerHTML='';
+  const px = innerWidth<620 ? 5 : 8;
+  REG.districts.forEach(d=>{
+    const list=S.filter(s=>s.district===d.id)
+      .sort((a,b)=>hash(a.slug)%13-hash(b.slug)%13);   // stable jumble within block
+    const blk=document.createElement('div'); blk.className='blk';
+    list.forEach(s=>{
+      const el=document.createElement('div'); el.className='bldg';
+      el.appendChild(drawSurfaceBuilding(s,px));
+      el.onclick=()=>openSurface(s.slug);
+      el.title=`${s.name} — ${d.name}`;
+      blk.appendChild(el);
+    });
+    const st=document.createElement('span'); st.className='street';
+    st.textContent=d.name; st.onclick=()=>openDistrict(d.id);
+    blk.appendChild(st);
+    sky.appendChild(blk);
+  });
+  requestAnimationFrame(()=>drawBackdrop(Math.max(innerWidth, sky.scrollWidth+60)));
+}
+function rerollSky(){ rollPalette(); renderSkyline(); }
+
+/* ---- boot ---- */
+async function boot(){
+  if(location.protocol!=='file:'){
+    try{ const r=await fetch('surfaces.json',{cache:'no-store'});
+         if(r.ok){ REG=await r.json(); applyEdits(); } }catch(e){}
+  }
+  rollPalette(); renderSkyline();
+  openDirectory();
+  const shuffled=[...S].sort(()=>Math.random()-.5).slice(0,2);
+  shuffled.forEach(s=>openSurface(s.slug));
+  focusWin('directory');
+  tick(); setInterval(tick,30000);
+}
+function tick(){
+  const d=new Date();
+  document.getElementById('clock').textContent=
+    d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+}
+let rTimer; addEventListener('resize',()=>{clearTimeout(rTimer);rTimer=setTimeout(renderSkyline,200);});
+boot();
+</script>
+</body>
+</html>
