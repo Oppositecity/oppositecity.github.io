@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="A Belousov–Zhabotinsky reaction: three coupled species diffusing on a torus, rendered at pixel resolution and playable in slow motion.">
+<meta property="og:title" content="belousov–zhabotinsky">
+<meta property="og:description" content="Three coupled species diffusing on a torus. Drag the field to feed it.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'><rect width='8' height='8' fill='%23000'/><rect x='1' y='3' width='2' height='2' fill='%2300ff9d'/><rect x='4' y='2' width='2' height='2' fill='%23ff0057'/><rect x='5' y='5' width='2' height='2' fill='%2300b3ff'/></svg>">
+<title>belousov–zhabotinsky</title>
+<style>
+  /* Courier Prime (OFL), subset to the characters used and inlined so the
+     page makes no network requests at all. */
+  @font-face{font-family:"Courier Prime Sub";font-style:normal;font-weight:400;
+    font-display:block;src:url(data:font/woff2;base64,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) format("woff2")}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;height:100dvh;overflow:hidden;background:#000;color:#fff;
+    font-family:"Courier Prime Sub","Courier Prime","Courier New",Courier,monospace;
+    -webkit-tap-highlight-color:transparent}
+  body{display:flex;flex-direction:column}
+
+  #field{flex:1 1 auto;align-self:stretch;width:100%;min-height:38vh;display:block;
+    image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}
+
+  #panel{flex:0 0 auto;padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;gap:12px;max-width:660px;
+    max-height:60vh;overflow-y:auto}
+  #meta{font-size:11px;letter-spacing:.18em;line-height:1.8}
+  #meta span{display:block;font-size:10px;letter-spacing:.1em;opacity:.55}
+  #sliders{display:grid;grid-template-columns:auto minmax(90px,1fr) auto;
+    gap:9px 14px;align-items:center;font-size:12px;letter-spacing:.06em}
+  #sliders b{font-weight:normal;opacity:.5}
+  #sliders i{font-style:normal;text-align:right;min-width:4.2em}
+  #words{display:flex;flex-wrap:wrap;gap:11px 20px;align-items:baseline;
+    font-size:12px;letter-spacing:.08em}
+
+  .ctl{background:none;border:0;color:#fff;font:inherit;letter-spacing:inherit;
+    padding:0;cursor:pointer;white-space:nowrap;user-select:none;-webkit-user-select:none}
+  .ctl:focus-visible,input[type=range]:focus-visible{outline:2px solid #fff;outline-offset:4px}
+  .ctl .k{opacity:.5;margin-right:.55em}
+  @media (hover:hover){.ctl:hover{opacity:.65}}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;background:none;
+    width:100%;height:18px;cursor:ew-resize}
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:#575757}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;border:0;border-radius:0;
+    width:9px;height:15px;background:#fff;margin-top:-7px}
+  input[type=range]::-moz-range-track{height:2px;background:#575757}
+  input[type=range]::-moz-range-thumb{border:0;border-radius:0;width:9px;height:15px;background:#fff}
+
+  #restore{display:none}
+  body.min #panel{display:none}
+  body.min #restore{display:flex;gap:20px;flex:0 0 auto;font-size:11px;letter-spacing:.12em;
+    padding:9px 18px calc(9px + env(safe-area-inset-bottom))}
+</style>
+</head>
+<body>
+
+<canvas id="field"></canvas>
+
+<div id="panel">
+  <div id="meta">belousov–zhabotinsky
+    <span>drag the field to feed it</span></div>
+
+  <div id="sliders">
+    <b>speed</b><input type="range" id="sSpeed" min="0" max="1000" step="1" aria-label="speed"><i id="vSpeed"></i>
+    <b>bands</b><input type="range" id="sBand"  min="0" max="9"    step="1" aria-label="colour bands"><i id="vBand"></i>
+    <b>alpha</b><input type="range" id="sA" min="400" max="2000" step="5" aria-label="alpha"><i id="vA"></i>
+    <b>beta</b><input type="range" id="sB" min="400" max="2000" step="5" aria-label="beta"><i id="vB"></i>
+    <b>gamma</b><input type="range" id="sG" min="400" max="2000" step="5" aria-label="gamma"><i id="vG"></i>
+  </div>
+
+  <div id="words">
+    <button class="ctl" id="run"></button>
+    <button class="ctl" id="view"></button>
+    <button class="ctl" id="pal"></button>
+    <button class="ctl" id="drift"></button>
+    <button class="ctl" id="seed">seed again</button>
+    <button class="ctl" id="imm">full screen</button>
+  </div>
+</div>
+
+<div id="restore">
+  <button class="ctl" id="showCtl">controls</button>
+  <button class="ctl" id="exitFs">leave full screen</button>
+</div>
+
+<script>
+"use strict";
+const cv = document.getElementById('field');
+const ctx = cv.getContext('2d', {alpha:false});
+const $ = id => document.getElementById(id);
+
+/* ---- state ---------------------------------------------------------- */
+const CALM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W=0,H=0,N=0, A,B,C, A2,B2,C2, img, px;
+let alpha=1.20, beta=1.00, gamma=1.00, dt=0.10;
+let running=!CALM, bandIdx=4, palIdx=0, driftIdx=CALM?0:1, viewIdx=0, shift=0;
+
+const BANDS  = [3,4,5,6,8,10,12,16,24,0];      // 0 = smooth, at the top of the slider
+const DRIFTS = [{n:'still',v:0},{n:'slow',v:0.00012},{n:'fast',v:0.0005},{n:'reverse',v:-0.0003}];
+const VIEWS  = ['one species','all three'];
+const PALETTES = [
+  {n:'spectra',     loop:true,  s:['#ff0057','#ffd200','#00ff9d','#00b3ff','#7a4bff']},
+  {n:'spectra ×3',  loop:true,  s:['#ff0057','#ffd200','#00ff9d','#00b3ff','#7a4bff',
+                                   '#ff0057','#ffd200','#00ff9d','#00b3ff','#7a4bff',
+                                   '#ff0057','#ffd200','#00ff9d','#00b3ff','#7a4bff']},
+  {n:'iridescence', loop:true,  s:['#00ffd5','#7cff2f','#ffe600','#ff2f7c','#8b2bff','#1f6fff']},
+  {n:'vhs',         loop:true,  s:['#05010e','#2d0a4e','#ff2bd6','#00e5ff','#eafcff','#00e5ff','#ff2bd6','#2d0a4e']},
+  {n:'coolant',     loop:false, s:['#00060f','#003a63','#0fb7c9','#b8fff6','#ffffff']},
+  {n:'chlorophyll', loop:false, s:['#03130a','#0b5b2a','#5ad12b','#d9ff6b','#f6ffe8']},
+  {n:'ultraviolet', loop:true,  s:['#07020f','#3b0f6b','#8b2bff','#ff5ad6','#ffe6ff','#8b2bff','#3b0f6b']},
+  {n:'oxide',       loop:true,  s:['#0a0410','#1f6fff','#00ffe1','#f2fff6','#ff36a8']},
+  {n:'monolith',    loop:false, s:['#000000','#3a3a3a','#8a8a8a','#e8e8e8','#ffffff']}
+];
+
+/* ---- palette lookup -------------------------------------------------
+   pixels are packed as little-endian RGBA, which every shipping browser
+   platform is; big-endian would show channels swapped, not crash.       */
+const LN = 512, lut = new Uint32Array(LN), qb = new Uint8Array(256);
+function hex(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+let ring = [];
+function buildRing(){
+  const p = PALETTES[palIdx];
+  let s = p.s.slice();
+  if(!p.loop) s = s.concat(s.slice(1,-1).reverse());   // mirror into a seamless loop
+  ring = s.map(hex);
+}
+function buildLUT(){
+  const L = ring.length, bands = BANDS[bandIdx];
+  for(let i=0;i<256;i++){
+    let t = i/255;
+    if(bands) t = Math.round(t*(bands-1))/(bands-1);
+    qb[i] = (t*255)|0;
+  }
+  for(let i=0;i<LN;i++){
+    let t = i/(LN-1);
+    if(bands) t = Math.round(t*(bands-1))/(bands-1);
+    let pos = (t + shift) % 1; if(pos<0) pos += 1;
+    const f = pos*L, i0 = Math.floor(f)%L, i1 = (i0+1)%L, m = f-Math.floor(f);
+    const c0 = ring[i0], c1 = ring[i1];
+    const r = (c0[0]+(c1[0]-c0[0])*m)|0,
+          g = (c0[1]+(c1[1]-c0[1])*m)|0,
+          b = (c0[2]+(c1[2]-c0[2])*m)|0;
+    lut[i] = (255<<24) | (b<<16) | (g<<8) | r;
+  }
+}
+
+/* ---- grid ------------------------------------------------------------
+   resizing resamples the existing field instead of reseeding, so a look
+   you have dialled in survives going full screen. no-ops when the cell
+   count would not change, so repeated layout events cost nothing.       */
+let CELL = 3.5;      // css pixels per cell — keeps the grain consistent
+let CAP  = 60000;    // per-frame ceiling, stepped down if the device struggles
+function allocate(preserve){
+  const r = cv.getBoundingClientRect();
+  const dw = Math.max(1, r.width), dh = Math.max(1, r.height);
+  let nW = Math.max(72, Math.round(dw/CELL)), nH = Math.max(72, Math.round(dh/CELL));
+  if(nW*nH > CAP){ const s = Math.sqrt(nW*nH/CAP);
+    nW = Math.max(72, Math.round(nW/s)); nH = Math.max(72, Math.round(nH/s)); }
+  const nN = nW*nH;
+  if(nW===W && nH===H) return;
+  const nA = new Float32Array(nN), nB = new Float32Array(nN), nC = new Float32Array(nN);
+  const had = N>0;
+  if(preserve && had){
+    for(let y=0;y<nH;y++){
+      const sy = Math.min(H-1, (y*H/nH)|0)*W, ry = y*nW;
+      for(let x=0;x<nW;x++){
+        const s = sy + Math.min(W-1, (x*W/nW)|0);
+        nA[ry+x]=A[s]; nB[ry+x]=B[s]; nC[ry+x]=C[s];
+      }
+    }
+  }
+  A=nA; B=nB; C=nC; W=nW; H=nH; N=nN;
+  A2=new Float32Array(nN); B2=new Float32Array(nN); C2=new Float32Array(nN);
+  cv.width=W; cv.height=H;
+  img = ctx.createImageData(W,H);
+  px = new Uint32Array(img.data.buffer);
+  if(!(preserve && had)) seed();
+}
+function seed(){
+  for(let i=0;i<N;i++){ A[i]=Math.random(); B[i]=Math.random(); C[i]=Math.random(); }
+  for(let s=0;s<44;s++) step(1);   // burn in, so the slow view opens on structure
+}
+function feed(gx,gy,r){
+  for(let dy=-r;dy<=r;dy++){
+    const y = ((gy+dy)%H+H)%H;
+    for(let dx=-r;dx<=r;dx++){
+      if(dx*dx+dy*dy > r*r) continue;
+      const i = y*W + (((gx+dx)%W+W)%W);
+      A[i]=Math.random(); B[i]=Math.random(); C[i]=Math.random();
+    }
+  }
+}
+
+/* ---- the reaction ---------------------------------------------------
+   three coupled species, each cell reacting against the 3x3 mean of its
+   neighbours on a torus — the classic BZ automaton. dt scales diffusion
+   and reaction together, so low values are true slow motion.            */
+function step(d){
+  for(let y=0;y<H;y++){
+    const r0=((y-1+H)%H)*W, r1=y*W, r2=((y+1)%H)*W;
+    for(let x=0;x<W;x++){
+      const xm=(x-1+W)%W, xp=(x+1)%W;
+      const i0=r0+xm, i1=r0+x, i2=r0+xp,
+            i3=r1+xm, i4=r1+x, i5=r1+xp,
+            i6=r2+xm, i7=r2+x, i8=r2+xp;
+      const a=(A[i0]+A[i1]+A[i2]+A[i3]+A[i4]+A[i5]+A[i6]+A[i7]+A[i8])/9;
+      const b=(B[i0]+B[i1]+B[i2]+B[i3]+B[i4]+B[i5]+B[i6]+B[i7]+B[i8])/9;
+      const c=(C[i0]+C[i1]+C[i2]+C[i3]+C[i4]+C[i5]+C[i6]+C[i7]+C[i8])/9;
+      const oa=A[i4], ob=B[i4], oc=C[i4];
+      let na = oa + d*((a-oa) + a*(alpha*b - gamma*c));
+      let nb = ob + d*((b-ob) + b*(beta*c  - alpha*a));
+      let nc = oc + d*((c-oc) + c*(gamma*a - beta*b));
+      A2[i4] = na<0?0:na>1?1:na;
+      B2[i4] = nb<0?0:nb>1?1:nb;
+      C2[i4] = nc<0?0:nc>1?1:nc;
+    }
+  }
+  let t;
+  t=A;A=A2;A2=t; t=B;B=B2;B2=t; t=C;C=C2;C2=t;
+}
+
+function paint(){
+  if(viewIdx===1){
+    /* all three species at once: a, b, c drive r, g, b. drift rotates
+       which species owns which channel, blending through the changeover. */
+    const pos = shift*3, k = Math.floor(pos)%3, f = pos - Math.floor(pos);
+    let X,Y,Z;
+    if(k===0){ X=A;Y=B;Z=C; } else if(k===1){ X=B;Y=C;Z=A; } else { X=C;Y=A;Z=B; }
+    for(let i=0;i<N;i++){
+      const xi=X[i], yi=Y[i], zi=Z[i];
+      const r = xi+(yi-xi)*f, g = yi+(zi-yi)*f, b = zi+(xi-zi)*f;
+      px[i] = (255<<24) | (qb[(b*255)|0]<<16) | (qb[(g*255)|0]<<8) | qb[(r*255)|0];
+    }
+  } else {
+    for(let i=0;i<N;i++){
+      const v = A[i];
+      px[i] = lut[(v<=0?0:v>=1?LN-1:(v*(LN-1))|0)];
+    }
+  }
+  ctx.putImageData(img,0,0);
+}
+
+function frame(){
+  const t0 = performance.now();
+  if(running){
+    step(dt);
+    const d = DRIFTS[driftIdx].v;
+    if(d){ shift = (shift + d) % 1; if(viewIdx===0) buildLUT(); }
+  }
+  paint();
+  watch(performance.now()-t0);
+  requestAnimationFrame(frame);
+}
+
+/* ---- labels --------------------------------------------------------- */
+function label(){
+  $('run').innerHTML   = '<span class="k">state</span>' + (running ? 'flowing' : 'held');
+  $('view').innerHTML  = '<span class="k">view</span>' + VIEWS[viewIdx];
+  $('pal').innerHTML   = '<span class="k">colour</span>' + PALETTES[palIdx].n;
+  $('pal').style.opacity = viewIdx===1 ? .35 : 1;
+  $('drift').innerHTML = '<span class="k">drift</span>' + DRIFTS[driftIdx].n;
+  $('imm').textContent = isFs() ? 'leave full screen' : 'full screen';
+  $('vSpeed').textContent = dt.toFixed(2) + '×';
+  $('vBand').textContent  = BANDS[bandIdx] || 'smooth';
+  $('vA').textContent = alpha.toFixed(2);
+  $('vB').textContent = beta.toFixed(2);
+  $('vG').textContent = gamma.toFixed(2);
+}
+
+/* ---- sliders -------------------------------------------------------- */
+/* speed runs on an exponential curve: fine control down at the slow end */
+const DT_MIN = 0.01, DT_MAX = 1;
+const dtToPos = v => Math.round(1000*Math.log(v/DT_MIN)/Math.log(DT_MAX/DT_MIN));
+const posToDt = p => DT_MIN*Math.pow(DT_MAX/DT_MIN, p/1000);
+
+$('sSpeed').value = dtToPos(dt);
+$('sSpeed').oninput = e => { dt = posToDt(+e.target.value); label(); };
+$('sBand').value = bandIdx;
+$('sBand').oninput = e => { bandIdx = +e.target.value; buildLUT(); label(); };
+function param(slider, set){
+  $(slider).oninput = e => { set(+e.target.value/1000); label(); };
+}
+$('sA').value = alpha*1000; param('sA', v => alpha = v);
+$('sB').value = beta*1000;  param('sB', v => beta  = v);
+$('sG').value = gamma*1000; param('sG', v => gamma = v);
+
+/* ---- word controls -------------------------------------------------- */
+$('run').onclick   = () => { running = !running; label(); };
+$('view').onclick  = () => { viewIdx=(viewIdx+1)%VIEWS.length; label(); };
+$('pal').onclick   = () => { palIdx=(palIdx+1)%PALETTES.length; buildRing(); buildLUT(); label(); };
+$('drift').onclick = () => { driftIdx=(driftIdx+1)%DRIFTS.length; label(); };
+$('seed').onclick  = () => { seed(); };
+
+/* ---- full screen ----------------------------------------------------
+   where element full screen is unavailable (iOS), the same control just
+   collapses the panel, which gets most of the way there.               */
+const root = document.documentElement;
+const canFs = !!(root.requestFullscreen || root.webkitRequestFullscreen);
+function isFs(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function leaveFs(){
+  const ex = document.exitFullscreen || document.webkitExitFullscreen;
+  if(ex) Promise.resolve(ex.call(document)).catch(()=>{});
+}
+function setMin(on){
+  document.body.classList.toggle('min', on);
+  $('exitFs').style.display = isFs() ? '' : 'none';
+  label();
+  allocate(true);
+}
+$('imm').onclick = () => {
+  if(isFs()){ leaveFs(); return; }
+  if(canFs){
+    const req = root.requestFullscreen || root.webkitRequestFullscreen;
+    Promise.resolve(req.call(root)).catch(()=>{}).then(()=>setMin(true));
+  } else setMin(true);
+};
+$('showCtl').onclick = () => setMin(false);
+$('exitFs').onclick  = leaveFs;
+addEventListener('fullscreenchange', () => setMin(isFs()));
+addEventListener('webkitfullscreenchange', () => setMin(isFs()));
+
+/* ---- feeding the field ---------------------------------------------- */
+let down=false;
+function toGrid(e){
+  const r = cv.getBoundingClientRect();
+  return [ Math.floor((e.clientX-r.left)/r.width*W), Math.floor((e.clientY-r.top)/r.height*H) ];
+}
+cv.addEventListener('pointerdown', e => { down=true; cv.setPointerCapture(e.pointerId);
+  const [x,y]=toGrid(e); feed(x,y,Math.max(3,(W*0.045)|0)); });
+cv.addEventListener('pointermove', e => { if(!down) return;
+  const [x,y]=toGrid(e); feed(x,y,Math.max(2,(W*0.03)|0)); });
+cv.addEventListener('pointerup',   () => down=false );
+cv.addEventListener('pointercancel',()=> down=false );
+
+/* ---- keyboard (desktop) --------------------------------------------- */
+addEventListener('keydown', e => {
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  if(e.target.tagName==='INPUT') return;
+  if(e.code==='Space'){ e.preventDefault(); running=!running; label(); }
+  else if(e.key==='s'){ seed(); }
+  else if(e.key==='f'){ $('imm').click(); }
+  else if(e.key==='c'){ document.body.classList.contains('min') ? setMin(false) : setMin(true); }
+});
+
+/* ---- adaptive resolution --------------------------------------------
+   if the reaction can't keep a frame budget on this device, drop the cell
+   count once or twice rather than letting it crawl.                     */
+let samples=0, total=0, drops=0;
+function watch(ms){
+  if(drops>=2 || !running) return;
+  total+=ms; samples++;
+  if(samples<120) return;
+  const avg = total/samples; samples=0; total=0;
+  if(avg > 14 && N > 14000){
+    drops++; CELL *= 1.28; CAP = Math.round(N*0.6);
+    allocate(true);                   // new CELL changes the target, so this lands
+  }
+}
+
+/* ---- go ------------------------------------------------------------- */
+let rt;
+addEventListener('resize', () => { clearTimeout(rt); rt=setTimeout(()=>allocate(true), 220); });
+addEventListener('orientationchange', () => { clearTimeout(rt); rt=setTimeout(()=>allocate(true), 320); });
+buildRing(); buildLUT(); allocate(false); label(); frame();
+</script>
+</body>
+</html>
