@@ -21,10 +21,10 @@
     display: flex;
     flex-direction: column;
   }
-  /* geometry never changes */
-  #sky   { height: 66.67%; position: relative; }
-  #water { height: 16.67%; }
-  #sand  { height: 16.66%; }
+  /* geometry never changes — 3 : 1 : 1 */
+  #sky   { height: 60%; position: relative; }
+  #water { height: 20%; }
+  #sand  { height: 20%; }
   #sky, #water, #sand, #sun {
     transition-property: background-color;
     transition-timing-function: linear;
@@ -33,8 +33,12 @@
     position: absolute;
     left: 50%;
     bottom: 0;
-    width: 32vmin;
-    height: 32vmin;
+    /* two thirds of the sky band — 40% of viewport height at any size.
+       height drives it, aspect-ratio keeps it round, max-height stops it
+       touching the edges on an unusually narrow window. */
+    height: 66.6667%;
+    aspect-ratio: 1;
+    max-height: 92vw;
     border-radius: 50%;
     transform: translateX(-50%);
     /* bottom edge rests exactly on the horizon */
