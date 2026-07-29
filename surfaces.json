@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-07-28",
+ "published": "2026-07-29",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -19,6 +19,11 @@
    "id": "viz",
    "name": "Atlas",
    "blurb": "visualization & knowledge browsers"
+  },
+  {
+   "id": "ambient",
+   "name": "Ambient",
+   "blurb": "widgets that drift"
   }
  ],
  "surfaces": [
@@ -64,6 +69,20 @@
    ],
    "blurb": "Measures any point on Earth against California. A california equivalent finder — the state as a unit of comparison.",
    "url": "https://opposite.city/circlefornia/"
+  },
+  {
+   "slug": "somesets",
+   "name": "SOMESET GENERATOR",
+   "district": "ambient",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "colour drift",
+    "fullscreen",
+    "ambient"
+   ],
+   "blurb": "A sunset that never settles. Geometry fixed, colour continuous — mostly almost-plausible, sometimes not. Press set to freeze one mid-transition, rise to let it go.",
+   "url": "https://opposite.city/somesets/"
   }
  ]
 }
