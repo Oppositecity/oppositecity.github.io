@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>somesets</title>
+<style>
+  @font-face {
+    font-family: 'Courier Prime';
+    src: local('Courier Prime'), local('Courier New');
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    background: #000;
+  }
+  #scene {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  /* geometry never changes */
+  #sky   { height: 66.67%; position: relative; }
+  #water { height: 16.67%; }
+  #sand  { height: 16.66%; }
+  #sky, #water, #sand, #sun {
+    transition-property: background-color;
+    transition-timing-function: linear;
+  }
+  #sun {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: 18vmin;
+    height: 18vmin;
+    border-radius: 50%;
+    transform: translateX(-50%);
+    /* bottom edge rests exactly on the horizon */
+  }
+  #word {
+    position: fixed;
+    left: 1.25rem;
+    bottom: 1.1rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    color: rgba(0,0,0,0.55);
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #word:focus-visible { outline: 1px dotted rgba(0,0,0,0.55); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) {
+    #sky, #water, #sand, #sun { transition-duration: 0.01s !important; }
+  }
+</style>
+</head>
+<body>
+<div id="scene" aria-label="a sunset that never settles">
+  <div id="sky"><div id="sun"></div></div>
+  <div id="water"></div>
+  <div id="sand"></div>
+</div>
+<button id="word" aria-live="polite">set</button>
+<script>
+(function () {
+  const els = {
+    sky:   document.getElementById('sky'),
+    sun:   document.getElementById('sun'),
+    water: document.getElementById('water'),
+    sand:  document.getElementById('sand')
+  };
+  const word = document.getElementById('word');
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  // tone classes: per-element saturation/lightness envelopes
+  const TONES = {
+    vivid:  { s: [72, 100], l: [46, 62] },
+    muted:  { s: [18, 45],  l: [38, 62] },
+    pastel: { s: [28, 62],  l: [74, 91] },
+    deep:   { s: [48, 92],  l: [14, 34] }
+  };
+
+  // almost-plausible hue bands per element — wide, past strict realism
+  const BANDS = {
+    sky:   [[0, 70], [175, 305]],
+    sun:   [[-15, 62], [295, 345]],
+    water: [[165, 265], [8, 52]],
+    sand:  [[18, 55], [250, 300]]
+  };
+
+  function hsl(h, s, l) {
+    return 'hsl(' + ((h % 360) + 360) % 360 + ',' + s.toFixed(1) + '%,' + l.toFixed(1) + '%)';
+  }
+
+  function plausibleColor(el) {
+    const band = pick(BANDS[el]);
+    const tone = TONES[pick(Object.keys(TONES))];
+    return hsl(rand(band[0], band[1]), rand(tone.s[0], tone.s[1]), rand(tone.l[0], tone.l[1]));
+  }
+
+  function randomColor() {
+    return hsl(rand(0, 360), rand(0, 100), rand(0, 100));
+  }
+
+  function nextPalette() {
+    // 80% almost-plausible / 20% fully random escape hatch
+    const escape = Math.random() < 0.2;
+    const p = {};
+    for (const el in els) p[el] = escape ? randomColor() : plausibleColor(el);
+    return p;
+  }
+
+  let frozen = false;
+  let timer = null;
+
+  function drift() {
+    if (frozen) return;
+    const dur = rand(1, 3); // 1–3s transitions
+    const palette = nextPalette();
+    for (const el in els) {
+      els[el].style.transitionDuration = dur + 's';
+      els[el].style.backgroundColor = palette[el];
+    }
+    // near-zero gap between transitions
+    timer = setTimeout(drift, dur * 1000 + 60);
+  }
+
+  function freeze() {
+    frozen = true;
+    clearTimeout(timer);
+    // capture colors exactly as they are mid-transition
+    for (const el in els) {
+      const now = getComputedStyle(els[el]).backgroundColor;
+      els[el].style.transitionDuration = '0s';
+      els[el].style.backgroundColor = now;
+    }
+    word.textContent = 'rise';
+  }
+
+  function rise() {
+    frozen = false;
+    word.textContent = 'set';
+    drift();
+  }
+
+  word.addEventListener('click', () => (frozen ? rise() : freeze()));
+
+  // seed instantly, then begin drifting
+  const seed = nextPalette();
+  for (const el in els) {
+    els[el].style.transitionDuration = '0s';
+    els[el].style.backgroundColor = seed[el];
+  }
+  requestAnimationFrame(() => requestAnimationFrame(drift));
+})();
+</script>
+</body>
+</html>
