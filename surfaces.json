@@ -83,6 +83,21 @@
    ],
    "blurb": "A sunset that never settles. Geometry fixed, colour continuous — mostly almost-plausible, sometimes not. Press set to freeze one mid-transition, rise to let it go.",
    "url": "https://opposite.city/somesets/"
+  },
+  {
+   "slug": "bz",
+   "name": "BZ",
+   "district": "ambient",
+   "status": "live",
+   "finish": 85,
+   "tags": [
+    "reaction-diffusion",
+    "excitable media",
+    "phase singularity",
+    "fullscreen"
+   ],
+   "blurb": "A chemical clock rendered as a field: bromate oxidation held far enough from equilibrium that it oscillates instead of settling. Three coupled species on a torus, each cell reacting against the mean of its neighbours — reaction against diffusion. The spiral cores are phase singularities, points where the oscillation has no defined phase and the medium must wind around them.",
+   "url": "https://opposite.city/bz/"
   }
  ]
 }
