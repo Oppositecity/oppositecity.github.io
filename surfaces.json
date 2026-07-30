@@ -129,6 +129,22 @@
    ],
    "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. You travel only by similarity: each word offers the handful nearest it, and reaching anywhere means finding a chain of small resemblances. Frequency works as stellar magnitude, so common words carry across the whole field and rare ones resolve only when you are close.",
    "url": "https://opposite.city/semantic-voyage/"
+  },
+  {
+   "slug": "room",
+   "name": "ROOM",
+   "district": "language",
+   "status": "live",
+   "finish": 85,
+   "tags": [
+    "lucier",
+    "recursive drift",
+    "synonym chain",
+    "syllable lock",
+    "irreversible"
+   ],
+   "blurb": "After Alvin Lucier, who recorded his voice in a room and played the recording back into the room until the resonance had eaten the words. Here the room is a thesaurus and the speech is a sentence. Each scroll plays the text back one more time: every word is answered by one adjacent in meaning, held to the same syllable count, so the pulse is untouched while the sense drains out of it. Function words are the walls and never move, and a word repeated is always answered alike — repetition is what reinforces. Four rooms reflect differently, by sense, by association, by sound. There is no way back up the tape.",
+   "url": "https://opposite.city/room/"
   }
  ]
 }
