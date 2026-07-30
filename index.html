@@ -121,7 +121,7 @@
 const REGISTRY = {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-07-28",
+ "published": "2026-07-30",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -139,6 +139,11 @@ const REGISTRY = {
    "id": "viz",
    "name": "Atlas",
    "blurb": "visualization & knowledge browsers"
+  },
+  {
+   "id": "ambient",
+   "name": "Ambient",
+   "blurb": "widgets that drift"
   }
  ],
  "surfaces": [
@@ -184,6 +189,66 @@ const REGISTRY = {
    ],
    "blurb": "Measures any point on Earth against California. A california equivalent finder — the state as a unit of comparison.",
    "url": "https://opposite.city/circlefornia/"
+  },
+  {
+   "slug": "somesets",
+   "name": "SOMESET GENERATOR",
+   "district": "ambient",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "colour drift",
+    "fullscreen",
+    "ambient"
+   ],
+   "blurb": "A sunset that never settles. Geometry fixed, colour continuous — mostly almost-plausible, sometimes not. Press set to freeze one mid-transition, rise to let it go.",
+   "url": "https://opposite.city/somesets/"
+  },
+  {
+   "slug": "bz",
+   "name": "BZ",
+   "district": "ambient",
+   "status": "live",
+   "finish": 85,
+   "tags": [
+    "reaction-diffusion",
+    "excitable media",
+    "phase singularity",
+    "fullscreen"
+   ],
+   "blurb": "A chemical clock rendered as a field: bromate oxidation held far enough from equilibrium that it oscillates instead of settling. Three coupled species on a torus, each cell reacting against the mean of its neighbours — reaction against diffusion. The spiral cores are phase singularities, points where the oscillation has no defined phase and the medium must wind around them.",
+   "url": "https://opposite.city/bz/"
+  },
+  {
+   "slug": "polyrhythm",
+   "name": "POLYRHYTHMIC TIME CLOCK",
+   "district": "ambient",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "clock",
+    "polyrhythm",
+    "web audio",
+    "interval"
+   ],
+   "blurb": "A clock that rings the time. Thirteen nested intervals — hour, half hour, minute, second — each striking on its own real boundary, so the polyrhythm is the clock's own arithmetic rather than something invented for it. Nine musical rings divide the bar against them at whatever tempo you set. Everything lands together on the minute; the whole field lands on the hour.",
+   "url": "https://opposite.city/polyrhythm/"
+  },
+  {
+   "slug": "semantic-voyage",
+   "name": "SEMANTIC VOYAGE",
+   "district": "viz",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "word embeddings",
+    "glove",
+    "semantic space",
+    "starfield",
+    "navigation"
+   ],
+   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. You travel only by similarity: each word offers the handful nearest it, and reaching anywhere means finding a chain of small resemblances. Frequency works as stellar magnitude, so common words carry across the whole field and rare ones resolve only when you are close.",
+   "url": "https://opposite.city/semantic-voyage/"
   }
  ]
 };
