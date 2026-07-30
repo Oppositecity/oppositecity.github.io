@@ -113,6 +113,22 @@
    ],
    "blurb": "A clock that rings the time. Thirteen nested intervals — hour, half hour, minute, second — each striking on its own real boundary, so the polyrhythm is the clock's own arithmetic rather than something invented for it. Nine musical rings divide the bar against them at whatever tempo you set. Everything lands together on the minute; the whole field lands on the hour.",
    "url": "https://opposite.city/polyrhythm/"
+  },
+  {
+   "slug": "semantic-voyage",
+   "name": "SEMANTIC VOYAGE",
+   "district": "viz",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "word embeddings",
+    "glove",
+    "semantic space",
+    "starfield",
+    "navigation"
+   ],
+   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. You travel only by similarity: each word offers the handful nearest it, and reaching anywhere means finding a chain of small resemblances. Frequency works as stellar magnitude, so common words carry across the whole field and rare ones resolve only when you are close.",
+   "url": "https://opposite.city/semantic-voyage/"
   }
  ]
 }
