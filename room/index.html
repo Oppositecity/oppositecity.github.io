@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>i am sitting in a room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0a0e13;
+  --air:#eef4f7;
+  --dim:#66757f;
+  --sig:#8fb8c9;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{
+  background:var(--void);
+  color:var(--air);
+  font-family:'Courier Prime','Courier New',Courier,monospace;
+  font-size:16px;
+  -webkit-font-smoothing:antialiased;
+  touch-action:none;
+}
+
+#stage{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:3rem 1.5rem 9.5rem;
+}
+
+#field{
+  position:relative;
+  width:100%;
+  max-width:36em;
+}
+
+.pass{
+  position:absolute;
+  top:50%;
+  left:0;
+  right:0;
+  transform:translateY(-50%);
+  font-size:clamp(1rem,2.7vw,1.22rem);
+  line-height:1.95;
+  letter-spacing:.01em;
+  will-change:opacity,transform;
+}
+
+#current{color:var(--air)}
+#incoming{color:var(--air);opacity:0}
+
+#panel{
+  position:fixed;
+  left:1.5rem;right:1.5rem;
+  bottom:1.5rem;
+  z-index:5;
+  display:flex;
+  flex-direction:column;
+  gap:.85rem;
+  font-size:.68rem;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+#line{display:flex;gap:1.3rem;align-items:baseline}
+#count{color:var(--sig);white-space:nowrap}
+#status{color:var(--sig);opacity:0;transition:opacity .4s ease}
+#status.show{opacity:1}
+#rooms,#deck{display:flex;gap:1.15rem;flex-wrap:wrap;row-gap:.6rem}
+
+.act{cursor:pointer;color:var(--dim);background:none;border:0;font:inherit;letter-spacing:.2em;text-transform:uppercase;padding:0}
+.act:hover,.act:focus-visible{color:var(--air)}
+.act.on{color:var(--sig)}
+.act:focus-visible{outline:2px solid var(--sig);outline-offset:4px}
+
+#editor{
+  position:fixed;
+  inset:0;
+  background:var(--void);
+  z-index:20;
+  display:none;
+  flex-direction:column;
+  padding:2rem 1.5rem;
+  gap:1.5rem;
+}
+#editor.open{display:flex}
+#editor textarea{
+  flex:1;
+  width:100%;
+  max-width:36em;
+  margin:0 auto;
+  background:transparent;
+  border:0;
+  outline:0;
+  resize:none;
+  color:var(--air);
+  font-family:inherit;
+  font-size:clamp(1rem,2.7vw,1.18rem);
+  line-height:1.9;
+}
+#editor textarea{touch-action:auto}
+#editor textarea::placeholder{color:var(--dim)}
+#editcontrols{display:flex;gap:1.6rem;justify-content:center}
+
+@media (prefers-reduced-motion:reduce){
+  .pass{transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="field">
+    <div class="pass" id="current"></div>
+    <div class="pass" id="incoming"></div>
+  </div>
+</div>
+
+<div id="panel">
+  <div id="line">
+    <span id="count">pass 00</span>
+    <span id="status">scroll to play it back into the room</span>
+  </div>
+  <div id="rooms"></div>
+  <div id="deck">
+    <button class="act" id="editBtn">text</button>
+    <button class="act" id="againBtn">again</button>
+    <button class="act" id="copyBtn">copy</button>
+  </div>
+</div>
+
+<div id="editor">
+  <textarea id="ta" spellcheck="false" placeholder="speak into the room"></textarea>
+  <div id="editcontrols">
+    <button class="act on" id="applyBtn">record</button>
+    <button class="act" id="cancelBtn">cancel</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const SOURCE = "I am sitting in a room different from the one you are in now. I am recording the sound of my speaking voice and I am going to play it back into the room again and again until the resonant frequencies of the room reinforce themselves so that any semblance of my speech, with perhaps the exception of rhythm, is destroyed. What you will hear, then, are the natural resonant frequencies of the room articulated by speech. I regard this activity not so much as a demonstration of a physical fact, but more as a way to smooth out any irregularities my speech might have.";
+
+const PASSES = 24;
+const CHARGE = 480;
+
+// The room is the transform. Each room reflects a different property of
+// the word back at it: sense, association, or bare sound.
+const ROOMS = {
+  close: { probes:['rel_syn','ml','rel_trg'] },
+  large: { probes:['ml','rel_trg','rel_syn'] },
+  hall:  { probes:['rel_trg','ml','rel_syn'] },
+  tiled: { probes:['sl','rel_hom','rel_cns'] }
+};
+
+function local(){ return null; }
+
+// Structure is the room, not the speech. Function words are the walls:
+// they do not drift, they are what the drifting happens inside of.
+const WALLS = new Set(('a an the this that these those i me my myself you your we us our they them their he him his she her it its ' +
+'is am are was were be been being do does did done have has had will would shall should can could may might must ' +
+'of in on at to for from by with without into onto out up down over under again and or but so than then as if not no yes ' +
+'what which who whom whose when where why how there here now').split(' '));
+
+const el = id => document.getElementById(id);
+const current=el('current'), incoming=el('incoming'), countEl=el('count'),
+      statusEl=el('status'), roomsEl=el('rooms'), editor=el('editor'), ta=el('ta');
+
+let S = null;
+let charge = 0, committing = false, hinted = false;
+
+// ── seeded noise so a session is stable and repeatable ──────────────
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function syllables(w){
+  w = w.toLowerCase().replace(/[^a-z]/g,'');
+  if(!w) return 1;
+  if(w.length<=3) return 1;
+  w = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/,'').replace(/^y/,'');
+  const m = w.match(/[aeiouy]{1,2}/g);
+  return m ? m.length : 1;
+}
+
+function tokenize(text){
+  const out=[], re=/(\s+)|([A-Za-z][A-Za-z']*)|([^\sA-Za-z]+)/g;
+  let m;
+  while((m=re.exec(text))){
+    if(m[1]) out.push({k:'sp', v:' '});
+    else if(m[2]){
+      const v=m[2];
+      out.push({
+        k:'w', v,
+        cap: v[0]===v[0].toUpperCase(),
+        syll: syllables(v),
+        wall: WALLS.has(v.toLowerCase()),
+        hist: new Set([v.toLowerCase()])
+      });
+    }
+    else out.push({k:'p', v:m[3]});
+  }
+  return out;
+}
+
+// ── the room's reply ───────────────────────────────────────────────
+const cache = new Map(), posCache = new Map();
+let heard = 0, silence = 0, offline = false;
+const POS = new Set(['n','v','adj','adv']);
+
+// Inflection is grammar, not meaning — it survives the substitution.
+// The stem drifts; the ending is re-applied to whatever comes back.
+const ENDINGS = [
+  [/ies$/, 'ies'], [/ing$/, 'ing'], [/ed$/, 'ed'],
+  [/(ches|shes|sses|xes)$/, 'es'], [/ly$/, 'ly'], [/[^aeiouss]s$/, 's']
+];
+const NOT_PLURAL = new Set(['perhaps','always','sometimes','towards','besides','afterwards','forwards','backwards','upwards','downwards','nevertheless','otherwise','whereas','across','anyways']);
+function endingOf(w){
+  const l = w.toLowerCase();
+  if(l.length < 5 || NOT_PLURAL.has(l)) return null;
+  for(const [re, tag] of ENDINGS) if(re.test(l)) return tag;
+  return null;
+}
+function inflect(w, tag){
+  if(!tag) return w;
+  const l = w.toLowerCase();
+  const has = { ing:/ing$/, ed:/ed$/, s:/s$/, es:/s$/, ies:/s$/, ly:/ly$/ }[tag];
+  if(has && has.test(l)) return w;
+  const dbl = /[^aeiou][aeiou][^aeiouwxysz]$/.test(l) && syllables(l) === 1;
+  switch(tag){
+    case 'ing': return /e$/.test(l) && !/ee$/.test(l) ? w.slice(0,-1)+'ing' : dbl ? w+w.slice(-1)+'ing' : w+'ing';
+    case 'ed':  return /e$/.test(l) ? w+'d' : /[^aeiou]y$/.test(l) ? w.slice(0,-1)+'ied' : dbl ? w+w.slice(-1)+'ed' : w+'ed';
+    case 'ly':  return /[^aeiou]y$/.test(l) ? w.slice(0,-1)+'ily' : w+'ly';
+    default:    return /[^aeiou]y$/.test(l) ? w.slice(0,-1)+'ies' : /(s|x|z|ch|sh)$/.test(l) ? w+'es' : w+'s';
+  }
+}
+
+async function probe(word, param){
+  const key = param+':'+word.toLowerCase();
+  if(cache.has(key)) return cache.get(key);
+  let data = [];
+  try{
+    const r = await fetch('https://api.datamuse.com/words?'+param+'='+encodeURIComponent(word)+'&md=sp&max=60');
+    if(r.ok){ data = await r.json(); heard++; }
+  }catch(e){ silence++; if(heard === 0 && silence >= 3) offline = true; }
+  const clean = (Array.isArray(data)?data:[])
+    .filter(d => typeof d.word==='string' && /^[a-z][a-z']*$/i.test(d.word))
+    .map(d => ({ w:d.word, p:(d.tags||[]).filter(t => POS.has(t)) }));
+  cache.set(key, clean);
+  return clean;
+}
+
+// A word can only be replaced by something that can stand in its place.
+async function posOf(word){
+  const k = word.toLowerCase();
+  if(posCache.has(k)) return posCache.get(k);
+  let tags = [];
+  try{
+    const r = await fetch('https://api.datamuse.com/words?sp='+encodeURIComponent(k)+'&md=p&max=1');
+    if(r.ok){
+      const d = await r.json();
+      if(d[0] && d[0].word.toLowerCase() === k) tags = (d[0].tags||[]).filter(t => POS.has(t));
+    }
+  }catch(e){}
+  posCache.set(k, tags);
+  return tags;
+}
+
+// Rhythm is the last thing to go — Lucier says so. The syllable count is
+// checked after the ending goes back on, so the pulse is what is locked.
+async function reply(tok, room, rnd, used){
+  const tag = endingOf(tok.v);
+  if(!offline){
+    const mine = await posOf(tok.v);
+    for(const param of ROOMS[room].probes){
+      const list = await probe(tok.v, param);
+      if(!list.length) continue;
+      const shaped = list.map(c => {
+        const f = inflect(c.w, tag);
+        return { w:f, s:syllables(f), p:c.p };
+      });
+      for(const tol of [0,1]){
+        const cands = shaped.filter(c =>
+          Math.abs(c.s - tok.syll) <= tol &&
+          (!mine.length || !c.p.length || c.p.some(t => mine.includes(t))) &&
+          !tok.hist.has(c.w.toLowerCase()) &&
+          !used.has(c.w.toLowerCase()) &&
+          c.w.toLowerCase() !== tok.v.toLowerCase());
+        if(cands.length){
+          const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.6) * cands.length));
+          return cands[i].w;
+        }
+      }
+    }
+  }
+  const l = local(tok, room, rnd, used);
+  return l ? inflect(l, tag) : null;
+}
+
+async function pool(items, n, fn){
+  let i = 0;
+  await Promise.all(Array.from({length:Math.min(n, items.length)}, async () => {
+    while(i < items.length){ const k = i++; await fn(items[k]); }
+  }));
+}
+
+async function playBack(tokens, room, rnd){
+  const next = tokens.map(t => t.k==='w' ? {...t, hist:new Set(t.hist)} : {...t});
+  const live = next.filter(t => t.k==='w' && !t.wall);
+  const used = new Set(next.filter(t => t.k==='w').map(t => t.v.toLowerCase()));
+  // the same word answers the same way — repetition is what reinforces
+  const memo = new Map();
+  await pool(live, 6, async t => {
+    const key = t.v.toLowerCase();
+    if(!memo.has(key)) memo.set(key, reply(t, room, rnd, used));
+    const r = await memo.get(key);
+    if(r){
+      used.add(r.toLowerCase());
+      t.v = t.cap ? r[0].toUpperCase()+r.slice(1) : r;
+      t.hist.add(r.toLowerCase());
+    }
+  });
+  return next;
+}
+
+// ── erosion: rhythm survives, grammar does not ─────────────────────
+const clamp01 = x => Math.max(0, Math.min(1, x));
+
+function erode(tokens, pass, rnd){
+  const t = tokens.map(x => ({k:x.k, v:x.v, wall:x.wall}));
+  const comma = clamp01((pass-6)/9);
+  const stop  = clamp01((pass-12)/9);
+  const lower = clamp01((pass-10)/9);
+  const swap  = clamp01((pass-16)/9) * 0.35;
+
+  for(const x of t){
+    if(x.k==='p'){
+      if(/^[,;:]+$/.test(x.v) && rnd() < comma) x.v='';
+      else if(/^[.!?]+$/.test(x.v) && rnd() < stop) x.v='';
+    } else if(x.k==='w'){
+      if(rnd() < lower) x.v = x.v.toLowerCase();
+    }
+  }
+  // adjacent transposition: same pulse, no sense
+  const idx = t.map((x,i)=>x.k==='w'?i:-1).filter(i=>i>=0);
+  for(let n=0;n<idx.length-1;n++){
+    if(rnd() < swap){
+      const a=idx[n], b=idx[n+1];
+      const tmp=t[a].v; t[a].v=t[b].v; t[b].v=tmp;
+      n++;
+    }
+  }
+  return t.map(x=>x.v).join('')
+    .replace(/ {2,}/g,' ')
+    .replace(/ ([,.;:!?])/g,'$1')
+    .replace(/\b([Aa])n?\b(\s+)([a-z])/gi, (m,art,sp,ch) => art + (/[aeiou]/i.test(ch) ? 'n' : '') + sp + ch)
+    .replace(/(^|[.!?]\s+)([a-z])/g, (m,a,b) => a + b.toUpperCase())
+    .trim();
+}
+
+// ── the tape ───────────────────────────────────────────────────────
+function fresh(text){
+  const seed = (Date.now() ^ text.length*2654435761) >>> 0;
+  return {
+    text,
+    tokens: tokenize(text),
+    room: 'close',
+    pass: 0,
+    rnd: mulberry32(seed),
+    pending: null,
+    done: false,
+    warned: false
+  };
+}
+
+function paint(){
+  countEl.textContent = 'pass ' + String(S.pass).padStart(2,'0');
+  [...roomsEl.children].forEach(b => b.classList.toggle('on', b.dataset.room===S.room));
+}
+
+function say(msg, latch){
+  statusEl.textContent = msg;
+  statusEl.classList.add('show');
+  clearTimeout(say._t);
+  if(!latch) say._t = setTimeout(()=>statusEl.classList.remove('show'), 3600);
+}
+
+function prepare(){
+  if(S.pending || S.done || S.pass >= PASSES) return;
+  const from = S.tokens, room = S.room, at = S.pass + 1;
+  const job = playBack(from, room, S.rnd).then(tokens => ({
+    tokens,
+    html: erode(tokens, at, S.rnd),
+    at
+  }));
+  S.pending = job;
+  job.then(r => { if(S.pending === job) incoming.textContent = r.html; });
+}
+
+function drift(p){
+  const out = clamp01(p / 0.5);
+  const inn = clamp01((p - 0.55) / 0.45);
+  current.style.opacity = String(1 - out);
+  current.style.transform = 'translateY(calc(-50% - ' + (12*out).toFixed(2) + 'px))';
+  incoming.style.opacity = String(inn);
+  incoming.style.transform = 'translateY(calc(-50% + ' + (12*(1-inn)).toFixed(2) + 'px))';
+}
+
+async function commit(){
+  if(committing || S.done) return;
+  if(S.pass >= PASSES){
+    S.done = true;
+    say('the tape ends');
+    return;
+  }
+  committing = true;
+  if(!S.pending) prepare();
+  const r = await S.pending;
+  S.pending = null;
+
+  if(!r){
+    committing = false;
+    charge = 0; drift(0);
+    return;
+  }
+  if(offline && !S.warned){
+    S.warned = true;
+    say('no connection — the room cannot answer', true);
+  }
+
+  S.tokens = r.tokens;
+  S.pass = r.at;
+  current.textContent = r.html;
+  incoming.textContent = '';
+  charge = 0;
+  drift(0);
+  paint();
+  committing = false;
+  prepare();
+}
+
+function push(d){
+  if(d <= 0 || !S || S.done) return;
+  if(!hinted){ hinted = true; statusEl.classList.remove('show'); }
+  charge += d;
+  if(charge >= CHARGE) commit();
+  else drift(charge / CHARGE);
+}
+
+// ── input: one direction only ──────────────────────────────────────
+addEventListener('wheel', e => {
+  if(editor.classList.contains('open')) return;
+  e.preventDefault();
+  push(e.deltaY);
+}, {passive:false});
+
+let lastY = null;
+addEventListener('touchstart', e => { lastY = e.touches[0].clientY; }, {passive:true});
+addEventListener('touchmove', e => {
+  if(lastY === null || editor.classList.contains('open')) return;
+  const y = e.touches[0].clientY;
+  push((lastY - y) * 2.4);
+  lastY = y;
+}, {passive:true});
+addEventListener('touchend', () => { lastY = null; });
+
+addEventListener('keydown', e => {
+  if(editor.classList.contains('open')) return;
+  if(e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' '){ e.preventDefault(); push(CHARGE/3); }
+});
+
+// ── rooms ──────────────────────────────────────────────────────────
+Object.keys(ROOMS).forEach(name => {
+  const b = document.createElement('button');
+  b.className = 'act';
+  b.dataset.room = name;
+  b.textContent = name;
+  b.onclick = () => {
+    S.room = name;
+    S.pending = null;
+    incoming.textContent = '';
+    charge = 0; drift(0);
+    paint();
+    prepare();
+  };
+  roomsEl.appendChild(b);
+});
+
+// ── deck ───────────────────────────────────────────────────────────
+el('editBtn').onclick = () => { ta.value = S.text; editor.classList.add('open'); ta.focus(); };
+el('cancelBtn').onclick = () => editor.classList.remove('open');
+el('applyBtn').onclick = () => {
+  const v = ta.value.trim();
+  editor.classList.remove('open');
+  if(v) start(v);
+};
+el('againBtn').onclick = () => start(S.text);
+el('copyBtn').onclick = () => {
+  navigator.clipboard.writeText(current.textContent).then(
+    () => say('copied'),
+    () => say('could not copy')
+  );
+};
+
+// ── start ──────────────────────────────────────────────────────────
+function start(text){
+  hinted = false;
+  S = fresh(text);
+  current.textContent = text;
+  incoming.textContent = '';
+  current.style.opacity = '1';
+  charge = 0; drift(0);
+  paint();
+  say('scroll to play it back into the room', true);
+  prepare();
+}
+
+start(SOURCE);
+</script>
+</body>
+</html>
