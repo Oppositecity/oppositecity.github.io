@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-07-29",
+ "published": "2026-07-30",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -98,6 +98,21 @@
    ],
    "blurb": "A chemical clock rendered as a field: bromate oxidation held far enough from equilibrium that it oscillates instead of settling. Three coupled species on a torus, each cell reacting against the mean of its neighbours — reaction against diffusion. The spiral cores are phase singularities, points where the oscillation has no defined phase and the medium must wind around them.",
    "url": "https://opposite.city/bz/"
+  },
+  {
+   "slug": "polyrhythm",
+   "name": "POLYRHYTHMIC TIME CLOCK",
+   "district": "ambient",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "clock",
+    "polyrhythm",
+    "web audio",
+    "interval"
+   ],
+   "blurb": "A clock that rings the time. Thirteen nested intervals — hour, half hour, minute, second — each striking on its own real boundary, so the polyrhythm is the clock's own arithmetic rather than something invented for it. Nine musical rings divide the bar against them at whatever tempo you set. Everything lands together on the minute; the whole field lands on the hour.",
+   "url": "https://opposite.city/polyrhythm/"
   }
  ]
 }
