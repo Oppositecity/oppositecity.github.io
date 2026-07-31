@@ -161,6 +161,22 @@
    ],
    "blurb": "After Alvin Lucier, who recorded his voice in a room and played the recording back into the room until the resonance had eaten the words. Here the room is a thesaurus and the speech is a sentence. Each scroll plays the text back one more time: every word is answered by one adjacent in meaning, held to the same syllable count, so the pulse is untouched while the sense drains out of it. Function words are the walls and never move, and a word repeated is always answered alike — repetition is what reinforces. Four rooms reflect differently, by sense, by association, by sound. There is no way back up the tape.",
    "url": "https://opposite.city/room/"
+  },
+  {
+   "slug": "wind",
+   "name": "YOU ARE THE WIND",
+   "district": "ambient",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "ekman spiral",
+    "coriolis",
+    "pressure gradient",
+    "voxel raycast",
+    "first person"
+   ],
+   "blurb": "A first-person game in which you are a parcel of air, and cannot steer. Three forces move you and nothing else: the pressure gradient you fall down, the Coriolis deflection that bends you to the right of your own motion, and surface friction that drags hard in the first few metres and is gone by forty. Their consequence is the Ekman spiral — low down friction bleeds your speed, which weakens Coriolis, so you cross the isobars and pour into the low; high up there is no friction, the balance goes geostrophic, and you only circle it forever. Altitude is therefore the heading control, and that is the whole game. The camera is your velocity vector, because wind has no head. The sky is the same pressure field drawn: blue on one horizon and black on the other is a gradient, and a gradient is the only thing that can move you.",
+   "url": "https://opposite.city/wind/"
   }
  ]
 }
