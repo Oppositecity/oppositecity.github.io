@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>you are the wind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud" id="hud-l">pressure<br>altitude<br>speed</div>
+<div class="hud" id="hud-r">inflow<br>carried<br>sown</div>
+<div class="hud" id="hud-b">reserve 100</div>
+<div class="hud" id="hud-s" role="button" tabindex="0">sound on</div>
+<div id="line"></div>
+
+<div id="intro">
+  <div class="t">you are the wind</div>
+  <div class="s">hold to converge &nbsp;·&nbsp; drag to lean and climb</div>
+  <div class="k">you cannot steer. altitude decides your heading.</div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
