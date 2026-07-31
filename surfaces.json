@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-07-30",
+ "published": "2026-07-31",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -113,6 +113,22 @@
    ],
    "blurb": "A clock that rings the time. Thirteen nested intervals — hour, half hour, minute, second — each striking on its own real boundary, so the polyrhythm is the clock's own arithmetic rather than something invented for it. Nine musical rings divide the bar against them at whatever tempo you set. Everything lands together on the minute; the whole field lands on the hour.",
    "url": "https://opposite.city/polyrhythm/"
+  },
+  {
+   "slug": "kelp",
+   "name": "KELP",
+   "district": "ambient",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "aleatoric",
+    "percussion",
+    "web audio",
+    "spring chain",
+    "pixel"
+   ],
+   "blurb": "Seven strands of kelp hanging in a current, each a spring chain with its own sway period. A strand speaks only at the moment it finishes a sway and reverses — the turn is the beat, so the rhythm belongs to the water rather than to a grid laid over it. Each strand is tuned to its own scale and its own octave, low at the left and high at the right, and rings a cascade up or down that scale when it turns. Four beds retune the whole forest at once; density sets how hard a sway has to be before it counts as a strike.",
+   "url": "https://opposite.city/kelp/"
   },
   {
    "slug": "semantic-voyage",
