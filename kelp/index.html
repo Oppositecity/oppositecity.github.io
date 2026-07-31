@@ -236,25 +236,25 @@ const BEDS = {
     label:"SHALLOWS",
     octaves:[0,0,1,1,1,2,2],
     scales:["majorPent","majorPent","minorPent","majorPent","minorPent","majorPent","majorPent"],
-    stiff:0.052, damp:0.938, period:[2.4,3.6], baseOct:3, cascade:[3,5], decayScale:1
+    w:2.6, z:0.55, period:[2.4,3.6], baseOct:3, cascade:[3,5], decayScale:1
   },
   CANOPY: {
     label:"CANOPY",
     octaves:[0,1,1,1,2,2,3],
     scales:["lydian","majorPent","lydian","mixolydian","lydian","majorPent","lydian"],
-    stiff:0.038, damp:0.951, period:[3.4,5.2], baseOct:3, cascade:[4,7], decayScale:1.35
+    w:1.9, z:0.62, period:[3.4,5.2], baseOct:3, cascade:[4,7], decayScale:1.35
   },
   HOLDFAST: {
     label:"HOLDFAST",
     octaves:[-1,-1,0,0,0,1,1],
     scales:["dorian","aeolian","dorian","minorPent","dorian","aeolian","minorPent"],
-    stiff:0.024, damp:0.968, period:[5.5,8.5], baseOct:2, cascade:[3,5], decayScale:1.7
+    w:1.1, z:0.78, period:[5.5,8.5], baseOct:2, cascade:[3,5], decayScale:1.7
   },
   STORM: {
     label:"STORM",
     octaves:[0,1,0,2,1,2,3],
     scales:["blues","harmMinor","phrygian","blues","harmMinor","wholeTone","phrygian"],
-    stiff:0.075, damp:0.912, period:[1.5,2.6], baseOct:3, cascade:[4,8], decayScale:.8
+    w:3.6, z:0.42, period:[1.5,2.6], baseOct:3, cascade:[4,8], decayScale:.8
   }
 };
 const BED_ORDER = ["SHALLOWS","CANOPY","HOLDFAST","STORM"];
@@ -437,6 +437,7 @@ function buildStrands(){
       i,
       ang:new Array(SEGS).fill(0),
       vel:new Array(SEGS).fill(0),
+      drive:0,
       phase:Math.random()*Math.PI*2,
       period:per*(0.9+Math.random()*0.2),
       peak:0,
@@ -449,12 +450,13 @@ function buildStrands(){
 }
 buildStrands();
 
-/* deterministic-ish drift noise */
+/* slow swell — the old version's fastest term was ~1.2Hz, which read as jitter
+   rather than water. Everything here is under 0.2Hz. */
 function noise(t, seed){
-  return Math.sin(t*0.7+seed)*0.5 + Math.sin(t*1.93+seed*2.1)*0.3 + Math.sin(t*4.7+seed*3.7)*0.2;
+  return Math.sin(t*0.31+seed)*0.55 + Math.sin(t*0.73+seed*2.1)*0.30 + Math.sin(t*1.17+seed*3.7)*0.15;
 }
 
-function scheduleCascade(st){
+function scheduleCascade(st, strength){
   const bed = BEDS[S.bed];
   const scale = SCALES[bed.scales[st.i]];
   const [lo,hi] = bed.cascade;
@@ -462,7 +464,7 @@ function scheduleCascade(st){
   const up = Math.random() < 0.5;
   const start = Math.floor(Math.random()*scale.length);
   const t0 = AC ? AC.currentTime + 0.02 : 0;
-  const step = 0.052 + (1-S.density)*0.075 + Math.random()*0.03;
+  const step = 0.052 + (1-S.density)*0.075 + Math.random()*0.03*(1+S.turb);
   const baseMidi = 12*(bed.baseOct + bed.octaves[st.i] + 1) + S.root;
 
   for(let k=0;k<n;k++){
@@ -471,7 +473,7 @@ function scheduleCascade(st){
     const deg = ((idx % scale.length)+scale.length)%scale.length;
     const midi = baseMidi + scale[deg] + 12*oct;
     const freq = 440*Math.pow(2,(midi-69)/12);
-    const amp = (0.30 + 0.35*Math.min(1,st.peak*9)) * (1 - k/(n+2));
+    const amp = (0.28 + 0.38*strength) * (1 - k/(n+2));
     if(AC) strike(freq, t0 + k*step, amp*0.9, S.voice, bed.decayScale);
   }
   st.flash = 1;
@@ -480,25 +482,37 @@ function scheduleCascade(st){
 }
 
 let simTime = 0;
+const AMAX = 0.26;   // per-segment bend limit, radians
+
+/* One physics tick. Always called with a fixed dt — see advance(). */
 function step(dt){
   const bed = BEDS[S.bed];
   simTime += dt;
   const flow = 0.25 + S.current*1.9;
-  const turb = S.turb;
 
   for(const st of strands){
-    // driving force at the tip: a slow sway plus turbulence
-    const sway = Math.sin(simTime*(Math.PI*2/st.period) + st.phase);
-    const gust = noise(simTime*1.6, st.i*3.1) * turb;
-    const drive = (sway + gust*0.8) * flow * 0.06;
+    // what the water is doing at this strand: a slow sway, a slower swell,
+    // and a bit of chop that only shows up once turbulence is well up
+    const sway  = Math.sin(simTime*(Math.PI*2/st.period) + st.phase);
+    const swell = noise(simTime*0.9, st.i*3.1) * S.turb;
+    const chop  = Math.sin(simTime*(2.2 + st.i*0.31) + st.phase*1.7) * S.turb*S.turb * 0.85;
+    const raw   = (sway + swell*0.7 + chop) * flow * 0.075;
+    // water has mass: the drive eases in rather than snapping
+    st.drive += (raw - st.drive) * 0.11;
 
+    // damped spring chain. each segment wants to lie along its parent and to
+    // lean with the current; w is its bending frequency, z its damping ratio.
     let prev = 0;
     for(let s=0;s<SEGS;s++){
-      const target = drive * (0.25 + s/SEGS);
-      const acc = (target - st.ang[s])*bed.stiff + (prev - st.ang[s])*bed.stiff*0.9;
-      st.vel[s] = (st.vel[s] + acc) * bed.damp;
-      st.ang[s] += st.vel[s];
-      prev = st.ang[s];
+      const lead   = 0.25 + 0.75*(s/(SEGS-1));
+      const target = st.drive*lead*0.6 + prev*0.4;
+      const acc    = bed.w*bed.w*(target - st.ang[s]) - 2*bed.z*bed.w*st.vel[s];
+      st.vel[s] += acc*dt;
+      let a = st.ang[s] + st.vel[s]*dt;
+      if(a >  AMAX){ a =  AMAX; st.vel[s] *= -0.2; }
+      if(a < -AMAX){ a = -AMAX; st.vel[s] *= -0.2; }
+      st.ang[s] = a;
+      prev = a;
     }
 
     const v = st.vel[SEGS-1];
@@ -507,18 +521,31 @@ function step(dt){
     if(st.flash>0) st.flash = Math.max(0, st.flash - dt*2.6);
 
     const sign = v>=0 ? 1 : -1;
-    if(sign !== st.lastSign){          // the sway reversed: a beat completed
-      // gate is an absolute velocity threshold swept exponentially by DENSITY,
-      // so CURRENT and TURBULENCE still genuinely change how much the bed speaks
-      const gate = 0.042 * Math.pow(0.0005/0.042, S.density);
-      if(st.peak > gate && st.cooldown <= 0 && S.running){
-        scheduleCascade(st);
-        st.cooldown = 0.45 + (1-S.density)*2.8;
+    if(sign !== st.lastSign){        // the sway reversed: a beat is available
+      // Smooth water gives every reversal nearly the same peak, so an amplitude
+      // threshold here goes binary. DENSITY is a probability instead: how many
+      // of the water's own beats get taken. Harder sways are likelier and louder.
+      const strength = Math.min(1, st.peak/0.16);
+      const p = S.density * (0.35 + 0.65*strength);
+      if(st.peak > 0.004 && st.cooldown <= 0 && S.running && Math.random() < p){
+        scheduleCascade(st, strength);
+        st.cooldown = 0.25 + (1-S.density)*0.9;
       }
       st.lastSign = sign;
       st.peak = 0;
     }
   }
+}
+
+/* Fixed 60Hz stepping. The old build integrated once per animation frame with
+   no dt, so a 120Hz screen ran the whole forest at double speed. */
+const FIXED = 1/60;
+let physAcc = 0;
+function advance(dt, scale){
+  physAcc += dt*scale;
+  let n = 0;
+  while(physAcc >= FIXED && n < 4){ step(FIXED); physAcc -= FIXED; n++; }
+  if(n === 4) physAcc = 0;
 }
 
 /* ============================================================
@@ -645,7 +672,7 @@ let last = performance.now();
 function frame(now){
   let dt = Math.min(0.05, (now-last)/1000);
   last = now;
-  if(S.running) step(dt); else { if(S.awake) step(dt*0.15); }
+  advance(dt, S.running ? 1 : 0.15);
   drawWater();
   drawMotes(dt);
   drawKelp();
@@ -733,12 +760,12 @@ btnPlay.addEventListener("click", ()=>{
 });
 document.getElementById("btnGust").addEventListener("click", ()=>{
   for(const st of strands){
-    const kick = (Math.random()*2-1)*0.06*(0.5+S.current);
+    const kick = (Math.random()*2-1)*0.7*(0.5+S.current);
     for(let s=0;s<SEGS;s++) st.vel[s] += kick*(s/SEGS);
   }
 });
 document.getElementById("btnStill").addEventListener("click", ()=>{
-  for(const st of strands){ st.vel.fill(0); st.ang.fill(0); st.peak=0; }
+  for(const st of strands){ st.vel.fill(0); st.ang.fill(0); st.peak=0; st.drive=0; }
 });
 
 const reading = document.getElementById("reading");
