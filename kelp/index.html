@@ -13,6 +13,12 @@
     --blade:#2e8a7d;
     --bloom:#8ff0c4;
     --paper:#dff3ea;
+    /* text ramp — every value measured against --void, ratio in the comment.
+       --holdfast and --blade are canvas pigments only; they never carry text. */
+    --read:#b6d6cd;    /* numeric readouts     12.8:1 */
+    --label:#8fbdb3;   /* labels, captions      9.6:1 */
+    --idle:#7fada4;    /* unselected options    8.0:1 */
+    --meter:#6f9d95;   /* empty slider cells    6.6:1 */
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;background:var(--void);}
@@ -55,7 +61,7 @@
   #title span{
     display:block;margin-top:6px;
     font-size:10px;letter-spacing:.22em;
-    color:var(--blade);
+    color:var(--label);
     text-shadow:0 0 12px rgba(6,9,15,.9);
   }
 
@@ -75,10 +81,10 @@
   #wake small{
     display:block;margin-top:14px;
     font-size:10px;letter-spacing:.16em;
-    color:var(--holdfast);
+    color:var(--label);
     animation:none;
   }
-  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  @keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
   @media (prefers-reduced-motion:reduce){#wake p{animation:none;opacity:1}}
 
   /* ---- the ledger ---- */
@@ -95,13 +101,13 @@
   }
   .key{
     flex:0 0 78px;
-    color:var(--holdfast);
+    color:var(--label);
     text-transform:uppercase;
   }
   /* block sliders */
   .bar{
     flex:1 1 auto;
-    color:var(--blade);
+    color:var(--meter);
     cursor:ew-resize;
     user-select:none;-webkit-user-select:none;
     white-space:nowrap;overflow:hidden;
@@ -112,7 +118,7 @@
   .bar em{font-style:normal;color:var(--bloom);}
   .val{
     flex:0 0 34px;text-align:right;
-    color:var(--paper);opacity:.65;
+    color:var(--read);
     font-size:10px;
   }
   /* word pickers */
@@ -123,10 +129,10 @@
   .pick button{
     background:none;border:none;padding:4px 0;
     font:inherit;font-size:11px;letter-spacing:.16em;
-    color:var(--holdfast);
+    color:var(--idle);
     cursor:pointer;
   }
-  .pick button[aria-pressed="true"]{color:var(--bloom);}
+  .pick button[aria-pressed="true"]{color:var(--bloom);font-weight:700;}
   .pick button:focus-visible{outline:2px solid var(--bloom);outline-offset:3px;}
   #transport{
     display:flex;gap:22px;align-items:baseline;
@@ -138,7 +144,7 @@
     color:var(--paper);cursor:pointer;
   }
   #transport button:focus-visible{outline:2px solid var(--bloom);outline-offset:3px;}
-  #reading{color:var(--holdfast);font-size:10px;letter-spacing:.14em;margin-left:auto;}
+  #reading{color:var(--label);font-size:10px;letter-spacing:.14em;margin-left:auto;}
 
   @media (min-width:760px){
     #ledger{
