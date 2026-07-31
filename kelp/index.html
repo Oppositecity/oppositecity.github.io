@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KELP</title>
+<meta name="description" content="A tidal percussion engine. Seven strands, seven scales, one current.">
+<style>
+  :root{
+    --void:#06090f;
+    --deep:#0d1a22;
+    --holdfast:#16414a;
+    --blade:#2e8a7d;
+    --bloom:#8ff0c4;
+    --paper:#dff3ea;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;background:var(--void);}
+  body{
+    font-family:"Courier Prime","Courier New",Courier,monospace;
+    color:var(--paper);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:manipulation;
+  }
+  #stage{
+    position:fixed;inset:0;
+    display:flex;flex-direction:column;
+  }
+  #field{
+    position:relative;
+    flex:1 1 auto;
+    min-height:0;
+  }
+  canvas{
+    display:block;width:100%;height:100%;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+  }
+
+  /* ---- title, floating in the water ---- */
+  #title{
+    position:absolute;top:max(18px,env(safe-area-inset-top));left:16px;
+    pointer-events:none;
+  }
+  #title b{
+    display:block;
+    font-weight:700;
+    font-size:clamp(26px,7vw,44px);
+    letter-spacing:.34em;
+    color:var(--paper);
+    text-shadow:0 0 18px rgba(6,9,15,.9);
+  }
+  #title span{
+    display:block;margin-top:6px;
+    font-size:10px;letter-spacing:.22em;
+    color:var(--blade);
+    text-shadow:0 0 12px rgba(6,9,15,.9);
+  }
+
+  /* ---- wake screen ---- */
+  #wake{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(6,9,15,.86);
+    cursor:pointer;z-index:5;
+    text-align:center;padding:24px;
+  }
+  #wake p{
+    font-size:13px;letter-spacing:.28em;
+    color:var(--bloom);
+    animation:pulse 2.6s ease-in-out infinite;
+  }
+  #wake small{
+    display:block;margin-top:14px;
+    font-size:10px;letter-spacing:.16em;
+    color:var(--holdfast);
+    animation:none;
+  }
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){#wake p{animation:none;opacity:1}}
+
+  /* ---- the ledger ---- */
+  #ledger{
+    flex:0 0 auto;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    background:var(--void);
+    display:grid;
+    gap:9px;
+  }
+  .row{
+    display:flex;align-items:baseline;gap:12px;
+    font-size:11px;letter-spacing:.16em;
+  }
+  .key{
+    flex:0 0 78px;
+    color:var(--holdfast);
+    text-transform:uppercase;
+  }
+  /* block sliders */
+  .bar{
+    flex:1 1 auto;
+    color:var(--blade);
+    cursor:ew-resize;
+    user-select:none;-webkit-user-select:none;
+    white-space:nowrap;overflow:hidden;
+    padding:5px 0;margin:-5px 0;
+    letter-spacing:.02em;
+    font-size:12px;
+  }
+  .bar em{font-style:normal;color:var(--bloom);}
+  .val{
+    flex:0 0 34px;text-align:right;
+    color:var(--paper);opacity:.65;
+    font-size:10px;
+  }
+  /* word pickers */
+  .pick{
+    flex:1 1 auto;
+    display:flex;flex-wrap:wrap;gap:0 16px;
+  }
+  .pick button{
+    background:none;border:none;padding:4px 0;
+    font:inherit;font-size:11px;letter-spacing:.16em;
+    color:var(--holdfast);
+    cursor:pointer;
+  }
+  .pick button[aria-pressed="true"]{color:var(--bloom);}
+  .pick button:focus-visible{outline:2px solid var(--bloom);outline-offset:3px;}
+  #transport{
+    display:flex;gap:22px;align-items:baseline;
+    font-size:11px;letter-spacing:.2em;padding-top:2px;
+  }
+  #transport button{
+    background:none;border:none;padding:6px 0;
+    font:inherit;font-size:11px;letter-spacing:.2em;
+    color:var(--paper);cursor:pointer;
+  }
+  #transport button:focus-visible{outline:2px solid var(--bloom);outline-offset:3px;}
+  #reading{color:var(--holdfast);font-size:10px;letter-spacing:.14em;margin-left:auto;}
+
+  @media (min-width:760px){
+    #ledger{
+      grid-template-columns:1fr 1fr;
+      column-gap:44px;
+      padding:18px 26px calc(18px + env(safe-area-inset-bottom));
+    }
+    #transport{grid-column:1/-1;}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="field">
+    <canvas id="c"></canvas>
+    <div id="title"><b>KELP</b><span>SEVEN STRANDS &nbsp;SEVEN SCALES &nbsp;ONE CURRENT</span></div>
+    <div id="wake" role="button" tabindex="0" aria-label="Start the kelp forest">
+      <div>
+        <p>TAP TO OPEN THE WATER</p>
+        <small>sound on. the forest plays itself.</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="ledger">
+    <div class="row"><span class="key">bed</span>
+      <span class="pick" id="pickBed"></span></div>
+    <div class="row"><span class="key">voice</span>
+      <span class="pick" id="pickVoice"></span></div>
+    <div class="row"><span class="key">key</span>
+      <span class="pick" id="pickRoot"></span></div>
+
+    <div class="row"><span class="key">density</span>
+      <span class="bar" id="barDensity" data-p="density" role="slider" tabindex="0" aria-label="Density"></span>
+      <span class="val" id="valDensity"></span></div>
+    <div class="row"><span class="key">current</span>
+      <span class="bar" id="barCurrent" data-p="current" role="slider" tabindex="0" aria-label="Current"></span>
+      <span class="val" id="valCurrent"></span></div>
+    <div class="row"><span class="key">turbulence</span>
+      <span class="bar" id="barTurb" data-p="turb" role="slider" tabindex="0" aria-label="Turbulence"></span>
+      <span class="val" id="valTurb"></span></div>
+    <div class="row"><span class="key">space</span>
+      <span class="bar" id="barSpace" data-p="space" role="slider" tabindex="0" aria-label="Space"></span>
+      <span class="val" id="valSpace"></span></div>
+
+    <div id="transport">
+      <button id="btnPlay" type="button">PAUSE</button>
+      <button id="btnGust" type="button">GUST</button>
+      <button id="btnStill" type="button">STILL</button>
+      <span id="reading">—</span>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   KELP — a tidal percussion engine
+   Seven strands of kelp hang in a current. Each strand is a
+   spring chain; when a strand finishes a sway and reverses,
+   it rings a cascade up or down its own scale.
+   ============================================================ */
+
+/* ---------- palette (limited, flat, pixel) ---------- */
+const PAL = {
+  void:     "#06090f",
+  deep:     "#0d1a22",
+  holdfast: "#16414a",
+  blade:    "#2e8a7d",
+  bloom:    "#8ff0c4",
+  paper:    "#dff3ea",
+  ring:     "#b9a2ff"
+};
+
+/* ---------- musical material ---------- */
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+const SCALES = {
+  minorPent:  [0,3,5,7,10],
+  majorPent:  [0,2,4,7,9],
+  dorian:     [0,2,3,5,7,9,10],
+  lydian:     [0,2,4,6,7,9,11],
+  mixolydian: [0,2,4,5,7,9,10],
+  aeolian:    [0,2,3,5,7,8,10],
+  blues:      [0,3,5,6,7,10],
+  harmMinor:  [0,2,3,5,7,8,11],
+  phrygian:   [0,1,3,5,7,8,10],
+  wholeTone:  [0,2,4,6,8,10]
+};
+
+/* Beds: each is a different water, a different tuning of the whole forest. */
+const BEDS = {
+  SHALLOWS: {
+    label:"SHALLOWS",
+    octaves:[0,0,1,1,1,2,2],
+    scales:["majorPent","majorPent","minorPent","majorPent","minorPent","majorPent","majorPent"],
+    stiff:0.052, damp:0.938, period:[2.4,3.6], baseOct:3, cascade:[3,5], decayScale:1
+  },
+  CANOPY: {
+    label:"CANOPY",
+    octaves:[0,1,1,1,2,2,3],
+    scales:["lydian","majorPent","lydian","mixolydian","lydian","majorPent","lydian"],
+    stiff:0.038, damp:0.951, period:[3.4,5.2], baseOct:3, cascade:[4,7], decayScale:1.35
+  },
+  HOLDFAST: {
+    label:"HOLDFAST",
+    octaves:[-1,-1,0,0,0,1,1],
+    scales:["dorian","aeolian","dorian","minorPent","dorian","aeolian","minorPent"],
+    stiff:0.024, damp:0.968, period:[5.5,8.5], baseOct:2, cascade:[3,5], decayScale:1.7
+  },
+  STORM: {
+    label:"STORM",
+    octaves:[0,1,0,2,1,2,3],
+    scales:["blues","harmMinor","phrygian","blues","harmMinor","wholeTone","phrygian"],
+    stiff:0.075, damp:0.912, period:[1.5,2.6], baseOct:3, cascade:[4,8], decayScale:.8
+  }
+};
+const BED_ORDER = ["SHALLOWS","CANOPY","HOLDFAST","STORM"];
+
+const VOICES = ["MARIMBA","KALIMBA","WOODBLOCK","VIBES","XYLO","CHIME"];
+
+/* ---------- state ---------- */
+const S = {
+  bed:"SHALLOWS",
+  voice:"MARIMBA",
+  root:9,            // A
+  density:0.55,
+  current:0.45,
+  turb:0.3,
+  space:0.4,
+  running:true,
+  awake:false,
+  hits:0
+};
+
+/* ============================================================
+   AUDIO
+   ============================================================ */
+let AC=null, master=null, wet=null, dry=null, verb=null, comp=null;
+
+function initAudio(){
+  if(AC) return;
+  AC = new (window.AudioContext||window.webkitAudioContext)();
+
+  comp = AC.createDynamicsCompressor();
+  comp.threshold.value=-16; comp.knee.value=22;
+  comp.ratio.value=3.6; comp.attack.value=.004; comp.release.value=.22;
+
+  master = AC.createGain();
+  master.gain.value=0.85;
+
+  verb = AC.createConvolver();
+  verb.buffer = makeImpulse(2.6, 2.4);
+
+  wet = AC.createGain(); wet.gain.value = S.space*0.9;
+  dry = AC.createGain(); dry.gain.value = 1 - S.space*0.45;
+
+  dry.connect(comp);
+  wet.connect(verb); verb.connect(comp);
+  comp.connect(master);
+  master.connect(AC.destination);
+}
+
+/* a plain noise-decay impulse: cheap room, no samples */
+function makeImpulse(seconds, curve){
+  const rate=AC.sampleRate, len=Math.floor(rate*seconds);
+  const buf=AC.createBuffer(2,len,rate);
+  for(let ch=0;ch<2;ch++){
+    const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++){
+      const t=i/len;
+      d[i]=(Math.random()*2-1)*Math.pow(1-t,curve);
+    }
+  }
+  return buf;
+}
+
+function send(node, level){
+  const g=AC.createGain(); g.gain.value=level;
+  node.connect(g); g.connect(dry);
+  const w=AC.createGain(); w.gain.value=level;
+  node.connect(w); w.connect(wet);
+}
+
+let NOISE=null;
+function noiseBuffer(){
+  if(NOISE) return NOISE;
+  const len=Math.floor(AC.sampleRate*0.25);
+  NOISE=AC.createBuffer(1,len,AC.sampleRate);
+  const d=NOISE.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  return NOISE;
+}
+
+/* --- one struck note --- */
+function strike(freq, when, gain, voice, decayScale){
+  if(!AC) return;
+  const t = when;
+  const out = AC.createGain();
+  out.gain.value = 1;
+  send(out, gain);
+
+  const partial=(ratio, amp, dec, type)=>{
+    const o=AC.createOscillator();
+    o.type=type||"sine";
+    o.frequency.setValueAtTime(freq*ratio, t);
+    const g=AC.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(amp, t+0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dec*decayScale);
+    o.connect(g); g.connect(out);
+    o.start(t); o.stop(t+dec*decayScale+0.05);
+    return o;
+  };
+
+  const click=(dur, freqBP, q, amp)=>{
+    const src=AC.createBufferSource();
+    src.buffer=noiseBuffer();
+    const bp=AC.createBiquadFilter();
+    bp.type="bandpass"; bp.frequency.value=freqBP; bp.Q.value=q;
+    const g=AC.createGain();
+    g.gain.setValueAtTime(amp,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(bp); bp.connect(g); g.connect(out);
+    src.start(t); src.stop(t+dur+0.02);
+  };
+
+  switch(voice){
+    case "MARIMBA": {
+      const o=partial(1,.62,.62);
+      o.frequency.setValueAtTime(freq*1.06,t);
+      o.frequency.exponentialRampToValueAtTime(freq,t+.02);
+      partial(4,.16,.20);
+      partial(9.2,.05,.10);
+      click(.014, freq*4.5, 1.6, .22);
+      break;
+    }
+    case "KALIMBA": {
+      const o=partial(1,.55,.95,"triangle");
+      o.frequency.setValueAtTime(freq*1.12,t);
+      o.frequency.exponentialRampToValueAtTime(freq,t+.045);
+      partial(2.01,.13,.42);
+      partial(3.02,.06,.20);
+      click(.010, freq*6, 2.2, .18);
+      break;
+    }
+    case "WOODBLOCK": {
+      click(.055, freq*2.1, 12, .70);
+      click(.020, freq*5.4, 6, .30);
+      partial(1,.20,.075,"square");
+      break;
+    }
+    case "VIBES": {
+      partial(1,.50,1.9);
+      partial(4,.10,.85);
+      partial(9.4,.03,.35);
+      // tremolo, the motor — rides the master gain of this note
+      const lfo=AC.createOscillator(); lfo.frequency.value=5.2;
+      const la=AC.createGain(); la.gain.value=.22;
+      lfo.connect(la); la.connect(out.gain);
+      lfo.start(t); lfo.stop(t+2.2*decayScale);
+      break;
+    }
+    case "XYLO": {
+      partial(1,.48,.30);
+      partial(3,.22,.16);
+      partial(6.2,.10,.09);
+      click(.012, freq*7, 2, .30);
+      break;
+    }
+    case "CHIME": {
+      partial(1,.34,2.9);
+      partial(2.76,.20,2.3);
+      partial(5.40,.12,1.7);
+      partial(8.93,.07,1.1);
+      click(.008, freq*8, 3, .14);
+      break;
+    }
+  }
+}
+
+/* ============================================================
+   THE FOREST
+   ============================================================ */
+const SEGS = 11;
+const STRANDS = 7;
+
+const strands = [];
+function buildStrands(){
+  strands.length=0;
+  const bed = BEDS[S.bed];
+  for(let i=0;i<STRANDS;i++){
+    const per = bed.period[0] + (bed.period[1]-bed.period[0])*(i/(STRANDS-1));
+    strands.push({
+      i,
+      ang:new Array(SEGS).fill(0),
+      vel:new Array(SEGS).fill(0),
+      phase:Math.random()*Math.PI*2,
+      period:per*(0.9+Math.random()*0.2),
+      peak:0,
+      lastSign:1,
+      cooldown:0,
+      flash:0,
+      flashSeg:-1
+    });
+  }
+}
+buildStrands();
+
+/* deterministic-ish drift noise */
+function noise(t, seed){
+  return Math.sin(t*0.7+seed)*0.5 + Math.sin(t*1.93+seed*2.1)*0.3 + Math.sin(t*4.7+seed*3.7)*0.2;
+}
+
+function scheduleCascade(st){
+  const bed = BEDS[S.bed];
+  const scale = SCALES[bed.scales[st.i]];
+  const [lo,hi] = bed.cascade;
+  const n = lo + Math.floor(Math.random()*(hi-lo+1));
+  const up = Math.random() < 0.5;
+  const start = Math.floor(Math.random()*scale.length);
+  const t0 = AC ? AC.currentTime + 0.02 : 0;
+  const step = 0.052 + (1-S.density)*0.075 + Math.random()*0.03;
+  const baseMidi = 12*(bed.baseOct + bed.octaves[st.i] + 1) + S.root;
+
+  for(let k=0;k<n;k++){
+    const idx = start + (up? k : -k);
+    const oct = Math.floor(idx/scale.length);
+    const deg = ((idx % scale.length)+scale.length)%scale.length;
+    const midi = baseMidi + scale[deg] + 12*oct;
+    const freq = 440*Math.pow(2,(midi-69)/12);
+    const amp = (0.30 + 0.35*Math.min(1,st.peak*9)) * (1 - k/(n+2));
+    if(AC) strike(freq, t0 + k*step, amp*0.9, S.voice, bed.decayScale);
+  }
+  st.flash = 1;
+  st.flashSeg = SEGS-1;
+  S.hits += n;
+}
+
+let simTime = 0;
+function step(dt){
+  const bed = BEDS[S.bed];
+  simTime += dt;
+  const flow = 0.25 + S.current*1.9;
+  const turb = S.turb;
+
+  for(const st of strands){
+    // driving force at the tip: a slow sway plus turbulence
+    const sway = Math.sin(simTime*(Math.PI*2/st.period) + st.phase);
+    const gust = noise(simTime*1.6, st.i*3.1) * turb;
+    const drive = (sway + gust*0.8) * flow * 0.06;
+
+    let prev = 0;
+    for(let s=0;s<SEGS;s++){
+      const target = drive * (0.25 + s/SEGS);
+      const acc = (target - st.ang[s])*bed.stiff + (prev - st.ang[s])*bed.stiff*0.9;
+      st.vel[s] = (st.vel[s] + acc) * bed.damp;
+      st.ang[s] += st.vel[s];
+      prev = st.ang[s];
+    }
+
+    const v = st.vel[SEGS-1];
+    st.peak = Math.max(st.peak, Math.abs(v));
+    st.cooldown -= dt;
+    if(st.flash>0) st.flash = Math.max(0, st.flash - dt*2.6);
+
+    const sign = v>=0 ? 1 : -1;
+    if(sign !== st.lastSign){          // the sway reversed: a beat completed
+      // gate is an absolute velocity threshold swept exponentially by DENSITY,
+      // so CURRENT and TURBULENCE still genuinely change how much the bed speaks
+      const gate = 0.042 * Math.pow(0.0005/0.042, S.density);
+      if(st.peak > gate && st.cooldown <= 0 && S.running){
+        scheduleCascade(st);
+        st.cooldown = 0.45 + (1-S.density)*2.8;
+      }
+      st.lastSign = sign;
+      st.peak = 0;
+    }
+  }
+}
+
+/* ============================================================
+   RENDER — low-res pixel field
+   ============================================================ */
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d", {alpha:false});
+let PX = 4, W = 0, H = 0;
+
+const motes = [];
+function seedMotes(){
+  motes.length=0;
+  for(let i=0;i<120;i++){
+    motes.push({x:Math.random()*W, y:Math.random()*H, s:0.15+Math.random()*0.55, d:Math.random()});
+  }
+}
+
+function resize(){
+  const r = cv.getBoundingClientRect();
+  PX = r.width < 520 ? 4 : 5;
+  W = Math.max(80, Math.floor(r.width/PX));
+  H = Math.max(80, Math.floor(r.height/PX));
+  cv.width = W; cv.height = H;
+  ctx.imageSmoothingEnabled = false;
+  seedMotes();
+}
+window.addEventListener("resize", resize);
+
+function px(x,y,w,h,col){
+  ctx.fillStyle=col;
+  ctx.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));
+}
+
+function drawWater(){
+  px(0,0,W,H,PAL.void);
+  // flat depth bands — no gradient, limited palette
+  const bands = [
+    {y:0.00,h:0.30,c:PAL.void},
+    {y:0.30,h:0.26,c:"#080d15"},
+    {y:0.56,h:0.24,c:"#0a1119"},
+    {y:0.80,h:0.20,c:PAL.deep}
+  ];
+  for(const b of bands) px(0, b.y*H, W, b.h*H+1, b.c);
+
+  // surface light: a stable dither near the waterline, drifting slowly
+  const shift = Math.floor(simTime*2) % 7;
+  for(let y=0;y<8;y++){
+    for(let x=(y%2);x<W;x+=2+(y%3)){
+      if(((x+shift)*7 + y*13) % 11 < 3) px(x, y, 1,1, "#0f1c26");
+    }
+  }
+  // seabed
+  const bedY = H-4;
+  for(let x=0;x<W;x++){
+    const h = 3 + Math.round(Math.sin(x*0.21)*1.2 + Math.sin(x*0.07)*1.4);
+    px(x, bedY-h+4, 1, h, PAL.deep);
+    if((x+Math.floor(h))%3===0) px(x, bedY-h+4, 1, 1, PAL.holdfast);
+  }
+}
+
+function drawMotes(dt){
+  for(const m of motes){
+    m.y -= (0.6 + m.s*2.2) * (0.3 + S.current) * dt * 8;
+    m.x += Math.sin(simTime*0.6 + m.d*9) * 0.10 * (0.3+S.current);
+    if(m.y < 0){ m.y = H; m.x = Math.random()*W; }
+    px(m.x, m.y, 1, 1, m.s>0.45 ? PAL.holdfast : "#0f2830");
+  }
+}
+
+function drawKelp(){
+  const bedY = H-4;
+  const gap = W/(STRANDS+1);
+  const segLen = Math.max(3, Math.floor((H*0.78)/SEGS));
+
+  for(const st of strands){
+    let x = gap*(st.i+1);
+    let y = bedY;
+    let a = 0;
+    // holdfast
+    px(x-1, y-1, 3, 2, PAL.holdfast);
+
+    for(let s=0;s<SEGS;s++){
+      a += st.ang[s];
+      const nx = x + Math.sin(a)*segLen;
+      const ny = y - Math.cos(a)*segLen;
+
+      const depth = s/(SEGS-1);
+      let col = depth < 0.34 ? PAL.holdfast : (depth < 0.72 ? "#1f6a67" : PAL.blade);
+      if(st.flash > 0){
+        const reach = 1 - Math.abs(depth - (1 - st.flash));
+        if(reach > 0.80) col = st.flash > 0.55 ? PAL.bloom : PAL.ring;
+      }
+
+      // stipe: a walked line of pixels, thickness tapering
+      const steps = Math.max(2, Math.ceil(segLen));
+      for(let k=0;k<=steps;k++){
+        const t=k/steps;
+        const lx = x + (nx-x)*t;
+        const ly = y + (ny-y)*t;
+        const thick = depth < 0.5 ? 2 : 1;
+        px(lx, ly, thick, 1, col);
+      }
+
+      // blades every other node
+      if(s>1 && s%2===0){
+        const side = (s%4===0)? 1 : -1;
+        const bl = 2 + Math.round((1-depth)*2);
+        for(let k=1;k<=bl;k++){
+          px(nx + side*k, ny + Math.round(k*0.6), 1, 1, col);
+        }
+      }
+      x=nx; y=ny;
+    }
+    // tip bud — brightest point of the strand
+    px(x, y, 1, 1, st.flash>0 ? PAL.bloom : PAL.blade);
+    if(st.flash>0.5){
+      px(x-1,y,1,1,PAL.ring); px(x+1,y,1,1,PAL.ring);
+      px(x,y-1,1,1,PAL.ring); px(x,y+1,1,1,PAL.ring);
+    }
+  }
+}
+
+let last = performance.now();
+function frame(now){
+  let dt = Math.min(0.05, (now-last)/1000);
+  last = now;
+  if(S.running) step(dt); else { if(S.awake) step(dt*0.15); }
+  drawWater();
+  drawMotes(dt);
+  drawKelp();
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   THE LEDGER — every control is a word or a run of blocks
+   ============================================================ */
+const CELLS = 18;
+const bars = {
+  density:{el:document.getElementById("barDensity"), val:document.getElementById("valDensity")},
+  current:{el:document.getElementById("barCurrent"), val:document.getElementById("valCurrent")},
+  turb:   {el:document.getElementById("barTurb"),    val:document.getElementById("valTurb")},
+  space:  {el:document.getElementById("barSpace"),   val:document.getElementById("valSpace")}
+};
+
+function paintBar(name){
+  const b = bars[name];
+  const v = S[name];
+  const on = Math.round(v*CELLS);
+  b.el.innerHTML = "<em>"+"\u2588".repeat(on)+"</em>"+"\u2591".repeat(CELLS-on);
+  b.el.setAttribute("aria-valuenow", Math.round(v*100));
+  b.val.textContent = String(Math.round(v*100)).padStart(2,"0");
+}
+
+function setParam(name, v){
+  S[name] = Math.max(0, Math.min(1, v));
+  paintBar(name);
+  if(name==="space" && AC){
+    wet.gain.setTargetAtTime(S.space*0.9, AC.currentTime, 0.05);
+    dry.gain.setTargetAtTime(1 - S.space*0.45, AC.currentTime, 0.05);
+  }
+}
+
+for(const name in bars){
+  const el = bars[name].el;
+  let dragging=false;
+  const fromEvent=(e)=>{
+    const r = el.getBoundingClientRect();
+    const cx = (e.touches? e.touches[0].clientX : e.clientX);
+    setParam(name, (cx - r.left)/r.width);
+  };
+  el.addEventListener("pointerdown", e=>{dragging=true; el.setPointerCapture(e.pointerId); fromEvent(e);});
+  el.addEventListener("pointermove", e=>{ if(dragging) fromEvent(e); });
+  el.addEventListener("pointerup",   e=>{dragging=false;});
+  el.addEventListener("pointercancel", ()=>{dragging=false;});
+  el.addEventListener("keydown", e=>{
+    if(e.key==="ArrowRight"||e.key==="ArrowUp"){ setParam(name, S[name]+0.05); e.preventDefault(); }
+    if(e.key==="ArrowLeft" ||e.key==="ArrowDown"){ setParam(name, S[name]-0.05); e.preventDefault(); }
+  });
+  paintBar(name);
+}
+
+function buildPicker(hostId, items, getActive, onPick){
+  const host = document.getElementById(hostId);
+  host.innerHTML="";
+  items.forEach(it=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.textContent = it.label;
+    b.setAttribute("aria-pressed", String(getActive()===it.value));
+    b.addEventListener("click", ()=>{
+      onPick(it.value);
+      [...host.children].forEach(c=>c.setAttribute("aria-pressed", String(c.textContent===it.label)));
+    });
+    host.appendChild(b);
+  });
+}
+
+buildPicker("pickBed", BED_ORDER.map(k=>({label:k, value:k})),
+  ()=>S.bed, v=>{ S.bed=v; buildStrands(); });
+
+buildPicker("pickVoice", VOICES.map(v=>({label:v, value:v})),
+  ()=>S.voice, v=>{ S.voice=v; });
+
+buildPicker("pickRoot", NOTE_NAMES.map((n,i)=>({label:n, value:i})),
+  ()=>S.root, v=>{ S.root=v; });
+
+/* transport */
+const btnPlay = document.getElementById("btnPlay");
+btnPlay.addEventListener("click", ()=>{
+  S.running = !S.running;
+  btnPlay.textContent = S.running ? "PAUSE" : "PLAY";
+});
+document.getElementById("btnGust").addEventListener("click", ()=>{
+  for(const st of strands){
+    const kick = (Math.random()*2-1)*0.06*(0.5+S.current);
+    for(let s=0;s<SEGS;s++) st.vel[s] += kick*(s/SEGS);
+  }
+});
+document.getElementById("btnStill").addEventListener("click", ()=>{
+  for(const st of strands){ st.vel.fill(0); st.ang.fill(0); st.peak=0; }
+});
+
+const reading = document.getElementById("reading");
+setInterval(()=>{
+  reading.textContent = S.hits ? (S.hits+" STRIKES") : "\u2014";
+}, 900);
+
+/* wake */
+const wake = document.getElementById("wake");
+function openWater(){
+  initAudio();
+  if(AC.state==="suspended") AC.resume();
+  S.awake = true;
+  wake.style.display="none";
+}
+wake.addEventListener("click", openWater);
+document.getElementById("ledger").addEventListener("pointerdown", openWater, {once:true});
+wake.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" ") openWater(); });
+
+/* go */
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
