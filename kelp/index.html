@@ -217,7 +217,11 @@ const PAL = {
   blade:    "#2e8a7d",
   bloom:    "#8ff0c4",
   paper:    "#dff3ea",
-  ring:     "#b9a2ff"
+  ring:     "#b9a2ff",
+  far:      "#0b1a20",
+  farTip:   "#123b40",
+  mid:      "#102b31",
+  midTip:   "#1a5257"
 };
 
 /* ---------- musical material ---------- */
@@ -430,8 +434,8 @@ function strike(freq, when, gain, voice, decayScale){
 /* ============================================================
    THE FOREST
    ============================================================ */
-const SEGS = 11;
-const STRANDS = 7;
+const SEGS = 24;      // giant kelp: long enough to reach the surface and lay over
+const STRANDS = 7;    // the ones that play; the rest of the forest is scenery
 
 const strands = [];
 function buildStrands(){
@@ -444,6 +448,7 @@ function buildStrands(){
       ang:new Array(SEGS).fill(0),
       vel:new Array(SEGS).fill(0),
       drive:0,
+      eddyAmp:0, eddyT:9, eddyDur:1,
       phase:Math.random()*Math.PI*2,
       period:per*(0.9+Math.random()*0.2),
       peak:0,
@@ -488,7 +493,9 @@ function scheduleCascade(st, strength){
 }
 
 let simTime = 0;
-const AMAX = 0.26;   // per-segment bend limit, radians
+const AMAX = 0.09;   // per-segment bend limit — 24 segs, so the strand tops out
+                     // around 85 degrees of lean instead of folding back on itself
+let eddyClock = 0;
 
 /* One physics tick. Always called with a fixed dt — see advance(). */
 function step(dt){
@@ -496,15 +503,47 @@ function step(dt){
   simTime += dt;
   const flow = 0.25 + S.current*1.9;
 
+  // Eddies arrive at Poisson-spaced intervals; TURBULENCE sets the rate. They hit
+  // one strand and spill onto its neighbours a beat later. Amplitude and duration
+  // scale with the bed's bending frequency, so the slow beds get a longer, gentler
+  // shove rather than a snap they can't absorb.
+  eddyClock -= dt;
+  if(eddyClock <= 0){
+    eddyClock = -Math.log(1 - Math.random()) / (0.2 + S.turb*S.turb*4.0);
+    if(S.turb > 0.02){
+      const wr  = bed.w/2.6;
+      const k   = Math.floor(Math.random()*STRANDS);
+      const sgn = Math.random() < 0.5 ? -1 : 1;
+      const amp = sgn * 1.5 * S.turb * (0.6+Math.random()*0.8) * (0.5+0.5*S.current) * wr;
+      const dur = (0.30 + Math.random()*0.30) / Math.max(0.55, wr);
+      for(let o=-1;o<=1;o++){
+        const j = k+o;
+        if(j<0 || j>=STRANDS) continue;
+        strands[j].eddyAmp = amp*(o===0 ? 1 : 0.4);
+        strands[j].eddyDur = dur;
+        strands[j].eddyT   = -Math.abs(o)*0.18;
+      }
+    }
+  }
+
   for(const st of strands){
-    // what the water is doing at this strand: a slow sway, a slower swell,
-    // and a bit of chop that only shows up once turbulence is well up
+    // what the water is doing at this strand: a slow sway plus a slower swell.
+    // discrete eddies are handled separately, below — they are momentum, not drive.
     const sway  = Math.sin(simTime*(Math.PI*2/st.period) + st.phase);
     const swell = noise(simTime*0.9, st.i*3.1) * S.turb;
-    const chop  = Math.sin(simTime*(2.2 + st.i*0.31) + st.phase*1.7) * S.turb*S.turb * 0.85;
-    const raw   = (sway + swell*0.7 + chop) * flow * 0.075;
+    const raw   = (sway + swell*0.5) * flow * 0.024;
     // water has mass: the drive eases in rather than snapping
     st.drive += (raw - st.drive) * 0.11;
+
+    // an eddy passing through: momentum delivered over ~half a second, weighted
+    // to the upper strand. This is what makes TURBULENCE add beats — a bias on the
+    // drive just merges into the sway, but momentum forces an extra reversal.
+    let ei = 0;
+    if(st.eddyT < 0){ st.eddyT += dt; }
+    else if(st.eddyT < st.eddyDur){
+      ei = st.eddyAmp * Math.sin(Math.PI*st.eddyT/st.eddyDur);
+      st.eddyT += dt;
+    }
 
     // damped spring chain. each segment wants to lie along its parent and to
     // lean with the current; w is its bending frequency, z its damping ratio.
@@ -512,7 +551,8 @@ function step(dt){
     for(let s=0;s<SEGS;s++){
       const lead   = 0.25 + 0.75*(s/(SEGS-1));
       const target = st.drive*lead*0.6 + prev*0.4;
-      const acc    = bed.w*bed.w*(target - st.ang[s]) - 2*bed.z*bed.w*st.vel[s];
+      let acc      = bed.w*bed.w*(target - st.ang[s]) - 2*bed.z*bed.w*st.vel[s];
+      if(ei) acc += ei*Math.pow(s/(SEGS-1), 1.5);
       st.vel[s] += acc*dt;
       let a = st.ang[s] + st.vel[s]*dt;
       if(a >  AMAX){ a =  AMAX; st.vel[s] *= -0.2; }
@@ -531,7 +571,7 @@ function step(dt){
       // Smooth water gives every reversal nearly the same peak, so an amplitude
       // threshold here goes binary. DENSITY is a probability instead: how many
       // of the water's own beats get taken. Harder sways are likelier and louder.
-      const strength = Math.min(1, st.peak/0.16);
+      const strength = Math.min(1, st.peak/0.13);
       const p = S.density * (0.35 + 0.65*strength);
       if(st.peak > 0.004 && st.cooldown <= 0 && S.running && Math.random() < p){
         scheduleCascade(st, strength);
@@ -564,7 +604,7 @@ let PX = 4, W = 0, H = 0;
 const motes = [];
 function seedMotes(){
   motes.length=0;
-  for(let i=0;i<120;i++){
+  for(let i=0;i<90;i++){
     motes.push({x:Math.random()*W, y:Math.random()*H, s:0.15+Math.random()*0.55, d:Math.random()});
   }
 }
@@ -621,28 +661,73 @@ function drawMotes(dt){
   }
 }
 
+/* The rest of the forest. These strands don't play — they recede. Cheap shared
+   sine bend rather than a spring chain each, so the whole rank costs little. */
+const RANKS = [
+  {n:12, deep:PAL.far, tip:PAL.farTip, lenK:0.80, seed:0.0},
+  {n:9,  deep:PAL.mid, tip:PAL.midTip, lenK:0.93, seed:1.7}
+];
+function drawForest(bedY, surfY, baseSegLen){
+  for(const r of RANKS){
+    const segLen = baseSegLen*r.lenK;
+    const steps  = Math.max(2, Math.ceil(segLen/2.0));
+    for(let i=0;i<r.n;i++){
+      const seed = i*12.9898 + r.seed*7.1;
+      const bx   = ((i+0.5)/r.n)*W + Math.sin(seed)*5;
+      const ph   = (seed*0.61)%6.283;
+      const per  = 3.2 + ((seed*0.37)%3.4);
+      const lean = Math.sin(simTime*(Math.PI*2/per)+ph) * (0.004+S.current*0.020)
+                 + Math.sin(simTime*0.23+ph) * 0.004 * S.turb;
+      let x=bx, y=bedY, a=0, laid=false, layDir=1;
+      for(let s=0;s<SEGS;s++){
+        a += lean*(0.25 + 0.75*(s/(SEGS-1)));
+        if(!laid && y <= surfY + segLen*0.5){ laid = true; layDir = a>=0 ? 1 : -1; }
+        const ea = laid ? layDir*(Math.PI/2) + a*0.30 : a;
+        const nx = x + Math.sin(ea)*segLen;
+        let   ny = y - Math.cos(ea)*segLen;
+        if(ny < surfY-3) ny = surfY-3;
+        const col = (s/(SEGS-1)) > 0.55 ? r.tip : r.deep;
+        for(let k=0;k<=steps;k++){
+          const t=k/steps;
+          px(x+(nx-x)*t, y+(ny-y)*t, 1, 1, col);
+        }
+        x=nx; y=ny;
+      }
+    }
+  }
+}
+
 function drawKelp(){
-  const bedY = H-4;
-  const gap = W/(STRANDS+1);
-  const segLen = Math.max(3, Math.floor((H*0.78)/SEGS));
+  const bedY  = H-4;
+  const surfY = 6;                                   // the canopy line
+  const gap   = W/(STRANDS+1);
+  // 15% longer than the water is deep, so a surplus always floats at the top
+  const segLen = Math.max(2.2, ((bedY-surfY)*1.15)/SEGS);
+
+  drawForest(bedY, surfY, segLen);
 
   for(const st of strands){
     let x = gap*(st.i+1);
     let y = bedY;
     let a = 0;
+    let laid = false, layDir = 1;
     // holdfast
     px(x-1, y-1, 3, 2, PAL.holdfast);
 
     for(let s=0;s<SEGS;s++){
       a += st.ang[s];
-      const nx = x + Math.sin(a)*segLen;
-      const ny = y - Math.cos(a)*segLen;
+      // a stipe cannot grow past the surface — it lays over and floats
+      if(!laid && y <= surfY + segLen*0.5){ laid = true; layDir = a>=0 ? 1 : -1; }
+      const ea = laid ? layDir*(Math.PI/2) + a*0.30 : a;
+      const nx = x + Math.sin(ea)*segLen;
+      let   ny = y - Math.cos(ea)*segLen;
+      if(ny < surfY-3) ny = surfY-3;
 
       const depth = s/(SEGS-1);
       let col = depth < 0.34 ? PAL.holdfast : (depth < 0.72 ? "#1f6a67" : PAL.blade);
       if(st.flash > 0){
         const reach = 1 - Math.abs(depth - (1 - st.flash));
-        if(reach > 0.80) col = st.flash > 0.55 ? PAL.bloom : PAL.ring;
+        if(reach > 0.88) col = st.flash > 0.55 ? PAL.bloom : PAL.ring;
       }
 
       // stipe: a walked line of pixels, thickness tapering
@@ -656,8 +741,8 @@ function drawKelp(){
       }
 
       // blades every other node
-      if(s>1 && s%2===0){
-        const side = (s%4===0)? 1 : -1;
+      if(s>2 && s%3===0){
+        const side = (s%6===0)? 1 : -1;
         const bl = 2 + Math.round((1-depth)*2);
         for(let k=1;k<=bl;k++){
           px(nx + side*k, ny + Math.round(k*0.6), 1, 1, col);
@@ -771,7 +856,7 @@ document.getElementById("btnGust").addEventListener("click", ()=>{
   }
 });
 document.getElementById("btnStill").addEventListener("click", ()=>{
-  for(const st of strands){ st.vel.fill(0); st.ang.fill(0); st.peak=0; st.drive=0; }
+  for(const st of strands){ st.vel.fill(0); st.ang.fill(0); st.peak=0; st.drive=0; st.eddyT=9; }
 });
 
 const reading = document.getElementById("reading");
