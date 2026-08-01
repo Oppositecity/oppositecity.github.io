@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Syllababbler</title>
+<meta name="description" content="A morphophonemic engine. Builds words out of Greek and Latin morphemes, and takes them apart again.">
+<meta name="theme-color" content="#151a24">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h1 class="mast" id="mast">syllababbler</h1>
+<p class="sub" id="selfparse"></p>
+
+<nav id="tabs" role="tablist">
+  <button role="tab" data-mode="compress" aria-selected="true">compress</button>
+  <button role="tab" data-mode="name" aria-selected="false">name</button>
+  <button role="tab" data-mode="decode" aria-selected="false">decode</button>
+  <button role="tab" data-mode="discover" aria-selected="false">discover</button>
+</nav>
+
+<p class="desc" id="desc"></p>
+<div id="inputArea"></div>
+<div class="out" id="out" aria-live="polite"></div>
+
+<section class="kept" id="keptWrap" hidden>
+  <h2>kept</h2>
+  <div id="kept"></div>
+</section>
+
+<footer id="counts"></footer>
+
+<script src="morphemes.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

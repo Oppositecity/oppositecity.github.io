@@ -1,0 +1,88 @@
+/* ------------------------------------------------------------
+   Morphemes are strata. The page stains them the way a slide is
+   stained: Greek one colour, Latin another, and whatever the stain
+   does not take is residue.
+   ------------------------------------------------------------ */
+:root{
+  --ground:#151a24;
+  --raised:#1d2432;
+  --text:#e4e8f2;
+  --dim:#8b95ad;
+  --gk:#93a4ff;   /* hematoxylin */
+  --la:#ff9ab0;   /* eosin */
+  --none:#f6f8fd; /* unstained */
+  --pad:clamp(20px,5vw,60px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ground);color:var(--text);
+  font-family:'Courier Prime','Courier New',Courier,monospace;
+  font-size:16px;line-height:1.65;
+  -webkit-text-size-adjust:100%;
+  padding:var(--pad) var(--pad) 22vh;
+  max-width:760px;margin:0 auto;
+}
+::selection{background:var(--gk);color:var(--ground)}
+
+/* masthead ------------------------------------------------- */
+.mast{font-size:clamp(26px,8.5vw,44px);letter-spacing:.02em;margin:0 0 .2em;font-weight:700}
+.sub{color:var(--dim);font-size:14px;margin:0 0 3.4em;max-width:44ch}
+.gk{color:var(--gk)} .la{color:var(--la)} .un{color:var(--dim)}
+
+/* modes ---------------------------------------------------- */
+nav{display:flex;flex-wrap:wrap;gap:1.4em;margin-bottom:2em}
+nav button{
+  background:none;border:0;padding:0;margin:0;cursor:pointer;
+  font:inherit;font-size:16px;color:var(--dim);
+}
+nav button[aria-selected="true"]{color:var(--none);font-weight:700}
+nav button:focus-visible,.go:focus-visible,textarea:focus-visible,input:focus-visible{
+  outline:2px solid var(--gk);outline-offset:3px
+}
+.desc{color:var(--dim);font-size:14px;margin:0 0 2em;max-width:52ch;min-height:3.4em}
+
+/* input ---------------------------------------------------- */
+textarea,input[type=text]{
+  width:100%;background:var(--raised);color:var(--text);
+  border:0;border-radius:2px;padding:.9em 1em;
+  font:inherit;font-size:16px;resize:vertical;
+}
+textarea{min-height:5.2em}
+textarea::placeholder,input::placeholder{color:var(--dim)}
+.go{
+  background:none;border:0;padding:.2em 0;margin:1.1em 0 0;
+  font:inherit;font-size:16px;font-weight:700;color:var(--none);cursor:pointer;
+}
+.go:hover{color:var(--gk)}
+.hint{color:var(--dim);font-size:13px;margin:.9em 0 0}
+
+/* output --------------------------------------------------- */
+.out{margin-top:3.4em}
+.word{
+  font-size:clamp(30px,10vw,58px);font-weight:700;
+  letter-spacing:-.01em;line-height:1.15;word-break:break-word;margin:0 0 .5em;
+}
+.word span{opacity:0;animation:in .5s ease forwards}
+@keyframes in{to{opacity:1}}
+.def{font-size:17px;max-width:46ch;margin:0 0 2.2em}
+.parts{margin:0 0 2em}
+.part{display:flex;gap:1em;font-size:14px;padding:.18em 0;flex-wrap:wrap}
+.part b{font-weight:700;min-width:7.5em}
+.part i{font-style:normal;color:var(--text)}
+.part em{font-style:normal;color:var(--dim);margin-left:auto}
+.meta{color:var(--dim);font-size:13px;margin:0 0 2em}
+.cand{padding:.55em 0;cursor:pointer}
+.cand .n{font-size:clamp(19px,5.4vw,26px);font-weight:700;line-height:1.25;word-break:break-word}
+.cand .g{color:var(--dim);font-size:13px}
+.cand:hover .g{color:var(--text)}
+.kept{margin-top:4em}
+.kept h2{font-size:14px;font-weight:400;color:var(--dim);margin:0 0 1em;letter-spacing:.16em;text-transform:uppercase}
+.kept .row{font-size:15px;padding:.3em 0}
+.kept .row span{color:var(--dim);font-size:13px}
+.drop{background:none;border:0;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:0 0 0 .8em}
+.drop:hover{color:var(--la)}
+footer{color:var(--dim);font-size:13px;margin-top:5em}
+@media (prefers-reduced-motion:reduce){
+  .word span{animation:none;opacity:1}
+}
