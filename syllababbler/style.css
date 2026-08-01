@@ -7,7 +7,7 @@
   --ground:#151a24;
   --raised:#1d2432;
   --text:#e4e8f2;
-  --dim:#8b95ad;
+  --dim:#c3cce0;   /* secondary text — 10.8:1 on ground */
   --gk:#93a4ff;   /* hematoxylin */
   --la:#ff9ab0;   /* eosin */
   --none:#f6f8fd; /* unstained */
