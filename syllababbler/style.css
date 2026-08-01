@@ -1,11 +1,12 @@
 /* ------------------------------------------------------------
-   Two things to show at once. HUE carries the stratum — slate for
-   Greek, sage for Latin — and the two are near identical in
-   luminance so neither looks emphasized. SHADE carries the
-   boundary: consecutive morphemes from the same stratum alternate
-   between two depths of the same hue, so a run of three Greek roots
-   still reads as three. Grey is what the parse could not account
-   for.
+   Plain white by default. The colour encoding is a thing you turn
+   on, not a thing you have to decode on arrival — .stained on the
+   body is the only switch. When it is on, HUE carries the stratum
+   (slate Greek, sage Latin, near identical in luminance so neither
+   looks emphasized) and SHADE carries the boundary: a morpheme
+   takes the darker depth of its own hue only when the one before it
+   shared its stratum, so a run of three Greek roots still reads as
+   three.
    ------------------------------------------------------------ */
 :root{
   --ground:#14171a;
@@ -29,15 +30,26 @@ body{
   -webkit-text-size-adjust:100%;
   padding:var(--pad) var(--pad) 22vh;
   max-width:760px;margin:0 auto;
+  container-type:inline-size;
 }
 ::selection{background:var(--gk);color:var(--ground)}
 
 /* masthead ------------------------------------------------- */
-.mast{font-size:clamp(26px,8.5vw,44px);letter-spacing:.02em;margin:0 0 .2em;font-weight:700}
-.sub{color:var(--dim);font-size:14px;margin:0 0 3.4em;max-width:46ch}
-.gk{color:var(--gk)} .gk2{color:var(--gk2)}
-.la{color:var(--la)} .la2{color:var(--la2)}
-.un{color:var(--residue)}
+.mast{font-size:clamp(26px,8.5vw,44px);letter-spacing:0;margin:0 0 .35em;font-weight:700;white-space:nowrap;line-height:1}
+/* twelve monospace characters at 0.6em advance = 7.2em, so this fills
+   the column exactly before the JS measurement refines it */
+@supports (font-size:1cqi){ .mast{font-size:calc(100cqi / 7.2)} }
+.sub{color:var(--dim);font-size:14px;margin:0 0 .9em;max-width:46ch}
+/* colour is opt-in — off, every morpheme is plain text */
+.stained .gk{color:var(--gk)} .stained .gk2{color:var(--gk2)}
+.stained .la{color:var(--la)} .stained .la2{color:var(--la2)}
+.stained .un{color:var(--residue)}
+.stainToggle{
+  background:none;border:0;padding:0;margin:0 0 3.2em;display:block;
+  font:inherit;font-size:13px;color:var(--dim);cursor:pointer;text-align:left;
+}
+.stainToggle:hover{color:var(--none)}
+.stainToggle:focus-visible{outline:2px solid var(--gk);outline-offset:3px}
 
 /* modes ---------------------------------------------------- */
 nav{display:flex;flex-wrap:wrap;gap:1.4em;margin-bottom:2em}
@@ -57,8 +69,6 @@ textarea,input[type=text]{
   border:0;border-radius:2px;padding:.9em 1em;
   font:inherit;font-size:16px;resize:vertical;
 }
-textarea{min-height:5.2em}
-textarea::placeholder,input::placeholder{color:var(--dim)}
 .fieldlabel{color:var(--dim);font-size:13px;margin:0 0 .5em;letter-spacing:.1em;text-transform:uppercase}
 .example{
   background:none;border:0;padding:0;margin:.9em 0 0;display:block;
@@ -66,6 +76,8 @@ textarea::placeholder,input::placeholder{color:var(--dim)}
 }
 .example:hover{color:var(--none)}
 .example:focus-visible{outline:2px solid var(--gk);outline-offset:3px}
+textarea{min-height:5.2em}
+textarea::placeholder,input::placeholder{color:var(--dim)}
 .go{
   background:none;border:0;padding:.2em 0;margin:1.1em 0 0;display:block;
   font:inherit;font-size:16px;font-weight:700;color:var(--none);cursor:pointer;
