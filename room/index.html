@@ -240,16 +240,39 @@ function inflect(w, tag){
   }
 }
 
+let throttled = 0;
+const nap = ms => new Promise(r => setTimeout(r, ms));
+
+// One request, with the difference between "no answer" and "refused"
+// preserved. Datamuse throttles bursts; a 429 is the room being busy,
+// not the room being empty, and must never be cached as a result.
+async function ask(url){
+  for(let tryN = 0; tryN < 3; tryN++){
+    if(throttled > Date.now()) await nap(throttled - Date.now());
+    try{
+      const r = await fetch(url);
+      if(r.ok){ heard++; return await r.json(); }
+      if(r.status === 429 || r.status >= 500){
+        throttled = Date.now() + 900 * (tryN + 1);
+        continue;
+      }
+      return null;
+    }catch(e){
+      silence++;
+      if(heard === 0 && silence >= 3){ offline = true; return null; }
+      await nap(400 * (tryN + 1));
+    }
+  }
+  return null;
+}
+
 async function probe(word, param){
   const key = param+':'+word.toLowerCase();
   if(cache.has(key)) return cache.get(key);
-  let data = [];
-  try{
-    const r = await fetch('https://api.datamuse.com/words?'+param+'='+encodeURIComponent(word)+'&md=sp&max=60');
-    if(r.ok){ data = await r.json(); heard++; }
-  }catch(e){ silence++; if(heard === 0 && silence >= 3) offline = true; }
+  const data = await ask('https://api.datamuse.com/words?'+param+'='+encodeURIComponent(word)+'&md=sp&max=60');
+  if(data === null) return null;          // refused — do not cache
   const clean = (Array.isArray(data)?data:[])
-    .filter(d => typeof d.word==='string' && /^[a-z][a-z']*$/i.test(d.word))
+    .filter(d => typeof d.word==='string' && /^[a-z][a-z\']*$/i.test(d.word))
     .map(d => ({ w:d.word, p:(d.tags||[]).filter(t => POS.has(t)) }));
   cache.set(key, clean);
   return clean;
@@ -259,14 +282,10 @@ async function probe(word, param){
 async function posOf(word){
   const k = word.toLowerCase();
   if(posCache.has(k)) return posCache.get(k);
-  let tags = [];
-  try{
-    const r = await fetch('https://api.datamuse.com/words?sp='+encodeURIComponent(k)+'&md=p&max=1');
-    if(r.ok){
-      const d = await r.json();
-      if(d[0] && d[0].word.toLowerCase() === k) tags = (d[0].tags||[]).filter(t => POS.has(t));
-    }
-  }catch(e){}
+  const d = await ask('https://api.datamuse.com/words?sp='+encodeURIComponent(k)+'&md=p&max=1');
+  if(d === null) return [];               // unknown, not "no part of speech"
+  const tags = (d[0] && d[0].word.toLowerCase() === k)
+    ? (d[0].tags||[]).filter(t => POS.has(t)) : [];
   posCache.set(k, tags);
   return tags;
 }
@@ -279,6 +298,7 @@ async function reply(tok, room, rnd, used){
     const mine = await posOf(tok.v);
     for(const param of ROOMS[room].probes){
       const list = await probe(tok.v, param);
+      if(list === null) return null;      // the room is busy; do not pretend
       if(!list.length) continue;
       const shaped = list.map(c => {
         const f = inflect(c.w, tag);
@@ -292,7 +312,8 @@ async function reply(tok, room, rnd, used){
           !used.has(c.w.toLowerCase()) &&
           c.w.toLowerCase() !== tok.v.toLowerCase());
         if(cands.length){
-          const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.6) * cands.length));
+          const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.15) * cands.length));
+          used.add(cands[i].w.toLowerCase());   // claim it now, not after the await
           return cands[i].w;
         }
       }
@@ -315,7 +336,7 @@ async function playBack(tokens, room, rnd){
   const used = new Set(next.filter(t => t.k==='w').map(t => t.v.toLowerCase()));
   // the same word answers the same way — repetition is what reinforces
   const memo = new Map();
-  await pool(live, 6, async t => {
+  await pool(live, 3, async t => {
     const key = t.v.toLowerCase();
     if(!memo.has(key)) memo.set(key, reply(t, room, rnd, used));
     const r = await memo.get(key);
@@ -367,7 +388,10 @@ function erode(tokens, pass, rnd){
 // Each pass is still generated once and only once, in order. Scrolling
 // back only replays what the room already did; it cannot undo it.
 function fresh(text){
-  const seed = (Date.now() ^ text.length*2654435761) >>> 0;
+  let seed = (Date.now() ^ text.length*2654435761) >>> 0;
+  if(self.crypto && crypto.getRandomValues){
+    seed = (seed ^ crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
+  }
   return {
     text,
     states: [tokenize(text)],
@@ -392,6 +416,7 @@ function say(msg, latch){
 function prepare(){
   if(!S || S.pending || S.top >= PASSES) return;
   const from = S.states[S.top], room = S.room, at = S.top + 1;
+  const before = S.rendered[S.top];
   const job = playBack(from, room, S.rnd).then(tokens => ({
     tokens, text: erode(tokens, at, S.rnd), at
   }));
@@ -400,10 +425,19 @@ function prepare(){
     if(S.pending !== job) return;
     S.pending = null;
     if(r.at !== S.top + 1) return;
+
+    if(offline){ say('no connection — the room cannot answer', true); return; }
+
+    // Nothing moved. Say so rather than committing the same text twice.
+    if(r.text === before){
+      S.stalls = (S.stalls || 0) + 1;
+      say(S.stalls > 2 ? 'the room has stopped answering' : 'the room did not answer — scroll again');
+      return;
+    }
+    S.stalls = 0;
     S.states[r.at] = r.tokens;
     S.rendered[r.at] = r.text;
     S.top = r.at;
-    if(offline && !S.warned){ S.warned = true; say('no connection — the room cannot answer', true); }
     render();
   }, () => { if(S.pending === job) S.pending = null; });
 }
