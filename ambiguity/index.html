@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ambiguator</title>
+<meta name="description" content="Every formula is a sentence in several languages at once.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070b; --fg:#ffffff; --dim:#d4d4de; --dimmer:#9c9caa; --fill:#16161f;
+  --math:#8bdcff; --physics:#c4b2ff; --chemistry:#63eba7; --music:#ff8ec2;
+  --biology:#4ae7dd; --statistics:#e2f766; --economics:#ffa070;
+  --logic:#dde3ee; --linguistics:#ff828c; --unmapped:#adadba;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{
+  font-family:'Courier Prime','Courier New',Courier,monospace;
+  font-size:17px;line-height:1.62;
+  padding:2.5rem 1.25rem 6rem;
+  max-width:46rem;margin:0 auto;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+
+.eyebrow{font-size:.78rem;letter-spacing:.4em;text-transform:uppercase;color:var(--fg)}
+.lede{color:#ebebf2;font-size:1rem;margin:.9rem 0 2.75rem;max-width:32rem}
+
+/* input */
+.entry{position:relative;margin-bottom:.35rem}
+#eq{
+  width:100%;background:var(--fill);color:var(--fg);border:0;
+  font-family:inherit;font-size:clamp(1.5rem,8vw,2.25rem);font-weight:700;
+  padding:1rem 1rem;letter-spacing:.02em;
+}
+#eq::placeholder{color:var(--dim)}
+.keys{display:flex;flex-wrap:wrap;gap:.1rem;margin:.35rem 0 1.25rem}
+.keys button{
+  background:var(--fill);color:var(--dim);
+  min-width:2.2rem;height:2.2rem;font-size:1rem;
+}
+.keys button:hover,.keys button:active{color:var(--fg)}
+
+.stat{font-size:.85rem;color:var(--dim);letter-spacing:.06em;margin-bottom:1.5rem}
+.stat b{color:var(--fg);font-weight:700}
+
+.presets{display:flex;flex-wrap:wrap;gap:.35rem 1.1rem;margin-bottom:3.5rem;font-size:.85rem}
+.presets button{color:var(--dim)}
+.presets button:hover{color:var(--fg)}
+
+/* cast */
+.cast-row{display:flex;align-items:baseline;gap:1.25rem;margin-bottom:1.25rem}
+#cast{font-size:.78rem;letter-spacing:.42em;text-transform:uppercase;color:var(--fg)}
+#cast:hover{color:var(--music)}
+.cast-index{font-size:.78rem;letter-spacing:.16em;color:var(--dimmer)}
+
+#reading{
+  font-size:clamp(1.45rem,6.4vw,2.1rem);line-height:1.4;font-weight:700;
+  letter-spacing:-.01em;margin-bottom:1.5rem;min-height:2.8em;
+}
+#reading span{transition:color .12s linear}
+#reading .op{color:var(--dim);font-weight:400}
+.mapping{display:flex;flex-wrap:wrap;gap:.2rem 1.5rem;font-size:.85rem;color:var(--dim);margin-bottom:4.5rem}
+.mapping i{font-style:normal;color:var(--fg);font-weight:700;margin-right:.5rem}
+
+/* controls */
+.label{font-size:.76rem;letter-spacing:.4em;text-transform:uppercase;color:var(--fg);margin-bottom:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:.35rem 1.1rem;font-size:.88rem;margin-bottom:1rem}
+.controls button{color:var(--dimmer)}
+.controls button[aria-pressed="true"]{color:var(--fg)}
+.doms{display:flex;flex-wrap:wrap;gap:.35rem 1.1rem;font-size:.84rem;margin-bottom:2.25rem}
+.doms button{color:var(--dimmer)}
+.doms button[aria-pressed="true"]{color:var(--c)}
+
+/* list */
+.item{display:block;width:100%;text-align:left;padding:.6rem 0;font-size:1.02rem;line-height:1.5}
+.item:hover{background:var(--fill)}
+.item .n{color:var(--dimmer);font-size:.78rem;margin-right:.75rem}
+.item .op{color:var(--dim)}
+.item.copied .n{color:var(--music)}
+#more{color:var(--dim);font-size:.82rem;letter-spacing:.2em;text-transform:uppercase;margin-top:2rem}
+#more:hover{color:var(--fg)}
+.empty{color:var(--dim);font-size:.9rem}
+
+/* dictionary */
+#dictwrap{margin-top:5rem}
+#dicttoggle{font-size:.76rem;letter-spacing:.4em;text-transform:uppercase;color:var(--fg)}
+#dicttoggle:hover{color:var(--fg)}
+#dict{margin-top:1.75rem}
+.entry-row{margin-bottom:1.1rem;font-size:.9rem;line-height:1.7}
+.entry-row .ch{font-size:1.25rem;font-weight:700;margin-right:1rem;vertical-align:baseline}
+.entry-row .m{color:var(--c);margin-right:1.1rem;white-space:nowrap}
+.foot{margin-top:5rem;font-size:.78rem;color:var(--dim);letter-spacing:.1em}
+@media (prefers-reduced-motion:reduce){#reading span{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="eyebrow">ambiguator</div>
+<p class="lede">Every formula is a sentence in several languages at once. The letters don't know which field they're in. Type one and read them all.</p>
+
+<div class="entry">
+  <input id="eq" value="E = mc²" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="formula">
+</div>
+<div class="keys" id="keys"></div>
+
+<div class="stat" id="stat"></div>
+
+<div class="presets" id="presets"></div>
+
+<div class="cast-row">
+  <button id="cast">cast a reading</button>
+  <span class="cast-index" id="castidx"></span>
+</div>
+<div id="reading"></div>
+<div class="mapping" id="mapping"></div>
+
+<div class="label">every reading</div>
+<div class="controls" id="sorts"></div>
+<div class="doms" id="doms"></div>
+<div id="list"></div>
+<button id="more" hidden>show more</button>
+
+<div id="dictwrap">
+  <button id="dicttoggle" aria-expanded="false">the dictionary</button>
+  <div id="dict" hidden></div>
+</div>
+
+<div class="foot">click any reading to copy it</div>
+
+<script>
+/* ============ symbol table ============ */
+const SYM = {
+  a:[["acceleration","physics"],["the note A","music"],["a coefficient","math"],["the semi-major axis","physics"],["chemical activity","chemistry"],["the low vowel","linguistics"]],
+  A:[["area","math"],["the ampere","physics"],["the note A","music"],["adenine","biology"],["absorbance","chemistry"],["aggregate supply","economics"],["the mass number","chemistry"]],
+  b:[["the note B","music"],["the y-intercept","math"],["breadth","math"],["the flat sign","music"],["a regression coefficient","statistics"],["the voiced stop","linguistics"]],
+  B:[["the magnetic field","physics"],["boron","chemistry"],["the note B","music"],["a basis","math"],["the budget","economics"]],
+  c:[["the speed of light","physics"],["carbon","chemistry"],["concentration","chemistry"],["the note C","music"],["common time","music"],["a constant","math"],["circumference","math"],["specific heat","physics"],["consumption","economics"],["the complex numbers","math"]],
+  C:[["capacitance","physics"],["carbon","chemistry"],["the note C","music"],["the number of combinations","math"],["cytosine","biology"],["degrees Celsius","physics"],["cost","economics"],["heat capacity","chemistry"]],
+  d:[["distance","physics"],["a differential","math"],["the note D","music"],["diameter","math"],["the dominant allele","biology"],["the alveolar stop","linguistics"]],
+  D:[["the diffusion coefficient","chemistry"],["the note D","music"],["demand","economics"],["the dominant","music"],["a domain","math"],["displacement","physics"]],
+  e:[["Euler's number","math"],["the elementary charge","physics"],["the electron","physics"],["the error term","statistics"],["the note E","music"],["eccentricity","math"],["the mid vowel","linguistics"]],
+  E:[["energy","physics"],["the electric field","physics"],["the note E","music"],["the expected value","statistics"],["activation energy","chemistry"],["elasticity","economics"],["Young's modulus","physics"]],
+  f:[["frequency","physics"],["a function","math"],["forte","music"],["focal length","physics"],["the note F","music"],["the F-statistic","statistics"],["the voiceless fricative","linguistics"]],
+  F:[["force","physics"],["fluorine","chemistry"],["the note F","music"],["the Faraday constant","chemistry"],["forte","music"],["the F-statistic","statistics"],["a filial generation","biology"]],
+  g:[["gravitational acceleration","physics"],["the gram","physics"],["the note G","music"],["guanine","biology"],["a group element","math"],["the voiced velar","linguistics"]],
+  G:[["the gravitational constant","physics"],["Gibbs free energy","chemistry"],["the note G","music"],["guanine","biology"],["a group","math"],["government spending","economics"],["conductance","physics"]],
+  h:[["Planck's constant","physics"],["height","math"],["the hour","physics"],["the aspirate","linguistics"],["a step size","math"]],
+  H:[["hydrogen","chemistry"],["enthalpy","chemistry"],["the Hamiltonian","physics"],["entropy","statistics"],["magnetic field strength","physics"],["the head of a phrase","linguistics"]],
+  i:[["the imaginary unit","math"],["an index","math"],["current","physics"],["investment","economics"],["the high front vowel","linguistics"]],
+  I:[["current","physics"],["the moment of inertia","physics"],["iodine","chemistry"],["intensity","physics"],["the identity matrix","math"],["investment","economics"],["the tonic chord","music"]],
+  j:[["the imaginary unit","physics"],["an index","math"],["current density","physics"],["the palatal glide","linguistics"]],
+  k:[["Boltzmann's constant","physics"],["a rate constant","chemistry"],["the spring constant","physics"],["a coefficient","math"],["potassium","chemistry"],["the wavenumber","physics"],["capital","economics"]],
+  K:[["potassium","chemistry"],["the kelvin","physics"],["the equilibrium constant","chemistry"],["kinetic energy","physics"],["a field","math"],["capital","economics"],["the key","music"]],
+  l:[["length","math"],["the liter","chemistry"],["the orbital quantum number","physics"],["the lateral consonant","linguistics"],["legato","music"]],
+  L:[["length","math"],["angular momentum","physics"],["inductance","physics"],["the Lagrangian","physics"],["labor","economics"],["the likelihood","statistics"]],
+  m:[["mass","physics"],["meters","physics"],["minor","music"],["mezzo","music"],["the slope","math"],["molarity","chemistry"],["the money supply","economics"],["the bilabial nasal","linguistics"]],
+  M:[["molarity","chemistry"],["magnification","physics"],["the mediant","music"],["a matrix","math"],["mega","physics"],["the money supply","economics"],["the Mach number","physics"]],
+  n:[["moles","chemistry"],["a variable","math"],["the neutron","physics"],["the refractive index","physics"],["the sample size","statistics"],["the principal quantum number","physics"],["the nasal","linguistics"]],
+  N:[["the newton","physics"],["nitrogen","chemistry"],["the population size","statistics"],["the natural numbers","math"],["Avogadro's number","chemistry"],["the natural sign","music"],["the normal force","physics"]],
+  o:[["the origin","math"],["little-o","math"],["the mid back vowel","linguistics"],["oxygen","chemistry"]],
+  O:[["oxygen","chemistry"],["the origin","math"],["big-O","math"],["the diminished chord","music"],["the observed value","statistics"]],
+  p:[["pressure","physics"],["momentum","physics"],["probability","statistics"],["piano","music"],["the p-value","statistics"],["price","economics"],["the bilabial stop","linguistics"],["a prime","math"]],
+  P:[["pressure","physics"],["power","physics"],["phosphorus","chemistry"],["probability","statistics"],["the number of permutations","math"],["price","economics"],["the parent generation","biology"]],
+  q:[["charge","physics"],["heat","physics"],["quantity","economics"],["a quotient","math"],["the allele frequency","biology"]],
+  Q:[["charge","physics"],["heat","chemistry"],["the quality factor","physics"],["the rationals","math"],["quantity supplied","economics"]],
+  r:[["the radius","math"],["distance","physics"],["the correlation coefficient","statistics"],["the interest rate","economics"],["a rest","music"],["the rhotic","linguistics"]],
+  R:[["resistance","physics"],["the gas constant","chemistry"],["the real numbers","math"],["revenue","economics"],["a ring","math"],["the recessive allele","biology"],["the coefficient of determination","statistics"]],
+  s:[["seconds","physics"],["displacement","physics"],["the standard deviation","statistics"],["the sibilant","linguistics"],["a scale degree","music"]],
+  S:[["entropy","chemistry"],["sulfur","chemistry"],["surface area","math"],["supply","economics"],["the subdominant","music"],["the sample space","statistics"],["spin","physics"]],
+  t:[["time","physics"],["the t-statistic","statistics"],["a variable","math"],["the alveolar stop","linguistics"],["a tone","music"]],
+  T:[["temperature","physics"],["the period","physics"],["the tenor","music"],["the tesla","physics"],["thymine","biology"],["the tonic","music"],["the transpose","math"],["taxes","economics"]],
+  u:[["velocity","physics"],["a unit vector","math"],["the high back vowel","linguistics"],["utility","economics"]],
+  U:[["internal energy","physics"],["potential energy","physics"],["uranium","chemistry"],["utility","economics"],["the union","math"],["uracil","biology"]],
+  v:[["velocity","physics"],["volume","chemistry"],["a vector","math"],["vibrato","music"],["the labiodental fricative","linguistics"]],
+  V:[["voltage","physics"],["volume","chemistry"],["the volt","physics"],["vanadium","chemistry"],["variance","statistics"],["a vector space","math"],["velocity","physics"]],
+  w:[["width","math"],["work","physics"],["a weight","statistics"],["the labial glide","linguistics"],["the wage","economics"]],
+  W:[["work","physics"],["the watt","physics"],["tungsten","chemistry"],["wealth","economics"],["the whole note","music"]],
+  x:[["an unknown","math"],["position","physics"],["the horizontal axis","math"],["a variable","statistics"],["the mole fraction","chemistry"]],
+  X:[["an unknown","math"],["a random variable","statistics"],["the X chromosome","biology"],["a halogen","chemistry"]],
+  y:[["the dependent variable","math"],["the vertical axis","math"],["the palatal glide","linguistics"],["yield","economics"]],
+  Y:[["yttrium","chemistry"],["the Y chromosome","biology"],["output","economics"],["a random variable","statistics"]],
+  z:[["the z-score","statistics"],["the vertical axis","math"],["depth","physics"],["the voiced sibilant","linguistics"]],
+  Z:[["the atomic number","chemistry"],["impedance","physics"],["the integers","math"],["the partition function","physics"],["the z-score","statistics"]],
+  "π":[["pi","math"],["the pion","physics"],["profit","economics"],["a projection","math"],["a permutation","math"],["a pi bond","chemistry"]],
+  "σ":[["the standard deviation","statistics"],["stress","physics"],["a sigma bond","chemistry"],["conductivity","physics"],["the Stefan-Boltzmann constant","physics"],["a permutation","math"]],
+  "μ":[["the mean","statistics"],["micro","physics"],["the coefficient of friction","physics"],["the muon","physics"],["chemical potential","chemistry"],["a measure","math"]],
+  "λ":[["the wavelength","physics"],["an eigenvalue","math"],["the decay constant","physics"],["the Lagrange multiplier","math"],["the arrival rate","statistics"],["an abstraction","logic"]],
+  "θ":[["an angle","math"],["temperature","physics"],["a parameter","statistics"],["the phase","physics"]],
+  "ω":[["angular frequency","physics"],["an outcome","statistics"],["the first infinite ordinal","math"],["a root of unity","math"]],
+  "ρ":[["density","physics"],["resistivity","physics"],["the rank correlation","statistics"],["charge density","physics"]],
+  "τ":[["torque","physics"],["the tau particle","physics"],["a time constant","physics"],["Kendall's tau","statistics"],["two pi","math"]],
+  "φ":[["the golden ratio","math"],["an angle","math"],["magnetic flux","physics"],["the phi coefficient","statistics"],["the work function","physics"],["a phrase","linguistics"]],
+  "α":[["the alpha particle","physics"],["the significance level","statistics"],["an angle","math"],["the fine-structure constant","physics"],["an alpha helix","biology"]],
+  "β":[["the beta particle","physics"],["a regression coefficient","statistics"],["an angle","math"],["a beta sheet","biology"],["the thermodynamic beta","physics"]],
+  "γ":[["the gamma ray","physics"],["the Lorentz factor","physics"],["the Euler-Mascheroni constant","math"],["the activity coefficient","chemistry"],["surface tension","physics"]],
+  "ε":[["permittivity","physics"],["an error term","statistics"],["strain","physics"],["an arbitrarily small quantity","math"],["the empty string","linguistics"]],
+  "Ω":[["the ohm","physics"],["the sample space","statistics"],["the solid angle","math"],["a lower bound","math"]],
+  "Φ":[["magnetic flux","physics"],["the normal distribution function","statistics"],["a potential","physics"]],
+  "Ψ":[["the wavefunction","physics"],["a formula","logic"]],
+  "ℏ":[["the reduced Planck constant","physics"]],
+  "∞":[["infinity","math"]],
+  "ℵ":[["aleph","math"]]
+};
+const DOMAINS=["physics","chemistry","math","music","biology","statistics","economics","linguistics","logic"];
+
+/* ============ tokenizer ============ */
+const SUPS={"⁰":"0","¹":"1","²":"2","³":"3","⁴":"4","⁵":"5","⁶":"6","⁷":"7","⁸":"8","⁹":"9"};
+const SUBS={"₀":"0","₁":"1","₂":"2","₃":"3","₄":"4","₅":"5","₆":"6","₇":"7","₈":"8","₉":"9"};
+const RELOPS={"=":"equals","≈":"is about","≠":"is not","≡":"is identical to","∝":"is proportional to","<":"is less than",">":"is greater than","≤":"is at most","≥":"is at least","→":"implies"};
+const ADDOPS={"+":"plus","-":"minus","−":"minus","±":"plus or minus"};
+const MULOPS={"*":"times","×":"times","·":"times","/":"over","÷":"over"};
+const PREFIX={"√":"the square root of","∑":"the sum of","∏":"the product of","∫":"the integral of","Δ":"the change in","∂":"the partial derivative of","∇":"the gradient of","¬":"not"};
+const isLetter=ch=>/[A-Za-zΑ-Ωα-ωℏℵ∞]/.test(ch);
+
+function tokenize(src){
+  const t=[];let i=0;
+  while(i<src.length){
+    const ch=src[i];
+    if(ch===" "){i++;continue}
+    if(SUPS[ch]){let d="";while(i<src.length&&SUPS[src[i]]){d+=SUPS[src[i]];i++}t.push({k:"sup",v:d});continue}
+    if(SUBS[ch]){let d="";while(i<src.length&&SUBS[src[i]]){d+=SUBS[src[i]];i++}t.push({k:"sub",v:d});continue}
+    if(/[0-9]/.test(ch)){let d="";while(i<src.length&&/[0-9.]/.test(src[i])){d+=src[i];i++}t.push({k:"num",v:d});continue}
+    if(PREFIX[ch]){t.push({k:"pre",v:ch});i++;continue}
+    if(isLetter(ch)){t.push({k:"sym",v:ch});i++;continue}
+    if(RELOPS[ch]){t.push({k:"rel",v:ch});i++;continue}
+    if(ADDOPS[ch]){t.push({k:"add",v:ch});i++;continue}
+    if(MULOPS[ch]){t.push({k:"mul",v:ch});i++;continue}
+    if(ch==="^"){t.push({k:"pow"});i++;continue}
+    if(ch==="("||ch==="["){t.push({k:"("});i++;continue}
+    if(ch===")"||ch==="]"){t.push({k:")"});i++;continue}
+    if(ch==="|"){t.push({k:"|"});i++;continue}
+    if(ch==="_"){i++;let d="";while(i<src.length&&/[0-9A-Za-z]/.test(src[i])){d+=src[i];i++}t.push({k:"sub",v:d});continue}
+    i++;
+  }
+  return t;
+}
+
+/* ============ parser ============ */
+function parse(tokens){
+  let p=0;
+  const peek=()=>tokens[p],eat=()=>tokens[p++];
+  function pRel(){let l=pAdd();while(peek()&&peek().k==="rel"){const op=eat().v;l={t:"rel",op,l,r:pAdd()}}return l}
+  function pAdd(){let l=pMul();while(peek()&&peek().k==="add"){const op=eat().v;l={t:"add",op,l,r:pMul()}}return l}
+  function pMul(){
+    let l=pUnary();
+    for(;;){
+      if(!peek())break;
+      const k=peek().k;
+      if(k==="mul"){const op=eat().v;l={t:"mul",op,l,r:pUnary()}}
+      else if(k==="sym"||k==="num"||k==="("||k==="pre"||k==="|"){l={t:"mul",op:"×",l,r:pUnary()}}
+      else break;
+    }
+    return l;
+  }
+  function pUnary(){
+    if(peek()&&peek().k==="pre"){const op=eat().v;return{t:"pre",op,arg:pUnary()}}
+    if(peek()&&peek().k==="add"&&(peek().v==="-"||peek().v==="−")){eat();return{t:"neg",arg:pUnary()}}
+    return pPow();
+  }
+  function pPow(){
+    let base=pAtom();
+    for(;;){
+      if(peek()&&peek().k==="sup"){base={t:"pow",base,exp:{t:"num",v:eat().v}}}
+      else if(peek()&&peek().k==="pow"){eat();base={t:"pow",base,exp:pUnary()}}
+      else break;
+    }
+    return base;
+  }
+  function pAtom(){
+    const tk=peek();
+    if(!tk)return{t:"blank"};
+    if(tk.k==="sym"){eat();let sub=null;if(peek()&&peek().k==="sub")sub=eat().v;return{t:"sym",ch:tk.v,sub}}
+    if(tk.k==="num"){eat();return{t:"num",v:tk.v}}
+    if(tk.k==="("){eat();const inner=pRel();if(peek()&&peek().k===")")eat();return{t:"group",inner}}
+    if(tk.k==="|"){eat();const inner=pRel();if(peek()&&peek().k==="|")eat();return{t:"abs",inner}}
+    eat();return{t:"blank"};
+  }
+  return pRel();
+}
+
+function collect(ast,out){
+  out=out||[];
+  if(!ast||typeof ast!=="object")return out;
+  if(ast.t==="sym"){if(!out.includes(ast.ch))out.push(ast.ch);return out}
+  ["l","r","arg","base","exp","inner"].forEach(k=>{if(ast[k])collect(ast[k],out)});
+  return out;
+}
+const meaningsFor=ch=>SYM[ch]?SYM[ch].map(m=>({text:m[0],domain:m[1]})):[{text:ch,domain:"unmapped"}];
+
+const NUMW=["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve"];
+const numWord=v=>{const n=Number(v);return(Number.isInteger(n)&&n>=0&&n<=12)?NUMW[n]:String(v)};
+
+/* renderer: emits [{text,domain}] parts, never string substitution */
+function parts(node,asg,out){
+  out=out||[];
+  const push=(text,domain)=>{if(text)out.push({text,domain:domain||null})};
+  if(!node)return out;
+  switch(node.t){
+    case "blank":break;
+    case "num":push(numWord(node.v));break;
+    case "sym":{
+      const m=asg[node.ch];
+      push((m?m.text:node.ch)+(node.sub?" sub "+numWord(node.sub):""),m?m.domain:null);
+      break;
+    }
+    case "rel":parts(node.l,asg,out);push(RELOPS[node.op]);parts(node.r,asg,out);break;
+    case "add":parts(node.l,asg,out);push(ADDOPS[node.op]);parts(node.r,asg,out);break;
+    case "mul":parts(node.l,asg,out);push(MULOPS[node.op]);parts(node.r,asg,out);break;
+    case "neg":push("minus");parts(node.arg,asg,out);break;
+    case "pre":push(PREFIX[node.op]);parts(node.arg,asg,out);break;
+    case "abs":push("the size of");parts(node.inner,asg,out);break;
+    case "group":{
+      push("the quantity");parts(node.inner,asg,out);
+      const last=out[out.length-1];if(last)last.text+=",";
+      break;
+    }
+    case "pow":{
+      parts(node.base,asg,out);
+      if(node.exp.t==="num"&&node.exp.v==="2")push("squared");
+      else if(node.exp.t==="num"&&node.exp.v==="3")push("cubed");
+      else{push("to the power of");parts(node.exp,asg,out)}
+      break;
+    }
+  }
+  return out;
+}
+const flat=ps=>ps.map(p=>p.text).join(" ");
+
+function decode(index,syms,pools){
+  const asg={};let rem=index;
+  for(let i=syms.length-1;i>=0;i--){const pool=pools[i];asg[syms[i]]=pool[rem%pool.length];rem=Math.floor(rem/pool.length)}
+  return asg;
+}
+function score(asg,syms){
+  const uniq=[...new Set(syms.map(s=>asg[s].domain).filter(d=>d!=="unmapped"))];
+  if(uniq.length<=1)return 0;
+  let s=uniq.length;
+  if(uniq.includes("music"))s+=1;
+  if(uniq.includes("linguistics"))s+=1;
+  return s;
+}
+
+/* ============ state ============ */
+const CAP=4000,PAGE=100;
+let ast=null,syms=[],pools=[],total=0,readings=[],shown=0;
+let sortMode="difference",onDomains=new Set(DOMAINS.concat(["unmapped"]));
+
+const $=id=>document.getElementById(id);
+const eqEl=$("eq");
+
+/* ============ build ============ */
+function rebuild(){
+  ast=parse(tokenize(eqEl.value));
+  syms=collect(ast);
+  pools=syms.map(meaningsFor);
+  total=pools.reduce((a,p)=>a*p.length,1);
+  if(!syms.length)total=0;
+  const domCount=new Set([].concat(...pools.map(p=>p.map(m=>m.domain)))).size;
+  $("stat").innerHTML= total
+    ? `<b>${total.toLocaleString()}</b> readings &nbsp;·&nbsp; <b>${syms.length}</b> ambiguous symbols &nbsp;·&nbsp; <b>${domCount}</b> domains`
+    : `nothing to read yet`;
+  buildReadings();
+  castReading();
+}
+
+function buildReadings(){
+  readings=[];
+  if(!total){renderList();return}
+  const idx=[];
+  if(total<=CAP){for(let i=0;i<total;i++)idx.push(i)}
+  else{const seen=new Set();while(seen.size<CAP)seen.add(Math.floor(Math.random()*total));seen.forEach(v=>idx.push(v))}
+  for(const i of idx){
+    const asg=decode(i,syms,pools);
+    readings.push({i,asg,ps:parts(ast,asg),s:score(asg,syms),doms:syms.map(s=>asg[s].domain)});
+  }
+  renderList();
+}
+
+function passes(r){return r.doms.every(d=>onDomains.has(d))}
+
+/* how many slots two readings disagree on — the ordering metric */
+function dist(a,b){
+  let d=0;
+  for(const s of syms){
+    if(a.asg[s].text!==b.asg[s].text)d+=1;
+    if(a.asg[s].domain!==b.asg[s].domain)d+=0.5;
+  }
+  return d;
+}
+function pullFarthest(rem,prev){
+  if(!prev)return rem.splice(Math.floor(Math.random()*rem.length),1)[0];
+  const SCAN=900,step=Math.max(1,Math.floor(rem.length/SCAN)),off=Math.floor(Math.random()*step);
+  let best=-1,cands=[];
+  for(let i=off;i<rem.length;i+=step){
+    const d=dist(rem[i],prev);
+    if(d>best){best=d;cands=[i]}
+    else if(d===best)cands.push(i);
+  }
+  if(!cands.length)return rem.splice(Math.floor(Math.random()*rem.length),1)[0];
+  return rem.splice(cands[Math.floor(Math.random()*cands.length)],1)[0];
+}
+function itemAt(k){
+  if(sortMode!=="difference")return window._pool[k];
+  while(window._ord.length<=k&&window._rem.length){
+    const nx=pullFarthest(window._rem,window._prev);
+    window._prev=nx;window._ord.push(nx);
+  }
+  return window._ord[k];
+}
+
+function renderList(){
+  const list=$("list");list.innerHTML="";
+  let pool=readings.filter(passes);
+  if(sortMode==="absurd")pool.sort((a,b)=>b.s-a.s||a.i-b.i);
+  else if(sortMode==="coherent")pool.sort((a,b)=>a.s-b.s||a.i-b.i);
+  else if(sortMode==="shuffle")pool.sort(()=>Math.random()-.5);
+  if(!pool.length){list.innerHTML='<p class="empty">No reading uses only those domains. Switch more on.</p>';$("more").hidden=true;return}
+  shown=0;window._pool=pool;
+  window._rem=pool.slice();window._ord=[];window._prev=null;
+  appendPage();
+}
+function appendPage(){
+  const pool=window._pool,list=$("list");
+  const end=Math.min(shown+PAGE,pool.length);
+  const frag=document.createDocumentFragment();
+  for(let k=shown;k<end;k++){
+    const r=itemAt(k);
+    if(!r)break;
+    const b=document.createElement("button");
+    b.className="item";
+    b.innerHTML='<span class="n">'+String(k+1).padStart(3,"0")+'</span>'+html(r.ps);
+    b.addEventListener("click",()=>{
+      navigator.clipboard&&navigator.clipboard.writeText(flat(r.ps));
+      b.classList.add("copied");setTimeout(()=>b.classList.remove("copied"),700);
+    });
+    frag.appendChild(b);
+  }
+  list.appendChild(frag);shown=end;
+  $("more").hidden=shown>=pool.length;
+  $("more").textContent="show more ("+(pool.length-shown)+" left)";
+}
+const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function html(ps){
+  return ps.map(p=>p.domain
+    ? '<span style="color:var(--'+p.domain+')">'+esc(p.text)+'</span>'
+    : '<span class="op">'+esc(p.text)+'</span>').join(" ");
+}
+
+/* ============ cast ============ */
+const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let spinning=null;
+function castReading(){
+  if(!total){$("reading").innerHTML='<span class="op">…</span>';$("mapping").innerHTML="";$("castidx").textContent="";return}
+  const target=Math.floor(Math.random()*total);
+  const settle=()=>{
+    const asg=decode(target,syms,pools);
+    $("reading").innerHTML=html(parts(ast,asg));
+    $("mapping").innerHTML=syms.map(s=>'<span><i>'+esc(s)+'</i><span style="color:var(--'+asg[s].domain+')">'+esc(asg[s].text)+'</span></span>').join("");
+    $("castidx").textContent="reading "+(target+1).toLocaleString()+" of "+total.toLocaleString();
+  };
+  if(reduced||total<3){settle();return}
+  clearInterval(spinning);let n=0;
+  spinning=setInterval(()=>{
+    const asg=decode(Math.floor(Math.random()*total),syms,pools);
+    $("reading").innerHTML=html(parts(ast,asg));
+    if(++n>6){clearInterval(spinning);settle()}
+  },55);
+}
+
+/* ============ chrome ============ */
+const PRESETS=["E = mc²","F = ma","PV = nRT","a² + b² = c²","ΔG = ΔH − TΔS","λ = c/f","E = hf","p = mv","σ = F/A","∑F = 0","Ψ = Ae^i","μ = ρV"];
+$("presets").innerHTML=PRESETS.map(p=>'<button>'+esc(p)+'</button>').join("");
+$("presets").addEventListener("click",e=>{if(e.target.tagName==="BUTTON"){eqEl.value=e.target.textContent;rebuild()}});
+
+const KEYS=["²","³","√","∑","∫","Δ","∂","∇","π","λ","μ","σ","ρ","θ","Ω","φ","α","β","γ","ε","·","/","±","≈","∝","∞","(",")","⌫"];
+$("keys").innerHTML=KEYS.map(k=>'<button aria-label="insert '+k+'">'+k+'</button>').join("");
+$("keys").addEventListener("click",e=>{
+  if(e.target.tagName!=="BUTTON")return;
+  const k=e.target.textContent;
+  if(k==="⌫")eqEl.value=eqEl.value.slice(0,-1);else eqEl.value+=k;
+  rebuild();eqEl.focus();
+});
+
+const SORTS=[["difference","most unlike each other"],["absurd","most cross-domain"],["coherent","most single-minded"],["shuffle","shuffled"]];
+$("sorts").innerHTML=SORTS.map(s=>'<button data-m="'+s[0]+'" aria-pressed="'+(s[0]===sortMode)+'">'+s[1]+'</button>').join("");
+$("sorts").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  sortMode=b.dataset.m;
+  [...$("sorts").children].forEach(x=>x.setAttribute("aria-pressed",x===b));
+  renderList();
+});
+
+$("doms").innerHTML=DOMAINS.map(d=>'<button data-d="'+d+'" aria-pressed="true" style="--c:var(--'+d+')">'+d+'</button>').join("");
+$("doms").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  const d=b.dataset.d,on=onDomains.has(d);
+  if(on)onDomains.delete(d);else onDomains.add(d);
+  b.setAttribute("aria-pressed",String(!on));
+  renderList();
+});
+
+$("cast").addEventListener("click",castReading);
+$("more").addEventListener("click",appendPage);
+
+let deb;eqEl.addEventListener("input",()=>{clearTimeout(deb);deb=setTimeout(rebuild,220)});
+
+/* dictionary */
+$("dicttoggle").addEventListener("click",()=>{
+  const d=$("dict"),open=!d.hidden;
+  d.hidden=open;$("dicttoggle").setAttribute("aria-expanded",String(!open));
+  $("dicttoggle").textContent=open?"the dictionary":"close the dictionary";
+  if(!open&&!d.dataset.built){
+    d.innerHTML=Object.keys(SYM).map(ch=>
+      '<div class="entry-row"><button class="ch" data-ins="'+esc(ch)+'">'+esc(ch)+'</button>'+
+      SYM[ch].map(m=>'<span class="m" style="--c:var(--'+m[1]+')">'+esc(m[0])+'</span>').join("")+'</div>').join("");
+    d.dataset.built="1";
+    d.addEventListener("click",e=>{
+      const b=e.target.closest("[data-ins]");if(!b)return;
+      eqEl.value+=b.dataset.ins;rebuild();
+    });
+  }
+});
+
+rebuild();
+</script>
+</body>
+</html>
