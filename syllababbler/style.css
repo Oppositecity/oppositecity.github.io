@@ -1,16 +1,18 @@
 /* ------------------------------------------------------------
    Morphemes are strata. The page stains them the way a slide is
-   stained: Greek one colour, Latin another, and whatever the stain
-   does not take is residue.
+   stained — crystal violet for Greek, methyl green for Latin — and
+   whatever the stain does not take is residue. Both dyes are real,
+   and neither is blue or red, which is what made the first pass
+   read as a flag instead of a slide.
    ------------------------------------------------------------ */
 :root{
-  --ground:#151a24;
-  --raised:#1d2432;
-  --text:#e4e8f2;
-  --dim:#c3cce0;   /* secondary text — 10.8:1 on ground */
-  --gk:#93a4ff;   /* hematoxylin */
-  --la:#ff9ab0;   /* eosin */
-  --none:#f6f8fd; /* unstained */
+  --ground:#14171a;
+  --raised:#1e2225;
+  --text:#e8eaec;
+  --dim:#c2c7cb;   /* secondary text — 10.6:1 on ground */
+  --gk:#bd9bff;   /* crystal violet */
+  --la:#7edea6;   /* methyl green */
+  --none:#f2f4f5; /* unstained */
   --pad:clamp(20px,5vw,60px);
 }
 *{box-sizing:border-box}
