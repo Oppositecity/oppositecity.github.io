@@ -1,17 +1,19 @@
 /* ------------------------------------------------------------
-   Morphemes are strata. The page stains them the way a slide is
-   stained — crystal violet for Greek, methyl green for Latin — and
-   whatever the stain does not take is residue. Both dyes are real,
-   and neither is blue or red, which is what made the first pass
-   read as a flag instead of a slide.
+   Colour has one job: showing where one morpheme ends and the next
+   begins. The two tones alternate along the word and are near
+   identical in luminance, so the boundary reads as a shift in hue
+   rather than a change in emphasis. Stratum is not encoded here —
+   the list below names Greek or Latin in words, which is clearer
+   than asking anyone to remember a key.
    ------------------------------------------------------------ */
 :root{
   --ground:#14171a;
   --raised:#1e2225;
   --text:#e8eaec;
   --dim:#c2c7cb;   /* secondary text — 10.6:1 on ground */
-  --gk:#bd9bff;   /* crystal violet */
-  --la:#7edea6;   /* methyl green */
+  --seg1:#a8bccb;  /* slate — 9.2:1 */
+  --seg2:#a6c2b0;  /* sage  — 9.4:1 */
+  --residue:#8f979d;
   --none:#f2f4f5; /* unstained */
   --pad:clamp(20px,5vw,60px);
 }
@@ -25,12 +27,12 @@ body{
   padding:var(--pad) var(--pad) 22vh;
   max-width:760px;margin:0 auto;
 }
-::selection{background:var(--gk);color:var(--ground)}
+::selection{background:var(--seg1);color:var(--ground)}
 
 /* masthead ------------------------------------------------- */
 .mast{font-size:clamp(26px,8.5vw,44px);letter-spacing:.02em;margin:0 0 .2em;font-weight:700}
 .sub{color:var(--dim);font-size:14px;margin:0 0 3.4em;max-width:44ch}
-.gk{color:var(--gk)} .la{color:var(--la)} .un{color:var(--dim)}
+.s1{color:var(--seg1)} .s2{color:var(--seg2)} .un{color:var(--residue)}
 
 /* modes ---------------------------------------------------- */
 nav{display:flex;flex-wrap:wrap;gap:1.4em;margin-bottom:2em}
@@ -40,7 +42,7 @@ nav button{
 }
 nav button[aria-selected="true"]{color:var(--none);font-weight:700}
 nav button:focus-visible,.go:focus-visible,textarea:focus-visible,input:focus-visible{
-  outline:2px solid var(--gk);outline-offset:3px
+  outline:2px solid var(--seg1);outline-offset:3px
 }
 .desc{color:var(--dim);font-size:14px;margin:0 0 2em;max-width:52ch;min-height:3.4em}
 
@@ -56,7 +58,7 @@ textarea::placeholder,input::placeholder{color:var(--dim)}
   background:none;border:0;padding:.2em 0;margin:1.1em 0 0;
   font:inherit;font-size:16px;font-weight:700;color:var(--none);cursor:pointer;
 }
-.go:hover{color:var(--gk)}
+.go:hover{color:var(--seg1)}
 .hint{color:var(--dim);font-size:13px;margin:.9em 0 0}
 
 /* output --------------------------------------------------- */
@@ -83,7 +85,7 @@ textarea::placeholder,input::placeholder{color:var(--dim)}
 .kept .row{font-size:15px;padding:.3em 0}
 .kept .row span{color:var(--dim);font-size:13px}
 .drop{background:none;border:0;color:var(--dim);font:inherit;font-size:13px;cursor:pointer;padding:0 0 0 .8em}
-.drop:hover{color:var(--la)}
+.drop:hover{color:var(--seg2)}
 footer{color:var(--dim);font-size:13px;margin-top:5em}
 @media (prefers-reduced-motion:reduce){
   .word span{animation:none;opacity:1}
