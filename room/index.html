@@ -226,6 +226,10 @@ function endingOf(w){
   for(const [re, tag] of ENDINGS) if(re.test(l)) return tag;
   return null;
 }
+// Which part of speech an ending implies. Bolting -ing onto a noun is
+// where the nonsense came from: loss -> lossing.
+const ENDING_POS = { ing:'v', ed:'v', ly:'adj', s:'n', es:'n', ies:'n' };
+
 function inflect(w, tag){
   if(!tag) return w;
   const l = w.toLowerCase();
@@ -269,11 +273,15 @@ async function ask(url){
 async function probe(word, param){
   const key = param+':'+word.toLowerCase();
   if(cache.has(key)) return cache.get(key);
-  const data = await ask('https://api.datamuse.com/words?'+param+'='+encodeURIComponent(word)+'&md=sp&max=60');
+  const data = await ask('https://api.datamuse.com/words?'+param+'='+encodeURIComponent(word)+'&md=spf&max=80');
   if(data === null) return null;          // refused — do not cache
   const clean = (Array.isArray(data)?data:[])
     .filter(d => typeof d.word==='string' && /^[a-z][a-z\']*$/i.test(d.word))
-    .map(d => ({ w:d.word, p:(d.tags||[]).filter(t => POS.has(t)) }));
+    .map(d => {
+      const tags = d.tags || [];
+      const f = tags.find(t => t.startsWith('f:'));
+      return { w:d.word, p:tags.filter(t => POS.has(t)), f: f ? parseFloat(f.slice(2)) : 0 };
+    });
   cache.set(key, clean);
   return clean;
 }
@@ -292,28 +300,47 @@ async function posOf(word){
 
 // Rhythm is the last thing to go — Lucier says so. The syllable count is
 // checked after the ending goes back on, so the pulse is what is locked.
-async function reply(tok, room, rnd, used){
+async function reply(tok, room, rnd, used, pass){
   const tag = endingOf(tok.v);
+  const need = tag ? ENDING_POS[tag] : null;
+
+  // Early passes stay in common English; the rarities are let in slowly,
+  // so the text is still a text long after it stops being the same text.
+  const floorF = Math.max(0, 3.5 * (1 - (pass - 1) / 8));
+
   if(!offline){
     const mine = await posOf(tok.v);
     for(const param of ROOMS[room].probes){
       const list = await probe(tok.v, param);
       if(list === null) return null;      // the room is busy; do not pretend
       if(!list.length) continue;
-      const shaped = list.map(c => {
+
+      const shaped = [];
+      for(const c of list){
+        // an ending may only go on a word that can carry it
+        if(tag && c.w.toLowerCase() !== tok.v.toLowerCase()){
+          const already = { ing:/ing$/, ed:/ed$/, ly:/ly$/ }[tag];
+          const fits = already ? already.test(c.w) : true;
+          if(!fits && c.p.length && need && !c.p.includes(need)) continue;
+          if(!fits && !c.p.length) continue;   // unknown part of speech: don't guess
+        }
         const f = inflect(c.w, tag);
-        return { w:f, s:syllables(f), p:c.p };
-      });
-      for(const tol of [0,1]){
-        const cands = shaped.filter(c =>
-          Math.abs(c.s - tok.syll) <= tol &&
-          (!mine.length || !c.p.length || c.p.some(t => mine.includes(t))) &&
-          !tok.hist.has(c.w.toLowerCase()) &&
-          !used.has(c.w.toLowerCase()) &&
-          c.w.toLowerCase() !== tok.v.toLowerCase());
-        if(cands.length){
-          const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.15) * cands.length));
-          used.add(cands[i].w.toLowerCase());   // claim it now, not after the await
+        const l = f.toLowerCase();
+        if(l === tok.v.toLowerCase() || tok.hist.has(l) || used.has(l)) continue;
+        if(mine.length && c.p.length && !c.p.some(t => mine.includes(t))) continue;
+        shaped.push({ w:f, s:syllables(f), f:c.f });
+      }
+      if(!shaped.length) continue;
+
+      // commonness first, then rhythm — a rare word with the right syllable
+      // count is worse than a common one a syllable off, until late.
+      for(const fmin of [floorF, floorF/4, 0]){
+        for(const tol of [0, 1, 99]){
+          const cands = shaped.filter(c => Math.abs(c.s - tok.syll) <= tol && c.f >= fmin);
+          if(!cands.length) continue;
+          cands.sort((a,b) => b.f - a.f);
+          const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.5) * cands.length));
+          used.add(cands[i].w.toLowerCase());
           return cands[i].w;
         }
       }
@@ -330,7 +357,7 @@ async function pool(items, n, fn){
   }));
 }
 
-async function playBack(tokens, room, rnd){
+async function playBack(tokens, room, rnd, pass){
   const next = tokens.map(t => t.k==='w' ? {...t, hist:new Set(t.hist)} : {...t});
   const live = next.filter(t => t.k==='w' && !t.wall);
   const used = new Set(next.filter(t => t.k==='w').map(t => t.v.toLowerCase()));
@@ -338,7 +365,7 @@ async function playBack(tokens, room, rnd){
   const memo = new Map();
   await pool(live, 3, async t => {
     const key = t.v.toLowerCase();
-    if(!memo.has(key)) memo.set(key, reply(t, room, rnd, used));
+    if(!memo.has(key)) memo.set(key, reply(t, room, rnd, used, pass));
     const r = await memo.get(key);
     if(r){
       used.add(r.toLowerCase());
@@ -417,7 +444,7 @@ function prepare(){
   if(!S || S.pending || S.top >= PASSES) return;
   const from = S.states[S.top], room = S.room, at = S.top + 1;
   const before = S.rendered[S.top];
-  const job = playBack(from, room, S.rnd).then(tokens => ({
+  const job = playBack(from, room, S.rnd, at).then(tokens => ({
     tokens, text: erode(tokens, at, S.rnd), at
   }));
   S.pending = job;
