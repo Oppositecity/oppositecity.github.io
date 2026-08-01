@@ -193,6 +193,22 @@
    ],
    "blurb": "Every field writes with the same alphabet and none of them owns it. c is the speed of light, and carbon, and concentration, and the note C, and common time — the letter carries no discipline with it, only the habit of whoever is reading. A formula typed here is parsed once into a tree and then read aloud in every combination its letters permit: E = mc² has five hundred and sixty readings, of which exactly one is physics. Each phrase is coloured by the field it was borrowed from, so a sentence in a single colour is a coherent reading and a sentence in nine is nonsense that still parses. Readings are ordered by difference rather than by index, so no two in a row agree with each other. Switch the fields off one at a time and a law of physics can be made to say itself entirely in music.",
    "url": "https://opposite.city/ambiguity/"
+  },
+  {
+   "slug": "syllababbler",
+   "name": "SYLLABABBLER",
+   "district": "language",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "morphology",
+    "neologism",
+    "greek",
+    "latin",
+    "coinage"
+   ],
+   "blurb": "English keeps two vocabularies in the same mouth, a Greek one and a Latin one, and it almost never mixes them by accident. This is a bench for mixing them on purpose. Give it a phrase and it finds the load-bearing concepts, matches each to a morpheme, and fuses them with the linking vowel each stratum takes — o for Greek, i for Latin. Give it a word instead, real or invented, and it runs the lattice backwards: cutting the letters into the fewest and longest morphemes that can account for them, then reading a definition off the suffix, because the suffix is where the grammar lives. Nothing it makes is a real word and everything it makes is built the way real words were. The parse is stained like a slide, Greek blue and Latin rose, and whatever the stain refuses is residue — which, in English, is most of it.",
+   "url": "https://opposite.city/syllababbler/"
   }
  ]
 }
