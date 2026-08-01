@@ -547,7 +547,7 @@ function render() {
     `<p class="fieldlabel">Your phrase</p>
      <textarea id="in" placeholder="Type here"></textarea>
      <button class="go" id="run">compress &rarr;</button>
-     <button class="example" id="ex">Or try: all language is liturgy</button>
+     <button class="example" id="ex">Or try: a city built from its own shadow</button>
      <p class="hint">Up to four concepts are used: repeated words first, then longer ones.</p>`;
   else if (mode === "name") A.innerHTML =
     `<p class="fieldlabel">Your concepts</p>
