@@ -235,7 +235,10 @@ function morphemesForConcept(concept, INDEX, role) {
       if (t === c) score += 6;
       else if (tw.includes(c)) score += 4;
       else if (c.length >= 4 && tw.some(x => overlap(stems(x), cs))) score += 3.5;
-      else if (c.length >= 6 && t.length >= 6 && (t.startsWith(c.slice(0, 5)) || c.startsWith(t.slice(0, 5)))) score += 2;
+      // a 5-letter shared prefix was too loose: "reversal" caught
+      // "reverence" and pulled in latr/worship. Six, and only for
+      // longer words.
+      else if (c.length >= 7 && t.length >= 7 && (t.startsWith(c.slice(0, 6)) || c.startsWith(t.slice(0, 6)))) score += 2;
     }
     // last resort: the concept appears in the morpheme's own gloss
     if (score === 0 && c.length >= 4 && e.meaning.split(/[,\s]+/).some(x => overlap(stems(x), cs))) score += 3;
@@ -398,15 +401,30 @@ const TABLE = byPrefixTable(INDEX);
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const stainOf = e => e && e.cls !== "unknown" ? (e.origin === "gk" ? "gk" : "la") : "un";
+// Hue carries the stratum, shade carries the boundary: a morpheme
+// takes the second depth of its own hue only when the one before it
+// came from the same stratum, so a run of three Greek roots still
+// reads as three without inventing a colour for it.
+function segClasser() {
+  let prev = null, flip = false;
+  return e => {
+    if (!e || e.cls === "unknown") { prev = null; return "un"; }
+    const stratum = e.origin === "gk" ? "gk" : "la";
+    flip = (stratum === prev) ? !flip : false;
+    prev = stratum;
+    return flip ? stratum + "2" : stratum;
+  };
+}
 
 // stain a built word letter by letter, using the spans the joiner returned
 function stainWord(word, spans, animate) {
-  const at = i => spans.find(s => i >= s.start && i < s.end);
+  const at = i => spans.findIndex(s => i >= s.start && i < s.end);
+  const cls_ = segClasser();
+  const perSpan = spans.map(s => cls_(s.entry));
   let html = "", n = 0;
   for (let i = 0; i < word.length; i++) {
-    const s = at(i);
-    const cls = s ? stainOf(s.entry) : "un";
+    const k = at(i);
+    const cls = k < 0 ? "un" : perSpan[k];
     const d = animate ? ` style="animation-delay:${(n++ * 26)}ms"` : ' style="opacity:1;animation:none"';
     html += `<span class="${cls}"${d}>${esc(word[i])}</span>`;
   }
@@ -415,9 +433,10 @@ function stainWord(word, spans, animate) {
 
 // stain a decoded word using its segmentation
 function stainSegs(segs, animate) {
+  const cls_ = segClasser();
   let html = "", n = 0;
   for (const s of segs) {
-    const cls = stainOf(s);
+    const cls = cls_(s);
     for (const ch of s.matched) {
       const d = animate ? ` style="animation-delay:${(n++ * 26)}ms"` : ' style="opacity:1;animation:none"';
       html += `<span class="${cls}"${d}>${esc(ch)}</span>`;
@@ -431,21 +450,54 @@ const CLSNAME = { prefixes: "prefix", roots: "root", suffixes: "suffix" };
 function partsList(entries) {
   return `<div class="parts">` + entries.map(e => {
     if (e.cls === "unknown") return `<div class="part"><b class="un">${esc(e.matched)}</b><i class="un">unparsed</i></div>`;
-    const stain = stainOf(e);
-    return `<div class="part"><b class="${stain}">${esc(e.matched || e.surface)}</b><i>${esc(e.meaning)}</i>` +
+    return `<div class="part"><b>${esc(e.matched || e.surface)}</b><i>${esc(e.meaning)}</i>` +
       `<em>${e.origin === "gk" ? "greek" : "latin"} ${CLSNAME[e.cls]}</em></div>`;
   }).join("") + `</div>`;
 }
 
-// masthead: the tool parses its own name on load
+// masthead: the tool parses its own name on load, and the name is
+// set to the exact width of the text column
 (function selfParse() {
   const segs = segment("syllababbler", INDEX, TABLE);
-  $("mast").innerHTML = stainSegs(segs, false);
+  const mast = $("mast");
+  mast.innerHTML = stainSegs(segs, false);
   const known = segs.filter(s => s.cls !== "unknown");
   $("selfparse").innerHTML =
-    known.map(s => `<span class="${stainOf(s)}">${esc(s.matched)}</span> ${esc(s.meaning.split(",")[0])}`).join(" &middot; ") +
-    ". Greek is blue, Latin rose, unmatched letters grey.";
+    (() => { const c = segClasser(); return known.map(s => `<span class="${c(s)}">${esc(s.matched)}</span> ${esc(s.meaning.split(",")[0])}`).join(" &middot; "); })() +
+    ". The rest is unmatched.";
+
+  // measure rather than compute from font metrics, so it stays exact
+  // if Courier Prime fails to load and the fallback steps in
+  function fit() {
+    const avail = mast.clientWidth;
+    if (!avail) return;
+    mast.style.fontSize = "100px";
+    const w = mast.scrollWidth;
+    if (w) mast.style.fontSize = (100 * avail / w) + "px";
+  }
+  fit();
+  addEventListener("resize", fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
 })();
+
+// ---------- colour toggle ----------
+const STAIN_KEY = "syllababbler.stain";
+let stained = false;
+try { stained = localStorage.getItem(STAIN_KEY) === "1"; } catch (e) { }
+const stainBtn = $("stainToggle");
+function applyStain() {
+  document.body.classList.toggle("stained", stained);
+  stainBtn.textContent = stained
+    ? "Colour on — slate Greek, sage Latin, grey unmatched. Turn off"
+    : "Show the morpheme colouring";
+  stainBtn.setAttribute("aria-pressed", String(stained));
+}
+stainBtn.addEventListener("click", () => {
+  stained = !stained;
+  try { localStorage.setItem(STAIN_KEY, stained ? "1" : "0"); } catch (e) { }
+  applyStain();
+});
+applyStain();
 
 // ---------- state ----------
 const KEY = "syllababbler.kept.v3";
@@ -492,22 +544,33 @@ function render() {
   $("out").innerHTML = "";
   const A = $("inputArea");
   if (mode === "compress") A.innerHTML =
-    `<textarea id="in" placeholder="all language is sacrament"></textarea>
+    `<p class="fieldlabel">Your phrase</p>
+     <textarea id="in" placeholder="Type here"></textarea>
      <button class="go" id="run">compress &rarr;</button>
-     <p class="hint">A sentence or a fragment. Concepts are ranked by weight, not order.</p>`;
+     <button class="example" id="ex">Or try: all language is liturgy</button>
+     <p class="hint">Up to four concepts are used: repeated words first, then longer ones.</p>`;
   else if (mode === "name") A.innerHTML =
-    `<input type="text" id="in" placeholder="tide, percussion">
+    `<p class="fieldlabel">Your concepts</p>
+     <input type="text" id="in" placeholder="Type here">
      <button class="go" id="run">generate &rarr;</button>
+     <button class="example" id="ex">Or try: tide, percussion</button>
      <p class="hint">Run again for a different batch.</p>`;
   else if (mode === "decode") A.innerHTML =
-    `<input type="text" id="in" placeholder="necropolis">
+    `<p class="fieldlabel">Your word</p>
+     <input type="text" id="in" placeholder="Type here">
      <button class="go" id="run">decode &rarr;</button>
+     <button class="example" id="ex">Or try: necropolis</button>
      <p class="hint">Real words work too.</p>`;
   else A.innerHTML =
     `<button class="go" id="run">roll &rarr;</button>
      <p class="hint">Tap any to keep it.</p>`;
 
   $("run").addEventListener("click", run);
+  const ex = $("ex");
+  if (ex) ex.addEventListener("click", () => {
+    $("in").value = ex.textContent.replace(/^Or try:\s*/, "");
+    run();
+  });
   const inp = $("in");
   if (inp) inp.addEventListener("keydown", e => {
     if (e.key === "Enter" && (inp.tagName === "INPUT" || e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
