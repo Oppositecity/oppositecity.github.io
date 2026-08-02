@@ -189,7 +189,7 @@ function decode(word, INDEX, TABLE) {
 // ---------- CONCEPTS ----------
 const STOP = new Set(("the a an and or but of to in on at for with by from as is are was were be been being " +
   "this that these those it its we you they he she i our your their has have had will would can could do does " +
-  "not no so if then than there here what which who when while all any some more most very just also").split(" "));
+  "not no so if then than there here what which who when while all any some more most very just also yet ever once upon into onto out off up down").split(" "));
 
 function extractConcepts(text) {
   const raw = text.toLowerCase().replace(/[^a-z\s'-]/g, " ").split(/\s+/).filter(Boolean);
@@ -212,10 +212,41 @@ function extractConcepts(text) {
 // four letters of the concept — so "worst" matched theo's "worship"
 // tag and every text came out with -the- in it. Now: exact, then
 // contained-whole-word, then a long shared prefix, with a floor.
+// English hides a lot of its vocabulary behind irregular forms, so
+// "built" never reached the "build" tag on struct- and the whole
+// phrase came back a morpheme short
+const IRREGULAR = {
+  went: "go", gone: "go", built: "build", made: "make", saw: "see", seen: "see",
+  thought: "think", took: "take", taken: "take", gave: "give", given: "give",
+  brought: "bring", caught: "catch", bought: "buy", sold: "sell", told: "tell",
+  held: "hold", felt: "feel", kept: "keep", left: "leave", lost: "lose",
+  met: "meet", paid: "pay", ran: "run", sang: "sing", sat: "sit", slept: "sleep",
+  spoke: "speak", spoken: "speak", stood: "stand", taught: "teach",
+  wrote: "write", written: "write", knew: "know", known: "know", grew: "grow",
+  grown: "grow", drew: "draw", drawn: "draw", flew: "fly", flown: "fly",
+  fell: "fall", fallen: "fall", broke: "break", broken: "break",
+  chose: "choose", chosen: "choose", drove: "drive", driven: "drive",
+  ate: "eat", eaten: "eat", began: "begin", begun: "begin", became: "become",
+  came: "come", did: "do", done: "do", had: "have", heard: "hear",
+  lay: "lie", laid: "lay", rose: "rise", risen: "rise", sent: "send",
+  shone: "shine", shot: "shoot", sank: "sink", struck: "strike",
+  swam: "swim", threw: "throw", thrown: "throw", woke: "wake", wore: "wear",
+  won: "win", worn: "wear", bound: "bind", bred: "breed", burnt: "burn",
+  dug: "dig", fed: "feed", fought: "fight", found: "find", ground: "grind",
+  hung: "hang", led: "lead", lit: "light", read: "read", rang: "ring",
+  said: "say", sought: "seek", shook: "shake", sowed: "sow", spun: "spin",
+  spread: "spread", stole: "steal", swept: "sweep", tore: "tear",
+  wound: "wind", wove: "weave", woven: "weave", children: "child",
+  people: "person", feet: "foot", teeth: "tooth", men: "man", women: "woman",
+  mice: "mouse", geese: "goose", lives: "life", knives: "knife",
+  leaves: "leaf", wolves: "wolf", halves: "half", selves: "self"
+};
+
 // a set of plausible stems rather than one guess — a single regex
 // turned "times" into "tim" and missed the tag "time" entirely
 function stems(w) {
   const out = new Set([w]);
+  if (IRREGULAR[w]) out.add(IRREGULAR[w]);
   const cut = (suf, add = "") => { if (w.length > suf.length + 2 && w.endsWith(suf)) out.add(w.slice(0, -suf.length) + add); };
   cut("s"); cut("es"); cut("s", "e"); cut("ies", "y"); cut("ied", "y");
   cut("ing"); cut("ing", "e"); cut("ed"); cut("ed", "e"); cut("er"); cut("ers"); cut("ly"); cut("al");
@@ -524,13 +555,13 @@ $("kept").addEventListener("click", e => {
 
 // ---------- modes ----------
 const DESCS = {
-  compress: "Enter a phrase. Returns one word built from the concepts in it.",
+  compress: "Enter a phrase. Returns one word built from the concepts in it. Only words with a classical root can be used, so plain modern vocabulary often drops out.",
   name: "Enter one or two concepts. Returns eight candidate names with their morpheme glosses.",
   decode: "Enter any word, real or invented. Returns its morphemes and a definition read off them.",
-  discover: "No input. Returns six random morpheme combinations."
+  discover: "No input needed. Returns six random morpheme combinations."
 };
 
-let mode = "compress";
+let mode = "discover";
 
 $("tabs").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -592,6 +623,7 @@ function run() {
       `<div class="word">${stainWord(r.word, r.spans, true)}</div>` +
       `<p class="def">${esc(r.chain.map(c => c.concept).join(" · "))}</p>` +
       partsList(r.chain) +
+      (r.chain.length === 1 ? `<p class="meta">Only one concept reached a morpheme, so this is a single root rather than a compound. More concrete nouns give it more to work with.</p>` : "") +
       (r.missed.length ? `<p class="meta">no morpheme for: ${esc(r.missed.join(", "))}</p>` : "") +
       `<button class="go" id="keepBtn">keep it &rarr;</button>`;
     $("keepBtn").addEventListener("click", () => keep(r.word, r.chain.map(c => c.meaning.split(",")[0]).join(" · ")));
@@ -643,4 +675,5 @@ $("counts").textContent =
   MORPHEMES.suffixes.length + " suffixes · " + INDEX.length + " surface forms";
 
 render();
+run();          // discover needs no input, so the page opens with something in it
 renderKept();
