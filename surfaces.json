@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-01",
+ "published": "2026-08-02",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -27,6 +27,22 @@
   }
  ],
  "surfaces": [
+  {
+   "slug": "titivillus",
+   "name": "TITIVILLUS",
+   "district": "language",
+   "status": "live",
+   "finish": 85,
+   "tags": [
+    "asemic",
+    "broken letterforms",
+    "font generator",
+    "shape affinity",
+    "glitch"
+   ],
+   "blurb": "Named for the demon who filled a sack a thousand times a day with the syllables scribes dropped, and produced it at judgement to be weighed against them. An instrument for the material of language, in three stages. The characters are damaged first, while the text is still text and still copies and pastes. Then the letterforms are built and broken — traced from Courier, drawn from monoline skeletons, or synthesised as a script that never existed, and put through eleven ways of failing. Then the pixels, which is where it ends, because nothing after that can recover an outline. Twenty-six thousand Unicode glyphs are measured by stroke topology, so a substituted mark rhymes with the letter it replaces rather than arriving from a random block. Every hand edit is kept as an operation and never baked, which is why a letter tuned by hand still comes out in the font file. It exports a real typeface: install it and every application on the machine starts failing at type.",
+   "url": "https://opposite.city/titivillus/"
+  },
   {
    "slug": "split",
    "name": "SPLIT",
