@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>OPPOSITE CITY</title>
 <meta name="description" content="Opposite City — an artistic agency, idea firm, and widget farm." />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="OPPOSITE CITY" />
+<meta property="og:url" content="https://opposite.city/" />
+<meta property="og:title" content="OPPOSITE CITY" />
+<meta property="og:description" content="An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift." />
+<meta property="og:image" content="https://opposite.city/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="OPPOSITE CITY" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="OPPOSITE CITY" />
+<meta name="twitter:description" content="An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift." />
+<meta name="twitter:image" content="https://opposite.city/og.png" />
+<link rel="canonical" href="https://opposite.city/" />
+<script>document.documentElement.className="js";</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
@@ -83,6 +98,11 @@
          white-space:nowrap; text-overflow:ellipsis;}
   #clock{font-size:11px; padding:0 8px; min-height:30px; display:flex; align-items:center; background:#fff;}
   #empty{color:#fff; padding:0 var(--pad) 20px; font-size:13px;}
+  html.js #fallback{display:none;}
+  #fallback{max-width:var(--max); margin-inline:auto; padding:0 var(--pad) 40px; color:#fff; font-size:15px; line-height:1.6;}
+  #fallback a{color:#fff;}
+  #fallback ul{list-style:none; padding:0; margin:0;}
+  #fallback li{margin:0 0 14px;}
   :focus-visible{outline:2px dotted #fff; outline-offset:2px;}
   @media (max-width:520px){
     :root{--tileh:196px;}
@@ -109,7 +129,26 @@
 </div>
 
 <div id="grid"></div>
-<p id="empty" style="display:none">Nothing here matches.</p>
+<p id="empty" style="display:none"></p>
+
+<div id="fallback">
+  <p>An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift.</p>
+  <ul>
+    <li><a href="https://opposite.city/titivillus/">TITIVILLUS</a> — asemic, broken letterforms, font generator, shape affinity, glitch</li>
+    <li><a href="https://opposite.city/split/">SPLIT</a> — figure-ground, pinwheel, type generator, riley</li>
+    <li><a href="https://opposite.city/sortition-congress/">Sortition Congress</a> — sortition, democracy, lottery</li>
+    <li><a href="https://opposite.city/circlefornia/">CIRCLEFORNIA</a> — california, measurement, equivalence</li>
+    <li><a href="https://opposite.city/somesets/">SOMESET GENERATOR</a> — colour drift, fullscreen, ambient</li>
+    <li><a href="https://opposite.city/bz/">BZ</a> — reaction-diffusion, excitable media, phase singularity, fullscreen</li>
+    <li><a href="https://opposite.city/polyrhythm/">POLYRHYTHMIC TIME CLOCK</a> — clock, polyrhythm, web audio, interval</li>
+    <li><a href="https://opposite.city/kelp/">KELP</a> — aleatoric, percussion, web audio, spring chain, pixel</li>
+    <li><a href="https://opposite.city/semantic-voyage/">SEMANTIC VOYAGE</a> — word embeddings, glove, semantic space, starfield, navigation</li>
+    <li><a href="https://opposite.city/room/">ROOM</a> — lucier, recursive drift, synonym chain, syllable lock, irreversible</li>
+    <li><a href="https://opposite.city/wind/">YOU ARE THE WIND</a> — ekman spiral, coriolis, pressure gradient, voxel raycast, first person</li>
+    <li><a href="https://opposite.city/ambiguity/">AMBIGUATOR</a> — notation, ambiguity, symbol dictionary, cross-domain, parser</li>
+    <li><a href="https://opposite.city/syllababbler/">SYLLABABBLER</a> — morphology, neologism, greek, latin, coinage</li>
+  </ul>
+</div>
 
 <div id="taskbar" class="out">
   <div id="count"></div>
@@ -423,6 +462,7 @@ function draw(){
   const g=$('grid'), rows=shown();
   g.innerHTML='';
   rows.forEach(s=>g.appendChild(tile(s)));
+  $('empty').textContent=rows.length?'':'Nothing here matches.';
   $('empty').style.display=rows.length?'none':'';
   const f=filter; filter='all'; const tot=shown().length; filter=f;
   $('count').textContent=`${rows.length} of ${tot} surfaces`;
