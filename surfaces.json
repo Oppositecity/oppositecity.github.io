@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-02",
+ "published": "2026-08-03",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -42,6 +42,22 @@
    ],
    "blurb": "Named for the demon who filled a sack a thousand times a day with the syllables scribes dropped, and produced it at judgement to be weighed against them. An instrument for the material of language, in three stages. The characters are damaged first, while the text is still text and still copies and pastes. Then the letterforms are built and broken — traced from Courier, drawn from monoline skeletons, or synthesised as a script that never existed, and put through eleven ways of failing. Then the pixels, which is where it ends, because nothing after that can recover an outline. Twenty-six thousand Unicode glyphs are measured by stroke topology, so a substituted mark rhymes with the letter it replaces rather than arriving from a random block. Every hand edit is kept as an operation and never baked, which is why a letter tuned by hand still comes out in the font file. It exports a real typeface: install it and every application on the machine starts failing at type.",
    "url": "https://opposite.city/titivillus/"
+  },
+  {
+   "slug": "signgularity",
+   "name": "SIGNGULARITY",
+   "district": "language",
+   "status": "live",
+   "finish": 85,
+   "tags": [
+    "singularity",
+    "letterforms",
+    "extrusion",
+    "sculpture",
+    "stl"
+   ],
+   "blurb": "A word driven into a single point. Every letter is held at the same origin and pushed outward along its own axis, so what you get is the word with its sequence taken away — all of it present at once and none of it in order. Collapse is the only control that matters: at the far end the letters stand apart and can still be read, and at zero they occupy one another and legibility goes, which is the state the piece is actually about. The letters are solids and not pictures of letters, extruded from real outlines with their counters intact, so an A keeps its hole and a B keeps both. Twenty-six of them are drawn by hand. Everything else — Greek, Cyrillic, Hebrew, kana, hanzi — is contoured live from whatever font the device happens to have, which means there is no script menu, because your keyboard already is one. Each form is seeded and the seed rides in the URL, so a shape can be recovered, sent to someone, or printed: the export is an STL, and held near the singularity the letters interpenetrate far enough to come out of a printer as one object.",
+   "url": "https://opposite.city/signgularity/"
   },
   {
    "slug": "split",
