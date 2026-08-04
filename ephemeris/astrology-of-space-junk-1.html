@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Towards an Astrology of Space Junk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090f;
+  --panel:#0e1119;
+  --panel-2:#141824;
+  --ink:#ffffff;
+  --ink-2:#ffffff;
+  --ink-3:#ffffff;
+  --fire:#ff6f4d;
+  --earth:#c9e055;
+  --air:#63c8ff;
+  --water:#98a6ff;
+  --unruled:#b9c2d2;
+  --mono:'Courier Prime','Courier New',Courier,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--mono);
+  font-size:15px;
+  line-height:1.65;
+  padding:20px 16px 64px;
+  max-width:760px;
+  margin:0 auto;
+  -webkit-font-smoothing:antialiased;
+}
+h1{
+  font-size:19px;
+  font-weight:700;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  margin:0 0 6px;
+  color:var(--ink);
+  line-height:1.35;
+}
+.sub{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-3);margin-bottom:16px}
+.clock{font-size:14px;color:var(--ink-2);font-variant-numeric:tabular-nums;margin-bottom:4px}
+.drift{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.eyebrow{
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--ink-3);margin:26px 0 10px;
+}
+.eyebrow:first-of-type{margin-top:18px}
+button{font-family:var(--mono);cursor:pointer;border-radius:2px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:20px 0 18px}
+.tab{
+  padding:11px 15px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  background:var(--panel);border:1px solid #3a4356;color:#ffffff;
+}
+.tab.on{background:#e9edf6;border-color:#e9edf6;color:#07090f;font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  padding:9px 12px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--panel);border:1px solid #232a3a;color:#ffffff;
+}
+.chip.on{color:#07090f;font-weight:700}
+.speed{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:12px}
+.sbtn{padding:7px 11px;font-size:12px;background:var(--panel);border:1px solid #3a4356;color:#ffffff}
+.sbtn.on{background:#e9edf6;border-color:#e9edf6;color:#07090f;font-weight:700}
+input[type=date],textarea{
+  font-family:var(--mono);font-size:15px;color:var(--ink);
+  background:var(--panel-2);border:1px solid #3b4658;
+  padding:11px 13px;width:100%;border-radius:2px;
+}
+textarea{min-height:110px;line-height:1.5;font-size:12px;resize:vertical}
+input[type=date]{max-width:240px}
+.link{color:var(--ink);text-decoration:underline;cursor:pointer;font-size:13px}
+canvas{width:100%;max-width:440px;height:auto;display:block;margin:0 auto;aspect-ratio:1}
+.row{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:11px 12px;background:var(--panel);margin-bottom:3px;border-radius:2px;cursor:pointer;
+}
+.row.static{cursor:default}
+.row .nm{display:flex;align-items:center;gap:9px;min-width:0}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.nm span.t{color:var(--ink);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pos{display:flex;align-items:center;gap:9px;flex:none}
+.pos .g{font-size:18px;line-height:1}
+.pos .d{font-size:12.5px;color:var(--ink-2);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.detail{background:var(--panel-2);padding:14px;border-radius:2px;margin-top:8px}
+.detail .k{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin-top:10px}
+.detail .v{font-size:14px;color:var(--ink);margin-top:2px}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.bar .g{width:22px;text-align:center;font-size:17px;line-height:1}
+.bar .n{width:62px;font-size:11.5px;color:var(--ink-2)}
+.bar .track{flex:1;height:8px;background:#161b26;border-radius:1px;overflow:hidden}
+.bar .fill{height:8px;border-radius:1px}
+.bar .c{width:22px;text-align:right;font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.asp{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:11px 12px;background:var(--panel);margin-bottom:3px;border-radius:2px;
+}
+.asp .l{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.asp .sat{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%}
+.asp .sym{font-size:17px;flex:none}
+.asp .pl{font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.asp .orb{font-size:12px;color:var(--ink-2);flex:none;font-variant-numeric:tabular-nums}
+.reading{background:var(--panel);padding:18px 16px;border-radius:2px}
+.reading h3{
+  font-size:11px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--ink-3);margin:22px 0 8px;font-weight:400;
+}
+.reading h3:first-child{margin-top:0}
+.reading p{margin:0 0 12px;font-size:14.5px;color:var(--ink);line-height:1.75}
+.reading em{color:var(--ink);font-style:italic}
+.foot{margin-top:36px;font-size:11px;letter-spacing:.1em;line-height:2;color:var(--ink-3);text-transform:uppercase}
+.note{font-size:12.5px;color:var(--ink-2);margin:8px 0 0;line-height:1.7}
+.tleout{font-size:12px;color:var(--ink);margin-top:10px}
+@media (max-width:420px){
+  body{font-size:14.5px;padding:16px 13px 56px}
+  h1{font-size:17px}
+  .asp .sat{max-width:40%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid #63c8ff;outline-offset:2px}
+</style>
+</head>
+<body>
+
+<h1>Towards an Astrology of Space Junk</h1>
+<div class="sub">Ecliptic positions of artificial celestial bodies</div>
+<div class="clock" id="clock"></div>
+<div class="drift" id="drift"></div>
+
+<div class="speed" id="speeds"></div>
+
+<div class="tabs" id="tabs"></div>
+
+<div id="view"></div>
+
+<div class="foot" id="foot"></div>
+
+<script>
+"use strict";
+
+/* ════
+   1. THE ZODIAC
+   ════ */
+
+const SIGNS = ["♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓"];
+const SIGN_NAMES = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+const SIGN_EL = ["fire","earth","air","water","fire","earth","air","water","fire","earth","air","water"];
+const SIGN_MODE = ["cardinal","fixed","mutable","cardinal","fixed","mutable","cardinal","fixed","mutable","cardinal","fixed","mutable"];
+const EL_COL = { fire:"#ff6f4d", earth:"#c9e055", air:"#63c8ff", water:"#98a6ff" };
+
+/* What each sign is taken to mean when artificial bodies stand in it. */
+const SIGN_GLOSS = [
+"The point of launch. Everything begins here whether or not anything was planned.",
+"What has been paid for and will not be moved. Assets, contracts, the orbit as property.",
+"Relay. Two things that were not connected are now connected, and neither chose it.",
+"The protective instinct — warning systems, weather watch, the impulse to see a thing coming.",
+"Display. Objects placed to be seen, or to prove that placing them was possible.",
+"Maintenance. Station-keeping, orbit correction, the unglamorous work of staying where you were put.",
+"Coordination between parties. Shared frequencies, deconflicted orbits, treaties nobody enforces.",
+"What was buried and did not stay buried. Dead hardware, classified payloads, deliberate destruction.",
+"Reach. The long look outward, and the doctrine that justifies the expense of it.",
+"Authority and the record. Who is permitted to be here, and who keeps the list.",
+"The network as such — many identical things acting as one, at a scale no one body could reach.",
+"Dissolution. Reentry, decay, the loss of tracking. Where objects stop being objects.",
+];
+
+/* ════
+   2. FUNCTIONAL RULERSHIP
+   Classical astrology assigns rulership by mythic portfolio.
+   Here it is assigned by what the object actually does to people.
+   ════ */
+
+const RULERS = {
+  sun:     { sym:"☉", name:"Sun",     domain:"precedence, the first, sovereignty" },
+  moon:    { sym:"☽", name:"Moon",    domain:"weather, tide, the changeable" },
+  mercury: { sym:"☿", name:"Mercury", domain:"message, relay, commerce, speed" },
+  venus:   { sym:"♀", name:"Venus",   domain:"image, desire, the surface seen" },
+  mars:    { sym:"♂", name:"Mars",    domain:"force, targeting, the threat held" },
+  jupiter: { sym:"♃", name:"Jupiter", domain:"expansion, doctrine, the sanctioned" },
+  saturn:  { sym:"♄", name:"Saturn",  domain:"time, boundary, record, authority" },
+  uranus:  { sym:"♅", name:"Uranus",  domain:"rupture, the unforeseen" },
+  neptune: { sym:"♆", name:"Neptune", domain:"vision, dissolution, the far" },
+  pluto:   { sym:"♇", name:"Pluto",   domain:"the buried, the irreversible" },
+  unruled: { sym:"⊘", name:"Unruled", domain:"influence without intention" },
+};
+
+const CATS = {
+  station:  { label:"Stations",     col:"#FFD866" },
+  scope:    { label:"Telescopes",   col:"#8FD0F0" },
+  nav:      { label:"Navigation",   col:"#6EE79B" },
+  comms:    { label:"Communication",col:"#CE9BFF" },
+  mil:      { label:"Military",     col:"#FF6B6B" },
+  weather:  { label:"Weather",      col:"#57C9FF" },
+  relic:    { label:"Relics",       col:"#E4B87E" },
+  debris:   { label:"Debris",       col:"#B9C2D2" },
+};
+
+/* ════
+   3. THE BODIES
+   i=inclination, raan=RAAN, e=ecc, argP=arg of perigee,
+   M0=mean anomaly at epoch, n=mean motion rev/day,
+   epoch=days after J2000. alt=approx altitude km.
+   life = expected years remaining in orbit (null = indefinite)
+   ════ */
+
+const BODIES = [
+// stations
+{n_:"ISS (Zarya)",cat:"station",rule:"jupiter",i:51.6,raan:45,e:.0002,argP:0,M0:0,n:15.49,epoch:9600,alt:420,life:6,
+ norad:25544,since:1998,who:"NASA / Roscosmos / ESA / JAXA / CSA",mass:450000,
+ end:"Planned destructive reentry over the South Pacific. A deorbit vehicle is being built for the purpose.",
+ note:"The temple. International, aspirational, a priestly class in residence. Everyone agrees it matters; nobody can say precisely how.",
+ read:"Read as Jupiter: expansion by consensus. It confers legitimacy on whoever is allowed aboard, and its authority comes from the fact that rivals agreed to share it."},
+{n_:"Tiangong",cat:"station",rule:"jupiter",i:41.5,raan:120,e:.0003,argP:90,M0:180,n:15.60,epoch:9600,alt:390,life:12,
+ norad:48274,since:2021,who:"China Manned Space Agency",mass:100000,
+ end:"Controlled reentry at end of service life.",
+ note:"The rival temple. Same portfolio, different doctrine, non-overlapping congregations.",
+ read:"A second Jupiter. Two expansive bodies in the same house is not a conjunction, it is a schism — the same function claimed twice."},
+// telescopes
+{n_:"Hubble",cat:"scope",rule:"neptune",i:28.5,raan:200,e:.0003,argP:45,M0:90,n:15.09,epoch:9600,alt:537,life:8,
+ norad:20580,since:1990,who:"NASA / ESA",mass:11110,
+ end:"Reentry currently estimated for the 2030s. No servicing mission is funded.",
+ note:"The eye that dissolved the boundary. Made deep time into a consumer image. Falling, slowly.",
+ read:"Neptune exactly: it does not show you a place you can go. It converts distance into feeling and hands it back as a desktop background."},
+{n_:"Chandra",cat:"scope",rule:"pluto",i:76.7,raan:310,e:.744,argP:270,M0:0,n:.37,epoch:9600,alt:100000,life:null,
+ norad:null,since:1999,who:"NASA",mass:4790,
+ end:"Too high to decay. Will hold this orbit long after the agency that built it.",
+ note:"Sees only what is violent enough to emit X-rays. A 64-hour orbit that carries it a third of the way to the Moon.",
+ read:"Pluto's portfolio without apology: it is blind to anything that is not a catastrophe. Whatever it reports, it reports because something died."},
+// navigation
+{n_:"GPS IIR-2",cat:"nav",rule:"saturn",i:55,raan:15,e:.005,argP:0,M0:0,n:2.006,epoch:9600,alt:20200,life:null,
+ norad:null,since:1997,who:"US Space Force",mass:2030,end:"Boosted to a graveyard orbit above the constellation.",
+ note:"Slot A1. Its predecessor, IIR-1, was destroyed thirteen seconds after launch in 1997.",
+ read:"Saturn: it tells you where you are, and in doing so tells you where you are not permitted to be lost."},
+{n_:"GPS IIR-11",cat:"nav",rule:"saturn",i:55,raan:135,e:.005,argP:180,M0:180,n:2.006,epoch:9600,alt:20200,life:null,
+ norad:null,since:2004,who:"US Space Force",mass:2030,end:"Graveyard orbit.",
+ note:"Slot C3.",read:"One of six here standing for thirty-one. The constellation is the body; no single member has a character."},
+{n_:"GPS IIF-1",cat:"nav",rule:"saturn",i:55,raan:195,e:.005,argP:270,M0:270,n:2.006,epoch:9600,alt:20200,life:null,
+ norad:null,since:2010,who:"US Space Force",mass:1630,end:"Graveyard orbit.",
+ note:"Slot D4.",read:"Saturn keeps the clock. Every timestamp in global finance is downstream of atomic clocks in orbits like this one."},
+{n_:"GPS III-1",cat:"nav",rule:"saturn",i:55,raan:255,e:.005,argP:45,M0:45,n:2.006,epoch:9600,alt:20200,life:null,
+ norad:null,since:2018,who:"US Space Force",mass:3880,end:"Graveyard orbit.",
+ note:"First of the third generation.",read:"Newer, harder to jam, more precisely encrypted. Saturn tightening the boundary it already held."},
+{n_:"GPS III-5",cat:"nav",rule:"saturn",i:55,raan:315,e:.005,argP:135,M0:135,n:2.006,epoch:9600,alt:20200,life:null,
+ norad:null,since:2021,who:"US Space Force",mass:3880,end:"Graveyard orbit.",
+ note:"Slot F1.",read:"The grid completing itself. Nothing on the ground moves without consulting this."},
+{n_:"GLONASS-K1",cat:"nav",rule:"saturn",i:64.8,raan:80,e:.001,argP:0,M0:200,n:2.131,epoch:9600,alt:19100,life:null,
+ norad:null,since:2011,who:"Roscosmos",mass:935,end:"Graveyard orbit.",
+ note:"A second authority, defining the same coordinates in a different hand.",
+ read:"Two Saturns disagreeing about where you are, by a few metres. Sovereignty expressed as a rounding error."},
+{n_:"Galileo FOC-1",cat:"nav",rule:"saturn",i:56,raan:250,e:.0002,argP:0,M0:310,n:1.705,epoch:9600,alt:23200,life:null,
+ norad:null,since:2014,who:"European Union Agency for the Space Programme",mass:715,end:"Graveyard orbit.",
+ note:"Civilian by charter — the only major navigation constellation that is not military at root.",
+ read:"Saturn without the sword. A boundary drawn by treaty rather than by capability."},
+// communication
+{n_:"Starlink-1007",cat:"comms",rule:"mercury",i:53,raan:30,e:.0001,argP:0,M0:0,n:15.06,epoch:9600,alt:550,life:5,
+ norad:null,since:2019,who:"SpaceX",mass:260,end:"Deorbits within about five years of failure — low enough that atmospheric drag does the work.",
+ note:"One of many thousands. The synthetic zodiac belt.",
+ read:"Mercury multiplied past the point where the metaphor holds. A single messenger is a god; ten thousand identical messengers are infrastructure."},
+{n_:"Starlink-2241",cat:"comms",rule:"mercury",i:53,raan:90,e:.0001,argP:0,M0:120,n:15.06,epoch:9600,alt:550,life:5,
+ norad:null,since:2021,who:"SpaceX",mass:260,end:"Passive deorbit within five years.",
+ note:"Shell 1, plane 4.",read:"Interchangeable by design. Astrology has no apparatus for a body that can be replaced next Tuesday."},
+{n_:"Starlink-3588",cat:"comms",rule:"mercury",i:53,raan:150,e:.0001,argP:0,M0:240,n:15.06,epoch:9600,alt:550,life:5,
+ norad:null,since:2022,who:"SpaceX",mass:260,end:"Passive deorbit within five years.",
+ note:"Shell 1, plane 8.",read:"Third of three standing here for thousands. The constellation crosses every sign continuously; it is always everywhere."},
+{n_:"Iridium NEXT-102",cat:"comms",rule:"mercury",i:86.4,raan:20,e:.0002,argP:0,M0:60,n:14.34,epoch:9600,alt:780,life:9,
+ norad:null,since:2017,who:"Iridium Communications",mass:860,end:"Actively deorbited at end of life.",
+ note:"Successor to the constellation whose flares people once watched for as omens.",
+ read:"The original Iridium satellites produced brilliant predictable flashes — manufactured signs, appearing on schedule, which people looked up for. They were switched off in 2019. This generation does not flare."},
+{n_:"Inmarsat-5 F4",cat:"comms",rule:"mercury",i:.05,raan:0,e:.0002,argP:0,M0:100,n:1.0027,epoch:9600,alt:35786,life:null,
+ norad:null,since:2017,who:"Inmarsat / Viasat",mass:6100,end:"Graveyard orbit, roughly 300 km above the geostationary belt.",
+ note:"Geostationary. Fixed in the sky — an artificial star that does not rise or set.",
+ read:"The only bodies here that behave like the ancient sky. It holds one degree of one sign permanently. If any artificial object deserves a classical reading, it is this kind."},
+// military
+{n_:"USA-224 (KH-11)",cat:"mil",rule:"mars",i:97.9,raan:200,e:.05,argP:60,M0:0,n:14.9,epoch:9600,alt:400,life:null,
+ norad:37348,since:2011,who:"National Reconnaissance Office",mass:14000,end:"Classified.",
+ note:"Optical reconnaissance, sun-synchronous — it passes over you at the same local hour every day.",
+ read:"Mars as surveillance rather than force. Its influence is entirely one-directional: it acts on you, you cannot act on it, and you are not told when it passes."},
+{n_:"Cosmos 2542",cat:"mil",rule:"mars",i:97.9,raan:220,e:.001,argP:0,M0:180,n:15.2,epoch:9600,alt:370,life:null,
+ norad:44797,since:2019,who:"Russian Ministry of Defence",mass:null,end:"Undeclared.",
+ note:"An inspector satellite. Its declared function is to look at other satellites.",
+ read:"In 2020 it manoeuvred to shadow an American reconnaissance satellite, then released a smaller object at high velocity. Mars in the twelfth house: threat that is never quite stated."},
+{n_:"SBIRS GEO-5",cat:"mil",rule:"mars",i:.5,raan:0,e:.0003,argP:0,M0:40,n:1.0027,epoch:9600,alt:35786,life:null,
+ norad:null,since:2021,who:"US Space Force",mass:4500,end:"Graveyard orbit.",
+ note:"Infrared missile warning. Watches the whole hemisphere for the heat of a launch.",
+ read:"It exists to detect one event, and its entire value lies in that event never occurring. A body whose purpose is to be wrong."},
+// weather
+{n_:"GOES-16",cat:"weather",rule:"moon",i:.04,raan:0,e:.0001,argP:0,M0:255,n:1.0027,epoch:9600,alt:35786,life:null,
+ norad:41866,since:2016,who:"NOAA / NASA",mass:5192,end:"Graveyard orbit.",
+ note:"Held the GOES East slot over the Americas until GOES-19 relieved it; now a standby. Every hurricane you have seen from above, you saw through one of these.",
+ read:"The Moon's portfolio, industrialised. It does not influence the weather; it determines whether you knew about it in time."},
+{n_:"GOES-18",cat:"weather",rule:"moon",i:.03,raan:0,e:.0001,argP:0,M0:225,n:1.0027,epoch:9600,alt:35786,life:null,
+ norad:51850,since:2022,who:"NOAA / NASA",mass:5192,end:"Graveyard orbit.",
+ note:"GOES-West. The Pacific's weather made legible.",
+ read:"Between this and GOES-16 there is no weather over the hemisphere that goes unseen. The Moon, fully instrumented."},
+// relics
+{n_:"Vanguard 1",cat:"relic",rule:"sun",i:34.25,raan:280,e:.185,argP:120,M0:90,n:10.85,epoch:9600,alt:3800,life:null,
+ norad:5,since:1958,who:"US Navy Research Laboratory",mass:1.46,
+ end:"Estimated to remain in orbit until roughly the year 2198.",
+ note:"Launched 1958. Silent since 1964. The oldest human object in orbit and the ancestor of everything else here.",
+ read:"Catalogue number 5. A grapefruit-sized aluminium sphere that outlived the nation that built it in its original form, every engineer who touched it, and the entire Vanguard programme. The Sun: precedence, and nothing else."},
+{n_:"Telstar 1",cat:"relic",rule:"mercury",i:44.8,raan:130,e:.254,argP:30,M0:210,n:9.17,epoch:9600,alt:3443,life:null,
+ norad:340,since:1962,who:"AT&T / Bell Labs",mass:77,end:"No decay expected for centuries.",
+ note:"First live transatlantic television, July 1962. Dead by February 1963, killed by radiation from a high-altitude nuclear test.",
+ read:"The first Mercury. It carried the first live image across an ocean, and was murdered by a weapon test conducted by the same country that launched it. Still up there, still silent, still on its original orbit."},
+{n_:"LAGEOS-1",cat:"relic",rule:"saturn",i:109.8,raan:40,e:.004,argP:0,M0:150,n:6.39,epoch:9600,alt:5860,life:null,
+ norad:8820,since:1976,who:"NASA",mass:407,
+ end:"Predicted to reenter in roughly 8 million years.",
+ note:"A brass sphere of mirrors. No instruments, no power, no transmitter. Lasers are bounced off it from the ground.",
+ read:"It carries a plaque designed by Carl Sagan showing Earth's continents as they were, as they are, and as they will be roughly eight million years from now, when it falls. The only object here addressed to a reader who does not exist yet. Saturn: the record, kept past all possible readers."},
+// debris
+{n_:"Envisat (dead)",cat:"debris",rule:"unruled",i:98.3,raan:60,e:.0001,argP:0,M0:120,n:14.38,epoch:9600,alt:770,life:null,
+ norad:27386,since:2002,who:"European Space Agency (until 2012)",mass:8211,
+ end:"No deorbit capability. Expected to remain roughly 150 years unless removed.",
+ note:"Eight tonnes, unresponsive since 2012, uncontrolled. The largest dead thing in low orbit.",
+ read:"Near the top of every removal shortlist, in a heavily used orbit, tumbling, with no way to be commanded. If two objects this size collide the resulting cloud is permanent on any human timescale."},
+{n_:"Iridium 33 debris",cat:"debris",rule:"unruled",i:86.4,raan:100,e:.004,argP:90,M0:45,n:14.34,epoch:9600,alt:790,life:null,
+ norad:null,since:2009,who:"nobody",mass:null,end:"Some fragments will persist for centuries.",
+ note:"From the 2009 collision with Cosmos 2251 — the first accidental destruction of two intact satellites.",
+ read:"Neither operator intended it. Roughly two thousand catalogued fragments were created in a few seconds. Influence without intention, in its purest recorded form."},
+{n_:"Fengyun-1C debris",cat:"debris",rule:"unruled",i:99,raan:180,e:.003,argP:45,M0:200,n:14.5,epoch:9600,alt:850,life:null,
+ norad:null,since:2007,who:"nobody",mass:null,end:"Much of it will outlast the century.",
+ note:"From a 2007 anti-satellite test. Thousands of catalogued fragments, deliberately made.",
+ read:"The single worst debris-generating event in history, and it was on purpose, on a satellite the perpetrator owned. Unruled but not unauthored."},
+{n_:"Cosmos 1408 debris",cat:"debris",rule:"unruled",i:82.6,raan:280,e:.002,argP:0,M0:300,n:15.1,epoch:9600,alt:480,life:8,
+ norad:null,since:2021,who:"nobody",mass:null,end:"Lower altitude means most will decay within a decade.",
+ note:"From a 2021 anti-satellite test. The station crew sheltered in their return capsules as the cloud passed.",
+ read:"For a few hours the people in orbit had to take shelter from a thing their own species had just made deliberately. Whatever influence means, it meant something that day."},
+{n_:"SL-16 R/B",cat:"debris",rule:"unruled",i:71,raan:340,e:.001,argP:0,M0:80,n:14.6,epoch:9600,alt:840,life:null,
+ norad:null,since:1990,who:"nobody",mass:9000,end:"Indefinite at this altitude.",
+ note:"A spent Zenit upper stage. Nine tonnes, tumbling, in a crowded band.",
+ read:"There are dozens of these. Analysts consistently rank this class as the highest-priority removal target in orbit: massive, uncontrolled, clustered in the same altitudes, each one a potential source of thousands of fragments."},
+];
+
+const ASPECTS = [
+  { name:"Conjunction", sym:"☌", angle:0,   orb:8, col:"#ffffff", read:"fused with" },
+  { name:"Sextile",     sym:"⚹", angle:60,  orb:4, col:"#63c8ff", read:"in easy exchange with" },
+  { name:"Square",      sym:"□", angle:90,  orb:6, col:"#ff6f4d", read:"at right angles to" },
+  { name:"Trine",       sym:"△", angle:120, orb:6, col:"#c9e055", read:"in flow with" },
+  { name:"Opposition",  sym:"☍", angle:180, orb:8, col:"#CE9BFF", read:"opposed to" },
+];
+
+/* ════
+   4. EPHEMERIS — the natural bodies, geocentric
+   JPL approximate elements. Good to a few arcminutes 1800–2050,
+   which is better than most astrology software bothers with.
+   ════ */
+
+const D2R = Math.PI/180, R2D = 180/Math.PI;
+const mod360 = x => ((x%360)+360)%360;
+
+// a, e, i, L, varpi, Omega  +  per-century rates
+const PL = {
+  mercury:[.38709927,.20563593,7.00497902,252.25032350,77.45779628,48.33076593,
+           .00000037,.00001906,-.00594749,149472.67411175,.16047689,-.12534081],
+  venus:  [.72333566,.00677672,3.39467605,181.97909950,131.60246718,76.67984255,
+           .00000390,-.00004107,-.00078890,58517.81538729,.00268329,-.27769418],
+  earth:  [1.00000261,.01671123,-.00001531,100.46457166,102.93768193,0,
+           .00000562,-.00004392,-.01294668,35999.37244981,.32327364,0],
+  mars:   [1.52371034,.09339410,1.84969142,-4.55343205,-23.94362959,49.55953891,
+           .00001847,.00007882,-.00813131,19140.30268499,.44441088,-.29257343],
+  jupiter:[5.20288700,.04838624,1.30439695,34.39644051,14.72847983,100.47390909,
+           -.00011607,-.00013253,-.00183714,3034.74612775,.21252668,.20469106],
+  saturn: [9.53667594,.05386179,2.48599187,49.95424423,92.59887831,113.66242448,
+           -.00125060,-.00050991,.00193609,1222.49362201,-.41897216,-.28867794],
+  uranus: [19.18916464,.04725744,.77263783,313.23810451,170.95427630,74.01692503,
+           -.00196176,-.00004397,-.00242939,428.48202785,.40805281,.04240589],
+  neptune:[30.06992276,.00859048,1.77004347,-55.12002969,44.96476227,131.78422574,
+           .00026291,.00005105,.00035372,218.45945325,-.32241464,-.00508664],
+  pluto:  [39.48211675,.24882730,17.14001206,238.92903833,224.06891629,110.30393684,
+           -.00031596,.00005170,.00004818,145.20780515,-.04062942,-.01183482],
+};
+
+function kepler(M,e){
+  let E=M;
+  for(let k=0;k<60;k++){
+    const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+    E-=d;
+    if(Math.abs(d)<1e-10) break;
+  }
+  return E;
+}
+
+function helioXYZ(key,T){
+  const p=PL[key];
+  const a=p[0]+p[6]*T, e=p[1]+p[7]*T, inc=(p[2]+p[8]*T)*D2R;
+  const L=p[3]+p[9]*T, vp=p[4]+p[10]*T, om=(p[5]+p[11]*T)*D2R;
+  const w=(vp-p[5]-p[11]*T)*D2R;
+  const M=mod360(L-vp)*D2R;
+  const E=kepler(M,e);
+  const xo=a*(Math.cos(E)-e), yo=a*Math.sqrt(1-e*e)*Math.sin(E);
+  const cw=Math.cos(w),sw=Math.sin(w),co=Math.cos(om),so=Math.sin(om),ci=Math.cos(inc),si=Math.sin(inc);
+  return [
+    (cw*co-sw*so*ci)*xo + (-sw*co-cw*so*ci)*yo,
+    (cw*so+sw*co*ci)*xo + (-sw*so+cw*co*ci)*yo,
+    (sw*si)*xo + (cw*si)*yo
+  ];
+}
+
+function moonLon(d){
+  const Lp=218.3164477+13.17639648*d;
+  const D=297.8501921+12.19074912*d;
+  const M=357.5291092+.98560028*d;
+  const Mp=134.9633964+13.06499295*d;
+  const F=93.2720950+13.22935024*d;
+  const s=x=>Math.sin(x*D2R);
+  return mod360(Lp
+    + 6.289*s(Mp) - 1.274*s(2*D-Mp) + .658*s(2*D)
+    + .214*s(2*Mp) - .186*s(M) - .114*s(2*F)
+    + .059*s(2*Mp-2*D) - .057*s(Mp-2*D+M));
+}
+
+function naturalPositions(jd){
+  const T=(jd-2451545)/36525, d=jd-2451545;
+  const E=helioXYZ("earth",T);
+  const out={};
+  out.sun = mod360(Math.atan2(-E[1],-E[0])*R2D);
+  out.moon = moonLon(d);
+  for(const k of ["mercury","venus","mars","jupiter","saturn","uranus","neptune","pluto"]){
+    const P=helioXYZ(k,T);
+    out[k]=mod360(Math.atan2(P[1]-E[1],P[0]-E[0])*R2D);
+  }
+  return out;
+}
+
+const NAT_ORDER=["sun","moon","mercury","venus","mars","jupiter","saturn","uranus","neptune","pluto"];
+const NAT_COL={sun:"#FFD866",moon:"#E4E8F2",mercury:"#9FC7E8",venus:"#8FE5B0",
+  mars:"#FF7A5E",jupiter:"#E4B87E",saturn:"#D9C24A",uranus:"#5FD8E8",neptune:"#7C93FF",pluto:"#BB8CF0"};
+
+/* ════
+   5. PROPAGATION — the artificial bodies
+   Mean Keplerian with a first-order J2 nodal drift.
+   Honest limits are stated in the footer and made visible
+   in the drift indicator; they are part of the piece.
+   ════ */
+
+const OBLIQ = 23.4393*D2R;
+
+function bodyLon(b,jd){
+  const dt = jd - (2451545 + b.epoch);
+  const M = mod360(b.M0 + b.n*360*dt)*D2R;
+  const E = kepler(M,b.e);
+  const v = Math.atan2(Math.sqrt(1-b.e*b.e)*Math.sin(E), Math.cos(E)-b.e);
+  const u = b.argP*D2R + v;
+  const inc = b.i*D2R;
+  const nrad = b.n*2*Math.PI/86400;
+  const a = Math.pow(398600.4418/(nrad*nrad),1/3);
+  const raanRate = -1.5*1.08263e-3*Math.cos(inc)*Math.pow(6378.137/a,2)*b.n*360;
+  const om = b.raan*D2R + raanRate*dt*D2R;
+  const x = Math.cos(om)*Math.cos(u) - Math.sin(om)*Math.sin(u)*Math.cos(inc);
+  const y = Math.sin(om)*Math.cos(u) + Math.cos(om)*Math.sin(u)*Math.cos(inc);
+  const z = Math.sin(u)*Math.sin(inc);
+  return mod360(Math.atan2(y*Math.cos(OBLIQ)+z*Math.sin(OBLIQ), x)*R2D);
+}
+
+/* TLE import — re-ground the instrument against a live catalogue */
+function parseTLE(text){
+  const lines=text.split(/\r?\n/).map(s=>s.replace(/\s+$/,"")).filter(s=>s.length);
+  const out=[];
+  for(let i=0;i<lines.length;i++){
+    if(!/^1 /.test(lines[i]) || !/^2 /.test(lines[i+1]||"")) continue;
+    const name = (i>0 && !/^[12] /.test(lines[i-1])) ? lines[i-1].trim() : "OBJECT "+lines[i].slice(2,7);
+    const l1=lines[i], l2=lines[i+1];
+    const yr=parseInt(l1.slice(18,20),10);
+    const doy=parseFloat(l1.slice(20,32));
+    const year = yr<57 ? 2000+yr : 1900+yr;
+    const jdEpoch = Date.UTC(year,0,1)/86400000 + 2440587.5 + (doy-1);
+    const inc=parseFloat(l2.slice(8,16));
+    const raan=parseFloat(l2.slice(17,25));
+    const e=parseFloat("0."+l2.slice(26,33).trim());
+    const argP=parseFloat(l2.slice(34,42));
+    const M0=parseFloat(l2.slice(43,51));
+    const n=parseFloat(l2.slice(52,63));
+    if([inc,raan,e,argP,M0,n].some(v=>!isFinite(v))) continue;
+    out.push({n_:name,cat:"debris",rule:"unruled",i:inc,raan,e,argP,M0,n,
+      epoch:jdEpoch-2451545,alt:Math.round(Math.pow(398600.4418/Math.pow(n*2*Math.PI/86400,2),1/3)-6378),
+      life:null,note:"Imported from a live two-line element set.",live:true});
+    i++;
+  }
+  return out;
+}
+
+/* ════
+   6. STATE
+   ════ */
+
+const S = {
+  view:"wheel",
+  speed:1,
+  simMs:Date.now(),
+  birth:"",
+  sel:null,
+  selSign:null,
+  cats:Object.fromEntries(Object.keys(CATS).map(k=>[k,true])),
+  extra:[],
+};
+
+const sign = lon => Math.floor(lon/30);
+const degIn = lon => lon%30;
+const jdOf = ms => 2440587.5 + ms/86400000;
+const all = () => BODIES.concat(S.extra);
+const active = () => all().map((b,i)=>({b,i})).filter(o=>S.cats[o.b.cat]);
+
+function aspectsBetween(a,b){
+  const diff=mod360(a-b), out=[];
+  for(const A of ASPECTS){
+    const orb=Math.min(Math.abs(diff-A.angle),Math.abs(diff-(360-A.angle)));
+    if(orb<=A.orb) out.push({...A,orb:Math.round(orb*10)/10});
+  }
+  return out;
+}
+
+function compute(){
+  const jd = jdOf(S.simMs);
+  const bodies = all();
+  const pos = bodies.map(b=>bodyLon(b,jd));
+  const posPrev = bodies.map(b=>bodyLon(b,jd-120/86400));
+  const natalJD = S.birth ? jdOf(new Date(S.birth+"T12:00:00Z").getTime()) : null;
+  const nat = naturalPositions(natalJD ?? jd);
+  const asp=[];
+  bodies.forEach((b,bi)=>{
+    if(!S.cats[b.cat]) return;
+    NAT_ORDER.forEach(k=>{
+      aspectsBetween(pos[bi],nat[k]).forEach(A=>{
+        asp.push({body:b.n_,bodyIdx:bi,cat:b.cat,rule:b.rule,planet:k,...A});
+      });
+    });
+  });
+  asp.sort((x,y)=>x.orb-y.orb);
+  const dist=new Array(12).fill(0);
+  bodies.forEach((b,bi)=>{ if(S.cats[b.cat]) dist[sign(pos[bi])]++; });
+  return {jd,bodies,pos,posPrev,nat,natalJD,asp,dist};
+}
+
+/* ════
+   7. THE WHEEL
+   Geostationary objects hold still — artificial fixed stars.
+   Low-orbit objects smear, because they cross the whole zodiac
+   in ninety minutes. The difference is the point.
+   ════ */
+
+let WHEEL_GEOM = null, BODY_HITS = [];
+
+function drawWheel(C){
+  const cv=document.getElementById("wheel");
+  if(!cv) return;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const size=Math.min(cv.clientWidth||440,440);
+  cv.width=size*dpr; cv.height=size*dpr;
+  const g=cv.getContext("2d");
+  g.setTransform(dpr,0,0,dpr,0,0);
+  const cx=size/2, cy=size/2, R=size/2-6;
+
+  g.clearRect(0,0,size,size);
+  g.fillStyle="#07090f"; g.fillRect(0,0,size,size);
+
+  const RING_IN = .745;   // inner edge of the clickable sign band
+  WHEEL_GEOM = { cx, cy, R, RING_IN, rB:R*.665 };
+
+  for(let s=0;s<12;s++){
+    const a1=(s*30-90)*D2R, a2=((s+1)*30-90)*D2R;
+    const on = S.selSign===s;
+    g.beginPath();
+    g.arc(cx,cy,R,a1,a2);
+    g.arc(cx,cy,R*RING_IN,a2,a1,true);
+    g.closePath();
+    g.fillStyle = EL_COL[SIGN_EL[s]] + (on?"5c":"22"); g.fill();
+    if(on){ g.strokeStyle="#ffffff"; g.lineWidth=1.5; g.stroke(); }
+
+    const ma=(s*30+15-90)*D2R;
+    g.fillStyle = on ? "#ffffff" : EL_COL[SIGN_EL[s]];
+    g.font=`${R*.075}px serif`;
+    g.textAlign="center"; g.textBaseline="middle";
+    g.fillText(SIGNS[s], cx+R*.945*Math.cos(ma), cy+R*.945*Math.sin(ma));
+
+    // sign name, set along the ring
+    g.save();
+    g.translate(cx+R*.845*Math.cos(ma), cy+R*.845*Math.sin(ma));
+    g.rotate(ma>0 && ma<Math.PI ? ma-Math.PI/2 : ma+Math.PI/2);
+    g.fillStyle = on ? "#ffffff" : EL_COL[SIGN_EL[s]];
+    g.font=`${Math.max(R*.042,7)}px 'Courier Prime','Courier New',monospace`;
+    g.textAlign="center"; g.textBaseline="middle";
+    g.fillText(SIGN_NAMES[s].toUpperCase(), 0, 0);
+    g.restore();
+  }
+
+  // artificial bodies, on their ring
+  const rB=R*.665;
+  BODY_HITS = [];
+  C.pos.forEach((p,idx)=>{
+    const b=C.bodies[idx];
+    if(!S.cats[b.cat]) return;
+    const col=CATS[b.cat].col;
+    const on=S.sel===idx;
+    const a=(p-90)*D2R, ap=(C.posPrev[idx]-90)*D2R;
+    let sweep=mod360(p-C.posPrev[idx]); if(sweep>180) sweep-=360;
+    if(Math.abs(sweep)>1.2){
+      g.beginPath();
+      g.arc(cx,cy,rB, ap, a, sweep<0);
+      g.strokeStyle=col+"77"; g.lineWidth=on?4:2.5; g.stroke();
+    }
+    const x=cx+rB*Math.cos(a), y=cy+rB*Math.sin(a);
+    BODY_HITS.push({idx,x,y});
+    g.beginPath(); g.arc(x,y,on?6:4,0,7); g.fillStyle=on?"#fff":col; g.fill();
+    if(on){
+      g.beginPath();
+      g.moveTo(x,y);
+      g.lineTo(cx+R*RING_IN*Math.cos(a), cy+R*RING_IN*Math.sin(a));
+      g.strokeStyle=col+"aa"; g.lineWidth=1; g.stroke();
+    }
+  });
+
+  // natural bodies, inner ring
+  NAT_ORDER.forEach((k,idx)=>{
+    const a=(C.nat[k]-90)*D2R;
+    const r=R*(idx%2?.50:.58);
+    g.fillStyle=NAT_COL[k];
+    g.font=`${R*.09}px serif`;
+    g.textAlign="center"; g.textBaseline="middle";
+    g.fillText(RULERS[k].sym, cx+r*Math.cos(a), cy+r*Math.sin(a));
+  });
+
+  g.beginPath(); g.arc(cx,cy,R*.24,0,7); g.fillStyle="#07090f"; g.fill();
+  g.fillStyle="#ffffff";
+  g.font=`${R*.045}px 'Courier Prime','Courier New',monospace`;
+  g.textAlign="center";
+  g.fillText("UNNATURAL", cx, cy-R*.05);
+  g.fillText("BODIES", cx, cy+R*.035);
+}
+
+/* ════
+   8. THE READING
+   Positions are not a horoscope. A horoscope is an
+   interpretation. This is the interpretive engine.
+   ════ */
+
+function makeReading(C){
+  const act=active();
+  if(!act.length) return "<p>No bodies selected. The sky, filtered to nothing, says nothing.</p>";
+
+  const elCount={fire:0,earth:0,air:0,water:0};
+  const modeCount={cardinal:0,fixed:0,mutable:0};
+  const byRule={};
+  act.forEach(({b,i})=>{
+    const s=sign(C.pos[i]);
+    elCount[SIGN_EL[s]]++; modeCount[SIGN_MODE[s]]++;
+    (byRule[b.rule]=byRule[b.rule]||[]).push({b,s});
+  });
+
+  const domEl=Object.entries(elCount).sort((a,b)=>b[1]-a[1])[0];
+  const domMode=Object.entries(modeCount).sort((a,b)=>b[1]-a[1])[0];
+  const empty=[];
+  for(let s=0;s<12;s++) if(!C.dist[s]) empty.push(SIGN_NAMES[s]);
+  const heavyIdx=C.dist.indexOf(Math.max(...C.dist));
+  const topRule=Object.entries(byRule).sort((a,b)=>b[1].length-a[1].length)[0];
+  const unruled=byRule.unruled||[];
+  const tight=C.asp[0];
+  const mortal=act.filter(o=>o.b.life).sort((a,b)=>a.b.life-b.b.life)[0];
+
+  const ELTXT={
+    fire:"initiative, launch, the impulse to place something where nothing was",
+    earth:"infrastructure, holding, the weight of what has already been put up",
+    air:"signal, relay, the traffic of messages between people who will never meet",
+    water:"consequence, memory, the accumulation of what cannot be recalled"
+  };
+  const MODETXT={
+    cardinal:"a beginning field — things are being started that will outlast the people starting them",
+    fixed:"a held field — what is up there is staying up there, and is being defended",
+    mutable:"a dispersing field — arrangements made for one purpose are being used for another"
+  };
+
+  let H="";
+  H+=`<h3>The field</h3><p>Of ${act.length} bodies presently tracked, ${domEl[1]} stand in ${domEl[0]} signs. `;
+  H+=`The dominant note is <em>${ELTXT[domEl[0]]}</em>. By mode this reads as ${MODETXT[domMode[0]]}.</p>`;
+  H+=`<p>The heaviest sign is ${SIGN_NAMES[heavyIdx]}, holding ${C.dist[heavyIdx]}. `;
+  H+= empty.length
+    ? `${empty.length} sign${empty.length>1?"s stand":" stands"} empty — ${empty.join(", ")}. Classical practice would call an empty house a quiet area of life. Here it means only that nothing we launched happens to be pointing that way this second.</p>`
+    : `No sign is empty. The artificial field now covers the entire ecliptic without a gap, which the classical tradition has no vocabulary for.</p>`;
+
+  if(topRule){
+    const r=RULERS[topRule[0]];
+    const where=[...new Set(topRule[1].map(o=>SIGN_NAMES[o.s]))].slice(0,3).join(", ");
+    H+=`<h3>The ruling function</h3>`;
+    H+=`<p>${r.sym} ${r.name} rules ${topRule[1].length} of the active bodies — the portfolio of <em>${r.domain}</em>. `;
+    H+=`Its objects fall across ${where}. In a natal chart you would read this as the life's centre of gravity. `;
+    H+=`Read literally, it says that the largest coordinated thing above your head right now is in the business of ${r.domain.split(",")[0].trim()}.</p>`;
+  }
+
+  if(unruled.length){
+    const uSigns=[...new Set(unruled.map(o=>SIGN_NAMES[o.s]))];
+    H+=`<h3>The unruled</h3>`;
+    H+=`<p>${unruled.length} bodies answer to no function: ${unruled.map(o=>o.b.n_).join("; ")}. `;
+    H+=`They occupy ${uSigns.join(", ")}. Every other object here was placed with an intention that can be named. `;
+    H+=`These were made by accident, by test, or by abandonment, and they exert exactly the same influence by exactly the same logic. `;
+    H+=`If the premise of this instrument holds, the fastest-growing force acting on human affairs is one that nobody meant.</p>`;
+  }
+
+  if(tight){
+    H+=`<h3>The closest aspect</h3>`;
+    H+=`<p><em>${tight.body}</em> is ${tight.read} ${RULERS[tight.planet].sym} ${RULERS[tight.planet].name}, orb ${tight.orb}°. `;
+    H+=`${RULERS[tight.planet].name} governs ${RULERS[tight.planet].domain}. `;
+    H+=`The artificial body carries the portfolio of ${RULERS[tight.rule].name}${tight.rule==="unruled"?" — influence without intention":" — "+RULERS[tight.rule].domain}. `;
+    H+=`Whatever you take that contact to mean, it will not hold: the object completes an orbit in roughly ${(1440/(all().find(b=>b.n_===tight.body)?.n||1)).toFixed(0)} minutes, and the aspect breaks and reforms on that cycle.</p>`;
+  }
+
+  if(mortal){
+    H+=`<h3>Mortality</h3>`;
+    H+=`<p>The classical planets are permanent; that permanence is what made them worth reading. `;
+    H+=`These are not. <em>${mortal.b.n_}</em> is expected to reenter within about ${mortal.b.life} years. `;
+    H+=`A chart cast on artificial bodies expires. Its rulers burn up. Any influence attributed to them is on a delivery schedule.</p>`;
+  }
+
+  H+=`<h3>On the status of this reading</h3>`;
+  H+=`<p>Nothing above is evidence of anything. It is a rigorous procedure applied to real positions of real objects to produce a claim that cannot be tested — which is the precise structure of astrology, `;
+  H+=`and, arguably, the precise structure of most of what is said about what satellites are doing to us. `;
+  H+=`The objects are real. The orbits are real. The influence is the part you supply.</p>`;
+  return H;
+}
+
+/* ════
+   9. RENDER
+   ════ */
+
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const TABS=[["wheel","Wheel"],["table","Positions"],["aspects","Aspects"],["reading","Reading"],["data","Data"]];
+const SPEEDS=[[1,"live"],[60,"1 min/s"],[3600,"1 hr/s"],[86400,"1 day/s"]];
+
+function renderChrome(C){
+  el("clock").textContent = new Date(S.simMs).toUTCString().replace("GMT","UTC");
+  const days = Math.abs(C.jd - (2451545+9600));
+  el("drift").textContent = `Elements ${days.toFixed(0)} days from epoch · positions degrade with distance from it`;
+
+  el("speeds").innerHTML = `<span style="font-size:11px;letter-spacing:.18em;color:var(--ink-3);text-transform:uppercase;margin-right:4px">Time</span>` +
+    SPEEDS.map(([v,l])=>`<button class="sbtn ${S.speed===v?"on":""}" data-speed="${v}">${l}</button>`).join("");
+
+  el("tabs").innerHTML = TABS.map(([v,l])=>{
+    const n = v==="aspects" ? ` (${C.asp.length})` : "";
+    return `<button class="tab ${S.view===v?"on":""}" data-tab="${v}">${l}${n}</button>`;
+  }).join("");
+
+  const n=active().length;
+  el("foot").innerHTML =
+    `${n} bodies tracked · ${C.asp.length} active aspects · ${C.dist.filter(x=>x>0).length}/12 signs occupied<br>` +
+    `Mean Keplerian propagation with first-order J2 drift · not ephemeris-grade<br>` +
+    `Natural positions from JPL approximate elements, geocentric<br>` +
+    `Import a live TLE set under Data to re-ground the instrument`;
+}
+
+function catChips(){
+  return `<div class="eyebrow">Filter by function</div><div class="chips">` +
+    Object.entries(CATS).map(([k,v])=>{
+      const c=all().filter(b=>b.cat===k).length;
+      const on=S.cats[k];
+      return `<button class="chip ${on?"on":""}" data-cat="${k}" style="${on?`background:${v.col};border-color:${v.col}`:""}">${v.label} (${c})</button>`;
+    }).join("") + `</div>`;
+}
+
+function rowFor(b,i,lon){
+  const s=sign(lon);
+  return `<div class="row" data-sel="${i}">
+    <div class="nm"><span class="dot" style="background:${CATS[b.cat].col}"></span><span class="t">${esc(b.n_)}</span></div>
+    <div class="pos">
+      <span style="font-size:12px;color:var(--ink-2)">${RULERS[b.rule].sym}</span>
+      <span class="g" style="color:${EL_COL[SIGN_EL[s]]}">${SIGNS[s]}</span>
+      <span class="d">${degIn(lon).toFixed(1)}°</span>
+    </div></div>`;
+}
+
+function signPanel(C){
+  const s=S.selSign;
+  if(s===null) return "";
+  const inSign = C.bodies.map((b,i)=>({b,i})).filter(o=>S.cats[o.b.cat] && sign(C.pos[o.i])===s);
+  const nats = NAT_ORDER.filter(k=>sign(C.nat[k])===s);
+  const el_=SIGN_EL[s], col=EL_COL[el_];
+  return `<div class="detail" style="border-left:3px solid ${col}">
+    <div style="color:${col};font-size:16px;font-weight:700">${SIGNS[s]} ${SIGN_NAMES[s]}</div>
+    <div class="v" style="font-size:12px">${s*30}°–${s*30+30}° · ${el_} · ${SIGN_MODE[s]}</div>
+    <div class="k">Reading</div><div class="v">${SIGN_GLOSS[s]}</div>
+    <div class="k">Artificial bodies here (${inSign.length})</div>
+    ${inSign.length
+      ? inSign.map(o=>`<div class="v" data-sel="${o.i}" style="display:flex;justify-content:space-between;gap:10px;cursor:pointer">
+          <span><span class="dot" style="background:${CATS[o.b.cat].col};display:inline-block;margin-right:7px"></span>${esc(o.b.n_)}</span>
+          <span style="white-space:nowrap">${RULERS[o.b.rule].sym} ${degIn(C.pos[o.i]).toFixed(1)}°</span></div>`).join("")
+      : `<div class="v">None. Nothing we launched is pointing this way at this second.</div>`}
+    <div class="k">Natural bodies here (${nats.length})</div>
+    ${nats.length
+      ? nats.map(k=>`<div class="v">${RULERS[k].sym} ${RULERS[k].name} ${degIn(C.nat[k]).toFixed(1)}°</div>`).join("")
+      : `<div class="v">None.</div>`}
+    <div style="margin-top:14px"><span class="link" data-sign="clear">Clear sign</span></div>
+  </div>`;
+}
+
+function detailFor(C){
+  if(S.sel===null||!C.bodies[S.sel]) return "";
+  const b=C.bodies[S.sel], lon=C.pos[S.sel], s=sign(lon), r=RULERS[b.rule];
+  const mine=C.asp.filter(a=>a.body===b.n_).slice(0,8);
+  const kg = b.mass==null ? null
+    : b.mass>=1000 ? (b.mass/1000).toLocaleString(undefined,{maximumFractionDigits:1})+" tonnes"
+    : b.mass+" kg";
+  const line=(k,v)=>v?`<div class="k">${k}</div><div class="v">${v}</div>`:"";
+  return `<div class="detail" style="border-left:3px solid ${CATS[b.cat].col}">
+    <div style="color:${CATS[b.cat].col};font-size:16px;font-weight:700">${esc(b.n_)}</div>
+    <div class="v" style="font-size:12px">${CATS[b.cat].label}${b.since?` · launched ${b.since}`:""}${b.live?" · imported":""}</div>
+
+    <div class="k">Position now</div>
+    <div class="v"><span style="color:${EL_COL[SIGN_EL[s]]}">${SIGNS[s]} ${SIGN_NAMES[s]} ${degIn(lon).toFixed(1)}°</span> · ${SIGN_EL[s]} · ${SIGN_MODE[s]}</div>
+    <div class="v" style="font-size:12.5px">${SIGN_GLOSS[s]}</div>
+
+    ${line("Functional ruler", `${r.sym} ${r.name} — ${r.domain}`)}
+    ${line("What it does", b.read?esc(b.read):"")}
+    ${line("What it is", esc(b.note))}
+
+    <div class="k">Orbit</div>
+    <div class="v">${b.alt.toLocaleString()} km altitude · ${(1440/b.n).toFixed(0)} min period · ${b.i.toFixed(1)}° inclination · e = ${b.e}</div>
+    <div class="v" style="font-size:12.5px">${b.n>10?"Crosses all twelve signs roughly "+ (b.n).toFixed(0) +" times a day.":b.n>1.5?"Completes the zodiac about twice daily.":b.n>.9&&b.i<2?"Geostationary — holds one degree of one sign permanently.":"Slow enough to be read like a planet."}</div>
+
+    ${line("Operator", b.who?esc(b.who):"")}
+    ${line("Mass", kg)}
+    ${line("Expected duration", b.life?`~${b.life} years to reentry`:"Indefinite at this altitude")}
+    ${line("End", b.end?esc(b.end):"")}
+
+    ${mine.length?`<div class="k">Aspects it is making (${mine.length})</div>` + mine.map(a=>
+      `<div class="v" style="display:flex;justify-content:space-between;gap:10px">
+        <span><span style="color:${a.col}">${a.sym}</span> ${RULERS[a.planet].sym} ${RULERS[a.planet].name}</span>
+        <span>${a.orb}°</span></div>`).join("") : ""}
+
+    ${b.norad?`<div class="k">Catalogue</div>
+      <div class="v">NORAD ${String(b.norad).padStart(5,"0")} — 
+      <a class="link" target="_blank" rel="noopener" href="https://celestrak.org/satcat/table.php?CATNR=${b.norad}">CelesTrak record</a> · 
+      <a class="link" target="_blank" rel="noopener" href="https://www.n2yo.com/satellite/?s=${b.norad}">live track</a></div>`
+    :`<div class="k">Catalogue</div><div class="v" style="font-size:12.5px">No catalogue number carried here — this entry stands for a class rather than one numbered object. Import its element set under Data to bind it to a real record.</div>`}
+
+    <div style="margin-top:14px"><span class="link" data-sel="${S.sel}">Close</span></div>
+  </div>`;
+}
+
+function render(){
+  const C=compute();
+  renderChrome(C);
+  const V=el("view");
+
+  if(S.view==="wheel"){
+    V.innerHTML = `<canvas id="wheel" width="440" height="440"></canvas>`
+      + signPanel(C) +
+      `<div class="eyebrow">Sign density — tap a sign, or the wheel</div>` +
+      SIGNS.map((g,i)=>{
+        const mx=Math.max(...C.dist,1);
+        const on=S.selSign===i;
+        return `<div class="bar" data-sign="${i}" style="cursor:pointer;${on?`background:${EL_COL[SIGN_EL[i]]}22;border-radius:2px`:""}">
+          <span class="g" style="color:${EL_COL[SIGN_EL[i]]}">${g}</span>
+          <span class="n">${SIGN_NAMES[i]}</span>
+          <span class="track"><span class="fill" style="width:${(C.dist[i]/mx*100)||0}%;background:${EL_COL[SIGN_EL[i]]}"></span></span>
+          <span class="c">${C.dist[i]||""}</span></div>`;
+      }).join("") +
+      detailFor(C) + catChips();
+    drawWheel(C);
+  }
+
+  else if(S.view==="table"){
+    V.innerHTML = `<div class="eyebrow">Artificial bodies</div>` +
+      C.bodies.map((b,i)=>S.cats[b.cat]?rowFor(b,i,C.pos[i]):"").join("") +
+      detailFor(C) +
+      `<div class="eyebrow">Natural bodies — ${C.natalJD?"natal":"transiting"}</div>` +
+      NAT_ORDER.map(k=>{
+        const s=sign(C.nat[k]);
+        return `<div class="row static">
+          <div class="nm"><span style="color:${NAT_COL[k]};font-size:17px">${RULERS[k].sym}</span><span class="t">${RULERS[k].name}</span></div>
+          <div class="pos"><span class="g" style="color:${EL_COL[SIGN_EL[s]]}">${SIGNS[s]}</span>
+          <span class="d">${degIn(C.nat[k]).toFixed(1)}°</span></div></div>`;
+      }).join("") + catChips();
+  }
+
+  else if(S.view==="aspects"){
+    V.innerHTML = `<div class="eyebrow">Artificial bodies to ${C.natalJD?"natal":"transiting"} planets</div>` +
+      (C.asp.length? C.asp.slice(0,70).map(a=>`<div class="asp" data-sel="${a.bodyIdx}" style="cursor:pointer">
+        <div class="l">
+          <span class="sat" style="color:${CATS[a.cat].col}">${esc(a.body)}</span>
+          <span class="sym" style="color:${a.col}">${a.sym}</span>
+          <span class="pl">${RULERS[a.planet].sym} ${RULERS[a.planet].name}</span>
+        </div><span class="orb">${a.orb}°</span></div>`).join("") + detailFor(C)
+      : `<p class="note">No aspects within orb under the current filters.</p>`) +
+      (C.asp.length>70?`<p class="note">+ ${C.asp.length-70} more within orb.</p>`:"") +
+      catChips();
+  }
+
+  else if(S.view==="reading"){
+    V.innerHTML = `<div class="reading">${makeReading(C)}</div>
+      <div style="margin-top:12px"><button class="tab" data-tab="reading">Recast for this moment</button></div>` + catChips();
+  }
+
+  else if(S.view==="data"){
+    V.innerHTML = `
+      <div class="eyebrow">Birth date</div>
+      <input type="date" id="birth" value="${S.birth}">
+      ${S.birth?`<div style="margin-top:8px"><span class="link" id="clearbirth">Clear and return to transits</span></div>`:""}
+      <p class="note">With a date set, aspects are measured against your natal placements rather than today's sky.</p>
+
+      <div class="eyebrow">Import live elements</div>
+      <p class="note">Paste two-line element sets from a public catalogue (CelesTrak, Space-Track). Imported objects join the wheel with their real epochs, which is the only way these positions become accurate rather than merely plausible.</p>
+      <textarea id="tle" placeholder="ENVISAT
+1 27386U 02009A   26214.51782528  .00000093  00000-0  36771-4 0  9992
+2 27386  98.1234 210.5678 0001234  85.4321 274.7654 14.38012345234567"></textarea>
+      <div style="margin-top:10px"><button class="tab" id="importtle">Import</button>
+      ${S.extra.length?`<button class="tab" id="cleartle">Remove ${S.extra.length} imported</button>`:""}</div>
+      <div class="tleout" id="tleout"></div>
+
+      <div class="eyebrow">Rulership table</div>
+      ${Object.entries(RULERS).map(([k,r])=>{
+        const c=all().filter(b=>b.rule===k).length;
+        return `<div class="row static"><div class="nm">
+          <span style="font-size:17px;color:${NAT_COL[k]||"var(--unruled)"}">${r.sym}</span>
+          <span class="t">${r.name}</span></div>
+          <div class="pos"><span style="font-size:12px;color:var(--ink-2);text-align:right">${r.domain}</span>
+          <span class="d">${c}</span></div></div>`;
+      }).join("")}`;
+  }
+}
+
+/* ════
+   10. EVENTS
+   ════ */
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-tab],[data-speed],[data-cat],[data-sel],[data-sign],#importtle,#cleartle,#clearbirth");
+  if(!t) return;
+  if(t.dataset.sign!==undefined){
+    if(t.dataset.sign==="clear") S.selSign=null;
+    else { const i=+t.dataset.sign; S.selSign = S.selSign===i?null:i; }
+    render(); return;
+  }
+  if(t.dataset.tab){ S.view=t.dataset.tab; S.sel=null; render(); }
+  else if(t.dataset.speed){ S.speed=+t.dataset.speed; render(); }
+  else if(t.dataset.cat){ S.cats[t.dataset.cat]=!S.cats[t.dataset.cat]; render(); }
+  else if(t.dataset.sel!==undefined){ const i=+t.dataset.sel; S.sel = S.sel===i?null:i; render(); }
+  else if(t.id==="importtle"){
+    const raw=el("tle").value;
+    const got=parseTLE(raw);
+    if(got.length){ S.extra=S.extra.concat(got); render();
+      el("tleout") && (el("tleout").textContent=`Imported ${got.length} object${got.length>1?"s":""}. They appear under Debris until you assign them a function.`);
+    } else { el("tleout").textContent="No valid element sets found. Each object needs a line beginning 1 and a line beginning 2."; }
+  }
+  else if(t.id==="cleartle"){ S.extra=[]; S.sel=null; render(); }
+  else if(t.id==="clearbirth"){ S.birth=""; render(); }
+});
+
+/* The wheel itself is a control: tap a body dot, or tap a sign band. */
+document.addEventListener("click",e=>{
+  const cv=e.target.closest("#wheel");
+  if(!cv||!WHEEL_GEOM) return;
+  const r=cv.getBoundingClientRect();
+  const px=(e.clientX-r.left)*(cv.clientWidth/r.width);
+  const py=(e.clientY-r.top)*(cv.clientWidth/r.width);
+  const {cx,cy,R,RING_IN}=WHEEL_GEOM;
+
+  let best=null, bd=1e9;
+  for(const h of BODY_HITS){
+    const d=Math.hypot(px-h.x,py-h.y);
+    if(d<bd){ bd=d; best=h; }
+  }
+  if(best && bd<=14){ S.sel = S.sel===best.idx?null:best.idx; render(); return; }
+
+  const dist=Math.hypot(px-cx,py-cy);
+  if(dist>=R*RING_IN && dist<=R+4){
+    const ang=mod360(Math.atan2(py-cy,px-cx)*R2D+90);
+    const s=Math.floor(ang/30);
+    S.selSign = S.selSign===s?null:s;
+    render();
+  }
+});
+
+document.addEventListener("change",e=>{
+  if(e.target.id==="birth"){ S.birth=e.target.value; render(); }
+});
+
+setInterval(()=>{
+  S.simMs += S.speed*1000;
+  if(S.view==="wheel"){ const C=compute(); renderChrome(C); drawWheel(C); }
+  else if(S.view==="table"||S.view==="aspects"){ render(); }
+  else { renderChrome(compute()); }   // reading and data hold still while you use them
+},1000);
+
+window.addEventListener("resize",()=>{ if(S.view==="wheel") drawWheel(compute()); });
+
+render();
+</script>
+</body>
+</html>
