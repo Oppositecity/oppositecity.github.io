@@ -241,6 +241,22 @@
    ],
    "blurb": "English keeps two vocabularies in the same mouth, a Greek one and a Latin one, and it almost never mixes them by accident. This is a bench for mixing them on purpose. Give it a phrase and it finds the load-bearing concepts, matches each to a morpheme, and fuses them with the linking vowel each stratum takes — o for Greek, i for Latin. Give it a word instead, real or invented, and it runs the lattice backwards: cutting the letters into the fewest and longest morphemes that can account for them, then reading a definition off the suffix, because the suffix is where the grammar lives. Nothing it makes is a real word and everything it makes is built the way real words were. The parse is stained like a slide, Greek blue and Latin rose, and whatever the stain refuses is residue — which, in English, is most of it.",
    "url": "https://opposite.city/syllababbler/"
+  },
+  {
+   "slug": "ephemeris",
+   "name": "EPHEMERIS",
+   "district": "ambient",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "orbital debris",
+    "horoscope",
+    "rulership",
+    "tle",
+    "kepler"
+   ],
+   "blurb": "Astrology has never had to read more than a dozen bodies, and that is the only reason it works — seven wandering lights with portfolios, permanent enough to be worth interpreting. There are now more than thirty thousand tracked objects overhead and nobody reads any of them. This casts a chart on the artificial ones. The natural planets are geocentric, from JPL's approximate elements, which is more arithmetic than most astrology software bothers with; the artificial ones are propagated from real orbital elements with a nodal drift term, and a live catalogue can be pasted in to re-ground them. Rulership is assigned by function rather than myth: Starlink is Mercury because it is a mesh of fast objects mediating every kind of message, GPS is Saturn because it keeps the clock and the boundary, the station is Jupiter, Hubble is Neptune, and the debris answers to nothing at all. Geostationary objects hold one degree of one sign permanently and are the only artificial fixed stars; everything in low orbit smears across all twelve signs every ninety minutes, which no classical technique has a way to read. It will produce a reading. The reading is a rigorous procedure applied to real positions to yield a claim that cannot be tested, which is the structure of astrology exactly, and arguably the structure of most of what gets said about what satellites are doing to us. Note also that the rulers burn up: a chart cast on these bodies expires, and the objects it depends on are on a delivery schedule.",
+   "url": "https://opposite.city/ephemeris/"
   }
  ]
 }
