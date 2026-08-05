@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-03",
+ "published": "2026-08-05",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -257,6 +257,22 @@
    ],
    "blurb": "Astrology has never had to read more than a dozen bodies, and that is the only reason it works — seven wandering lights with portfolios, permanent enough to be worth interpreting. There are now more than thirty thousand tracked objects overhead and nobody reads any of them. This casts a chart on the artificial ones. The natural planets are geocentric, from JPL's approximate elements, which is more arithmetic than most astrology software bothers with; the artificial ones are propagated from real orbital elements with a nodal drift term, and a live catalogue can be pasted in to re-ground them. Rulership is assigned by function rather than myth: Starlink is Mercury because it is a mesh of fast objects mediating every kind of message, GPS is Saturn because it keeps the clock and the boundary, the station is Jupiter, Hubble is Neptune, and the debris answers to nothing at all. Geostationary objects hold one degree of one sign permanently and are the only artificial fixed stars; everything in low orbit smears across all twelve signs every ninety minutes, which no classical technique has a way to read. It will produce a reading. The reading is a rigorous procedure applied to real positions to yield a claim that cannot be tested, which is the structure of astrology exactly, and arguably the structure of most of what gets said about what satellites are doing to us. Note also that the rulers burn up: a chart cast on these bodies expires, and the objects it depends on are on a delivery schedule.",
    "url": "https://opposite.city/ephemeris/"
+  },
+  {
+   "slug": "poemstream",
+   "name": "POEMSTREAM",
+   "district": "language",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "keystroke",
+    "process",
+    "provenance",
+    "atproto",
+    "revision"
+   ],
+   "blurb": "A poem is normally published as the thing that survived. This publishes the writing. Type, and every keystroke and every pause is kept, including everything deleted, which is most of what happened. Play it back and the poem writes itself again at the speed it was actually written: the four seconds before a line arrives, the word held and then taken away, the passage that came out in one run. Six treatments read the same recording differently. One keeps the deleted characters on the page, so what the poem decided against stays legible beside what it kept. One snaps every delay to a grid, and hesitation becomes rest. Two hand the track to a corruption engine that reads typing rate, so fast passages break into marks that are not quite letters, held breaths stay clean, and everything settles as it ages. The recording is a plain object — delays, deletions, insertions — built to live in the writer's own repository rather than in a database here, signed and content-addressed, so it can be taken elsewhere and played by something that is not this. It is also close to the only claim about authorship still available: not that a person wrote it, but that here is the hour it took them.",
+   "url": "https://opposite.city/poemstream/"
   }
  ]
 }
