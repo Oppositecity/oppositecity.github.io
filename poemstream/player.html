@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>poemstream — reference player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#000; --fg:#ffffff; --ghost:#7b6cff; --accent:#ffffff; --dim:#bcbcbc; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    display:flex; flex-direction:column; overflow:hidden;
+    transition:background .5s ease;
+  }
+  .wrap{flex:1; display:flex; flex-direction:column; min-height:0}
+  header{
+    padding-top:calc(env(safe-area-inset-top,0px) + 16px); padding-inline:18px;
+    display:flex; flex-wrap:wrap; gap:16px; justify-content:center;
+  }
+  button{font-family:inherit}
+  .preset,.ctl{
+    background:none; border:0; padding:5px 0; cursor:pointer;
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--dim); transition:color .2s ease;
+  }
+  .preset:hover,.ctl:hover{color:#fff}
+  .preset[aria-pressed="true"]{color:var(--accent); font-weight:700}
+  .ctl.on{color:var(--accent)}
+  .ctl:focus-visible,.preset:focus-visible{outline:2px solid #fff; outline-offset:3px}
+
+  main{flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:24px 22px}
+  #stage{
+    width:100%; max-width:36ch; font-size:clamp(17px,4.4vw,22px); line-height:1.7;
+    white-space:pre-wrap; word-break:break-word; max-height:100%; overflow:hidden;
+  }
+  #stage .del{color:var(--ghost)}
+  #stage .ch{display:inline-block; white-space:pre}
+  #cursor{
+    display:inline-block; width:.62ch; height:1.05em; vertical-align:-.16em;
+    background:var(--accent); animation:blink 1.05s step-end infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  @media (prefers-reduced-motion:reduce){#cursor{animation:none}}
+
+  footer{
+    padding:0 18px calc(env(safe-area-inset-bottom,0px) + 18px);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .row{display:flex; gap:20px; align-items:center; flex-wrap:wrap; justify-content:center}
+  .clock{font-size:11px; letter-spacing:.2em; color:var(--dim)}
+  .note{font-size:11px; line-height:1.7; color:var(--dim); text-align:center; max-width:46ch; margin:0}
+
+  #panel{
+    position:fixed; inset:0; background:#000; padding:24px 20px 40px;
+    display:none; flex-direction:column; gap:18px; overflow-y:auto; z-index:10;
+  }
+  #panel.open{display:flex}
+  h2{font-size:11px; letter-spacing:.24em; text-transform:uppercase; margin:0; color:#fff; font-weight:700}
+  #panel p{margin:0; font-size:12px; line-height:1.8; color:var(--dim)}
+  label{display:block; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#fff; margin-bottom:6px}
+  .field{margin-bottom:16px}
+  .val{color:var(--dim); letter-spacing:0; text-transform:none}
+  select,input[type=text],input[type=password],input[type=color],textarea{
+    width:100%; background:#0a0a0a; color:#fff; border:1px solid #545454; border-radius:2px;
+    font-family:inherit; font-size:12px; padding:9px 10px;
+  }
+  textarea{min-height:26vh; resize:vertical; line-height:1.6}
+  select:focus,input:focus,textarea:focus{outline:none; border-color:#fff}
+  input[type=range]{width:100%; accent-color:#fff; background:transparent}
+  input[type=color]{padding:2px; height:34px}
+  .cols{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px}
+  pre{
+    margin:0; background:#0a0a0a; color:#fff; padding:12px; border-radius:2px;
+    font-size:11px; line-height:1.6; max-height:34vh; overflow:auto;
+    white-space:pre-wrap; word-break:break-all;
+  }
+  .err{color:#ff8f8f; font-size:12px}
+  .discard{font-size:15px; line-height:2; color:var(--ghost)}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header id="presets"></header>
+  <main><div id="stage"></div></main>
+  <footer>
+    <div class="row">
+      <button class="ctl" id="play">play</button>
+      <button class="ctl" id="restart">restart</button>
+      <button class="ctl" id="speed">1&times;</button>
+      <button class="ctl" id="sound">sound off</button>
+    </div>
+    <div class="clock" id="clock">0:00 / 0:00</div>
+    <div class="row">
+      <button class="ctl on" id="openWrite">write</button>
+      <button class="ctl" id="openEdit">edit</button>
+      <button class="ctl" id="openDiscards">discards</button>
+      <button class="ctl" id="openSource">source</button>
+      <button class="ctl" id="openLoad">load</button>
+    </div>
+    <p class="note" id="note"></p>
+  </footer>
+</div>
+
+<div id="panel">
+  <button class="ctl" id="closePanel" style="align-self:flex-start">close</button>
+  <div id="panelBody"></div>
+</div>
+
+<script>
+"use strict";
+
+// ---
+// 1. THE RECORD
+// A city.opposite.poemstream.poem, as it would sit in a poet's own
+// repository. The player owns none of it.
+// ---
+const SAMPLE = {"$type": "city.opposite.poemstream.poem", "text": "I keep the receipts of everything I almost said.\nThe drawer will not close.\nTonight I read one out loud to the room —\nit was only a list of things,\nand the room, being a room, said nothing back,\nand that was the kindest anyone has been all week.", "prompt": "Write about something you kept", "track": [{"delay": 2734, "addText": "I"}, {"delay": 226, "addText": " "}, {"delay": 193, "addText": "k"}, {"delay": 113, "addText": "e"}, {"delay": 245, "addText": "e"}, {"delay": 160, "addText": "p"}, {"delay": 374, "addText": " "}, {"delay": 359, "addText": "t"}, {"delay": 241, "addText": "h"}, {"delay": 131, "addText": "e"}, {"delay": 136, "addText": " "}, {"delay": 153, "addText": "r"}, {"delay": 254, "addText": "e"}, {"delay": 285, "addText": "c"}, {"delay": 98, "addText": "e"}, {"delay": 308, "addText": "i"}, {"delay": 199, "addText": "p"}, {"delay": 116, "addText": "t"}, {"delay": 116, "addText": "s"}, {"delay": 1168, "addText": " "}, {"delay": 99, "addText": "o"}, {"delay": 218, "addText": "f"}, {"delay": 326, "addText": " "}, {"delay": 210, "addText": "e"}, {"delay": 123, "addText": "v"}, {"delay": 203, "addText": "e"}, {"delay": 151, "addText": "r"}, {"delay": 181, "addText": "y"}, {"delay": 91, "addText": "t"}, {"delay": 323, "addText": "h"}, {"delay": 256, "addText": "i"}, {"delay": 284, "addText": "n"}, {"delay": 300, "addText": "g"}, {"delay": 1786, "addText": " "}, {"delay": 120, "addText": "I"}, {"delay": 426, "addText": " "}, {"delay": 143, "addText": "a"}, {"delay": 321, "addText": "l"}, {"delay": 279, "addText": "m"}, {"delay": 94, "addText": "o"}, {"delay": 178, "addText": "s"}, {"delay": 92, "addText": "t"}, {"delay": 353, "addText": " "}, {"delay": 308, "addText": "s"}, {"delay": 310, "addText": "a"}, {"delay": 194, "addText": "i"}, {"delay": 159, "addText": "d"}, {"delay": 528, "addText": "."}, {"delay": 2504, "addText": "\n"}, {"delay": 1352, "addText": "T"}, {"delay": 299, "addText": "h"}, {"delay": 134, "addText": "e"}, {"delay": 346, "addText": " "}, {"delay": 158, "addText": "d"}, {"delay": 269, "addText": "r"}, {"delay": 95, "addText": "a"}, {"delay": 280, "addText": "w"}, {"delay": 118, "addText": "e"}, {"delay": 219, "addText": "r"}, {"delay": 230, "addText": " "}, {"delay": 294, "addText": "i"}, {"delay": 170, "addText": "s"}, {"delay": 275, "addText": " "}, {"delay": 137, "addText": "f"}, {"delay": 92, "addText": "u"}, {"delay": 232, "addText": "l"}, {"delay": 254, "addText": "l"}, {"delay": 536, "addText": "."}, {"delay": 3493, "deleteCount": 1}, {"delay": 86, "deleteCount": 1}, {"delay": 94, "deleteCount": 1}, {"delay": 51, "deleteCount": 1}, {"delay": 45, "deleteCount": 1}, {"delay": 76, "deleteCount": 1}, {"delay": 43, "deleteCount": 1}, {"delay": 68, "deleteCount": 1}, {"delay": 83, "deleteCount": 1}, {"delay": 78, "deleteCount": 1}, {"delay": 47, "deleteCount": 1}, {"delay": 90, "deleteCount": 1}, {"delay": 88, "deleteCount": 1}, {"delay": 89, "deleteCount": 1}, {"delay": 85, "deleteCount": 1}, {"delay": 60, "deleteCount": 1}, {"delay": 53, "deleteCount": 1}, {"delay": 93, "deleteCount": 1}, {"delay": 84, "deleteCount": 1}, {"delay": 972, "addText": "T"}, {"delay": 361, "addText": "h"}, {"delay": 175, "addText": "e"}, {"delay": 347, "addText": " "}, {"delay": 293, "addText": "d"}, {"delay": 231, "addText": "r"}, {"delay": 212, "addText": "a"}, {"delay": 129, "addText": "w"}, {"delay": 257, "addText": "e"}, {"delay": 108, "addText": "r"}, {"delay": 271, "addText": " "}, {"delay": 143, "addText": "w"}, {"delay": 160, "addText": "i"}, {"delay": 116, "addText": "l"}, {"delay": 222, "addText": "l"}, {"delay": 465, "addText": " "}, {"delay": 156, "addText": "n"}, {"delay": 371, "addText": "o"}, {"delay": 177, "addText": "t"}, {"delay": 336, "addText": " "}, {"delay": 246, "addText": "c"}, {"delay": 153, "addText": "l"}, {"delay": 95, "addText": "o"}, {"delay": 151, "addText": "s"}, {"delay": 313, "addText": "e"}, {"delay": 613, "addText": "."}, {"delay": 2787, "addText": "\n"}, {"delay": 2068, "addText": "T"}, {"delay": 197, "addText": "o"}, {"delay": 148, "addText": "n"}, {"delay": 270, "addText": "i"}, {"delay": 245, "addText": "g"}, {"delay": 145, "addText": "h"}, {"delay": 110, "addText": "t"}, {"delay": 415, "addText": " "}, {"delay": 315, "addText": "I"}, {"delay": 114, "addText": " "}, {"delay": 170, "addText": "r"}, {"delay": 155, "addText": "e"}, {"delay": 241, "addText": "a"}, {"delay": 259, "addText": "d"}, {"delay": 206, "addText": " "}, {"delay": 281, "addText": "o"}, {"delay": 120, "addText": "n"}, {"delay": 240, "addText": "e"}, {"delay": 136, "addText": " "}, {"delay": 105, "addText": "o"}, {"delay": 239, "addText": "u"}, {"delay": 119, "addText": "t"}, {"delay": 148, "addText": " "}, {"delay": 150, "addText": "l"}, {"delay": 163, "addText": "o"}, {"delay": 306, "addText": "u"}, {"delay": 321, "addText": "d"}, {"delay": 336, "addText": " "}, {"delay": 315, "addText": "t"}, {"delay": 284, "addText": "o"}, {"delay": 156, "addText": " "}, {"delay": 233, "addText": "t"}, {"delay": 312, "addText": "h"}, {"delay": 226, "addText": "e"}, {"delay": 264, "addText": " "}, {"delay": 109, "addText": "r"}, {"delay": 101, "addText": "o"}, {"delay": 218, "addText": "o"}, {"delay": 231, "addText": "m"}, {"delay": 1771, "addText": " "}, {"delay": 829, "addText": "—"}, {"delay": 2200, "addText": "\n"}, {"delay": 223, "addText": "i"}, {"delay": 299, "addText": "t"}, {"delay": 443, "addText": " "}, {"delay": 333, "addText": "w"}, {"delay": 243, "addText": "a"}, {"delay": 188, "addText": "s"}, {"delay": 514, "addText": " "}, {"delay": 130, "addText": "o"}, {"delay": 134, "addText": "n"}, {"delay": 307, "addText": "l"}, {"delay": 289, "addText": "y"}, {"delay": 112, "addText": " "}, {"delay": 325, "addText": "a"}, {"delay": 268, "addText": " "}, {"delay": 288, "addText": "l"}, {"delay": 244, "addText": "i"}, {"delay": 315, "addText": "s"}, {"delay": 106, "addText": "t"}, {"delay": 1056, "addText": " "}, {"delay": 223, "addText": "o"}, {"delay": 84, "addText": "f"}, {"delay": 341, "addText": " "}, {"delay": 119, "addText": "t"}, {"delay": 80, "addText": "h"}, {"delay": 123, "addText": "i"}, {"delay": 230, "addText": "n"}, {"delay": 157, "addText": "g"}, {"delay": 132, "addText": "s"}, {"delay": 244, "addText": ","}, {"delay": 2366, "addText": "\n"}, {"delay": 328, "addText": "a"}, {"delay": 317, "addText": "n"}, {"delay": 133, "addText": "d"}, {"delay": 400, "addText": " "}, {"delay": 121, "addText": "t"}, {"delay": 208, "addText": "h"}, {"delay": 294, "addText": "e"}, {"delay": 277, "addText": " "}, {"delay": 343, "addText": "r"}, {"delay": 265, "addText": "o"}, {"delay": 146, "addText": "o"}, {"delay": 143, "addText": "m"}, {"delay": 224, "addText": ","}, {"delay": 306, "addText": " "}, {"delay": 220, "addText": "b"}, {"delay": 334, "addText": "e"}, {"delay": 162, "addText": "i"}, {"delay": 328, "addText": "n"}, {"delay": 272, "addText": "g"}, {"delay": 227, "addText": " "}, {"delay": 309, "addText": "a"}, {"delay": 381, "addText": " "}, {"delay": 185, "addText": "r"}, {"delay": 240, "addText": "o"}, {"delay": 264, "addText": "o"}, {"delay": 316, "addText": "m"}, {"delay": 474, "addText": ","}, {"delay": 1880, "addText": " "}, {"delay": 227, "addText": "s"}, {"delay": 161, "addText": "a"}, {"delay": 326, "addText": "i"}, {"delay": 314, "addText": "d"}, {"delay": 278, "addText": " "}, {"delay": 129, "addText": "n"}, {"delay": 248, "addText": "o"}, {"delay": 266, "addText": "t"}, {"delay": 359, "addText": "h"}, {"delay": 347, "addText": "i"}, {"delay": 169, "addText": "n"}, {"delay": 301, "addText": "g"}, {"delay": 2860, "deleteCount": 1}, {"delay": 56, "deleteCount": 1}, {"delay": 42, "deleteCount": 1}, {"delay": 74, "deleteCount": 1}, {"delay": 69, "deleteCount": 1}, {"delay": 66, "deleteCount": 1}, {"delay": 58, "deleteCount": 1}, {"delay": 58, "deleteCount": 1}, {"delay": 56, "deleteCount": 1}, {"delay": 78, "deleteCount": 1}, {"delay": 81, "deleteCount": 1}, {"delay": 93, "deleteCount": 1}, {"delay": 50, "deleteCount": 1}, {"delay": 833, "addText": " "}, {"delay": 240, "addText": "s"}, {"delay": 306, "addText": "a"}, {"delay": 124, "addText": "i"}, {"delay": 138, "addText": "d"}, {"delay": 453, "addText": " "}, {"delay": 319, "addText": "n"}, {"delay": 92, "addText": "o"}, {"delay": 184, "addText": "t"}, {"delay": 355, "addText": "h"}, {"delay": 178, "addText": "i"}, {"delay": 349, "addText": "n"}, {"delay": 188, "addText": "g"}, {"delay": 195, "addText": " "}, {"delay": 94, "addText": "b"}, {"delay": 312, "addText": "a"}, {"delay": 203, "addText": "c"}, {"delay": 297, "addText": "k"}, {"delay": 723, "addText": ","}, {"delay": 3512, "addText": "\n"}, {"delay": 304, "addText": "a"}, {"delay": 332, "addText": "n"}, {"delay": 237, "addText": "d"}, {"delay": 358, "addText": " "}, {"delay": 294, "addText": "t"}, {"delay": 253, "addText": "h"}, {"delay": 292, "addText": "a"}, {"delay": 193, "addText": "t"}, {"delay": 139, "addText": " "}, {"delay": 199, "addText": "w"}, {"delay": 93, "addText": "a"}, {"delay": 388, "addText": "s"}, {"delay": 345, "addText": " "}, {"delay": 295, "addText": "t"}, {"delay": 111, "addText": "h"}, {"delay": 327, "addText": "e"}, {"delay": 342, "addText": " "}, {"delay": 256, "addText": "k"}, {"delay": 351, "addText": "i"}, {"delay": 239, "addText": "n"}, {"delay": 353, "addText": "d"}, {"delay": 322, "addText": "e"}, {"delay": 296, "addText": "s"}, {"delay": 216, "addText": "t"}, {"delay": 1322, "addText": " "}, {"delay": 201, "addText": "a"}, {"delay": 94, "addText": "n"}, {"delay": 315, "addText": "y"}, {"delay": 292, "addText": "o"}, {"delay": 260, "addText": "n"}, {"delay": 272, "addText": "e"}, {"delay": 193, "addText": " "}, {"delay": 320, "addText": "h"}, {"delay": 203, "addText": "a"}, {"delay": 281, "addText": "s"}, {"delay": 120, "addText": " "}, {"delay": 154, "addText": "b"}, {"delay": 143, "addText": "e"}, {"delay": 273, "addText": "e"}, {"delay": 154, "addText": "n"}, {"delay": 1963, "addText": " "}, {"delay": 222, "addText": "a"}, {"delay": 409, "addText": "l"}, {"delay": 175, "addText": "l"}, {"delay": 605, "addText": " "}, {"delay": 419, "addText": "w"}, {"delay": 398, "addText": "e"}, {"delay": 261, "addText": "e"}, {"delay": 203, "addText": "k"}, {"delay": 641, "addText": "."}], "durationMs": 104598, "createdAt": "2026-08-04T21:00:00.000Z"};
+
+// ---
+// 2. SEEDED RNG
+// ---
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function seedFrom(str){
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+const esc = c => c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c;
+const escStr = s => String(s).replace(/[&<>]/g, esc);
+const escAttr = s => escStr(s).replace(/"/g, '&quot;');
+
+// ---
+// 3. PARAMETERS
+//
+// There is exactly ONE parameter system. Every setting — the ones
+// the core reads and the ones an engine reads — lives in a single
+// recipe string, described by a single list of field descriptors.
+//
+// BASE are the fields every rendering has, because they describe
+// how the track is READ: timing, whether deletions stay, fade, and
+// the four colours. Each renderer appends the fields that describe
+// how it DRAWS. Nothing is privileged by being at the top of a
+// record instead of inside a string.
+// ---
+const BASE = [
+  { key:'timing', label:'timing', type:'select', def:'real', opts:['real','quantized','fixed'] },
+  { key:'grid',   label:'grid (ms)', type:'int', def:130, min:20, max:1200, step:10,
+    hint:'the interval for quantized and fixed timing' },
+  { key:'del',    label:'deleted characters', type:'select', def:'0',
+    opts:['0','1'], labels:['removed','kept visible'] },
+  { key:'fade',   label:'fade (ms)', type:'int', def:0, min:0, max:30000, step:250,
+    hint:'0 never fades' },
+  { key:'sound',  label:'sound', type:'select', def:'none', opts:['none','click','tone'] },
+  { key:'bg',     label:'background', type:'color', def:'#000000' },
+  { key:'fg',     label:'foreground', type:'color', def:'#ffffff' },
+  { key:'ghost',  label:'deleted',    type:'color', def:'#7b6cff' },
+  { key:'accent', label:'accent',     type:'color', def:'#ffffff' }
+];
+
+function parseRecipe(str, fields){
+  const q = new URLSearchParams(str || '');
+  const out = {};
+  for (const f of fields){
+    const raw = q.get(f.key);
+    out[f.key] = raw === null ? f.def
+               : f.type === 'int'  ? parseInt(raw, 10)
+               : f.type === 'bool' ? raw === '1'
+               : raw;
+  }
+  return out;
+}
+function serialiseRecipe(p, fields){
+  const q = new URLSearchParams();
+  for (const f of fields){
+    const v = p[f.key];
+    if (v === undefined || v === f.def) continue;   // defaults stay implicit
+    q.set(f.key, f.type === 'bool' ? (v ? '1' : '0') : String(v));
+  }
+  return q.toString();
+}
+
+// ---
+// 4. RENDERERS
+//
+// The core owns the track: it applies steps, marks deletions, keeps
+// the clock. A renderer owns the marks only.
+//
+//   id      NSID, matching render.renderer
+//   label   what the picker shows
+//   fields  the parameters it adds to BASE
+//   render({cells, clock, p}) -> HTML
+//
+//   cell = { ch, t, dt, deleted, i }
+//
+// dt is the delay that preceded the character — the one field that
+// makes a rate-driven engine possible at all.
+//
+// An unrecognised renderer is not an error: it falls back to the
+// text player, so a rendering from a stranger is always playable.
+// ---
+const RENDERERS = {};
+const FALLBACK = 'city.opposite.poemstream.textPlayer';
+const defineRenderer = r => (RENDERERS[r.id] = r);
+const getRenderer = id => RENDERERS[id] || RENDERERS[FALLBACK];
+const fieldsFor = id => BASE.concat(getRenderer(id).fields);
+
+// --- 4a. text ---
+defineRenderer({
+  id: FALLBACK,
+  label: 'text',
+  fields: [],
+  render({ cells, clock, p }){
+    const fade = p.fade || 0, keep = p.del === '1';
+    let html = '';
+    for (const c of cells){
+      if (c.deleted && !keep) continue;
+      let style = '';
+      if (fade > 0 && !c.deleted){
+        const a = Math.max(0.10, Math.min(1, 1 - (clock - c.t) / fade));
+        if (a < 1) style = ' style="opacity:' + a.toFixed(3) + '"';
+      }
+      html += c.deleted
+        ? '<span class="del"' + style + '>' + esc(c.ch) + '</span>'
+        : (style ? '<span' + style + '>' + esc(c.ch) + '</span>' : esc(c.ch));
+    }
+    return html;
+  }
+});
+
+// --- 4b. titivillus: corruption driven by typing rate ---
+// A reduced stand-in for the real engine, implementing the same
+// contract it will use. What it proves is the thing that matters:
+// a renderer that consumes TIMING, not just characters. Fast
+// passages break up, hesitations stay clean, and every mark settles
+// as it ages — so the poem writhes, then calms.
+const HOMOGLYPH = {
+  a:'\u0430\u00e0\u00e2\u0105', b:'\u0431\u1e05', c:'\u0441\u010d\u00e7', d:'\u1e0d\u0111',
+  e:'\u0435\u00e9\u011b\u0119', f:'\u1e1f', g:'\u0121\u011f', h:'\u04bb\u1e25',
+  i:'\u0456\u00ed\u012f', j:'\u0458\u0135', k:'\u043a\u1e33', l:'\u04cf\u013e\u0142',
+  m:'\u1e43\u028d', n:'\u0578\u0148\u1e47', o:'\u043e\u00f3\u01d2\u00f8', p:'\u0440\u1e57',
+  q:'\u02a0', r:'\u0453\u0159\u1e5b', s:'\u0455\u0161\u1e63', t:'\u0442\u0165\u1e6d',
+  u:'\u1e73\u00fa\u016f', v:'\u1e7f\u028b', w:'\u1e85\u0448', x:'\u0445\u1e8b',
+  y:'\u0443\u00fd\u1e8f', z:'\u1e91\u017e'
+};
+const COMBINING = ['\u0300','\u0301','\u0302','\u0303','\u0308','\u030a','\u0323','\u0327','\u0331','\u0335'];
+
+defineRenderer({
+  id: 'city.opposite.titivillus',
+  label: 'titivillus',
+  fields: [
+    { key:'amt',   label:'corruption',   type:'int',  def:70,   min:0, max:100 },
+    { key:'settle',label:'settle (ms)',  type:'int',  def:5000, min:0, max:20000, step:250,
+      hint:'how long a mark takes to resolve' },
+    { key:'marks', label:'marks',        type:'int',  def:3,    min:0, max:6 },
+    { key:'drift', label:'drift',        type:'int',  def:60,   min:0, max:100 },
+    { key:'sub',   label:'substitution', type:'bool', def:true },
+    { key:'sd',    label:'seed',         type:'text', def:'druck' }
+  ],
+  render({ cells, clock, p }){
+    const amt = (p.amt ?? 70) / 100, settle = p.settle ?? 5000;
+    const maxMark = p.marks ?? 3, drift = (p.drift ?? 60) / 100;
+    const fade = p.fade || 0, keep = p.del === '1';
+    const base = seedFrom(String(p.sd ?? 'druck'));
+    let html = '';
+
+    for (const c of cells){
+      if (c.deleted && !keep) continue;
+
+      // A short delay before this character means it was typed
+      // fast, which means more damage. A deleted character is a
+      // mis-impression and is always fully broken.
+      const rate = Math.max(0, Math.min(1, 1 - (c.dt || 0) / 380));
+      let strength = c.deleted ? 1 : amt * rate;
+      if (!c.deleted && settle > 0) strength *= Math.max(0, 1 - (clock - c.t) / settle);
+
+      if (strength <= 0.04 || c.ch === '\n'){
+        html += c.deleted ? '<span class="del">' + esc(c.ch) + '</span>' : esc(c.ch);
+        continue;
+      }
+
+      const rnd = mulberry32((base + Math.imul(c.i, 2654435761)) >>> 0);
+      let ch = c.ch;
+      if (p.sub && strength > 0.3){
+        const alt = HOMOGLYPH[ch.toLowerCase()];
+        if (alt && rnd() < strength){
+          const pick = alt[Math.floor(rnd() * alt.length)];
+          ch = (ch !== ch.toLowerCase() && ch === ch.toUpperCase()) ? pick.toUpperCase() : pick;
+        }
+      }
+      let marks = '';
+      for (let k = 0, n = Math.floor(strength * maxMark); k < n; k++)
+        marks += COMBINING[Math.floor(rnd() * COMBINING.length)];
+
+      const rot = (rnd() - 0.5) * 26 * strength * drift;
+      const dx  = (rnd() - 0.5) * 0.30 * strength * drift;
+      const dy  = (rnd() - 0.5) * 0.24 * strength * drift;
+      const sc  = 1 + (rnd() - 0.5) * 0.30 * strength * drift;
+      let style = 'transform:translate(' + dx.toFixed(3) + 'em,' + dy.toFixed(3) + 'em) rotate('
+                + rot.toFixed(2) + 'deg) scale(' + sc.toFixed(3) + ')';
+      if (fade > 0 && !c.deleted){
+        const a = Math.max(0.10, Math.min(1, 1 - (clock - c.t) / fade));
+        if (a < 1) style += ';opacity:' + a.toFixed(3);
+      }
+      html += '<span class="ch' + (c.deleted ? ' del' : '') + '" style="' + style + '">'
+            + esc(ch) + marks + '</span>';
+    }
+    return html;
+  }
+});
+
+// ---
+// 5. PRESETS
+// A preset is a renderer plus a recipe. Not a record type — the
+// only record is the rendering itself. If a library of named
+// treatments ever earns its own lexicon, adding one is additive.
+// Removing one after people have published would not be.
+// ---
+const PRESETS = [
+  { name:'plain', recipe:'',
+    note:'The track exactly as it was typed. Every hesitation is the writer\u2019s own.' },
+
+  { name:'ghost', recipe:'del=1&accent=%237b6cff',
+    note:'Deleted characters stay on the page. You read what the poem decided against.' },
+
+  { name:'pulse', recipe:'timing=quantized&grid=130&sound=click&accent=%2335e0c8&ghost=%2335e0c8',
+    note:'Delays snapped to a 130ms grid. Thinking becomes rest; the writing becomes a rhythm.' },
+
+  { name:'fade', recipe:'fade=9000&accent=%23ff5fa2&ghost=%23ff5fa2',
+    note:'Each character fades over nine seconds. Only what was just written is fully there.' },
+
+  { name:'druck', renderer:'city.opposite.titivillus',
+    recipe:'del=1&amt=80&drift=70&accent=%23e8e2d0&ghost=%238c86ff',
+    note:'Corruption follows the hand. What was deleted stays as a broken impression.' },
+
+  { name:'settle', renderer:'city.opposite.titivillus',
+    recipe:'amt=100&settle=2600&marks=4&drift=100&accent=%2335e0c8',
+    note:'Everything arrives broken and resolves within three seconds. The poem calms as it goes.' }
+];
+
+// ---
+// 6. CORE — the track engine
+// ---
+let record = SAMPLE, treatment = PRESETS[0], renderer = getRenderer(), p = {};
+let speed = 1, playing = false, soundOn = false;
+let cells = [], step = 0, clock = 0, last = 0, audio = null;
+
+const $ = id => document.getElementById(id);
+const stage = $('stage'), panel = $('panel'), panelBody = $('panelBody');
+const track = () => record.track || [];
+
+function effDelay(s){
+  const d = s.delay || 0, g = p.grid || 130;
+  if (p.timing === 'fixed') return g;
+  if (p.timing === 'quantized') return Math.max(g, Math.round(d / g) * g);
+  return d;
+}
+const totalMs = () => track().reduce((a, s) => a + effDelay(s), 0);
+
+function apply(t){
+  treatment = t;
+  renderer = getRenderer(t.renderer);
+  p = parseRecipe(t.recipe, fieldsFor(t.renderer));
+  const st = document.documentElement.style;
+  st.setProperty('--bg', p.bg); st.setProperty('--fg', p.fg);
+  st.setProperty('--ghost', p.ghost); st.setProperty('--accent', p.accent);
+  let n = t.note || '';
+  if (t.renderer && !RENDERERS[t.renderer]) n += '  (renderer unknown here — playing as text)';
+  $('note').textContent = n;
+  $('sound').style.display = p.sound !== 'none' ? '' : 'none';
+  document.querySelectorAll('.preset').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.name === t.name)));
+  reset();
+}
+
+function reset(){
+  cells = []; step = 0; clock = 0; playing = false;
+  $('play').textContent = 'play';
+  draw();
+}
+
+function advance(){
+  let acc = 0;
+  for (let i = 0; i < step; i++) acc += effDelay(track()[i]);
+  while (step < track().length && acc + effDelay(track()[step]) <= clock){
+    const s = track()[step], d = effDelay(s);
+    acc += d;
+    if (s.deleteCount){
+      let n = s.deleteCount;
+      for (let i = cells.length - 1; i >= 0 && n > 0; i--)
+        if (!cells[i].deleted){ cells[i].deleted = true; n--; }
+    }
+    if (s.addText){
+      let first = true;
+      for (const ch of s.addText){
+        cells.push({ ch, t: acc, dt: first ? d : 0, deleted: false, i: cells.length });
+        first = false;
+      }
+    }
+    step++;
+    if (soundOn && p.sound !== 'none') blip();
+  }
+}
+
+function draw(){
+  stage.innerHTML = renderer.render({ cells, clock, p, record }) + '<span id="cursor"></span>';
+  $('clock').textContent = fmt(clock) + ' / ' + fmt(totalMs());
+}
+function fmt(ms){
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function frame(now){
+  if (playing){
+    if (!last) last = now;
+    clock += (now - last) * speed;
+    last = now;
+    advance();
+    if (step >= track().length && clock > totalMs() + 1200){
+      playing = false; $('play').textContent = 'replay';
+    }
+    draw();
+  } else {
+    last = 0;
+    if (step > 0 && ((p.fade || 0) > 0 || (p.settle || 0) > 0)) draw();
+  }
+  requestAnimationFrame(frame);
+}
+
+function blip(){
+  try{
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square';
+    o.frequency.value = p.sound === 'tone' ? 420 : 1500 + Math.random() * 500;
+    g.gain.setValueAtTime(0.05, audio.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0008, audio.currentTime + 0.035);
+    o.connect(g); g.connect(audio.destination);
+    o.start(); o.stop(audio.currentTime + 0.04);
+  }catch(e){}
+}
+
+// ---
+// 7. DISCARDS
+// What the poem threw away. The feed for an engine that makes
+// objects rather than playback: the discards are short, they are
+// words, and a sculpture of what a poem refused is small enough
+// to actually print.
+// ---
+function discards(){
+  const buf = [], out = [];
+  let run = '';
+  const flush = () => { if (run.trim()) out.push(run.trim()); run = ''; };
+  for (const s of track()){
+    let removed = '';
+    if (s.deleteCount){
+      // A backspace run arrives as many consecutive single-character
+      // steps, each removing the current last character — so each
+      // belongs in front of what was removed before it.
+      for (let n = 0; n < s.deleteCount && buf.length; n++) removed = buf.pop() + removed;
+    }
+    if (s.addText && removed){
+      // A delete and a retype inside one step is how the format has to
+      // express an edit in the middle of the text. Whatever comes back
+      // unchanged was never refused, so only the part that did not
+      // return counts as a discard.
+      let k = 0;
+      while (k < removed.length && k < s.addText.length &&
+             removed[removed.length - 1 - k] === s.addText[s.addText.length - 1 - k]) k++;
+      removed = removed.slice(0, removed.length - k);
+    }
+    run = removed + run;
+    if (s.addText){ flush(); for (const ch of s.addText) buf.push(ch); }
+  }
+  flush();
+  return out;
+}
+
+// ---
+// 8. CONTROLS
+// ---
+$('play').onclick = () => {
+  if (step >= track().length && clock > totalMs()) reset();
+  playing = !playing;
+  $('play').textContent = playing ? 'pause' : 'play';
+};
+$('restart').onclick = () => { reset(); playing = true; $('play').textContent = 'pause'; };
+$('speed').onclick = () => {
+  speed = speed === 1 ? 2 : speed === 2 ? 4 : 1;
+  $('speed').innerHTML = speed + '&times;';
+};
+$('sound').onclick = () => {
+  soundOn = !soundOn;
+  $('sound').textContent = soundOn ? 'sound on' : 'sound off';
+  $('sound').classList.toggle('on', soundOn);
+  if (soundOn) blip();
+};
+document.addEventListener('keydown', e => {
+  if (/^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)) return;
+  if (e.code === 'Space'){ e.preventDefault(); $('play').click(); }
+  if (e.key === 'r') $('restart').click();
+  if (e.key === 'Escape') panel.classList.remove('open');
+});
+
+// ---
+// 9. PANELS
+// ---
+const openPanel = html => { panelBody.innerHTML = html; panel.classList.add('open'); };
+$('closePanel').onclick = () => panel.classList.remove('open');
+
+$('openSource').onclick = () => {
+  const json = JSON.stringify(record, null, 2);
+  const bytes = new Blob([JSON.stringify(record)]).size;
+  const chars = (record.text || '').length;
+  openPanel(
+    (provenance
+      ? '<h2>provenance</h2><p>This poem came out of a repository, not out of this page. ' +
+        'The hash below is over the record itself, signed into that repository \u2014 change ' +
+        'one delay and it is a different hash.</p><pre>' + escStr(provenance.uri) + '\n' +
+        escStr(provenance.cid) + '</pre>'
+      : '') +
+    '<h2>the record</h2><p>' + track().length + ' steps, ' + chars + ' characters, ' +
+    (bytes/1024).toFixed(1) + 'KB — about ' + Math.round(bytes / Math.max(chars,1)) +
+    ' bytes per character written. On atproto this lives in the poet\u2019s own repository, ' +
+    'signed and content-addressed. The player is disposable. The record is not.</p>' +
+    '<pre>' + escStr(json) + '</pre>');
+};
+
+$('openDiscards').onclick = () => {
+  const d = discards();
+  openPanel(
+    '<h2>discards</h2><p>Everything this poem wrote and then removed, in the order it was ' +
+    'refused. An engine that makes objects rather than playback takes this, not the ' +
+    'finished text.</p><div class="discard">' +
+    (d.length ? d.map(escStr).join('<br>') : 'nothing was thrown away') + '</div>' +
+    '<pre>' + escStr('[' + d.map(w => JSON.stringify(w)).join(', ') + ']') + '</pre>');
+};
+
+$('openLoad').onclick = () => {
+  openPanel(
+    '<h2>load a poem</h2>' +
+    '<p>Give it an at:// address and it will find the repository that holds it, wherever ' +
+    'that is, and play it. No index and no server of ours sits in between. Or paste a ' +
+    'record directly \u2014 the poem does not need this player, and this player does not ' +
+    'need the author\u2019s permission.</p>' +
+    '<div class="field"><label for="uri">address</label>' +
+      '<input type="text" id="uri" spellcheck="false" autocapitalize="none" ' +
+      'placeholder="at://handle.bsky.social/' + NSID.poem + '/\u2026"></div>' +
+    '<div class="row" style="justify-content:flex-start; margin-bottom:8px">' +
+      '<button class="ctl on" id="fetchBtn">fetch and play</button>' +
+      '<span class="err" id="loadErr"></span></div>' +
+    '<div class="field"><label for="ldta">or a record</label>' +
+      '<textarea id="ldta" spellcheck="false" placeholder=\'{ "text": "...", "track": [ { "delay": 300, "addText": "I" } ] }\'></textarea></div>' +
+    '<div class="row" style="justify-content:flex-start">' +
+      '<button class="ctl" id="loadBtn">play this</button></div>');
+
+  $('fetchBtn').onclick = async () => {
+    const err = $('loadErr');
+    try{
+      $('fetchBtn').disabled = true;
+      err.textContent = 'looking for the repository\u2026';
+      const got = await fetchPoem($('uri').value);
+      record = got.value;
+      provenance = { uri: got.uri, cid: got.cid, handle: null };
+      reset(); panel.classList.remove('open');
+      playing = true; $('play').textContent = 'pause';
+    }catch(e){ err.textContent = e.message; }
+    finally{ $('fetchBtn').disabled = false; }
+  };
+  $('loadBtn').onclick = () => {
+    try{
+      const r = JSON.parse($('ldta').value);
+      if (!Array.isArray(r.track)) throw new Error('no track array');
+      record = r; provenance = null;
+      reset(); panel.classList.remove('open');
+      playing = true; $('play').textContent = 'pause';
+    }catch(err){ $('loadErr').textContent = err.message; }
+  };
+};
+
+// --- the recorder ---
+// The only way a record gets made in the first place.
+//
+// A track can only append and delete from the end, so it cannot
+// express an edit in the middle of the text. An edit in the middle
+// is therefore captured as a delete back to the point of divergence
+// followed by a retype. Lossy as a description of what the hand did,
+// but it preserves the invariant that matters: replaying the track
+// always reproduces the text exactly.
+let draft = { text:'', track:[], prompt:'', t0:0, last:0, wall:0 };
+
+function capture(oldText, newText, delay){
+  let i = 0;
+  const n = Math.min(oldText.length, newText.length);
+  while (i < n && oldText[i] === newText[i]) i++;
+  const del = oldText.length - i, add = newText.slice(i);
+  if (!del && !add) return null;
+  const s = { delay: Math.max(0, Math.round(delay)) };
+  if (del) s.deleteCount = del;
+  if (add) s.addText = add;
+  return s;
+}
+
+function draftRecord(){
+  const r = {
+    $type: 'city.opposite.poemstream.poem',
+    text: draft.text,
+    track: draft.track,
+    durationMs: draft.track.reduce((a, s) => a + s.delay, 0),
+    createdAt: new Date().toISOString()
+  };
+  if (draft.prompt) r.prompt = draft.prompt;
+  if (draft.wall) r.startedAt = new Date(draft.wall).toISOString();
+  return r;
+}
+
+$('openWrite').onclick = () => {
+  openPanel(
+    '<h2>write</h2><p>Type. Every keystroke and every pause is kept, including what you ' +
+    'delete. Nothing is sent anywhere — the record stays in this browser until you ' +
+    'download it.</p>' +
+    '<div class="field"><label for="pr">prompt <span class="val">optional</span></label>' +
+    '<input type="text" id="pr" value="' + escAttr(draft.prompt) + '" placeholder="what were you writing against?"></div>' +
+    '<div class="field"><label for="wr">the poem</label>' +
+    '<textarea id="wr" spellcheck="false" placeholder="start anywhere"></textarea></div>' +
+    '<div class="clock" id="wstat"></div>' +
+    '<div class="row" style="justify-content:flex-start">' +
+      '<button class="ctl on" id="playBack">play it back</button>' +
+      '<button class="ctl" id="dlRec">download record</button>' +
+      '<button class="ctl" id="clearRec">start over</button></div>' +
+
+    '<h2 style="margin-top:10px">publish</h2>' +
+    '<p>The poem is written into your own repository on your own server. Nothing is ' +
+    'stored here — this page has no database. What comes back is a permanent address ' +
+    'and a hash of the record itself.</p>' +
+    (session
+      ? '<p>Signed in as <strong style="color:#fff">@' + escStr(session.handle) + '</strong>.</p>'
+      : '<p>Use a <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener" style="color:#fff">Bluesky app password</a>, never your account password. It is sent only to your own server and is not kept after this page closes.</p>' +
+        '<div class="cols">' +
+          '<div><label for="hnd">handle</label><input type="text" id="hnd" placeholder="you.bsky.social" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
+          '<div><label for="apw">app password</label><input type="password" id="apw" placeholder="xxxx-xxxx-xxxx-xxxx"></div>' +
+        '</div>') +
+    '<div class="row" style="justify-content:flex-start">' +
+      '<button class="ctl" id="pubBtn">publish to my repository</button>' +
+      '<span class="val" id="pubMsg"></span></div>' +
+    '<div id="pubOut"></div>');
+
+  const ta = $('wr');
+  ta.value = draft.text;
+  const stat = () => {
+    const ms = draft.track.reduce((a, s) => a + s.delay, 0);
+    $('wstat').textContent = draft.text.length + ' characters  ·  ' +
+      draft.track.length + ' steps  ·  ' + fmt(ms);
+  };
+  stat();
+
+  ta.oninput = () => {
+    const now = (window.performance ? performance.now() : Date.now());
+    if (!draft.t0){ draft.t0 = now; draft.last = now; draft.wall = Date.now(); }
+    let v = ta.value;
+    if (v.length > 10000){ v = v.slice(0, 10000); ta.value = v; }
+    const s = capture(draft.text, v, now - draft.last);
+    if (s){ draft.track.push(s); draft.text = v; draft.last = now; stat(); }
+  };
+  $('pr').oninput = e => { draft.prompt = e.target.value; };
+
+  $('playBack').onclick = () => {
+    if (!draft.track.length) return;
+    record = draftRecord();
+    reset(); panel.classList.remove('open');
+    playing = true; $('play').textContent = 'pause';
+  };
+  $('dlRec').onclick = () => {
+    if (!draft.track.length) return;
+    const blob = new Blob([JSON.stringify(draftRecord(), null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'poem-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  $('clearRec').onclick = () => {
+    draft = { text:'', track:[], prompt:draft.prompt, t0:0, last:0, wall:0 };
+    ta.value = ''; stat(); ta.focus();
+  };
+
+  $('pubBtn').onclick = async () => {
+    const msg = $('pubMsg'), out = $('pubOut');
+    out.innerHTML = '';
+    if (!draft.track.length){ msg.textContent = 'nothing recorded yet'; return; }
+    try{
+      $('pubBtn').disabled = true;
+      if (!session){ msg.textContent = 'signing in…'; await signIn($('hnd').value, $('apw').value); }
+      msg.textContent = 'writing to ' + session.handle + '…';
+      const res = await publish(draftRecord());
+      msg.textContent = '';
+      const url = shareUrl(res.uri);
+      out.innerHTML =
+        '<h2 style="margin-top:14px">published</h2>' +
+        '<p>It is in your repository now. Delete it there and it is gone from ' +
+        'everywhere, because there is nowhere else it lives.</p>' +
+        '<pre>' + escStr(res.uri) + '\n' + escStr(res.cid) + '</pre>' +
+        '<p><a href="' + escAttr(url) + '" style="color:#fff">' + escStr(url) + '</a></p>';
+      provenance = { uri: res.uri, cid: res.cid, handle: session.handle };
+      record = draftRecord();
+      reset(); playing = true; $('play').textContent = 'pause';
+    }catch(e){
+      msg.textContent = e.message;
+    }finally{
+      $('pubBtn').disabled = false;
+    }
+  };
+  ta.focus();
+};
+
+// --- atproto ---
+//
+// The whole point of the format. A poem written here is written into
+// the poet's OWN repository on their own PDS — not to a server behind
+// this page, which has none. What comes back is an at:// address and
+// a CID: a content hash over the record, signed into their repo. That
+// is the provenance claim, and it is the only part of this that no
+// other publishing format can make.
+//
+// NSID PREFIX IS NOT SETTLED. It is one constant on purpose. An NSID
+// is permanent in practice — change it and every record already
+// written under the old one is orphaned. Decide the namespace before
+// the first real record, not after.
+const NS = 'city.opposite.poemstream';
+const NSID = { poem: NS + '.poem', render: NS + '.render' };
+
+let session = null;      // { did, handle, pds, jwt } — memory only, never stored
+let provenance = null;   // { uri, cid, handle } when the record came from a repo
+
+async function xrpc(base, method, { body, jwt, query } = {}){
+  const url = base + '/xrpc/' + method + (query ? '?' + new URLSearchParams(query) : '');
+  const opts = { method: body ? 'POST' : 'GET', headers: {} };
+  if (body){ opts.headers['content-type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  if (jwt) opts.headers['authorization'] = 'Bearer ' + jwt;
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.message || d.error || (method + ' failed'));
+  return d;
+}
+
+async function resolveHandle(handle){
+  const d = await xrpc('https://public.api.bsky.app', 'com.atproto.identity.resolveHandle',
+                       { query: { handle } });
+  return d.did;
+}
+
+// A DID document says where the repository actually lives. Nothing
+// here assumes Bluesky hosts it.
+async function pdsFor(did){
+  let doc;
+  if (did.startsWith('did:plc:')){
+    const r = await fetch('https://plc.directory/' + did);
+    if (!r.ok) throw new Error('Could not resolve that identity.');
+    doc = await r.json();
+  } else if (did.startsWith('did:web:')){
+    const host = did.slice(8).split(':').join('/');
+    const r = await fetch('https://' + host + '/.well-known/did.json');
+    if (!r.ok) throw new Error('Could not resolve that identity.');
+    doc = await r.json();
+  } else {
+    throw new Error('Unsupported identity method: ' + did.split(':')[1]);
+  }
+  const svc = (doc.service || []).find(s =>
+    s.id === '#atproto_pds' || s.id.endsWith('#atproto_pds') || s.type === 'AtprotoPersonalDataServer');
+  if (!svc) throw new Error('That identity has no repository server.');
+  return svc.serviceEndpoint.replace(/\/$/, '');
+}
+
+async function signIn(handle, password){
+  handle = handle.trim().replace(/^@/, '');
+  if (!handle) throw new Error('Enter your handle.');
+  if (!password) throw new Error('Enter an app password.');
+  const did = await resolveHandle(handle);
+  const pds = await pdsFor(did);
+  const d = await xrpc(pds, 'com.atproto.server.createSession',
+                       { body: { identifier: handle, password } });
+  session = { did: d.did, handle: d.handle, pds, jwt: d.accessJwt };
+  return session;
+}
+
+async function publish(rec){
+  if (!session) throw new Error('Not signed in.');
+  const record = Object.assign({}, rec, { $type: NSID.poem });
+  return xrpc(session.pds, 'com.atproto.repo.createRecord', {
+    jwt: session.jwt,
+    body: { repo: session.did, collection: NSID.poem, record }
+  });
+}
+
+// Fetch anyone's poem from wherever it actually lives. No index, no
+// server of ours in the path.
+async function fetchPoem(uri){
+  const m = /^at:\/\/([^/]+)\/([^/]+)\/([^/]+)\/?$/.exec(String(uri).trim());
+  if (!m) throw new Error('That is not an at:// URI.');
+  const repo = m[1], collection = m[2], rkey = m[3];
+  const did = repo.startsWith('did:') ? repo : await resolveHandle(repo);
+  const pds = await pdsFor(did);
+  const d = await xrpc(pds, 'com.atproto.repo.getRecord',
+                       { query: { repo: did, collection, rkey } });
+  if (!Array.isArray(d.value && d.value.track))
+    throw new Error('That record has no track — nothing to play.');
+  return d;
+}
+
+function shareUrl(uri){
+  return location.origin + location.pathname + '?at=' + encodeURIComponent(uri);
+}
+
+// --- the editor ---
+// One loop over one field list. Because there is no second
+// parameter system, there is no second branch of UI: a new engine
+// becomes editable by declaring fields, not by touching this.
+$('openEdit').onclick = () => {
+  const draft = { name: treatment.name, renderer: treatment.renderer, recipe: treatment.recipe };
+  let vals = {};
+
+  function control(f){
+    const id = 'f_' + f.key;
+    const v = vals[f.key];
+    const hint = f.hint ? ' <span class="val">' + f.hint + '</span>' : '';
+    if (f.type === 'select'){
+      const labels = f.labels || f.opts;
+      return '<div class="field"><label for="' + id + '">' + f.label + hint + '</label><select id="' +
+        id + '" data-k="' + f.key + '" data-t="select">' +
+        f.opts.map((o, i) => '<option value="' + o + '"' + (String(v) === o ? ' selected' : '') +
+          '>' + labels[i] + '</option>').join('') + '</select></div>';
+    }
+    if (f.type === 'bool')
+      return '<div class="field"><label for="' + id + '">' + f.label + '</label><select id="' + id +
+        '" data-k="' + f.key + '" data-t="bool"><option value="0"' + (!v ? ' selected' : '') +
+        '>off</option><option value="1"' + (v ? ' selected' : '') + '>on</option></select></div>';
+    if (f.type === 'text')
+      return '<div class="field"><label for="' + id + '">' + f.label + '</label><input type="text" id="' +
+        id + '" data-k="' + f.key + '" data-t="text" value="' + escStr(v) + '"></div>';
+    if (f.type === 'color')
+      return '<div><label for="' + id + '" style="letter-spacing:.08em">' + f.label +
+        '</label><input type="color" id="' + id + '" data-k="' + f.key + '" data-t="text" value="' + v + '"></div>';
+    return '<div class="field"><label for="' + id + '">' + f.label +
+      ' <span class="val" id="v_' + f.key + '">' + v + '</span>' + hint + '</label><input type="range" id="' +
+      id + '" data-k="' + f.key + '" data-t="int" min="' + f.min + '" max="' + f.max +
+      '" step="' + (f.step || 1) + '" value="' + v + '"></div>';
+  }
+
+  function build(){
+    const fields = fieldsFor(draft.renderer);
+    vals = parseRecipe(draft.recipe, fields);
+    const colours = fields.filter(f => f.type === 'color');
+    const rest = fields.filter(f => f.type !== 'color');
+    $('form').innerHTML =
+      rest.map(control).join('') +
+      '<div class="field"><label>colours</label><div class="cols">' +
+        colours.map(control).join('') + '</div></div>';
+    $('form').querySelectorAll('[data-k]').forEach(el => {
+      el.oninput = () => {
+        const k = el.dataset.k, t = el.dataset.t;
+        vals[k] = t === 'int' ? parseInt(el.value, 10) : t === 'bool' ? el.value === '1' : el.value;
+        const lab = $('v_' + k); if (lab) lab.textContent = vals[k];
+        draft.recipe = serialiseRecipe(vals, fieldsFor(draft.renderer));
+        push();
+      };
+    });
+  }
+
+  function push(){
+    const out = {
+      $type: 'city.opposite.poemstream.render',
+      poem: { uri: 'at://…/city.opposite.poemstream.poem/…', cid: '…' },
+      name: draft.name || 'untitled',
+      createdAt: new Date().toISOString()
+    };
+    if (draft.renderer && draft.renderer !== FALLBACK) out.renderer = draft.renderer;
+    if (draft.recipe) out.recipe = draft.recipe;
+    $('out').textContent = JSON.stringify(out, null, 2);
+    apply({ name: draft.name, renderer: draft.renderer, recipe: draft.recipe, note: treatment.note });
+    playing = true; $('play').textContent = 'pause';
+  }
+
+  openPanel(
+    '<h2>edit</h2><p>Every setting below lives in one recipe string on one record. ' +
+    'Nothing is privileged by sitting at the top of a record instead of inside the string, ' +
+    'and the controls are generated from the renderer\u2019s own field list — which is why ' +
+    'this panel never had to learn about titivillus.</p>' +
+    '<div class="field"><label for="f_ren">renderer</label><select id="f_ren">' +
+      Object.keys(RENDERERS).map(id => '<option value="' + id + '"' +
+        ((draft.renderer || FALLBACK) === id ? ' selected' : '') + '>' +
+        RENDERERS[id].label + '</option>').join('') + '</select></div>' +
+    '<div id="form"></div>' +
+    '<h2>the record this makes</h2><p>The poem reference is filled in when you publish.</p>' +
+    '<pre id="out"></pre>' +
+    '<div class="row" style="justify-content:flex-start">' +
+      '<button class="ctl on" id="copy">copy</button>' +
+      '<span class="val" id="copied"></span></div>');
+
+  $('f_ren').onchange = e => {
+    draft.renderer = e.target.value;
+    // keep every parameter the new renderer also understands
+    draft.recipe = serialiseRecipe(vals, fieldsFor(draft.renderer));
+    build(); push();
+  };
+  $('copy').onclick = async () => {
+    try{ await navigator.clipboard.writeText($('out').textContent); $('copied').textContent = 'copied'; }
+    catch(e){ $('copied').textContent = 'select the text above'; }
+  };
+
+  build(); push();
+};
+
+// ---
+// 10. BOOT
+// ---
+$('presets').innerHTML = PRESETS.map(t =>
+  '<button class="preset" data-name="' + t.name + '" aria-pressed="false">' + t.name + '</button>').join('');
+document.querySelectorAll('.preset').forEach(b =>
+  b.onclick = () => apply(PRESETS.find(t => t.name === b.dataset.name)));
+
+apply(PRESETS[0]);
+requestAnimationFrame(frame);
+
+// A shared poem arrives as ?at=<uri>. Resolve it from whichever server
+// actually holds it and play it. This page holds nothing.
+(async () => {
+  const at = new URLSearchParams(location.search).get('at');
+  if (!at) return;
+  $('note').textContent = 'looking for the repository\u2026';
+  try{
+    const got = await fetchPoem(at);
+    record = got.value;
+    provenance = { uri: got.uri, cid: got.cid, handle: null };
+    apply(PRESETS[0]);
+    playing = true; $('play').textContent = 'pause';
+  }catch(e){ $('note').textContent = e.message; }
+})();
+</script>
+</body>
+</html>
