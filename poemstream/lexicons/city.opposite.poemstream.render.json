@@ -1,0 +1,55 @@
+{
+  "lexicon": 1,
+  "id": "city.opposite.poemstream.render",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A way of playing a poem back. Anyone may publish a rendering of anyone's poem; the original record is never touched and its strong reference still resolves. This is how a poem gets covered, arranged, and argued with.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["poem", "createdAt"],
+        "properties": {
+          "poem": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "The poem being rendered."
+          },
+          "renderer": {
+            "type": "string",
+            "format": "nsid",
+            "description": "Which engine draws the track. Omit for the built-in text player. A client that does not recognise the renderer ignores it and falls back to the built-in one, so a rendering is never unplayable.",
+            "knownValues": [
+              "city.opposite.poemstream.textPlayer",
+              "city.opposite.titivillus"
+            ]
+          },
+          "recipe": {
+            "type": "string",
+            "maxLength": 8000,
+            "description": "Every parameter, as a query string. A few keys are read by the player itself (timing, grid, fade, del, sound, and the four colours); the rest belong to the renderer and are opaque here. Same serialisation Titivillus and SIGNGULARITY already use for shareable links. Data, never code."
+          },
+          "recipeBlob": {
+            "type": "blob",
+            "accept": ["application/json"],
+            "maxSize": 500000,
+            "description": "For recipes too large to inline."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 240,
+            "maxGraphemes": 60,
+            "description": "What to call this treatment. Two renderings sharing a renderer and recipe are the same treatment whether or not they share a name."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "maxGraphemes": 500,
+            "description": "Why this poem was rendered this way."
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

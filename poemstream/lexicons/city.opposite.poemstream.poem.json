@@ -1,0 +1,84 @@
+{
+  "lexicon": 1,
+  "id": "city.opposite.poemstream.poem",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A poem plus the keystroke track that produced it. The track is the work; the finished text is a convenience for indexers and readers who only want the result.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["text", "createdAt"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 40000,
+            "maxGraphemes": 10000,
+            "description": "The finished poem. Must equal the result of applying every step in the track in order."
+          },
+          "track": {
+            "type": "array",
+            "items": { "type": "ref", "ref": "#step" },
+            "maxLength": 20000,
+            "description": "Inline keystroke track. Use for short poems. Roughly 40 bytes per character written, so past a few thousand characters use trackBlob instead."
+          },
+          "trackBlob": {
+            "type": "blob",
+            "accept": ["application/json"],
+            "maxSize": 2000000,
+            "description": "The same array of steps, stored as a JSON blob. Use instead of track when the track is large. Exactly one of track or trackBlob should be present."
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 1200,
+            "maxGraphemes": 300,
+            "description": "What the poem was written in response to, if anything."
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When the first key was pressed. With createdAt this bounds the real elapsed time of composition."
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Sum of all step delays. Cached so clients can show a length without loading the track."
+          },
+          "reply": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "A poem written in response to another poem."
+          },
+          "langs": {
+            "type": "array",
+            "items": { "type": "string", "format": "language" },
+            "maxLength": 3
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "description": "One edit event. Deletions are applied before insertions.",
+      "required": ["delay"],
+      "properties": {
+        "delay": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Milliseconds elapsed since the previous step. The first step's delay is time from startedAt."
+        },
+        "deleteCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Characters removed from the end of the current text before addText is applied."
+        },
+        "addText": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Characters appended. Longer than one grapheme means a paste, which players may choose to mark."
+        }
+      }
+    }
+  }
+}
