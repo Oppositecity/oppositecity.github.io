@@ -135,6 +135,7 @@
   <p>An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift.</p>
   <ul>
     <li><a href="https://opposite.city/titivillus/">TITIVILLUS</a> — asemic, broken letterforms, font generator, shape affinity, glitch</li>
+    <li><a href="https://opposite.city/signgularity/">SIGNGULARITY</a> — singularity, letterforms, extrusion, sculpture, stl</li>
     <li><a href="https://opposite.city/split/">SPLIT</a> — figure-ground, pinwheel, type generator, riley</li>
     <li><a href="https://opposite.city/sortition-congress/">Sortition Congress</a> — sortition, democracy, lottery</li>
     <li><a href="https://opposite.city/circlefornia/">CIRCLEFORNIA</a> — california, measurement, equivalence</li>
@@ -147,6 +148,8 @@
     <li><a href="https://opposite.city/wind/">YOU ARE THE WIND</a> — ekman spiral, coriolis, pressure gradient, voxel raycast, first person</li>
     <li><a href="https://opposite.city/ambiguity/">AMBIGUATOR</a> — notation, ambiguity, symbol dictionary, cross-domain, parser</li>
     <li><a href="https://opposite.city/syllababbler/">SYLLABABBLER</a> — morphology, neologism, greek, latin, coinage</li>
+    <li><a href="https://opposite.city/ephemeris/">EPHEMERIS</a> — orbital debris, horoscope, rulership, tle, kepler</li>
+    <li><a href="https://opposite.city/poemstream/">POEMSTREAM</a> — keystroke, process, provenance, atproto, revision</li>
   </ul>
 </div>
 
@@ -160,7 +163,7 @@
 const REGISTRY = {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-02",
+ "published": "2026-08-05",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -201,6 +204,22 @@ const REGISTRY = {
    ],
    "blurb": "Named for the demon who filled a sack a thousand times a day with the syllables scribes dropped, and produced it at judgement to be weighed against them. An instrument for the material of language, in three stages. The characters are damaged first, while the text is still text and still copies and pastes. Then the letterforms are built and broken — traced from Courier, drawn from monoline skeletons, or synthesised as a script that never existed, and put through eleven ways of failing. Then the pixels, which is where it ends, because nothing after that can recover an outline. Twenty-six thousand Unicode glyphs are measured by stroke topology, so a substituted mark rhymes with the letter it replaces rather than arriving from a random block. Every hand edit is kept as an operation and never baked, which is why a letter tuned by hand still comes out in the font file. It exports a real typeface: install it and every application on the machine starts failing at type.",
    "url": "https://opposite.city/titivillus/"
+  },
+  {
+   "slug": "signgularity",
+   "name": "SIGNGULARITY",
+   "district": "language",
+   "status": "live",
+   "finish": 85,
+   "tags": [
+    "singularity",
+    "letterforms",
+    "extrusion",
+    "sculpture",
+    "stl"
+   ],
+   "blurb": "A word driven into a single point. Every letter is held at the same origin and pushed outward along its own axis, so what you get is the word with its sequence taken away — all of it present at once and none of it in order. Collapse is the only control that matters: at the far end the letters stand apart and can still be read, and at zero they occupy one another and legibility goes, which is the state the piece is actually about. The letters are solids and not pictures of letters, extruded from real outlines with their counters intact, so an A keeps its hole and a B keeps both. Twenty-six of them are drawn by hand. Everything else — Greek, Cyrillic, Hebrew, kana, hanzi — is contoured live from whatever font the device happens to have, which means there is no script menu, because your keyboard already is one. Each form is seeded and the seed rides in the URL, so a shape can be recovered, sent to someone, or printed: the export is an STL, and held near the singularity the letters interpenetrate far enough to come out of a printer as one object.",
+   "url": "https://opposite.city/signgularity/"
   },
   {
    "slug": "split",
@@ -384,6 +403,38 @@ const REGISTRY = {
    ],
    "blurb": "English keeps two vocabularies in the same mouth, a Greek one and a Latin one, and it almost never mixes them by accident. This is a bench for mixing them on purpose. Give it a phrase and it finds the load-bearing concepts, matches each to a morpheme, and fuses them with the linking vowel each stratum takes — o for Greek, i for Latin. Give it a word instead, real or invented, and it runs the lattice backwards: cutting the letters into the fewest and longest morphemes that can account for them, then reading a definition off the suffix, because the suffix is where the grammar lives. Nothing it makes is a real word and everything it makes is built the way real words were. The parse is stained like a slide, Greek blue and Latin rose, and whatever the stain refuses is residue — which, in English, is most of it.",
    "url": "https://opposite.city/syllababbler/"
+  },
+  {
+   "slug": "ephemeris",
+   "name": "EPHEMERIS",
+   "district": "ambient",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "orbital debris",
+    "horoscope",
+    "rulership",
+    "tle",
+    "kepler"
+   ],
+   "blurb": "Astrology has never had to read more than a dozen bodies, and that is the only reason it works — seven wandering lights with portfolios, permanent enough to be worth interpreting. There are now more than thirty thousand tracked objects overhead and nobody reads any of them. This casts a chart on the artificial ones. The natural planets are geocentric, from JPL's approximate elements, which is more arithmetic than most astrology software bothers with; the artificial ones are propagated from real orbital elements with a nodal drift term, and a live catalogue can be pasted in to re-ground them. Rulership is assigned by function rather than myth: Starlink is Mercury because it is a mesh of fast objects mediating every kind of message, GPS is Saturn because it keeps the clock and the boundary, the station is Jupiter, Hubble is Neptune, and the debris answers to nothing at all. Geostationary objects hold one degree of one sign permanently and are the only artificial fixed stars; everything in low orbit smears across all twelve signs every ninety minutes, which no classical technique has a way to read. It will produce a reading. The reading is a rigorous procedure applied to real positions to yield a claim that cannot be tested, which is the structure of astrology exactly, and arguably the structure of most of what gets said about what satellites are doing to us. Note also that the rulers burn up: a chart cast on these bodies expires, and the objects it depends on are on a delivery schedule.",
+   "url": "https://opposite.city/ephemeris/"
+  },
+  {
+   "slug": "poemstream",
+   "name": "POEMSTREAM",
+   "district": "language",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "keystroke",
+    "process",
+    "provenance",
+    "atproto",
+    "revision"
+   ],
+   "blurb": "A poem is normally published as the thing that survived. This publishes the writing. Type, and every keystroke and every pause is kept, including everything deleted, which is most of what happened. Play it back and the poem writes itself again at the speed it was actually written: the four seconds before a line arrives, the word held and then taken away, the passage that came out in one run. Six treatments read the same recording differently. One keeps the deleted characters on the page, so what the poem decided against stays legible beside what it kept. One snaps every delay to a grid, and hesitation becomes rest. Two hand the track to a corruption engine that reads typing rate, so fast passages break into marks that are not quite letters, held breaths stay clean, and everything settles as it ages. The recording is a plain object — delays, deletions, insertions — built to live in the writer's own repository rather than in a database here, signed and content-addressed, so it can be taken elsewhere and played by something that is not this. It is also close to the only claim about authorship still available: not that a person wrote it, but that here is the hour it took them.",
+   "url": "https://opposite.city/poemstream/"
   }
  ]
 };
