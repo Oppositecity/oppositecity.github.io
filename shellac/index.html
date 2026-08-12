@@ -48,6 +48,8 @@
   }
   .genre-chip.active { border-color: #fff; color: #fff; }
 
+  .count-line { font-size: 0.68rem; color: #9a9a9a; letter-spacing: 0.04em; margin-top: 0.65rem; }
+
   /* ---------- results ---------- */
   main { flex: 1; padding: 0.6rem 1.1rem 6rem; overflow-y: auto; }
   .status { font-size: 0.75rem; color: #9a9a9a; padding: 1rem 0; letter-spacing: 0.03em; }
@@ -63,6 +65,14 @@
   .track-meta { font-size: 0.72rem; color: #9a9a9a; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .track.playing .track-title { color: #fff; font-weight: 700; }
   .track.playing .track-meta { color: #cfcfcf; }
+
+  .load-more {
+    display: block; width: 100%; margin-top: 1.2rem; padding: 0.75rem;
+    background: transparent; border: 1px solid #fff; color: #fff;
+    font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  }
+  .load-more:disabled { border-color: #444; color: #444; cursor: default; }
+  .list-end { font-size: 0.68rem; color: #666; letter-spacing: 0.06em; padding: 1.2rem 0 0.4rem; text-align: center; }
 
   /* ---------- now playing overlay ---------- */
   #now-playing { position: fixed; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; padding: 1.4rem 1.4rem 1.6rem; z-index: 20; }
@@ -122,6 +132,7 @@
     </div>
 
     <div class="genre-row" id="genre-row"></div>
+    <div class="count-line" id="count-line"></div>
   </div>
 
   <main id="results">
@@ -175,7 +186,7 @@
     return new Promise(function (resolve, reject) {
       var cbName = "shellac_cb_" + (jsonpCounter++) + "_" + Date.now();
       var script = document.createElement("script");
-      var timeout = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, 12000);
+      var timeout = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, 15000);
       function cleanup() { clearTimeout(timeout); delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); }
       window[cbName] = function (data) { cleanup(); resolve(data); };
       var sep = url.indexOf("?") === -1 ? "?" : "&";
@@ -208,12 +219,18 @@
     { label: "band", subject: "band music" }
   ];
 
+  var PAGE_SIZE = 100;
+
   var state = {
     decadeIndex: 0,
     genre: GENRES[0],
     query: "",
-    searching: false,
+    mode: "decade",       // 'decade' | 'search'
     tracks: [],
+    start: 0,
+    numFound: 0,
+    hasMore: false,
+    loadingMore: false,
     index: -1,
     playing: false
   };
@@ -225,6 +242,7 @@
     decadePrev: document.getElementById("decade-prev"),
     decadeNext: document.getElementById("decade-next"),
     genreRow: document.getElementById("genre-row"),
+    countLine: document.getElementById("count-line"),
     results: document.getElementById("results"),
     status: document.getElementById("status"),
     mini: document.getElementById("mini"),
@@ -285,32 +303,23 @@
     el.decadeRail.innerHTML = "";
     DECADES.forEach(function (d, i) {
       var b = document.createElement("button");
-      b.className = "decade-chip" + (i === state.decadeIndex && !state.searching ? " active" : "");
+      b.className = "decade-chip" + (i === state.decadeIndex && state.mode === "decade" ? " active" : "");
       b.textContent = d.label;
-      b.addEventListener("click", function () {
-        state.searching = false;
-        state.query = "";
-        el.searchInput.value = "";
-        state.decadeIndex = i;
-        loadDecade();
-      });
+      b.addEventListener("click", function () { selectDecade(i); });
       el.decadeRail.appendChild(b);
     });
     el.decadePrev.disabled = state.decadeIndex <= 0;
     el.decadeNext.disabled = state.decadeIndex >= DECADES.length - 1;
   }
-  el.decadePrev.addEventListener("click", function () {
-    if (state.decadeIndex > 0) {
-      state.searching = false; state.query = ""; el.searchInput.value = "";
-      state.decadeIndex--; loadDecade();
-    }
-  });
-  el.decadeNext.addEventListener("click", function () {
-    if (state.decadeIndex < DECADES.length - 1) {
-      state.searching = false; state.query = ""; el.searchInput.value = "";
-      state.decadeIndex++; loadDecade();
-    }
-  });
+  function selectDecade(i) {
+    state.query = ""; el.searchInput.value = "";
+    state.decadeIndex = i;
+    state.mode = "decade";
+    renderDecadeRail();
+    resetAndLoad();
+  }
+  el.decadePrev.addEventListener("click", function () { if (state.decadeIndex > 0) selectDecade(state.decadeIndex - 1); });
+  el.decadeNext.addEventListener("click", function () { if (state.decadeIndex < DECADES.length - 1) selectDecade(state.decadeIndex + 1); });
 
   /* ---------------- genre row (secondary refinement) ---------------- */
   function renderGenreRow() {
@@ -322,7 +331,7 @@
       b.addEventListener("click", function () {
         state.genre = g;
         renderGenreRow();
-        if (state.searching) runSearch(); else loadDecade();
+        resetAndLoad();
       });
       el.genreRow.appendChild(b);
     });
@@ -342,64 +351,72 @@
     parts.push('(title:(' + q + ') OR creator:(' + q + '))');
     return parts.join(" AND ");
   }
+  function currentQuery() { return state.mode === "search" ? buildSearchQuery() : buildDecadeQuery(); }
 
-  /* ---------------- loading ---------------- */
-  function loadDecade() {
-    renderDecadeRail();
-    var d = DECADES[state.decadeIndex];
-    el.status.style.display = "block";
-    el.status.textContent = "loading " + d.label + "...";
-    el.results.innerHTML = "";
-    el.results.appendChild(el.status);
+  /* ---------------- comprehensive, paginated loading ---------------- */
+  function resetAndLoad() {
+    state.tracks = [];
+    state.start = 0;
+    state.numFound = 0;
+    state.hasMore = false;
+    state.index = -1;
+    fetchPage(true);
+  }
 
+  function fetchPage(isFirst) {
     var fl = "identifier,title,creator,year";
-    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(buildDecadeQuery()) +
+    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(currentQuery()) +
       "&fl[]=" + fl.split(",").join("&fl[]=") +
-      "&rows=100&sort[]=year+asc&sort[]=title+asc&output=json";
+      "&rows=" + PAGE_SIZE + "&start=" + state.start +
+      "&sort[]=year+asc&sort[]=identifier+asc&output=json";
+
+    if (isFirst) {
+      el.status.style.display = "block";
+      el.status.textContent = state.mode === "search" ? "searching..." : "loading " + DECADES[state.decadeIndex].label + "...";
+      el.results.innerHTML = "";
+      el.results.appendChild(el.status);
+      el.countLine.textContent = "";
+    } else {
+      state.loadingMore = true;
+      renderResults();
+    }
 
     jsonp(url).then(function (data) {
-      var docs = (data.response && data.response.docs) || [];
-      state.tracks = docs.filter(function (d) { return d.identifier; })
-        .sort(function (a, b) { return (parseInt(a.year, 10) || 0) - (parseInt(b.year, 10) || 0); });
-      renderResults(true);
+      var resp = data.response || {};
+      var docs = (resp.docs || []).filter(function (d) { return d.identifier; });
+      state.tracks = state.tracks.concat(docs);
+      state.numFound = resp.numFound || state.tracks.length;
+      state.start += docs.length;
+      state.hasMore = docs.length > 0 && state.start < state.numFound;
+      state.loadingMore = false;
+      renderResults();
     }).catch(function () {
-      el.status.textContent = "couldn't reach the archive — try again";
+      state.loadingMore = false;
+      if (isFirst) {
+        el.status.textContent = "couldn't reach the archive — try again";
+      } else {
+        renderResults();
+      }
     });
   }
 
-  function runSearch() {
-    state.searching = true;
-    renderDecadeRail();
-    el.status.style.display = "block";
-    el.status.textContent = "searching...";
-    el.results.innerHTML = "";
-    el.results.appendChild(el.status);
-
-    var fl = "identifier,title,creator,year";
-    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(buildSearchQuery()) +
-      "&fl[]=" + fl.split(",").join("&fl[]=") +
-      "&rows=60&sort[]=year+asc&output=json";
-
-    jsonp(url).then(function (data) {
-      var docs = (data.response && data.response.docs) || [];
-      state.tracks = docs.filter(function (d) { return d.identifier; })
-        .sort(function (a, b) { return (parseInt(a.year, 10) || 0) - (parseInt(b.year, 10) || 0); });
-      renderResults(true);
-    }).catch(function () {
-      el.status.textContent = "couldn't reach the archive — try again";
-    });
-  }
-
-  /* ---------------- results, grouped by year ---------------- */
+  /* ---------------- results, grouped by year, paginated ---------------- */
   function renderResults() {
     el.results.innerHTML = "";
-    if (!state.tracks.length) {
-      el.status.textContent = state.searching
+
+    if (!state.tracks.length && !state.loadingMore) {
+      el.status.textContent = state.mode === "search"
         ? "nothing found — try another search"
         : "nothing catalogued for this decade — try another";
       el.results.appendChild(el.status);
+      el.countLine.textContent = "";
       return;
     }
+
+    el.countLine.textContent = state.numFound
+      ? state.tracks.length + " of " + state.numFound + " loaded"
+      : "";
+
     var lastYear = null;
     state.tracks.forEach(function (t, i) {
       var y = t.year || "undated";
@@ -419,6 +436,25 @@
       row.addEventListener("click", function () { playTrack(i); });
       el.results.appendChild(row);
     });
+
+    if (state.loadingMore) {
+      var btn = document.createElement("button");
+      btn.className = "load-more";
+      btn.disabled = true;
+      btn.textContent = "loading more...";
+      el.results.appendChild(btn);
+    } else if (state.hasMore) {
+      var more = document.createElement("button");
+      more.className = "load-more";
+      more.textContent = "load next " + Math.min(PAGE_SIZE, state.numFound - state.start) + " (" + (state.numFound - state.start) + " remaining)";
+      more.addEventListener("click", function () { fetchPage(false); });
+      el.results.appendChild(more);
+    } else if (state.tracks.length) {
+      var end = document.createElement("div");
+      end.className = "list-end";
+      end.textContent = "— all " + state.numFound + " loaded —";
+      el.results.appendChild(end);
+    }
   }
 
   function cleanTitle(t) { if (!t) return "untitled"; return Array.isArray(t) ? t[0] : t; }
@@ -496,17 +532,42 @@
     if (el.audio.paused) el.audio.play().catch(function () {});
     else el.audio.pause();
   }
+
   function nextTrack() {
     if (state.index < state.tracks.length - 1) { playTrack(state.index + 1); return; }
-    // ran off the end of this decade — roll into the next one, keeping the sequential feel
-    if (!state.searching && state.decadeIndex < DECADES.length - 1) {
-      state.decadeIndex++;
-      loadDecade();
+    // ran off the end of what's loaded — pull the next page automatically if there is one
+    if (state.hasMore && !state.loadingMore) {
+      var wasLength = state.tracks.length;
+      state.loadingMore = true;
+      renderResults();
+      fetchPageThenPlay(wasLength);
+      return;
+    }
+    // ran off the end of the whole decade — roll into the next one
+    if (state.mode === "decade" && state.decadeIndex < DECADES.length - 1) {
+      selectDecade(state.decadeIndex + 1);
     }
   }
-  function prevTrack() {
-    if (state.index > 0) playTrack(state.index - 1);
+
+  function fetchPageThenPlay(continueFromIndex) {
+    var fl = "identifier,title,creator,year";
+    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(currentQuery()) +
+      "&fl[]=" + fl.split(",").join("&fl[]=") +
+      "&rows=" + PAGE_SIZE + "&start=" + state.start +
+      "&sort[]=year+asc&sort[]=identifier+asc&output=json";
+    jsonp(url).then(function (data) {
+      var resp = data.response || {};
+      var docs = (resp.docs || []).filter(function (d) { return d.identifier; });
+      state.tracks = state.tracks.concat(docs);
+      state.numFound = resp.numFound || state.tracks.length;
+      state.start += docs.length;
+      state.hasMore = docs.length > 0 && state.start < state.numFound;
+      state.loadingMore = false;
+      if (docs.length) playTrack(continueFromIndex); else renderResults();
+    }).catch(function () { state.loadingMore = false; renderResults(); });
   }
+
+  function prevTrack() { if (state.index > 0) playTrack(state.index - 1); }
 
   el.npPlay.addEventListener("click", togglePlay);
   el.miniPlay.addEventListener("click", togglePlay);
@@ -520,20 +581,25 @@
     if (el.audio.duration) el.audio.currentTime = pct * el.audio.duration;
   });
 
-  el.searchBtn.addEventListener("click", function () {
+  function doSearch() {
     state.query = el.searchInput.value;
-    if (state.query.trim()) runSearch(); else { state.searching = false; loadDecade(); }
-  });
-  el.searchInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      state.query = el.searchInput.value;
-      if (state.query.trim()) runSearch(); else { state.searching = false; loadDecade(); }
+    if (state.query.trim()) {
+      state.mode = "search";
+      renderDecadeRail();
+      resetAndLoad();
+    } else {
+      state.mode = "decade";
+      renderDecadeRail();
+      resetAndLoad();
     }
-  });
+  }
+  el.searchBtn.addEventListener("click", doSearch);
+  el.searchInput.addEventListener("keydown", function (e) { if (e.key === "Enter") doSearch(); });
 
   /* ---------------- boot ---------------- */
   renderGenreRow();
-  loadDecade();
+  renderDecadeRail();
+  resetAndLoad();
 })();
 </script>
 </body>
