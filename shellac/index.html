@@ -4,36 +4,67 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SHELLAC</title>
-<meta name="description" content="Stream public domain 78rpm recordings from the Internet Archive">
+<meta name="description" content="Browse public domain 78rpm recordings from the Internet Archive, year by year">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body { font-family: 'Courier Prime', 'Courier New', monospace; background: #000; color: #fff; overflow-x: hidden; }
   button, input { font-family: inherit; }
   #app { min-height: 100%; display: flex; flex-direction: column; }
+
   header { padding: 1.4rem 1.1rem 1rem; flex-shrink: 0; }
   h1 { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.32em; color: #fff; }
   .tagline { margin-top: 0.35rem; font-size: 0.72rem; letter-spacing: 0.05em; color: #cfcfcf; }
   .tagline a { color: #cfcfcf; }
+
   .controls { padding: 0 1.1rem 0.9rem; flex-shrink: 0; }
   .search-box { display: flex; border: 1px solid #fff; padding: 0.55rem 0.7rem; gap: 0.5rem; align-items: center; }
   .search-box input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.9rem; letter-spacing: 0.02em; }
   .search-box input::placeholder { color: #8a8a8a; }
   .search-box button { background: transparent; border: none; color: #cfcfcf; font-size: 0.85rem; cursor: pointer; }
-  .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
-  .chip { background: transparent; border: 1px solid #555; color: #cfcfcf; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.32rem 0.6rem; cursor: pointer; }
-  .chip.active { border-color: #fff; color: #fff; }
-  main { flex: 1; padding: 0.4rem 1.1rem 6rem; overflow-y: auto; }
+
+  /* ---------- decade rail: primary chronological navigation ---------- */
+  .decade-nav { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.9rem; }
+  .decade-arrow {
+    background: transparent; border: 1px solid #fff; color: #fff;
+    width: 2rem; height: 2rem; flex-shrink: 0; font-size: 0.9rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .decade-arrow:disabled { border-color: #444; color: #444; cursor: default; }
+  .decade-rail { flex: 1; display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; }
+  .decade-rail::-webkit-scrollbar { display: none; }
+  .decade-chip {
+    background: transparent; border: 1px solid #555; color: #cfcfcf;
+    font-size: 0.7rem; letter-spacing: 0.04em; padding: 0.4rem 0.65rem;
+    cursor: pointer; flex-shrink: 0; white-space: nowrap;
+  }
+  .decade-chip.active { border-color: #fff; color: #000; background: #fff; }
+
+  .genre-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
+  .genre-chip {
+    background: transparent; border: 1px solid #3a3a3a; color: #9a9a9a;
+    font-size: 0.63rem; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 0.28rem 0.55rem; cursor: pointer;
+  }
+  .genre-chip.active { border-color: #fff; color: #fff; }
+
+  /* ---------- results ---------- */
+  main { flex: 1; padding: 0.6rem 1.1rem 6rem; overflow-y: auto; }
   .status { font-size: 0.75rem; color: #9a9a9a; padding: 1rem 0; letter-spacing: 0.03em; }
-  .track { padding: 0.75rem 0; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; }
+  .year-heading {
+    font-size: 0.78rem; letter-spacing: 0.18em; color: #fff;
+    padding: 1.1rem 0 0.5rem; position: sticky; top: 0; background: #000;
+  }
+  .year-heading:first-child { padding-top: 0; }
+  .track { padding: 0.7rem 0; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; }
   .track + .track { border-top: 1px dotted #2a2a2a; }
   .track-info { min-width: 0; }
   .track-title { font-size: 0.88rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .track-meta { font-size: 0.72rem; color: #9a9a9a; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .track-year { font-size: 0.72rem; color: #9a9a9a; flex-shrink: 0; align-self: center; }
-  .track.playing .track-title { color: #fff; }
+  .track.playing .track-title { color: #fff; font-weight: 700; }
   .track.playing .track-meta { color: #cfcfcf; }
-  .track.playing .track-year { color: #fff; }
+
+  /* ---------- now playing overlay ---------- */
   #now-playing { position: fixed; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; padding: 1.4rem 1.4rem 1.6rem; z-index: 20; }
   #now-playing.open { display: flex; }
   .np-top { width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
@@ -56,6 +87,8 @@
   .np-play { font-size: 1.1rem; border: 1px solid #fff !important; width: 3.4rem; height: 3.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .np-skip { font-size: 1.3rem; }
   .np-error { font-size: 0.72rem; color: #cfcfcf; margin-top: 1rem; text-align: center; }
+
+  /* ---------- mini player ---------- */
   #mini { position: fixed; left: 0; right: 0; bottom: 0; display: none; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem; background: #000; border-top: 1px solid #2a2a2a; z-index: 10; }
   #mini.show { display: flex; }
   #mini button { background: transparent; border: 1px solid #fff; color: #fff; width: 2.1rem; height: 2.1rem; border-radius: 50%; flex-shrink: 0; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -63,6 +96,7 @@
   #mini-title { font-size: 0.78rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #mini-creator { font-size: 0.68rem; color: #9a9a9a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #mini-time { font-size: 0.65rem; color: #9a9a9a; flex-shrink: 0; }
+
   ::selection { background: #fff; color: #000; }
   a { color: #fff; }
 </style>
@@ -72,7 +106,7 @@
 <div id="app">
   <header>
     <h1>SHELLAC</h1>
-    <div class="tagline">public domain 78s, streamed live from the <a href="https://archive.org" target="_blank" rel="noopener">Internet Archive</a></div>
+    <div class="tagline">public domain 78s, streamed live from the <a href="https://archive.org" target="_blank" rel="noopener">Internet Archive</a> — browsed year by year</div>
   </header>
 
   <div class="controls">
@@ -80,12 +114,18 @@
       <input id="search-input" type="text" placeholder="search title, artist, song..." autocomplete="off">
       <button id="search-btn">go</button>
     </div>
-    <div class="chip-row" id="genre-row"></div>
-    <div class="chip-row" id="era-row"></div>
+
+    <div class="decade-nav">
+      <button class="decade-arrow" id="decade-prev">‹</button>
+      <div class="decade-rail" id="decade-rail"></div>
+      <button class="decade-arrow" id="decade-next">›</button>
+    </div>
+
+    <div class="genre-row" id="genre-row"></div>
   </div>
 
   <main id="results">
-    <div class="status" id="status">tap a genre or search to begin</div>
+    <div class="status" id="status">loading the earliest recordings...</div>
   </main>
 </div>
 
@@ -129,6 +169,7 @@
 (function () {
   "use strict";
 
+  /* ---------------- JSONP ---------------- */
   var jsonpCounter = 0;
   function jsonp(url) {
     return new Promise(function (resolve, reject) {
@@ -144,8 +185,19 @@
     });
   }
 
+  /* ---------------- decades: the primary navigation ---------------- */
+  var DECADES = [
+    { label: "1890s", range: [1890, 1899] },
+    { label: "1900s", range: [1900, 1909] },
+    { label: "1910s", range: [1910, 1919] },
+    { label: "1920s", range: [1920, 1929] },
+    { label: "1930s", range: [1930, 1939] },
+    { label: "1940s", range: [1940, 1949] },
+    { label: "1950s", range: [1950, 1959] }
+  ];
+
   var GENRES = [
-    { label: "all", subject: null },
+    { label: "all genres", subject: null },
     { label: "jazz", subject: "jazz" },
     { label: "blues", subject: "blues" },
     { label: "classical", subject: "classical" },
@@ -155,22 +207,24 @@
     { label: "hawaiian", subject: "hawaiian" },
     { label: "band", subject: "band music" }
   ];
-  var ERAS = [
-    { label: "any era", range: null },
-    { label: "pre-1900", range: [1877, 1899] },
-    { label: "1900s", range: [1900, 1909] },
-    { label: "1910s", range: [1910, 1919] },
-    { label: "1920s", range: [1920, 1929] },
-    { label: "1930s+", range: [1930, 1959] }
-  ];
 
-  var state = { genre: GENRES[0], era: ERAS[0], query: "", tracks: [], index: -1, playing: false };
+  var state = {
+    decadeIndex: 0,
+    genre: GENRES[0],
+    query: "",
+    searching: false,
+    tracks: [],
+    index: -1,
+    playing: false
+  };
 
   var el = {
     searchInput: document.getElementById("search-input"),
     searchBtn: document.getElementById("search-btn"),
+    decadeRail: document.getElementById("decade-rail"),
+    decadePrev: document.getElementById("decade-prev"),
+    decadeNext: document.getElementById("decade-next"),
     genreRow: document.getElementById("genre-row"),
-    eraRow: document.getElementById("era-row"),
     results: document.getElementById("results"),
     status: document.getElementById("status"),
     mini: document.getElementById("mini"),
@@ -196,6 +250,7 @@
     audio: document.getElementById("audio")
   };
 
+  /* ---------------- disc canvas (dithered groove rings) ---------------- */
   (function drawDisc() {
     var c = el.disc.querySelector("canvas");
     var ctx = c.getContext("2d");
@@ -225,63 +280,142 @@
     ctx.beginPath(); ctx.arc(r, r, 2, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
   })();
 
-  function renderChips(row, items, activeItem, onPick) {
-    row.innerHTML = "";
-    items.forEach(function (item) {
+  /* ---------------- decade rail ---------------- */
+  function renderDecadeRail() {
+    el.decadeRail.innerHTML = "";
+    DECADES.forEach(function (d, i) {
       var b = document.createElement("button");
-      b.className = "chip" + (item === activeItem ? " active" : "");
-      b.textContent = item.label;
-      b.addEventListener("click", function () { onPick(item); });
-      row.appendChild(b);
+      b.className = "decade-chip" + (i === state.decadeIndex && !state.searching ? " active" : "");
+      b.textContent = d.label;
+      b.addEventListener("click", function () {
+        state.searching = false;
+        state.query = "";
+        el.searchInput.value = "";
+        state.decadeIndex = i;
+        loadDecade();
+      });
+      el.decadeRail.appendChild(b);
+    });
+    el.decadePrev.disabled = state.decadeIndex <= 0;
+    el.decadeNext.disabled = state.decadeIndex >= DECADES.length - 1;
+  }
+  el.decadePrev.addEventListener("click", function () {
+    if (state.decadeIndex > 0) {
+      state.searching = false; state.query = ""; el.searchInput.value = "";
+      state.decadeIndex--; loadDecade();
+    }
+  });
+  el.decadeNext.addEventListener("click", function () {
+    if (state.decadeIndex < DECADES.length - 1) {
+      state.searching = false; state.query = ""; el.searchInput.value = "";
+      state.decadeIndex++; loadDecade();
+    }
+  });
+
+  /* ---------------- genre row (secondary refinement) ---------------- */
+  function renderGenreRow() {
+    el.genreRow.innerHTML = "";
+    GENRES.forEach(function (g) {
+      var b = document.createElement("button");
+      b.className = "genre-chip" + (g === state.genre ? " active" : "");
+      b.textContent = g.label;
+      b.addEventListener("click", function () {
+        state.genre = g;
+        renderGenreRow();
+        if (state.searching) runSearch(); else loadDecade();
+      });
+      el.genreRow.appendChild(b);
     });
   }
-  function refreshChips() {
-    renderChips(el.genreRow, GENRES, state.genre, function (g) { state.genre = g; refreshChips(); runSearch(); });
-    renderChips(el.eraRow, ERAS, state.era, function (e) { state.era = e; refreshChips(); runSearch(); });
-  }
-  refreshChips();
 
-  function buildQuery() {
+  /* ---------------- query building ---------------- */
+  function buildDecadeQuery() {
+    var d = DECADES[state.decadeIndex];
+    var parts = ["mediatype:(audio)", "collection:(georgeblood)", "year:[" + d.range[0] + " TO " + d.range[1] + "]"];
+    if (state.genre.subject) parts.push('subject:("' + state.genre.subject + '")');
+    return parts.join(" AND ");
+  }
+  function buildSearchQuery() {
     var parts = ["mediatype:(audio)", "collection:(georgeblood)"];
     if (state.genre.subject) parts.push('subject:("' + state.genre.subject + '")');
-    if (state.era.range) parts.push("year:[" + state.era.range[0] + " TO " + state.era.range[1] + "]");
-    if (state.query.trim()) {
-      var q = state.query.trim().replace(/"/g, "");
-      parts.push('(title:(' + q + ') OR creator:(' + q + '))');
-    }
+    var q = state.query.trim().replace(/"/g, "");
+    parts.push('(title:(' + q + ') OR creator:(' + q + '))');
     return parts.join(" AND ");
   }
 
-  function runSearch() {
+  /* ---------------- loading ---------------- */
+  function loadDecade() {
+    renderDecadeRail();
+    var d = DECADES[state.decadeIndex];
     el.status.style.display = "block";
-    el.status.textContent = "searching the archive...";
+    el.status.textContent = "loading " + d.label + "...";
     el.results.innerHTML = "";
     el.results.appendChild(el.status);
+
     var fl = "identifier,title,creator,year";
-    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(buildQuery()) +
-      "&fl[]=" + fl.split(",").join("&fl[]=") + "&rows=40&sort[]=downloads+desc&output=json";
+    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(buildDecadeQuery()) +
+      "&fl[]=" + fl.split(",").join("&fl[]=") +
+      "&rows=100&sort[]=year+asc&sort[]=title+asc&output=json";
+
     jsonp(url).then(function (data) {
       var docs = (data.response && data.response.docs) || [];
-      state.tracks = docs.filter(function (d) { return d.identifier; });
-      renderResults();
-    }).catch(function () { el.status.textContent = "couldn't reach the archive — try again"; });
+      state.tracks = docs.filter(function (d) { return d.identifier; })
+        .sort(function (a, b) { return (parseInt(a.year, 10) || 0) - (parseInt(b.year, 10) || 0); });
+      renderResults(true);
+    }).catch(function () {
+      el.status.textContent = "couldn't reach the archive — try again";
+    });
   }
 
+  function runSearch() {
+    state.searching = true;
+    renderDecadeRail();
+    el.status.style.display = "block";
+    el.status.textContent = "searching...";
+    el.results.innerHTML = "";
+    el.results.appendChild(el.status);
+
+    var fl = "identifier,title,creator,year";
+    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(buildSearchQuery()) +
+      "&fl[]=" + fl.split(",").join("&fl[]=") +
+      "&rows=60&sort[]=year+asc&output=json";
+
+    jsonp(url).then(function (data) {
+      var docs = (data.response && data.response.docs) || [];
+      state.tracks = docs.filter(function (d) { return d.identifier; })
+        .sort(function (a, b) { return (parseInt(a.year, 10) || 0) - (parseInt(b.year, 10) || 0); });
+      renderResults(true);
+    }).catch(function () {
+      el.status.textContent = "couldn't reach the archive — try again";
+    });
+  }
+
+  /* ---------------- results, grouped by year ---------------- */
   function renderResults() {
     el.results.innerHTML = "";
     if (!state.tracks.length) {
-      el.status.textContent = "nothing found — try another search or filter";
+      el.status.textContent = state.searching
+        ? "nothing found — try another search"
+        : "nothing catalogued for this decade — try another";
       el.results.appendChild(el.status);
       return;
     }
+    var lastYear = null;
     state.tracks.forEach(function (t, i) {
+      var y = t.year || "undated";
+      if (y !== lastYear) {
+        var h = document.createElement("div");
+        h.className = "year-heading";
+        h.textContent = y;
+        el.results.appendChild(h);
+        lastYear = y;
+      }
       var row = document.createElement("div");
       row.className = "track" + (i === state.index ? " playing" : "");
       var creator = t.creator ? (Array.isArray(t.creator) ? t.creator[0] : t.creator) : "unknown artist";
       row.innerHTML =
         '<div class="track-info"><div class="track-title">' + escapeHtml(cleanTitle(t.title)) + '</div>' +
-        '<div class="track-meta">' + escapeHtml(creator) + '</div></div>' +
-        '<div class="track-year">' + (t.year || "") + '</div>';
+        '<div class="track-meta">' + escapeHtml(creator) + '</div></div>';
       row.addEventListener("click", function () { playTrack(i); });
       el.results.appendChild(row);
     });
@@ -294,6 +428,7 @@
     });
   }
 
+  /* ---------------- playback ---------------- */
   function playTrack(i) {
     state.index = i;
     var t = state.tracks[i];
@@ -361,8 +496,17 @@
     if (el.audio.paused) el.audio.play().catch(function () {});
     else el.audio.pause();
   }
-  function nextTrack() { if (state.index < state.tracks.length - 1) playTrack(state.index + 1); }
-  function prevTrack() { if (state.index > 0) playTrack(state.index - 1); }
+  function nextTrack() {
+    if (state.index < state.tracks.length - 1) { playTrack(state.index + 1); return; }
+    // ran off the end of this decade — roll into the next one, keeping the sequential feel
+    if (!state.searching && state.decadeIndex < DECADES.length - 1) {
+      state.decadeIndex++;
+      loadDecade();
+    }
+  }
+  function prevTrack() {
+    if (state.index > 0) playTrack(state.index - 1);
+  }
 
   el.npPlay.addEventListener("click", togglePlay);
   el.miniPlay.addEventListener("click", togglePlay);
@@ -376,10 +520,20 @@
     if (el.audio.duration) el.audio.currentTime = pct * el.audio.duration;
   });
 
-  el.searchBtn.addEventListener("click", function () { state.query = el.searchInput.value; runSearch(); });
-  el.searchInput.addEventListener("keydown", function (e) { if (e.key === "Enter") { state.query = el.searchInput.value; runSearch(); } });
+  el.searchBtn.addEventListener("click", function () {
+    state.query = el.searchInput.value;
+    if (state.query.trim()) runSearch(); else { state.searching = false; loadDecade(); }
+  });
+  el.searchInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      state.query = el.searchInput.value;
+      if (state.query.trim()) runSearch(); else { state.searching = false; loadDecade(); }
+    }
+  });
 
-  runSearch();
+  /* ---------------- boot ---------------- */
+  renderGenreRow();
+  loadDecade();
 })();
 </script>
 </body>
