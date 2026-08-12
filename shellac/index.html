@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SHELLAC</title>
+<meta name="description" content="Stream public domain 78rpm recordings from the Internet Archive">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body { font-family: 'Courier Prime', 'Courier New', monospace; background: #000; color: #fff; overflow-x: hidden; }
+  button, input { font-family: inherit; }
+  #app { min-height: 100%; display: flex; flex-direction: column; }
+  header { padding: 1.4rem 1.1rem 1rem; flex-shrink: 0; }
+  h1 { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.32em; color: #fff; }
+  .tagline { margin-top: 0.35rem; font-size: 0.72rem; letter-spacing: 0.05em; color: #cfcfcf; }
+  .tagline a { color: #cfcfcf; }
+  .controls { padding: 0 1.1rem 0.9rem; flex-shrink: 0; }
+  .search-box { display: flex; border: 1px solid #fff; padding: 0.55rem 0.7rem; gap: 0.5rem; align-items: center; }
+  .search-box input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.9rem; letter-spacing: 0.02em; }
+  .search-box input::placeholder { color: #8a8a8a; }
+  .search-box button { background: transparent; border: none; color: #cfcfcf; font-size: 0.85rem; cursor: pointer; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
+  .chip { background: transparent; border: 1px solid #555; color: #cfcfcf; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.32rem 0.6rem; cursor: pointer; }
+  .chip.active { border-color: #fff; color: #fff; }
+  main { flex: 1; padding: 0.4rem 1.1rem 6rem; overflow-y: auto; }
+  .status { font-size: 0.75rem; color: #9a9a9a; padding: 1rem 0; letter-spacing: 0.03em; }
+  .track { padding: 0.75rem 0; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; }
+  .track + .track { border-top: 1px dotted #2a2a2a; }
+  .track-info { min-width: 0; }
+  .track-title { font-size: 0.88rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-meta { font-size: 0.72rem; color: #9a9a9a; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-year { font-size: 0.72rem; color: #9a9a9a; flex-shrink: 0; align-self: center; }
+  .track.playing .track-title { color: #fff; }
+  .track.playing .track-meta { color: #cfcfcf; }
+  .track.playing .track-year { color: #fff; }
+  #now-playing { position: fixed; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; padding: 1.4rem 1.4rem 1.6rem; z-index: 20; }
+  #now-playing.open { display: flex; }
+  .np-top { width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+  .np-close { background: transparent; border: none; color: #cfcfcf; font-size: 0.85rem; letter-spacing: 0.1em; cursor: pointer; padding: 0.4rem; }
+  .np-label { font-size: 0.68rem; letter-spacing: 0.15em; color: #9a9a9a; text-transform: uppercase; }
+  .np-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 340px; }
+  #disc { width: min(58vw, 230px); height: min(58vw, 230px); border-radius: 50%; position: relative; margin-bottom: 2rem; flex-shrink: 0; }
+  #disc canvas { width: 100%; height: 100%; display: block; }
+  #disc.spin { animation: spin 2.6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .np-title { font-size: 1.15rem; font-weight: 400; color: #fff; text-align: center; line-height: 1.35; max-width: 320px; }
+  .np-creator { font-size: 0.85rem; color: #cfcfcf; margin-top: 0.4rem; text-align: center; }
+  .np-year { font-size: 0.68rem; color: #9a9a9a; letter-spacing: 0.08em; margin-top: 0.55rem; }
+  .np-progress { width: 100%; margin-top: 1.8rem; }
+  .np-bar { width: 100%; height: 3px; background: #333; cursor: pointer; position: relative; }
+  .np-bar-fill { height: 100%; background: #fff; width: 0%; }
+  .np-times { display: flex; justify-content: space-between; font-size: 0.68rem; color: #9a9a9a; margin-top: 0.4rem; letter-spacing: 0.03em; }
+  .np-controls { display: flex; align-items: center; justify-content: center; gap: 2.2rem; margin-top: 1.6rem; }
+  .np-controls button { background: transparent; border: none; color: #fff; cursor: pointer; }
+  .np-play { font-size: 1.1rem; border: 1px solid #fff !important; width: 3.4rem; height: 3.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .np-skip { font-size: 1.3rem; }
+  .np-error { font-size: 0.72rem; color: #cfcfcf; margin-top: 1rem; text-align: center; }
+  #mini { position: fixed; left: 0; right: 0; bottom: 0; display: none; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem; background: #000; border-top: 1px solid #2a2a2a; z-index: 10; }
+  #mini.show { display: flex; }
+  #mini button { background: transparent; border: 1px solid #fff; color: #fff; width: 2.1rem; height: 2.1rem; border-radius: 50%; flex-shrink: 0; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #mini-info { flex: 1; min-width: 0; cursor: pointer; }
+  #mini-title { font-size: 0.78rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mini-creator { font-size: 0.68rem; color: #9a9a9a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mini-time { font-size: 0.65rem; color: #9a9a9a; flex-shrink: 0; }
+  ::selection { background: #fff; color: #000; }
+  a { color: #fff; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1>SHELLAC</h1>
+    <div class="tagline">public domain 78s, streamed live from the <a href="https://archive.org" target="_blank" rel="noopener">Internet Archive</a></div>
+  </header>
+
+  <div class="controls">
+    <div class="search-box">
+      <input id="search-input" type="text" placeholder="search title, artist, song..." autocomplete="off">
+      <button id="search-btn">go</button>
+    </div>
+    <div class="chip-row" id="genre-row"></div>
+    <div class="chip-row" id="era-row"></div>
+  </div>
+
+  <main id="results">
+    <div class="status" id="status">tap a genre or search to begin</div>
+  </main>
+</div>
+
+<div id="mini">
+  <button id="mini-play">▶</button>
+  <div id="mini-info">
+    <div id="mini-title">—</div>
+    <div id="mini-creator">—</div>
+  </div>
+  <div id="mini-time">0:00</div>
+</div>
+
+<div id="now-playing">
+  <div class="np-top">
+    <span class="np-label">now playing</span>
+    <button class="np-close" id="np-close">close</button>
+  </div>
+  <div class="np-body">
+    <div id="disc"><canvas width="230" height="230"></canvas></div>
+    <div class="np-title" id="np-title">—</div>
+    <div class="np-creator" id="np-creator">—</div>
+    <div class="np-year" id="np-year"></div>
+
+    <div class="np-progress">
+      <div class="np-bar" id="np-bar"><div class="np-bar-fill" id="np-bar-fill"></div></div>
+      <div class="np-times"><span id="np-elapsed">0:00</span><span id="np-duration">0:00</span></div>
+    </div>
+
+    <div class="np-controls">
+      <button class="np-skip" id="np-prev">⟨⟨</button>
+      <button class="np-play" id="np-play">▶</button>
+      <button class="np-skip" id="np-next">⟩⟩</button>
+    </div>
+    <div class="np-error" id="np-error"></div>
+  </div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+(function () {
+  "use strict";
+
+  var jsonpCounter = 0;
+  function jsonp(url) {
+    return new Promise(function (resolve, reject) {
+      var cbName = "shellac_cb_" + (jsonpCounter++) + "_" + Date.now();
+      var script = document.createElement("script");
+      var timeout = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, 12000);
+      function cleanup() { clearTimeout(timeout); delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); }
+      window[cbName] = function (data) { cleanup(); resolve(data); };
+      var sep = url.indexOf("?") === -1 ? "?" : "&";
+      script.src = url + sep + "callback=" + cbName;
+      script.onerror = function () { cleanup(); reject(new Error("network")); };
+      document.body.appendChild(script);
+    });
+  }
+
+  var GENRES = [
+    { label: "all", subject: null },
+    { label: "jazz", subject: "jazz" },
+    { label: "blues", subject: "blues" },
+    { label: "classical", subject: "classical" },
+    { label: "vaudeville", subject: "vaudeville" },
+    { label: "dance", subject: "dance music" },
+    { label: "folk", subject: "folk music" },
+    { label: "hawaiian", subject: "hawaiian" },
+    { label: "band", subject: "band music" }
+  ];
+  var ERAS = [
+    { label: "any era", range: null },
+    { label: "pre-1900", range: [1877, 1899] },
+    { label: "1900s", range: [1900, 1909] },
+    { label: "1910s", range: [1910, 1919] },
+    { label: "1920s", range: [1920, 1929] },
+    { label: "1930s+", range: [1930, 1959] }
+  ];
+
+  var state = { genre: GENRES[0], era: ERAS[0], query: "", tracks: [], index: -1, playing: false };
+
+  var el = {
+    searchInput: document.getElementById("search-input"),
+    searchBtn: document.getElementById("search-btn"),
+    genreRow: document.getElementById("genre-row"),
+    eraRow: document.getElementById("era-row"),
+    results: document.getElementById("results"),
+    status: document.getElementById("status"),
+    mini: document.getElementById("mini"),
+    miniPlay: document.getElementById("mini-play"),
+    miniTitle: document.getElementById("mini-title"),
+    miniCreator: document.getElementById("mini-creator"),
+    miniTime: document.getElementById("mini-time"),
+    miniInfo: document.getElementById("mini-info"),
+    np: document.getElementById("now-playing"),
+    npClose: document.getElementById("np-close"),
+    npTitle: document.getElementById("np-title"),
+    npCreator: document.getElementById("np-creator"),
+    npYear: document.getElementById("np-year"),
+    npPlay: document.getElementById("np-play"),
+    npPrev: document.getElementById("np-prev"),
+    npNext: document.getElementById("np-next"),
+    npBar: document.getElementById("np-bar"),
+    npBarFill: document.getElementById("np-bar-fill"),
+    npElapsed: document.getElementById("np-elapsed"),
+    npDuration: document.getElementById("np-duration"),
+    npError: document.getElementById("np-error"),
+    disc: document.getElementById("disc"),
+    audio: document.getElementById("audio")
+  };
+
+  (function drawDisc() {
+    var c = el.disc.querySelector("canvas");
+    var ctx = c.getContext("2d");
+    var size = c.width, r = size / 2;
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(r, r, r, 0, Math.PI * 2); ctx.fill();
+    var bayer = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        var dx = x - r, dy = y - r;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > r || dist < r * 0.16) continue;
+        var ring = (dist / r) * 40;
+        var frac = ring - Math.floor(ring);
+        var threshold = bayer[y % 4][x % 4] / 16;
+        if (frac < 0.5 && frac > threshold * 0.5) {
+          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+    ctx.fillStyle = "#000";
+    ctx.beginPath(); ctx.arc(r, r, r * 0.16, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(r, r, r * 0.16, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(r, r, 2, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
+  })();
+
+  function renderChips(row, items, activeItem, onPick) {
+    row.innerHTML = "";
+    items.forEach(function (item) {
+      var b = document.createElement("button");
+      b.className = "chip" + (item === activeItem ? " active" : "");
+      b.textContent = item.label;
+      b.addEventListener("click", function () { onPick(item); });
+      row.appendChild(b);
+    });
+  }
+  function refreshChips() {
+    renderChips(el.genreRow, GENRES, state.genre, function (g) { state.genre = g; refreshChips(); runSearch(); });
+    renderChips(el.eraRow, ERAS, state.era, function (e) { state.era = e; refreshChips(); runSearch(); });
+  }
+  refreshChips();
+
+  function buildQuery() {
+    var parts = ["mediatype:(audio)", "collection:(georgeblood)"];
+    if (state.genre.subject) parts.push('subject:("' + state.genre.subject + '")');
+    if (state.era.range) parts.push("year:[" + state.era.range[0] + " TO " + state.era.range[1] + "]");
+    if (state.query.trim()) {
+      var q = state.query.trim().replace(/"/g, "");
+      parts.push('(title:(' + q + ') OR creator:(' + q + '))');
+    }
+    return parts.join(" AND ");
+  }
+
+  function runSearch() {
+    el.status.style.display = "block";
+    el.status.textContent = "searching the archive...";
+    el.results.innerHTML = "";
+    el.results.appendChild(el.status);
+    var fl = "identifier,title,creator,year";
+    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(buildQuery()) +
+      "&fl[]=" + fl.split(",").join("&fl[]=") + "&rows=40&sort[]=downloads+desc&output=json";
+    jsonp(url).then(function (data) {
+      var docs = (data.response && data.response.docs) || [];
+      state.tracks = docs.filter(function (d) { return d.identifier; });
+      renderResults();
+    }).catch(function () { el.status.textContent = "couldn't reach the archive — try again"; });
+  }
+
+  function renderResults() {
+    el.results.innerHTML = "";
+    if (!state.tracks.length) {
+      el.status.textContent = "nothing found — try another search or filter";
+      el.results.appendChild(el.status);
+      return;
+    }
+    state.tracks.forEach(function (t, i) {
+      var row = document.createElement("div");
+      row.className = "track" + (i === state.index ? " playing" : "");
+      var creator = t.creator ? (Array.isArray(t.creator) ? t.creator[0] : t.creator) : "unknown artist";
+      row.innerHTML =
+        '<div class="track-info"><div class="track-title">' + escapeHtml(cleanTitle(t.title)) + '</div>' +
+        '<div class="track-meta">' + escapeHtml(creator) + '</div></div>' +
+        '<div class="track-year">' + (t.year || "") + '</div>';
+      row.addEventListener("click", function () { playTrack(i); });
+      el.results.appendChild(row);
+    });
+  }
+
+  function cleanTitle(t) { if (!t) return "untitled"; return Array.isArray(t) ? t[0] : t; }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function playTrack(i) {
+    state.index = i;
+    var t = state.tracks[i];
+    if (!t) return;
+    el.npError.textContent = "";
+    openNowPlaying(t);
+    resolveAudioUrl(t.identifier).then(function (url) {
+      if (!url) { el.npError.textContent = "no playable audio file found for this item"; return; }
+      el.audio.src = url;
+      el.audio.play().catch(function () {});
+    }).catch(function () { el.npError.textContent = "couldn't load this recording — try another"; });
+    renderResults();
+  }
+
+  function resolveAudioUrl(identifier) {
+    var url = "https://archive.org/metadata/" + encodeURIComponent(identifier);
+    return jsonp(url).then(function (data) {
+      var files = data.files || [];
+      var mp3 = files.find(function (f) { return f.format === "VBR MP3" || f.format === "MP3"; });
+      if (!mp3) mp3 = files.find(function (f) { return /\.mp3$/i.test(f.name); });
+      if (!mp3) return null;
+      return "https://archive.org/download/" + identifier + "/" + encodeURIComponent(mp3.name);
+    });
+  }
+
+  function openNowPlaying(t) {
+    var creator = t.creator ? (Array.isArray(t.creator) ? t.creator[0] : t.creator) : "unknown artist";
+    el.npTitle.textContent = cleanTitle(t.title);
+    el.npCreator.textContent = creator;
+    el.npYear.textContent = t.year || "";
+    el.miniTitle.textContent = cleanTitle(t.title);
+    el.miniCreator.textContent = creator;
+    el.np.classList.add("open");
+    el.mini.classList.add("show");
+  }
+
+  function formatTime(s) {
+    if (!isFinite(s) || s < 0) s = 0;
+    var m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function setPlayingUI(playing) {
+    state.playing = playing;
+    el.npPlay.textContent = playing ? "❚❚" : "▶";
+    el.miniPlay.textContent = playing ? "❚❚" : "▶";
+    el.disc.classList.toggle("spin", playing);
+  }
+
+  el.audio.addEventListener("play", function () { setPlayingUI(true); });
+  el.audio.addEventListener("pause", function () { setPlayingUI(false); });
+  el.audio.addEventListener("ended", function () { nextTrack(); });
+  el.audio.addEventListener("error", function () { if (el.audio.src) el.npError.textContent = "playback error — try another recording"; });
+  el.audio.addEventListener("timeupdate", function () {
+    var d = el.audio.duration || 0, c = el.audio.currentTime || 0;
+    var pct = d ? (c / d) * 100 : 0;
+    el.npBarFill.style.width = pct + "%";
+    el.npElapsed.textContent = formatTime(c);
+    el.npDuration.textContent = formatTime(d);
+    el.miniTime.textContent = formatTime(c);
+  });
+
+  function togglePlay() {
+    if (!el.audio.src) return;
+    if (el.audio.paused) el.audio.play().catch(function () {});
+    else el.audio.pause();
+  }
+  function nextTrack() { if (state.index < state.tracks.length - 1) playTrack(state.index + 1); }
+  function prevTrack() { if (state.index > 0) playTrack(state.index - 1); }
+
+  el.npPlay.addEventListener("click", togglePlay);
+  el.miniPlay.addEventListener("click", togglePlay);
+  el.npNext.addEventListener("click", nextTrack);
+  el.npPrev.addEventListener("click", prevTrack);
+  el.npClose.addEventListener("click", function () { el.np.classList.remove("open"); });
+  el.miniInfo.addEventListener("click", function () { el.np.classList.add("open"); });
+  el.npBar.addEventListener("click", function (e) {
+    var rect = el.npBar.getBoundingClientRect();
+    var pct = (e.clientX - rect.left) / rect.width;
+    if (el.audio.duration) el.audio.currentTime = pct * el.audio.duration;
+  });
+
+  el.searchBtn.addEventListener("click", function () { state.query = el.searchInput.value; runSearch(); });
+  el.searchInput.addEventListener("keydown", function (e) { if (e.key === "Enter") { state.query = el.searchInput.value; runSearch(); } });
+
+  runSearch();
+})();
+</script>
+</body>
+</html>
