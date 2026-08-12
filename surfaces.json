@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-05",
+ "published": "2026-08-12",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -273,6 +273,22 @@
    ],
    "blurb": "A poem is normally published as the thing that survived. This publishes the writing. Type, and every keystroke and every pause is kept, including everything deleted, which is most of what happened. Play it back and the poem writes itself again at the speed it was actually written: the four seconds before a line arrives, the word held and then taken away, the passage that came out in one run. Six treatments read the same recording differently. One keeps the deleted characters on the page, so what the poem decided against stays legible beside what it kept. One snaps every delay to a grid, and hesitation becomes rest. Two hand the track to a corruption engine that reads typing rate, so fast passages break into marks that are not quite letters, held breaths stay clean, and everything settles as it ages. The recording is a plain object — delays, deletions, insertions — built to live in the writer's own repository rather than in a database here, signed and content-addressed, so it can be taken elsewhere and played by something that is not this. It is also close to the only claim about authorship still available: not that a person wrote it, but that here is the hour it took them.",
    "url": "https://opposite.city/poemstream/"
+  },
+  {
+   "slug": "shellac",
+   "name": "SHELLAC",
+   "district": "viz",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "78rpm",
+    "internet archive",
+    "public domain",
+    "chronological browse",
+    "shellac disc"
+   ],
+   "blurb": "A player skinned over the Internet Archive's digitized 78rpm collection, no backend, streaming straight from their servers. Browse in the order the records themselves were pressed — 1890s through the 1950s — rather than by genre tags that only ever cover a fraction of the catalog. Tap a year, hear what was being cut.",
+   "url": "https://opposite.city/shellac/"
   }
  ]
 }
