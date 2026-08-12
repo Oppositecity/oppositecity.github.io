@@ -23,22 +23,25 @@
   .search-box input::placeholder { color: #8a8a8a; }
   .search-box button { background: transparent; border: none; color: #cfcfcf; font-size: 0.85rem; cursor: pointer; }
 
-  /* ---------- decade rail: primary chronological navigation ---------- */
-  .decade-nav { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.9rem; }
-  .decade-arrow {
-    background: transparent; border: 1px solid #fff; color: #fff;
-    width: 2rem; height: 2rem; flex-shrink: 0; font-size: 0.9rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .decade-arrow:disabled { border-color: #444; color: #444; cursor: default; }
-  .decade-rail { flex: 1; display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; }
-  .decade-rail::-webkit-scrollbar { display: none; }
+  /* ---------- decade accordion: primary chronological navigation ---------- */
+  .decade-rail { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.9rem; }
   .decade-chip {
     background: transparent; border: 1px solid #555; color: #cfcfcf;
-    font-size: 0.7rem; letter-spacing: 0.04em; padding: 0.4rem 0.65rem;
-    cursor: pointer; flex-shrink: 0; white-space: nowrap;
+    font-size: 0.72rem; letter-spacing: 0.05em; padding: 0.42rem 0.7rem;
+    cursor: pointer; white-space: nowrap;
   }
-  .decade-chip.active { border-color: #fff; color: #000; background: #fff; }
+  .decade-chip.open { border-color: #fff; color: #fff; }
+  .decade-chip.has-selection { border-color: #fff; color: #000; background: #fff; }
+
+  .year-row {
+    display: flex; flex-wrap: wrap; gap: 0.3rem;
+    margin-top: 0.55rem; padding: 0.6rem; border: 1px dotted #333;
+  }
+  .year-chip {
+    background: transparent; border: 1px solid #444; color: #9a9a9a;
+    font-size: 0.68rem; padding: 0.32rem 0.55rem; cursor: pointer;
+  }
+  .year-chip.active { border-color: #fff; color: #000; background: #fff; }
 
   .genre-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
   .genre-chip {
@@ -48,16 +51,23 @@
   }
   .genre-chip.active { border-color: #fff; color: #fff; }
 
-  .count-line { font-size: 0.68rem; color: #9a9a9a; letter-spacing: 0.04em; margin-top: 0.65rem; }
+  /* ---------- current-year header with step arrows ---------- */
+  .year-header {
+    display: flex; align-items: center; justify-content: center; gap: 0.9rem;
+    margin-top: 0.85rem; padding-top: 0.7rem; border-top: 1px dotted #2a2a2a;
+  }
+  .year-step {
+    background: transparent; border: 1px solid #fff; color: #fff;
+    width: 1.8rem; height: 1.8rem; font-size: 0.85rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .year-step:disabled { border-color: #444; color: #444; cursor: default; }
+  .year-big { font-size: 1rem; letter-spacing: 0.1em; color: #fff; min-width: 3.6rem; text-align: center; }
+  .count-line { font-size: 0.66rem; color: #9a9a9a; letter-spacing: 0.03em; text-align: center; margin-top: 0.35rem; }
 
   /* ---------- results ---------- */
   main { flex: 1; padding: 0.6rem 1.1rem 6rem; overflow-y: auto; }
-  .status { font-size: 0.75rem; color: #9a9a9a; padding: 1rem 0; letter-spacing: 0.03em; }
-  .year-heading {
-    font-size: 0.78rem; letter-spacing: 0.18em; color: #fff;
-    padding: 1.1rem 0 0.5rem; position: sticky; top: 0; background: #000;
-  }
-  .year-heading:first-child { padding-top: 0; }
+  .status { font-size: 0.75rem; color: #9a9a9a; padding: 1rem 0; letter-spacing: 0.03em; text-align: center; }
   .track { padding: 0.7rem 0; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; }
   .track + .track { border-top: 1px dotted #2a2a2a; }
   .track-info { min-width: 0; }
@@ -125,18 +135,20 @@
       <button id="search-btn">go</button>
     </div>
 
-    <div class="decade-nav">
-      <button class="decade-arrow" id="decade-prev">‹</button>
-      <div class="decade-rail" id="decade-rail"></div>
-      <button class="decade-arrow" id="decade-next">›</button>
-    </div>
-
+    <div class="decade-rail" id="decade-rail"></div>
+    <div class="year-row" id="year-row" style="display:none"></div>
     <div class="genre-row" id="genre-row"></div>
+
+    <div class="year-header" id="year-header" style="display:none">
+      <button class="year-step" id="year-prev">‹</button>
+      <div class="year-big" id="year-big">—</div>
+      <button class="year-step" id="year-next">›</button>
+    </div>
     <div class="count-line" id="count-line"></div>
   </div>
 
   <main id="results">
-    <div class="status" id="status">loading the earliest recordings...</div>
+    <div class="status" id="status">pick a decade to open its years</div>
   </main>
 </div>
 
@@ -196,16 +208,24 @@
     });
   }
 
-  /* ---------------- decades: the primary navigation ---------------- */
+  /* ---------------- decades, each expanding to its own years ---------------- */
   var DECADES = [
-    { label: "1890s", range: [1890, 1899] },
-    { label: "1900s", range: [1900, 1909] },
-    { label: "1910s", range: [1910, 1919] },
-    { label: "1920s", range: [1920, 1929] },
-    { label: "1930s", range: [1930, 1939] },
-    { label: "1940s", range: [1940, 1949] },
-    { label: "1950s", range: [1950, 1959] }
+    { label: "1890s", start: 1890, end: 1899 },
+    { label: "1900s", start: 1900, end: 1909 },
+    { label: "1910s", start: 1910, end: 1919 },
+    { label: "1920s", start: 1920, end: 1929 },
+    { label: "1930s", start: 1930, end: 1939 },
+    { label: "1940s", start: 1940, end: 1949 },
+    { label: "1950s", start: 1950, end: 1959 }
   ];
+  DECADES.forEach(function (d) {
+    d.years = [];
+    for (var y = d.start; y <= d.end; y++) d.years.push(y);
+  });
+  function decadeIndexForYear(y) {
+    for (var i = 0; i < DECADES.length; i++) if (y >= DECADES[i].start && y <= DECADES[i].end) return i;
+    return 0;
+  }
 
   var GENRES = [
     { label: "all genres", subject: null },
@@ -219,18 +239,21 @@
     { label: "band", subject: "band music" }
   ];
 
-  var PAGE_SIZE = 100;
+  var PAGE_SIZE = 200;
+  var AUTO_FETCH_CAP_PAGES = 15; // safety net: auto-fetch up to ~3000 items, then hand off to a manual button
 
   var state = {
-    decadeIndex: 0,
+    expandedDecade: null,
+    year: null,
     genre: GENRES[0],
     query: "",
-    mode: "decade",       // 'decade' | 'search'
+    mode: null,          // 'year' | 'search'
     tracks: [],
     start: 0,
     numFound: 0,
     hasMore: false,
-    loadingMore: false,
+    autoFetching: false,
+    pagesFetchedThisLoad: 0,
     index: -1,
     playing: false
   };
@@ -239,9 +262,12 @@
     searchInput: document.getElementById("search-input"),
     searchBtn: document.getElementById("search-btn"),
     decadeRail: document.getElementById("decade-rail"),
-    decadePrev: document.getElementById("decade-prev"),
-    decadeNext: document.getElementById("decade-next"),
+    yearRow: document.getElementById("year-row"),
     genreRow: document.getElementById("genre-row"),
+    yearHeader: document.getElementById("year-header"),
+    yearPrev: document.getElementById("year-prev"),
+    yearNext: document.getElementById("year-next"),
+    yearBig: document.getElementById("year-big"),
     countLine: document.getElementById("count-line"),
     results: document.getElementById("results"),
     status: document.getElementById("status"),
@@ -298,28 +324,66 @@
     ctx.beginPath(); ctx.arc(r, r, 2, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
   })();
 
-  /* ---------------- decade rail ---------------- */
+  /* ---------------- decade accordion ---------------- */
   function renderDecadeRail() {
     el.decadeRail.innerHTML = "";
     DECADES.forEach(function (d, i) {
       var b = document.createElement("button");
-      b.className = "decade-chip" + (i === state.decadeIndex && state.mode === "decade" ? " active" : "");
+      var hasSelection = state.mode === "year" && state.year >= d.start && state.year <= d.end;
+      b.className = "decade-chip" + (i === state.expandedDecade ? " open" : "") + (hasSelection ? " has-selection" : "");
       b.textContent = d.label;
-      b.addEventListener("click", function () { selectDecade(i); });
+      b.addEventListener("click", function () { toggleDecade(i); });
       el.decadeRail.appendChild(b);
     });
-    el.decadePrev.disabled = state.decadeIndex <= 0;
-    el.decadeNext.disabled = state.decadeIndex >= DECADES.length - 1;
   }
-  function selectDecade(i) {
-    state.query = ""; el.searchInput.value = "";
-    state.decadeIndex = i;
-    state.mode = "decade";
+
+  function toggleDecade(i) {
+    state.expandedDecade = (state.expandedDecade === i) ? null : i;
     renderDecadeRail();
+    renderYearRow();
+  }
+
+  function renderYearRow() {
+    if (state.expandedDecade === null) {
+      el.yearRow.style.display = "none";
+      el.yearRow.innerHTML = "";
+      return;
+    }
+    var d = DECADES[state.expandedDecade];
+    el.yearRow.innerHTML = "";
+    el.yearRow.style.display = "flex";
+    d.years.forEach(function (y) {
+      var b = document.createElement("button");
+      b.className = "year-chip" + (state.mode === "year" && state.year === y ? " active" : "");
+      b.textContent = y;
+      b.addEventListener("click", function () { selectYear(y); });
+      el.yearRow.appendChild(b);
+    });
+  }
+
+  function selectYear(y) {
+    state.query = ""; el.searchInput.value = "";
+    state.mode = "year";
+    state.year = y;
+    state.expandedDecade = decadeIndexForYear(y);
+    renderDecadeRail();
+    renderYearRow();
+    renderYearHeader();
     resetAndLoad();
   }
-  el.decadePrev.addEventListener("click", function () { if (state.decadeIndex > 0) selectDecade(state.decadeIndex - 1); });
-  el.decadeNext.addEventListener("click", function () { if (state.decadeIndex < DECADES.length - 1) selectDecade(state.decadeIndex + 1); });
+
+  function renderYearHeader() {
+    if (state.mode !== "year") {
+      el.yearHeader.style.display = "none";
+      return;
+    }
+    el.yearHeader.style.display = "flex";
+    el.yearBig.textContent = state.year;
+    el.yearPrev.disabled = state.year <= DECADES[0].start;
+    el.yearNext.disabled = state.year >= DECADES[DECADES.length - 1].end;
+  }
+  el.yearPrev.addEventListener("click", function () { if (state.mode === "year" && state.year > DECADES[0].start) selectYear(state.year - 1); });
+  el.yearNext.addEventListener("click", function () { if (state.mode === "year" && state.year < DECADES[DECADES.length - 1].end) selectYear(state.year + 1); });
 
   /* ---------------- genre row (secondary refinement) ---------------- */
   function renderGenreRow() {
@@ -331,16 +395,15 @@
       b.addEventListener("click", function () {
         state.genre = g;
         renderGenreRow();
-        resetAndLoad();
+        if (state.mode) resetAndLoad();
       });
       el.genreRow.appendChild(b);
     });
   }
 
   /* ---------------- query building ---------------- */
-  function buildDecadeQuery() {
-    var d = DECADES[state.decadeIndex];
-    var parts = ["mediatype:(audio)", "collection:(georgeblood)", "year:[" + d.range[0] + " TO " + d.range[1] + "]"];
+  function buildYearQuery() {
+    var parts = ["mediatype:(audio)", "collection:(georgeblood)", "year:(" + state.year + ")"];
     if (state.genre.subject) parts.push('subject:("' + state.genre.subject + '")');
     return parts.join(" AND ");
   }
@@ -351,48 +414,58 @@
     parts.push('(title:(' + q + ') OR creator:(' + q + '))');
     return parts.join(" AND ");
   }
-  function currentQuery() { return state.mode === "search" ? buildSearchQuery() : buildDecadeQuery(); }
+  function currentQuery() { return state.mode === "search" ? buildSearchQuery() : buildYearQuery(); }
 
-  /* ---------------- comprehensive, paginated loading ---------------- */
+  /* ---------------- loading: auto-fetch everything for a single year ---------------- */
   function resetAndLoad() {
     state.tracks = [];
     state.start = 0;
     state.numFound = 0;
     state.hasMore = false;
+    state.autoFetching = false;
+    state.pagesFetchedThisLoad = 0;
     state.index = -1;
-    fetchPage(true);
+
+    el.status.style.display = "block";
+    el.status.textContent = state.mode === "search" ? "searching..." : "loading " + state.year + "...";
+    el.results.innerHTML = "";
+    el.results.appendChild(el.status);
+    el.countLine.textContent = "";
+
+    autoFetchLoop();
   }
 
-  function fetchPage(isFirst) {
+  function fetchOnePage() {
     var fl = "identifier,title,creator,year";
     var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(currentQuery()) +
       "&fl[]=" + fl.split(",").join("&fl[]=") +
       "&rows=" + PAGE_SIZE + "&start=" + state.start +
       "&sort[]=year+asc&sort[]=identifier+asc&output=json";
-
-    if (isFirst) {
-      el.status.style.display = "block";
-      el.status.textContent = state.mode === "search" ? "searching..." : "loading " + DECADES[state.decadeIndex].label + "...";
-      el.results.innerHTML = "";
-      el.results.appendChild(el.status);
-      el.countLine.textContent = "";
-    } else {
-      state.loadingMore = true;
-      renderResults();
-    }
-
-    jsonp(url).then(function (data) {
+    return jsonp(url).then(function (data) {
       var resp = data.response || {};
       var docs = (resp.docs || []).filter(function (d) { return d.identifier; });
       state.tracks = state.tracks.concat(docs);
       state.numFound = resp.numFound || state.tracks.length;
       state.start += docs.length;
+      state.pagesFetchedThisLoad++;
       state.hasMore = docs.length > 0 && state.start < state.numFound;
-      state.loadingMore = false;
+      return docs.length;
+    });
+  }
+
+  function autoFetchLoop() {
+    state.autoFetching = true;
+    fetchOnePage().then(function () {
       renderResults();
+      if (state.hasMore && state.pagesFetchedThisLoad < AUTO_FETCH_CAP_PAGES) {
+        autoFetchLoop();
+      } else {
+        state.autoFetching = false;
+        renderResults();
+      }
     }).catch(function () {
-      state.loadingMore = false;
-      if (isFirst) {
+      state.autoFetching = false;
+      if (!state.tracks.length) {
         el.status.textContent = "couldn't reach the archive — try again";
       } else {
         renderResults();
@@ -400,33 +473,35 @@
     });
   }
 
-  /* ---------------- results, grouped by year, paginated ---------------- */
+  function loadMoreManually() {
+    state.autoFetching = true;
+    renderResults();
+    fetchOnePage().then(function () {
+      state.pagesFetchedThisLoad = 0; // reset the cap window so it can auto-continue again for a while
+      autoFetchLoop();
+    }).catch(function () { state.autoFetching = false; renderResults(); });
+  }
+
+  /* ---------------- results ---------------- */
   function renderResults() {
     el.results.innerHTML = "";
 
-    if (!state.tracks.length && !state.loadingMore) {
+    if (!state.tracks.length && !state.autoFetching) {
       el.status.textContent = state.mode === "search"
         ? "nothing found — try another search"
-        : "nothing catalogued for this decade — try another";
+        : "nothing catalogued for " + state.year + " — try another year";
       el.results.appendChild(el.status);
       el.countLine.textContent = "";
       return;
     }
 
-    el.countLine.textContent = state.numFound
-      ? state.tracks.length + " of " + state.numFound + " loaded"
-      : "";
+    if (state.numFound) {
+      el.countLine.textContent = state.autoFetching
+        ? "loading... " + state.tracks.length + " of " + state.numFound
+        : state.tracks.length + " of " + state.numFound + " loaded";
+    }
 
-    var lastYear = null;
     state.tracks.forEach(function (t, i) {
-      var y = t.year || "undated";
-      if (y !== lastYear) {
-        var h = document.createElement("div");
-        h.className = "year-heading";
-        h.textContent = y;
-        el.results.appendChild(h);
-        lastYear = y;
-      }
       var row = document.createElement("div");
       row.className = "track" + (i === state.index ? " playing" : "");
       var creator = t.creator ? (Array.isArray(t.creator) ? t.creator[0] : t.creator) : "unknown artist";
@@ -437,17 +512,16 @@
       el.results.appendChild(row);
     });
 
-    if (state.loadingMore) {
-      var btn = document.createElement("button");
-      btn.className = "load-more";
-      btn.disabled = true;
-      btn.textContent = "loading more...";
-      el.results.appendChild(btn);
+    if (state.autoFetching) {
+      var loading = document.createElement("div");
+      loading.className = "status";
+      loading.textContent = "loading more automatically...";
+      el.results.appendChild(loading);
     } else if (state.hasMore) {
       var more = document.createElement("button");
       more.className = "load-more";
-      more.textContent = "load next " + Math.min(PAGE_SIZE, state.numFound - state.start) + " (" + (state.numFound - state.start) + " remaining)";
-      more.addEventListener("click", function () { fetchPage(false); });
+      more.textContent = "load remaining " + (state.numFound - state.start);
+      more.addEventListener("click", loadMoreManually);
       el.results.appendChild(more);
     } else if (state.tracks.length) {
       var end = document.createElement("div");
@@ -535,38 +609,21 @@
 
   function nextTrack() {
     if (state.index < state.tracks.length - 1) { playTrack(state.index + 1); return; }
-    // ran off the end of what's loaded — pull the next page automatically if there is one
-    if (state.hasMore && !state.loadingMore) {
-      var wasLength = state.tracks.length;
-      state.loadingMore = true;
-      renderResults();
-      fetchPageThenPlay(wasLength);
-      return;
-    }
-    // ran off the end of the whole decade — roll into the next one
-    if (state.mode === "decade" && state.decadeIndex < DECADES.length - 1) {
-      selectDecade(state.decadeIndex + 1);
+    // fully exhausted this year (everything's loaded, since we auto-fetch to completion) — roll to the next year
+    if (state.mode === "year" && !state.hasMore && !state.autoFetching && state.year < DECADES[DECADES.length - 1].end) {
+      var nextY = state.year + 1;
+      selectYear(nextY);
+      // queue autoplay of the first track once it loads
+      var check = setInterval(function () {
+        if (!state.autoFetching && state.tracks.length) {
+          clearInterval(check);
+          playTrack(0);
+        } else if (!state.autoFetching && !state.hasMore && !state.tracks.length) {
+          clearInterval(check);
+        }
+      }, 200);
     }
   }
-
-  function fetchPageThenPlay(continueFromIndex) {
-    var fl = "identifier,title,creator,year";
-    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(currentQuery()) +
-      "&fl[]=" + fl.split(",").join("&fl[]=") +
-      "&rows=" + PAGE_SIZE + "&start=" + state.start +
-      "&sort[]=year+asc&sort[]=identifier+asc&output=json";
-    jsonp(url).then(function (data) {
-      var resp = data.response || {};
-      var docs = (resp.docs || []).filter(function (d) { return d.identifier; });
-      state.tracks = state.tracks.concat(docs);
-      state.numFound = resp.numFound || state.tracks.length;
-      state.start += docs.length;
-      state.hasMore = docs.length > 0 && state.start < state.numFound;
-      state.loadingMore = false;
-      if (docs.length) playTrack(continueFromIndex); else renderResults();
-    }).catch(function () { state.loadingMore = false; renderResults(); });
-  }
-
   function prevTrack() { if (state.index > 0) playTrack(state.index - 1); }
 
   el.npPlay.addEventListener("click", togglePlay);
@@ -586,10 +643,7 @@
     if (state.query.trim()) {
       state.mode = "search";
       renderDecadeRail();
-      resetAndLoad();
-    } else {
-      state.mode = "decade";
-      renderDecadeRail();
+      renderYearHeader();
       resetAndLoad();
     }
   }
@@ -599,7 +653,8 @@
   /* ---------------- boot ---------------- */
   renderGenreRow();
   renderDecadeRail();
-  resetAndLoad();
+  toggleDecade(0);           // open the earliest decade
+  selectYear(DECADES[0].start); // and load its first year straight away
 })();
 </script>
 </body>
