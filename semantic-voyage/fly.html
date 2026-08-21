@@ -14,6 +14,8 @@
     color:#fff;
     -webkit-font-smoothing:antialiased;
     -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;user-select:none;
   }
   canvas{display:block;touch-action:none}
 
@@ -876,48 +878,67 @@ function arrive(){
    ================================================================== */
 function bindInput(){
   const el = renderer.domElement;
-  let down = false, moved = 0, lx = 0, ly = 0, tdown = 0, held = false, id = null;
-  const SENS = 0.0032;
+  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0, tdown = 0, held = false;
+  let id = null, touch = false;
+  const SENS = 0.0032, THRUST_MS = 200, TAP_MS = 350, DEADZONE = 3;
+
+  const drift = (x, y) => Math.hypot(x - sx0, y - sy0);
+
+  el.addEventListener('contextmenu', e => e.preventDefault());
 
   el.addEventListener('pointerdown', e => {
-    if (id !== null) return;
-    id = e.pointerId; down = true; moved = 0; held = false;
-    lx = e.clientX; ly = e.clientY; tdown = performance.now();
-    el.setPointerCapture(id);
+    id = e.pointerId; down = true; held = false;
+    touch = e.pointerType !== 'mouse';
+    lx = sx0 = e.clientX; ly = sy0 = e.clientY;
+    tdown = performance.now();
+    try { el.setPointerCapture(id); } catch(err){}
   });
 
   el.addEventListener('pointermove', e => {
     if (!down || e.pointerId !== id) return;
     const dx = e.clientX - lx, dy = e.clientY - ly;
     lx = e.clientX; ly = e.clientY;
-    moved += Math.abs(dx) + Math.abs(dy);
+    /* a resting finger still jitters a pixel at a time — swallow that,
+       or the view slides away during what was meant as a tap */
+    if (drift(e.clientX, e.clientY) < DEADZONE) return;
     cam.yaw   -= dx * SENS;
     cam.pitch -= dy * SENS;
     cam.pitch = Math.max(-1.48, Math.min(1.48, cam.pitch));
-    if (moved > 12) autopilot = -1;
+    autopilot = -1;
   });
 
-  const up = e => {
+  const release = (e, cancelled) => {
     if (e.pointerId !== id) return;
     const dur = performance.now() - tdown;
+    const moved = drift(e.clientX, e.clientY);
     down = false; held = false; holdThrust = false;
     try { el.releasePointerCapture(id); } catch(err){}
     id = null;
-    if (dur < 260 && moved < 10){
-      const hit = pick(e.clientX, e.clientY, MOBILE ? 54 : 44);
+    if (cancelled) return;
+    /* A TAP IS DISTANCE FROM WHERE THE FINGER LANDED, never the length
+       of the path it wandered. Accumulating |dx|+|dy| meant a 120Hz
+       digitizer spent a resting thumb past the threshold in a fraction
+       of a second, so on a touchscreen no tap ever survived to reach
+       the picker and nothing was clickable. */
+    if (dur < TAP_MS && moved < (touch ? 26 : 14)){
+      const hit = pick(e.clientX, e.clientY, touch ? 60 : 44);
       if (hit >= 0) select(hit);
-      else { selected = -1; autopilot = -1; document.getElementById('panel').classList.remove('on'); paint(); }
+      else {
+        selected = -1; autopilot = -1;
+        document.getElementById('panel').classList.remove('on');
+        paint();
+      }
     }
   };
-  el.addEventListener('pointerup', up);
-  el.addEventListener('pointercancel', up);
+  el.addEventListener('pointerup', e => release(e, false));
+  el.addEventListener('pointercancel', e => release(e, true));
 
-  /* hold anywhere to fly forward */
-  /* a press that outlives a tap becomes throttle */
+  /* a press that outlives a tap becomes throttle. gated on `down` too,
+     so a lost pointerup can never leave the engine stuck on */
   setInterval(() => {
-    if (down && !held && performance.now() - tdown > 240){ held = true; autopilot = -1; }
-    holdThrust = held;
-  }, 40);
+    if (down && !held && performance.now() - tdown > THRUST_MS) held = true;
+    holdThrust = down && held;
+  }, 30);
 
   el.addEventListener('wheel', e => {
     e.preventDefault();
@@ -1015,7 +1036,12 @@ function tick(){
     const nw = nearestWord();
     if (nw !== here){ here = nw; paint(); }
   }
-  if (performance.now() - uiT > 120){ uiT = performance.now(); ui(); }
+  if (performance.now() - uiT > 120){
+    uiT = performance.now(); ui();
+    /* on touch there is no hover readout, so reuse the line to confirm
+       the throttle actually engaged */
+    if (MOBILE) document.getElementById('hover').textContent = sp > 3 ? 'flying' : '';
+  }
 
   if (!done && here === target){
     const t = new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2]);
