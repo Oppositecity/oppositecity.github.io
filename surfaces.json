@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-12",
+ "published": "2026-08-20",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -289,6 +289,22 @@
    ],
    "blurb": "A player skinned over the Internet Archive's digitized 78rpm collection, no backend, streaming straight from their servers. Browse in the order the records themselves were pressed — 1890s through the 1950s — rather than by genre tags that only ever cover a fraction of the catalog. Tap a year, hear what was being cut.",
    "url": "https://opposite.city/shellac/"
+  },
+  {
+   "slug": "aureole",
+   "name": "AUREOLE",
+   "district": "language",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "atproto",
+    "thesaurus",
+    "synonym cloud",
+    "degrees of freedom",
+    "bluesky"
+   ],
+   "blurb": "A reader that will not show you the text. Every word of a post is replaced by the pile of its own synonyms, laid one over another in the same place, so a sentence arrives as a row of clouds rather than a line. The pile is a measurement as much as an image: a word the language will trade for many others stands thick and nearly unreadable, a word it will barely trade at all stands thin, and the reading you get is whichever word you pull out of each stack. Words the thesaurus answers with nothing are not clouds — they appear alone and marked zero, because a word with no available move is not ambiguous, it is fixed. Words it could not answer for are marked apart from those and never merged with them, since a rate limit is not a constraint on language, and quietly confusing the two is the ordinary way an instrument like this lies. Hover lifts one word clear of the blend; clicking fixes it and sends the rest of the stack to ghost, so a text can be read out of the field one decision at a time — a reading that exists nowhere in the original and is licensed at every point by it.",
+   "url": "https://opposite.city/aureole/"
   }
  ]
 }
