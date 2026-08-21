@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Semantic Voyage</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#000}
+  body{
+    font-family:"Courier Prime","Courier New",Courier,monospace;
+    color:#fff;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+  canvas{display:block;touch-action:none}
+
+  #ui{
+    position:fixed;inset:0;z-index:10;pointer-events:none;
+    padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+    display:grid;grid-template-rows:auto 1fr auto;
+    font-size:13px;line-height:1.5;
+  }
+  .lab{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.82)}
+  .soft{color:rgba(255,255,255,.86)}
+  .narrow{display:none}
+  @media (max-width:640px){.wide{display:none}.narrow{display:inline}}
+
+  #top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+  #voyage{font-size:15px}
+  #voyage .to{color:rgba(255,255,255,.8);padding:0 .5em}
+  #hint{text-align:right;white-space:nowrap;color:rgba(255,255,255,.84)}
+
+  #mid{display:flex;align-items:center;justify-content:flex-end;pointer-events:none}
+  #panel{
+    pointer-events:none;text-align:right;max-width:min(46vw,320px);
+    opacity:0;transition:opacity .35s ease;
+  }
+  #panel.on{opacity:1;pointer-events:auto}
+  #p-word{font-size:22px;line-height:1.2}
+  #p-rank{color:rgba(255,255,255,.82);font-size:11px;margin-bottom:8px}
+  #p-near{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+  #p-near a{
+    color:#fff;text-decoration:none;cursor:pointer;font-size:12px;
+    display:flex;gap:.7em;justify-content:flex-end;
+  }
+  #p-near a:hover,#p-near a:focus-visible{text-decoration:underline}
+  #p-near .v{color:rgba(255,255,255,.8);font-variant-numeric:tabular-nums}
+
+  #bottom{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}
+  #here{font-size:26px;line-height:1.15}
+  #hover{font-size:12px;color:rgba(255,255,255,.88);min-height:1.4em}
+  #right{text-align:right;flex:none}
+  #hops{font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+  #units{font-size:12px;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
+
+  #find{pointer-events:auto;margin-top:12px;display:flex;justify-content:flex-end}
+  #find input{
+    font:inherit;font-size:12px;width:150px;padding:5px 8px;
+    background:#000;color:#fff;border:1px solid rgba(255,255,255,.75);
+    border-radius:0;outline:none;
+  }
+  #find input::placeholder{color:rgba(255,255,255,.6)}
+  #find input:focus{border-color:#fff}
+
+  button{
+    pointer-events:auto;background:none;border:0;padding:4px 0;
+    font:inherit;font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:rgba(255,255,255,.88);cursor:pointer;
+  }
+  button:hover,button:focus-visible{color:#fff}
+  button:focus-visible{outline:1px solid #fff;outline-offset:3px}
+
+  #arrived{
+    position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.92);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;text-align:center;padding:24px;
+    opacity:0;pointer-events:none;transition:opacity .6s ease;
+  }
+  #arrived.on{opacity:1;pointer-events:auto}
+  #arrived h1{font-size:13px;font-weight:400;letter-spacing:.5em;text-indent:.5em;color:rgba(255,255,255,.86)}
+  #arrived .word{font-size:min(13vw,58px)}
+  #arrived .stat{font-size:13px;color:rgba(255,255,255,.9);max-width:36ch;line-height:1.6}
+
+  #boot{
+    position:fixed;inset:0;z-index:30;background:#000;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.9);
+    transition:opacity .7s ease;text-align:center;padding:24px;
+  }
+  #boot.off{opacity:0;pointer-events:none}
+
+  @media (max-width:640px){
+    #ui{font-size:12px;padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom))}
+    #hint{font-size:10px;line-height:1.6}
+    #voyage{font-size:13px}
+    #here{font-size:20px}
+    #hops{font-size:26px}
+    #panel{max-width:58vw}
+    #p-word{font-size:18px}
+    #find input{width:120px}
+  }
+  @media (prefers-reduced-motion:reduce){#arrived,#boot,#panel{transition:none}}
+</style>
+</head>
+<body>
+
+<div id="boot">charting 20,480 words</div>
+
+<div id="ui">
+  <div id="top">
+    <div>
+      <div class="lab">voyage</div>
+      <div id="voyage"><b id="w-from">—</b><span class="to">&rarr;</span><b id="w-to">—</b></div>
+    </div>
+    <div id="hint">
+      <span class="wide">drag to look &middot; hold or W to fly<br>click any word to travel to it<br>slow down and rarer words appear</span><span class="narrow">drag to look &middot; hold to fly<br>tap any word to travel<br>slow down to see more</span>
+    </div>
+  </div>
+
+  <div id="mid">
+    <div id="panel">
+      <div id="p-word">—</div>
+      <div id="p-rank"></div>
+      <div id="p-near"></div>
+    </div>
+  </div>
+
+  <div id="bottom">
+    <div>
+      <div class="lab">nearest</div>
+      <div id="here">—</div>
+      <div id="hover"></div>
+    </div>
+    <div id="right">
+      <div id="hops">—</div>
+      <div class="lab">hops to target</div>
+      <div id="units"></div>
+      <div id="find"><input id="q" type="text" placeholder="find a word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="find a word"></div>
+      <button id="new">new voyage</button>
+    </div>
+  </div>
+</div>
+
+<div id="arrived">
+  <h1>arrived</h1>
+  <div class="word" id="a-word">—</div>
+  <div class="stat" id="a-stat"></div>
+  <button id="again">voyage again</button>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const N = 20480, K = 8, SCALE = 520.0;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOBILE = matchMedia('(max-width:640px)').matches;
+const boot = document.getElementById('boot');
+
+/* ==================================================================
+   DATA
+   The 970 KB of vectors lives in a separate document so that the
+   engine itself stays a small, editable file. Order matters: the
+   promoted build reads data.html; the staging build falls back to
+   the original index.html, which still carries its own blobs.
+   ================================================================== */
+const DATA_SOURCES = ['./data.html', './index.html'];
+const BLOBS = ['d-words','d-pos','d-knn','d-sim','d-rank'];
+
+function fromDocument(doc){
+  const out = {};
+  for (const id of BLOBS){
+    const el = doc.getElementById(id);
+    if (!el) return null;
+    out[id] = el.textContent.trim();
+  }
+  return out;
+}
+
+function fromText(text){
+  const out = {};
+  for (const id of BLOBS){
+    const open = text.indexOf('id="' + id + '"');
+    if (open < 0) return null;
+    const s = text.indexOf('>', open) + 1;
+    const e = text.indexOf('</script>', s);
+    if (s <= 0 || e < 0) return null;
+    out[id] = text.slice(s, e).trim();
+  }
+  return out;
+}
+
+async function loadData(){
+  const here = fromDocument(document);
+  if (here) return here;
+
+  for (const url of DATA_SOURCES){
+    let res;
+    try { res = await fetch(url, {cache:'force-cache'}); } catch(e){ continue; }
+    if (!res.ok) continue;
+
+    let text = '';
+    const total = +(res.headers.get('content-length') || 0);
+    if (res.body && res.body.getReader){
+      const reader = res.body.getReader(), dec = new TextDecoder();
+      let got = 0;
+      for(;;){
+        const {done, value} = await reader.read();
+        if (done) break;
+        got += value.length;
+        text += dec.decode(value, {stream:true});
+        boot.textContent = total
+          ? 'charting \u00b7 ' + Math.round(got / total * 100) + '%'
+          : 'charting \u00b7 ' + (got >> 10) + 'k';
+      }
+      text += dec.decode();
+    } else {
+      text = await res.text();
+    }
+
+    const blobs = fromText(text);
+    if (blobs) return blobs;
+  }
+  throw new Error('no data source');
+}
+
+/* ---------- decode ---------- */
+function b64(s){
+  const bin = atob(s), out = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+let WORDS, POS0, KNN, SIM, RANK, INDEX;
+/* the true neighbourhood, undirected, CSR — built once */
+let SSTART, SADJ, SSIM;
+
+function decode(D){
+  WORDS = D['d-words'].split('\n');
+
+  const posI = new Int16Array(b64(D['d-pos']).buffer);
+  POS0 = new Float32Array(N*3);
+  for (let i=0;i<N*3;i++) POS0[i] = posI[i]/32000*SCALE;
+
+  const kb = b64(D['d-knn']);
+  KNN = new Int32Array(N*K);
+  let p = 0;
+  for (let i=0;i<N;i++) for (let k=0;k<K;k++){
+    let z=0, s=0, b;
+    do { b = kb[p++]; z |= (b & 0x7f) << s; s += 7; } while (b & 0x80);
+    KNN[i*K+k] = i + ((z>>>1) ^ -(z & 1));
+  }
+
+  RANK = new Uint16Array(b64(D['d-rank']).buffer);
+
+  const sb = b64(D['d-sim']);
+  SIM = new Float32Array(N*K);
+  for (let i=0;i<N;i++){
+    let acc = sb[i*K];
+    SIM[i*K] = acc/255*0.85 + 0.15;
+    for (let k=1;k<K;k++){
+      acc = (acc - sb[i*K+k]) & 255;
+      SIM[i*K+k] = acc/255*0.85 + 0.15;
+    }
+  }
+
+  INDEX = new Map();
+  for (let i=0;i<N;i++) if (!INDEX.has(WORDS[i])) INDEX.set(WORDS[i], i);
+
+  /* The knn list is directed; the latent neighbourhood is not. A word
+     that never appears in anyone's top-8 is a true outlier, and one
+     that appears in hundreds is a true hub — throwing the reverse
+     edges away would flatten both. Symmetrised here once: 122,901
+     undirected edges out of 163,840 directed ones. */
+  const emap = new Map();
+  for (let i=0;i<N;i++) for (let k=0;k<K;k++){
+    const v = KNN[i*K+k];
+    if (v === i) continue;
+    const a = i<v ? i : v, b = i<v ? v : i;
+    const key = a*N + b, s = SIM[i*K+k], prev = emap.get(key);
+    if (prev === undefined || s > prev) emap.set(key, s);
+  }
+  const M = emap.size;
+  const ea = new Int32Array(M), eb = new Int32Array(M), es = new Float32Array(M);
+  const deg = new Int32Array(N+1);
+  let m = 0;
+  for (const [key, s] of emap){
+    const a = Math.floor(key / N), b = key % N;
+    ea[m] = a; eb[m] = b; es[m] = s; m++;
+    deg[a+1]++; deg[b+1]++;
+  }
+  SSTART = new Int32Array(N+1);
+  for (let i=0;i<N;i++) SSTART[i+1] = SSTART[i] + deg[i+1];
+  SADJ = new Int32Array(SSTART[N]); SSIM = new Float32Array(SSTART[N]);
+  const fill = SSTART.slice(0, N);
+  for (let e=0;e<M;e++){
+    const a = ea[e], b = eb[e], s = es[e];
+    SADJ[fill[a]] = b; SSIM[fill[a]] = s; fill[a]++;
+    SADJ[fill[b]] = a; SSIM[fill[b]] = s; fill[b]++;
+  }
+}
+
+
+
+/* ---------- hop distance, undirected, from the target ---------- */
+let HOPS = null;
+function hopsFrom(t){
+  const d = new Int32Array(N).fill(-1), q = new Int32Array(N);
+  let head = 0, tail = 0;
+  d[t] = 0; q[tail++] = t;
+  while (head < tail){
+    const u = q[head++], du = d[u] + 1;
+    for (let e=SSTART[u]; e<SSTART[u+1]; e++){ const v = SADJ[e]; if (d[v] < 0){ d[v] = du; q[tail++] = v; } }
+  }
+  return d;
+}
+
+/* ==================================================================
+   DISPLACEMENT — the local truing pass
+   The 3D layout is a UMAP projection: honest about who your
+   neighbours are, a liar about how far anything is. The cosine
+   values are the surviving truth. So near the camera we relax the
+   rendered positions until on-screen distance actually tracks
+   cosine distance, and let the projection stand everywhere else.
+   The chart corrects itself where you are looking.
+   ================================================================== */
+const DW = 256, DH = 80;                       // 256 * 80 == 20480
+const DISP = new Float32Array(DW*DH*4);
+const POS  = new Float32Array(N*3);            // POS0 + DISP, cpu side
+let dispTex = null, dispDirty = true;
+
+const ACTIVE = new Int32Array(4096);
+const CAND = new Int32Array(4096), CANDD = new Float32Array(4096);
+let activeN = 0;
+const RELAX_R = 210, RELAX_MAX = 800, ITER = 2;
+const DMIN = 9, ANCHOR = 0.0025, RATE = 0.05, MAXSTEP = 1.2, MAXDISP = 150;
+let settle = 1;                                 // 0 = converged
+
+/* Measured over the 163,840 true edges in this atlas, the correlation
+   between projected 3D distance and cosine distance is 0.334 — the
+   trend is right, every individual edge is wrong. This curve is fitted
+   to the MEDIAN 3D distance actually observed at each level of
+   similarity, so truing corrects each edge onto the honest relation
+   without rescaling the map underneath it. */
+function wantDist(s){
+  const d = 162 * Math.pow(Math.max(1 - s, 0.01), 1.62);
+  return d < 9 ? 9 : d > 150 ? 150 : d;
+}
+
+function syncPos(){
+  for (let i=0;i<N;i++){
+    POS[i*3]   = POS0[i*3]   + DISP[i*4];
+    POS[i*3+1] = POS0[i*3+1] + DISP[i*4+1];
+    POS[i*3+2] = POS0[i*3+2] + DISP[i*4+2];
+  }
+}
+
+function gatherActive(cx, cy, cz){
+  const r2 = RELAX_R*RELAX_R;
+  let n = 0;
+  for (let i=0;i<N;i++){
+    const dx = POS[i*3]-cx, dy = POS[i*3+1]-cy, dz = POS[i*3+2]-cz;
+    const d2 = dx*dx + dy*dy + dz*dz;
+    if (d2 < r2 && n < 4096){ CAND[n] = i; CANDD[n] = d2; n++; }
+  }
+  if (n <= RELAX_MAX){
+    activeN = n;
+    for (let a=0;a<n;a++) ACTIVE[a] = CAND[a];
+    return;
+  }
+  /* nearest first — never just the first thousand indices, which
+     would quietly bias the whole pass toward common words */
+  const order = new Array(n);
+  for (let a=0;a<n;a++) order[a] = a;
+  order.sort((p,q) => CANDD[p] - CANDD[q]);
+  activeN = RELAX_MAX;
+  for (let a=0;a<RELAX_MAX;a++) ACTIVE[a] = CAND[order[a]];
+}
+
+const inSet = new Int32Array(N).fill(-1);
+const grid = new Map();
+
+function shift(i, dx, dy, dz){
+  DISP[i*4] += dx; DISP[i*4+1] += dy; DISP[i*4+2] += dz;
+  POS[i*3]  += dx; POS[i*3+1]  += dy; POS[i*3+2]  += dz;
+}
+function cellKey(x, y, z){
+  return ((Math.floor(x/DMIN)*73856093) ^ (Math.floor(y/DMIN)*19349663) ^ (Math.floor(z/DMIN)*83492791)) | 0;
+}
+
+function relax(){
+  if (activeN < 8) return 0;
+  for (let a=0;a<activeN;a++) inSet[ACTIVE[a]] = a;
+  let moved = 0;
+
+  for (let it=0; it<ITER; it++){
+    /* springs along true edges. only pairs where BOTH ends are in the
+       local set — a true neighbour parked 900 units away is a lie this
+       pass cannot fix without tearing the map, so instead it stays lit
+       and named in the panel, which is the honest way to show it. */
+    for (let a=0;a<activeN;a++){
+      const i = ACTIVE[a];
+      for (let j=SSTART[i]; j<SSTART[i+1]; j++){
+        const v = SADJ[j];
+        if (v < i || inSet[v] < 0) continue;
+        const want = wantDist(SSIM[j]);
+        let dx = POS[v*3]-POS[i*3], dy = POS[v*3+1]-POS[i*3+1], dz = POS[v*3+2]-POS[i*3+2];
+        const d = Math.sqrt(dx*dx+dy*dy+dz*dz) || 1e-4;
+        let step = (d - want) * RATE;
+        if (step >  MAXSTEP) step =  MAXSTEP;
+        if (step < -MAXSTEP) step = -MAXSTEP;
+        const f = step / d;
+        dx *= f; dy *= f; dz *= f;
+        shift(i, dx, dy, dz); shift(v, -dx, -dy, -dz);
+        moved += Math.abs(dx)+Math.abs(dy)+Math.abs(dz);
+      }
+    }
+
+    /* legibility: unrelated words must not occupy the same pixel */
+    grid.clear();
+    for (let a=0;a<activeN;a++){
+      const i = ACTIVE[a], k = cellKey(POS[i*3], POS[i*3+1], POS[i*3+2]);
+      const b = grid.get(k);
+      if (b) b.push(i); else grid.set(k, [i]);
+    }
+    for (const bucket of grid.values()){
+      for (let a=0;a<bucket.length;a++) for (let b=a+1;b<bucket.length;b++){
+        const i = bucket[a], v = bucket[b];
+        let dx = POS[v*3]-POS[i*3], dy = POS[v*3+1]-POS[i*3+1], dz = POS[v*3+2]-POS[i*3+2];
+        const d2 = dx*dx+dy*dy+dz*dz;
+        if (d2 > DMIN*DMIN || d2 < 1e-6) continue;
+        const d = Math.sqrt(d2), f = (DMIN - d) / d * 0.05;
+        dx *= f; dy *= f; dz *= f;
+        shift(i, -dx, -dy, -dz); shift(v, dx, dy, dz);
+        moved += Math.abs(dx)+Math.abs(dy)+Math.abs(dz);
+      }
+    }
+
+    /* a weak tether home, plus a hard leash, so a word is corrected
+       in place and never rockets out of the neighbourhood it explains */
+    for (let a=0;a<activeN;a++){
+      const i = ACTIVE[a];
+      shift(i, -DISP[i*4]*ANCHOR, -DISP[i*4+1]*ANCHOR, -DISP[i*4+2]*ANCHOR);
+      const dx = DISP[i*4], dy = DISP[i*4+1], dz = DISP[i*4+2];
+      const len = Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if (len > MAXDISP){
+        const f = MAXDISP/len - 1;
+        shift(i, dx*f, dy*f, dz*f);
+      }
+    }
+  }
+
+  for (let a=0;a<activeN;a++) inSet[ACTIVE[a]] = -1;
+  return moved / activeN;
+}
+
+/* ---------- glyph atlas ---------- */
+const CELL = 96, COLS = 8, ROWS = 4, ADV = 0.475;
+const GLYPHS = 'abcdefghijklmnopqrstuvwxyz';
+
+async function buildAtlas(){
+  try {
+    await Promise.race([
+      Promise.all([document.fonts.load('400 76px "Courier Prime"'),
+                   document.fonts.load('700 76px "Courier Prime"')]),
+      new Promise(r => setTimeout(r, 2500))
+    ]);
+  } catch(e){}
+  const c = document.createElement('canvas');
+  c.width = COLS*CELL; c.height = ROWS*CELL;
+  const g = c.getContext('2d');
+  g.clearRect(0,0,c.width,c.height);
+  g.font = '700 76px "Courier Prime","Courier New",Courier,monospace';
+  g.textAlign='center'; g.textBaseline='middle'; g.fillStyle='#fff';
+  for (let i=0;i<GLYPHS.length;i++){
+    const x = (i%COLS)*CELL + CELL/2, y = Math.floor(i/COLS)*CELL + CELL/2;
+    g.fillText(GLYPHS[i], x, y);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.flipY = false;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = true;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+/* ==================================================================
+   SCENE
+   ================================================================== */
+let scene, camera, renderer, field, stateAttr;
+const wordStart = new Int32Array(N), wordLen = new Int32Array(N);
+
+/* states: 0 field, 1 neighbour of selection, 2 selected, 3 nearest, 4 target */
+let here = 0, target = 0, origin = 0, selected = -1, done = false;
+let densityBase = MOBILE ? 3.5e8 : 8e8, density = densityBase;
+
+async function init(){
+  const D = await loadData();
+  boot.textContent = 'charting \u00b7 decoding';
+  await new Promise(r => setTimeout(r, 0));
+  decode(D);
+  syncPos();
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(66, innerWidth/innerHeight, 0.4, 4000);
+  renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 1);
+  document.body.appendChild(renderer.domElement);
+
+  const atlas = await buildAtlas();
+
+  let total = 0;
+  for (let i=0;i<N;i++){ wordStart[i] = total; wordLen[i] = WORDS[i].length; total += wordLen[i]; }
+
+  const aWordPos = new Float32Array(total*3);
+  const aChar    = new Float32Array(total*2);
+  const aState   = new Float32Array(total);
+  const aRank    = new Float32Array(total);
+  const aIdx     = new Float32Array(total);
+
+  let p = 0;
+  for (let i=0;i<N;i++){
+    const w = WORDS[i], L = w.length;
+    const x = POS0[i*3], y = POS0[i*3+1], z = POS0[i*3+2], rk = RANK[i];
+    for (let c=0;c<L;c++,p++){
+      aWordPos[p*3] = x; aWordPos[p*3+1] = y; aWordPos[p*3+2] = z;
+      aChar[p*2]   = (c - (L-1)/2) * ADV;
+      aChar[p*2+1] = w.charCodeAt(c) - 97;
+      aRank[p]     = rk;
+      aIdx[p]      = i;
+    }
+  }
+
+  dispTex = new THREE.DataTexture(DISP, DW, DH, THREE.RGBAFormat, THREE.FloatType);
+  dispTex.minFilter = dispTex.magFilter = THREE.NearestFilter;
+  dispTex.needsUpdate = true;
+
+  const geo = new THREE.InstancedBufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    -0.5,-0.5,0,  0.5,-0.5,0,  0.5,0.5,0,  -0.5,0.5,0
+  ]),3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0,0, 1,0, 1,1, 0,1]),2));
+  geo.setIndex([0,1,2, 0,2,3]);
+  geo.setAttribute('aWordPos', new THREE.InstancedBufferAttribute(aWordPos,3));
+  geo.setAttribute('aChar',    new THREE.InstancedBufferAttribute(aChar,2));
+  geo.setAttribute('aRank',    new THREE.InstancedBufferAttribute(aRank,1));
+  geo.setAttribute('aIdx',     new THREE.InstancedBufferAttribute(aIdx,1));
+  stateAttr = new THREE.InstancedBufferAttribute(aState,1);
+  stateAttr.setUsage(THREE.DynamicDrawUsage);
+  geo.setAttribute('aState', stateAttr);
+  geo.instanceCount = total;
+  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), SCALE*4);
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms:{
+      uAtlas:{value:atlas},
+      uDisp:{value:dispTex},
+      uDispSize:{value:new THREE.Vector2(DW,DH)},
+      uUnit:{value:1}, uRef:{value:150}, uTime:{value:0},
+      uGrid:{value:new THREE.Vector2(COLS,ROWS)},
+      uFar:{value:1400}, uDensity:{value:densityBase}, uN:{value:N},
+      uPulse:{value: REDUCED ? 0 : 1}
+    },
+    vertexShader:`
+      attribute vec3 aWordPos;
+      attribute vec2 aChar;
+      attribute float aState;
+      attribute float aRank;
+      attribute float aIdx;
+      uniform sampler2D uDisp;
+      uniform vec2 uDispSize, uGrid;
+      uniform float uUnit, uRef, uTime, uFar, uPulse, uDensity, uN;
+      varying vec2 vUv;
+      varying float vA;
+      void main(){
+        vec2 duv = (vec2(mod(aIdx, uDispSize.x), floor(aIdx / uDispSize.x)) + 0.5) / uDispSize;
+        vec3 wp = aWordPos + texture2D(uDisp, duv).xyz;
+
+        vec4 mv = modelViewMatrix * vec4(wp, 1.0);
+        float dist = max(-mv.z, 1.0);
+
+        // stellar magnitude: common words carry further, like brighter stars
+        bool lit = aState > 0.5;
+        if (!lit && aRank > uDensity * pow(dist, -2.2)){
+          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+          return;
+        }
+        float mag = 1.0 - aRank / uN;
+
+        float bright = 0.20 + 0.34 * pow(mag, 1.4);
+        float size   = 0.88 + 0.30 * mag;
+        if (aState > 3.5){                       // target
+          bright = 0.78 + 0.22 * sin(uTime * 2.0) * uPulse;
+          size = 1.8;
+        } else if (aState > 2.5){                // nearest word
+          bright = 1.0; size = 1.9;
+        } else if (aState > 1.5){                // selected
+          bright = 1.0; size = 1.75;
+        } else if (aState > 0.5){                // true neighbour of selection
+          bright = 0.90 + 0.10 * sin(uTime * 1.6 + aRank * 0.13) * uPulse;
+          size = 1.4;
+        }
+
+        float s = uUnit * pow(dist, 0.88) * pow(uRef, 0.12) * size;
+        vec2 corner = uv - 0.5;
+        mv.xy += vec2(aChar.x + corner.x, corner.y) * s;
+        gl_Position = projectionMatrix * mv;
+
+        float gi = aChar.y;
+        vUv = (vec2(mod(gi, uGrid.x), floor(gi / uGrid.x)) + vec2(uv.x, 1.0 - uv.y)) / uGrid;
+
+        float fade = clamp(1.0 - dist / uFar, 0.0, 1.0);
+        vA = bright * (0.18 + 0.82 * fade * fade);
+      }
+    `,
+    fragmentShader:`
+      uniform sampler2D uAtlas;
+      varying vec2 vUv;
+      varying float vA;
+      void main(){
+        float a = texture2D(uAtlas, vUv).a;
+        if (a * vA < 0.012) discard;
+        gl_FragColor = vec4(1.0, 1.0, 1.0, a * vA);
+      }
+    `,
+    transparent:true, blending:THREE.AdditiveBlending,
+    depthTest:false, depthWrite:false
+  });
+
+  field = new THREE.Mesh(geo, mat);
+  field.frustumCulled = false;
+  scene.add(field);
+  sizeUnit();
+
+  bindInput();
+  newVoyage();
+  boot.classList.add('off');
+  renderer.setAnimationLoop(tick);
+}
+
+function sizeUnit(){
+  const px = MOBILE ? 15 : 19;
+  const h = 2 * Math.tan(camera.fov * Math.PI / 360);
+  field.material.uniforms.uUnit.value = px * h / innerHeight;
+  densityBase = innerWidth < 640 ? 3.5e8 : 8e8;
+}
+
+/* ==================================================================
+   FLIGHT — free, inertial, no orbit target
+   ================================================================== */
+const cam = {
+  pos: new THREE.Vector3(),
+  vel: new THREE.Vector3(),
+  yaw: 0, pitch: 0
+};
+const keys = new Set();
+let thrust = 0, strafe = 0, lift = 0, boost = false, holdThrust = false;
+let autopilot = -1;
+const CRUISE = 78, DRAG = 0.16, ACC = 240;
+
+const fwd = new THREE.Vector3(), rightV = new THREE.Vector3(), upV = new THREE.Vector3(0,1,0);
+function heading(){
+  fwd.set(
+    Math.sin(cam.yaw) * Math.cos(cam.pitch),
+    Math.sin(cam.pitch),
+    Math.cos(cam.yaw) * Math.cos(cam.pitch)
+  );
+  rightV.crossVectors(fwd, upV).normalize();
+  return fwd;
+}
+
+const _look = new THREE.Vector3(), _to = new THREE.Vector3();
+function applyCamera(){
+  camera.position.copy(cam.pos);
+  _look.copy(cam.pos).add(heading());
+  camera.lookAt(_look);
+}
+
+function fly(dt){
+  heading();
+  let ax = 0, ay = 0, az = 0;
+  const a = ACC * (boost ? 3.0 : 1);
+
+  const th = holdThrust ? 1 : thrust;
+  if (th){ ax += fwd.x*th*a; ay += fwd.y*th*a; az += fwd.z*th*a; }
+  if (strafe){ ax += rightV.x*strafe*a; ay += rightV.y*strafe*a; az += rightV.z*strafe*a; }
+  if (lift){ ay += lift*a; }
+
+  if (autopilot >= 0){
+    const to = _to.set(POS[autopilot*3], POS[autopilot*3+1], POS[autopilot*3+2]).sub(cam.pos);
+    const d = to.length();
+    if (d < 26){ autopilot = -1; }
+    else {
+      to.normalize();
+      /* turn the nose, don't teleport the frame */
+      const wantYaw = Math.atan2(to.x, to.z);
+      const wantPitch = Math.asin(Math.max(-1, Math.min(1, to.y)));
+      let dy = wantYaw - cam.yaw;
+      while (dy > Math.PI) dy -= Math.PI*2;
+      while (dy < -Math.PI) dy += Math.PI*2;
+      const turn = Math.min(1, dt * 2.4);
+      cam.yaw += dy * turn;
+      cam.pitch += (wantPitch - cam.pitch) * turn;
+      heading();
+      const push = Math.min(1, d / 320) * a * 0.9;
+      ax += fwd.x*push; ay += fwd.y*push; az += fwd.z*push;
+      /* brake into the arrival */
+      if (d < 130) cam.vel.multiplyScalar(0.965);
+    }
+  }
+
+  cam.vel.x += ax*dt; cam.vel.y += ay*dt; cam.vel.z += az*dt;
+  const damp = Math.pow(DRAG, dt);
+  cam.vel.multiplyScalar(damp);
+  const max = CRUISE * (boost ? 3.4 : 1) * 1.6;
+  if (cam.vel.length() > max) cam.vel.setLength(max);
+  cam.pos.addScaledVector(cam.vel, dt);
+
+  /* the field is finite — drift too far and it eases you back */
+  const r = cam.pos.length();
+  if (r > SCALE*1.9) cam.pos.multiplyScalar(1 - Math.min(0.5, (r - SCALE*1.9) / r) * dt * 1.6);
+
+  applyCamera();
+}
+
+/* ==================================================================
+   PICKING — every rendered word, not just the lit ones
+   ================================================================== */
+const _mvp = new THREE.Matrix4();
+function pick(px, py, radius){
+  const r2 = radius*radius;
+  let best = -1, bestD = r2, bestZ = 1e9;
+  camera.updateMatrixWorld();
+  camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
+  _mvp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const e = _mvp.elements, vm = camera.matrixWorldInverse.elements;
+
+  for (let i=0;i<N;i++){
+    const x = POS[i*3], y = POS[i*3+1], z = POS[i*3+2];
+    const w = e[3]*x + e[7]*y + e[11]*z + e[15];
+    if (w <= 0.4) continue;
+    /* replicate the shader's magnitude cull so you can only click
+       what is actually on the screen */
+    const vz = -(vm[2]*x + vm[6]*y + vm[10]*z + vm[14]);
+    const dist = Math.max(vz, 1);
+    if (i !== selected && i !== target && i !== here &&
+        RANK[i] > density * Math.pow(dist, -2.2)) continue;
+
+    const cx = (e[0]*x + e[4]*y + e[8]*z + e[12]) / w;
+    const cy = (e[1]*x + e[5]*y + e[9]*z + e[13]) / w;
+    if (cx < -1.3 || cx > 1.3 || cy < -1.3 || cy > 1.3) continue;
+    const sx = (cx*0.5 + 0.5) * innerWidth;
+    const sy = (-cy*0.5 + 0.5) * innerHeight;
+    const d = (sx-px)*(sx-px) + (sy-py)*(sy-py);
+    if (d < bestD || (d < r2 && dist < bestZ - 40)){
+      bestD = d; bestZ = dist; best = i;
+    }
+  }
+  return best;
+}
+
+function nearestWord(){
+  let best = 0, bestD = Infinity;
+  const x = cam.pos.x, y = cam.pos.y, z = cam.pos.z;
+  for (let i=0;i<N;i++){
+    const dx = POS[i*3]-x, dy = POS[i*3+1]-y, dz = POS[i*3+2]-z;
+    const d = dx*dx + dy*dy + dz*dz;
+    if (d < bestD){ bestD = d; best = i; }
+  }
+  return best;
+}
+
+/* ==================================================================
+   STATE / PAINT
+   ================================================================== */
+let lastPainted = [];
+function setWordState(i, v){
+  const s = wordStart[i], e = s + wordLen[i];
+  for (let p=s;p<e;p++) stateAttr.array[p] = v;
+}
+function paint(){
+  for (const i of lastPainted) setWordState(i, 0);
+  lastPainted = [];
+  const touch = i => lastPainted.push(i);
+  if (selected >= 0){
+    for (let j=SSTART[selected]; j<SSTART[selected+1]; j++){
+      setWordState(SADJ[j], 1); touch(SADJ[j]);
+    }
+    setWordState(selected, 2); touch(selected);
+  }
+  setWordState(target, 4); touch(target);
+  setWordState(here, 3); touch(here);
+  stateAttr.needsUpdate = true;
+}
+
+function select(i){
+  selected = i;
+  autopilot = i;
+  const order = [];
+  for (let j=SSTART[i]; j<SSTART[i+1]; j++) order.push([SADJ[j], SSIM[j]]);
+  order.sort((a,b) => b[1]-a[1]);
+  document.getElementById('p-word').textContent = WORDS[i];
+  document.getElementById('p-rank').textContent =
+    'frequency rank ' + (RANK[i]+1) + ' \u00b7 ' + order.length + ' true neighbours';
+  const box = document.getElementById('p-near');
+  box.innerHTML = '';
+  for (const [v, s] of order.slice(0, 8)){
+    const a = document.createElement('a');
+    a.href = '#';
+    a.innerHTML = '<span class="v">' + s.toFixed(3) + '</span><span>' + WORDS[v] + '</span>';
+    a.onclick = ev => { ev.preventDefault(); select(v); paint(); };
+    box.appendChild(a);
+  }
+  document.getElementById('panel').classList.add('on');
+  paint();
+}
+
+function ui(){
+  document.getElementById('here').textContent = WORDS[here];
+  const h = HOPS ? HOPS[here] : -1;
+  document.getElementById('hops').textContent = h < 0 ? '\u221e' : h;
+  const t = new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2]);
+  document.getElementById('units').textContent = Math.round(t.distanceTo(cam.pos)) + ' units away';
+}
+
+function newVoyage(){
+  done = false;
+  document.getElementById('arrived').classList.remove('on');
+  document.getElementById('panel').classList.remove('on');
+  selected = -1; autopilot = -1;
+
+  origin = (Math.random()*N)|0;
+  HOPS = hopsFrom(origin);
+  /* a destination that is genuinely far through the graph,
+     which is not at all the same as far across the map */
+  let bestT = -1, bestH = -1;
+  for (let tries=0; tries<4000; tries++){
+    const c = (Math.random()*N)|0;
+    if (HOPS[c] > bestH && HOPS[c] > 0){ bestH = HOPS[c]; bestT = c; }
+    if (bestH >= 7) break;
+  }
+  target = bestT >= 0 ? bestT : (origin+1) % N;
+  HOPS = hopsFrom(target);
+
+  cam.pos.set(POS[origin*3], POS[origin*3+1], POS[origin*3+2] + 34);
+  cam.vel.set(0,0,0);
+  cam.yaw = Math.PI; cam.pitch = 0;
+  applyCamera();
+  here = origin;
+
+  document.getElementById('w-from').textContent = WORDS[origin];
+  document.getElementById('w-to').textContent = WORDS[target];
+  paint(); ui();
+}
+
+function arrive(){
+  done = true;
+  const t = new THREE.Vector3(POS[origin*3], POS[origin*3+1], POS[origin*3+2]);
+  const flown = Math.round(t.distanceTo(new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2])));
+  const hopsAway = hopsFrom(origin)[target];
+  document.getElementById('a-word').textContent = WORDS[target];
+  document.getElementById('a-stat').textContent =
+    WORDS[origin] + ' and ' + WORDS[target] + ' sit ' + flown +
+    ' units apart on the map and ' + hopsAway + ' hops apart in meaning.';
+  document.getElementById('arrived').classList.add('on');
+}
+
+/* ==================================================================
+   INPUT
+   ================================================================== */
+function bindInput(){
+  const el = renderer.domElement;
+  let down = false, moved = 0, lx = 0, ly = 0, tdown = 0, held = false, id = null;
+  const SENS = 0.0032;
+
+  el.addEventListener('pointerdown', e => {
+    if (id !== null) return;
+    id = e.pointerId; down = true; moved = 0; held = false;
+    lx = e.clientX; ly = e.clientY; tdown = performance.now();
+    el.setPointerCapture(id);
+  });
+
+  el.addEventListener('pointermove', e => {
+    if (!down || e.pointerId !== id) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    moved += Math.abs(dx) + Math.abs(dy);
+    cam.yaw   -= dx * SENS;
+    cam.pitch -= dy * SENS;
+    cam.pitch = Math.max(-1.48, Math.min(1.48, cam.pitch));
+    if (moved > 12) autopilot = -1;
+  });
+
+  const up = e => {
+    if (e.pointerId !== id) return;
+    const dur = performance.now() - tdown;
+    down = false; held = false; holdThrust = false;
+    try { el.releasePointerCapture(id); } catch(err){}
+    id = null;
+    if (dur < 260 && moved < 10){
+      const hit = pick(e.clientX, e.clientY, MOBILE ? 54 : 44);
+      if (hit >= 0) select(hit);
+      else { selected = -1; autopilot = -1; document.getElementById('panel').classList.remove('on'); paint(); }
+    }
+  };
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+
+  /* hold anywhere to fly forward */
+  /* a press that outlives a tap becomes throttle */
+  setInterval(() => {
+    if (down && !held && performance.now() - tdown > 240){ held = true; autopilot = -1; }
+    holdThrust = held;
+  }, 40);
+
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    autopilot = -1;
+    heading();
+    cam.vel.addScaledVector(fwd, -e.deltaY * 0.55);
+  }, {passive:false});
+
+  addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    keys.add(e.key.toLowerCase());
+    if (e.key.toLowerCase() === 'n') newVoyage();
+    if (e.key === 'Shift') boost = true;
+    if (['w','a','s','d','q','e','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())){
+      e.preventDefault(); autopilot = -1;
+    }
+    readKeys();
+  });
+  addEventListener('keyup', e => {
+    keys.delete(e.key.toLowerCase());
+    if (e.key === 'Shift') boost = false;
+    readKeys();
+  });
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+    sizeUnit();
+  });
+
+  /* hover readout — every word names itself under the cursor */
+  let hoverT = 0;
+  if (!MOBILE) el.addEventListener('pointermove', e => {
+    const now = performance.now();
+    if (now - hoverT < 90) return;
+    hoverT = now;
+    const hit = pick(e.clientX, e.clientY, 30);
+    document.getElementById('hover').textContent = hit >= 0 ? WORDS[hit] : '';
+  });
+
+  const q = document.getElementById('q');
+  q.addEventListener('input', () => { q.placeholder = 'find a word'; });
+  q.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const w = q.value.trim().toLowerCase();
+    const i = INDEX.get(w);
+    if (i === undefined){ q.value = ''; q.placeholder = 'not in this universe'; return; }
+    q.placeholder = 'find a word';
+    select(i); q.blur();
+  });
+
+  document.getElementById('new').onclick = newVoyage;
+  document.getElementById('again').onclick = newVoyage;
+}
+
+function keyThrust(){
+  return (keys.has('w') || keys.has('arrowup')) ? 1 : (keys.has('s') || keys.has('arrowdown')) ? -1 : 0;
+}
+function readKeys(){
+  thrust = keyThrust();
+  strafe = (keys.has('d') || keys.has('arrowright')) ? 1 : (keys.has('a') || keys.has('arrowleft')) ? -1 : 0;
+  lift   = keys.has('e') ? 1 : keys.has('q') ? -1 : 0;
+}
+
+/* ==================================================================
+   LOOP
+   ================================================================== */
+const clock = new THREE.Clock();
+let frame = 0, uiT = 0;
+
+function tick(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  field.material.uniforms.uTime.value += dt;
+  frame++;
+
+  fly(dt);
+
+  /* stillness resolves the rare words; speed burns them off */
+  const sp = cam.vel.length();
+  const want = densityBase * (1 + 2.4 * Math.max(0, 1 - sp / CRUISE));
+  density += (want - density) * Math.min(1, dt * 2.2);
+  field.material.uniforms.uDensity.value = density;
+
+  /* local truing, a few hundred words at a time */
+  if (frame % 2 === 0){
+    gatherActive(cam.pos.x, cam.pos.y, cam.pos.z);
+    const m = relax();
+    settle = settle * 0.9 + m * 0.1;
+    if (m > 1e-4) dispDirty = true;
+  }
+  if (dispDirty){ dispTex.needsUpdate = true; dispDirty = false; }
+
+  if (frame % 4 === 0){
+    const nw = nearestWord();
+    if (nw !== here){ here = nw; paint(); }
+  }
+  if (performance.now() - uiT > 120){ uiT = performance.now(); ui(); }
+
+  if (!done && here === target){
+    const t = new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2]);
+    if (t.distanceTo(cam.pos) < 30) arrive();
+  }
+
+  renderer.render(scene, camera);
+}
+
+init().catch(err => {
+  boot.classList.remove('off');
+  boot.textContent = (err && err.message === 'no data source')
+    ? 'the word data could not be found'
+    : 'this piece needs webgl';
+  console.error(err);
+});
+</script>
+</body>
+</html>
