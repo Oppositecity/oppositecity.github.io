@@ -116,7 +116,7 @@
       <div id="voyage"><b id="w-from">—</b><span class="to">&rarr;</span><b id="w-to">—</b></div>
     </div>
     <div id="hint">
-      <span class="wide">drag to look &middot; hold or W to fly<br>click any word to travel to it<br>slow down and rarer words appear</span><span class="narrow">drag to look &middot; hold to fly<br>tap any word to travel<br>slow down to see more</span>
+      <span class="wide">drag to look &middot; hold or W to fly<br>all 20,480 words are here, all at once<br>click any one of them to travel</span><span class="narrow">drag to look &middot; hold to fly<br>all 20,480 words, all at once<br>tap any one to travel</span>
     </div>
   </div>
 
@@ -499,7 +499,7 @@ const wordStart = new Int32Array(N), wordLen = new Int32Array(N);
 
 /* states: 0 field, 1 neighbour of selection, 2 selected, 3 nearest, 4 target */
 let here = 0, target = 0, origin = 0, selected = -1, done = false;
-let densityBase = MOBILE ? 3.5e8 : 8e8, density = densityBase;
+let calm = 1;
 
 async function init(){
   const D = await loadData();
@@ -567,7 +567,7 @@ async function init(){
       uDispSize:{value:new THREE.Vector2(DW,DH)},
       uUnit:{value:1}, uRef:{value:150}, uTime:{value:0},
       uGrid:{value:new THREE.Vector2(COLS,ROWS)},
-      uFar:{value:1400}, uDensity:{value:densityBase}, uN:{value:N},
+      uFar:{value:2200}, uCalm:{value:1}, uN:{value:N},
       uPulse:{value: REDUCED ? 0 : 1}
     },
     vertexShader:`
@@ -578,7 +578,7 @@ async function init(){
       attribute float aIdx;
       uniform sampler2D uDisp;
       uniform vec2 uDispSize, uGrid;
-      uniform float uUnit, uRef, uTime, uFar, uPulse, uDensity, uN;
+      uniform float uUnit, uRef, uTime, uFar, uPulse, uCalm, uN;
       varying vec2 vUv;
       varying float vA;
       void main(){
@@ -588,16 +588,15 @@ async function init(){
         vec4 mv = modelViewMatrix * vec4(wp, 1.0);
         float dist = max(-mv.z, 1.0);
 
-        // stellar magnitude: common words carry further, like brighter stars
+        // Nothing is culled. The entire lexicon is on screen at once,
+        // so rarity sets WEIGHT rather than admission — common words
+        // burn brighter, rare ones recede but never leave.
         bool lit = aState > 0.5;
-        if (!lit && aRank > uDensity * pow(dist, -2.2)){
-          gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-          return;
-        }
         float mag = 1.0 - aRank / uN;
 
-        float bright = 0.20 + 0.34 * pow(mag, 1.4);
-        float size   = 0.88 + 0.30 * mag;
+        float bright = 0.24 + 0.36 * pow(mag, 1.5);
+        float size   = 0.80 + 0.34 * mag;
+        if (!lit) bright *= mix(0.55, 1.0, max(uCalm, pow(mag, 2.0)));
         if (aState > 3.5){                       // target
           bright = 0.78 + 0.22 * sin(uTime * 2.0) * uPulse;
           size = 1.8;
@@ -610,7 +609,7 @@ async function init(){
           size = 1.4;
         }
 
-        float s = uUnit * pow(dist, 0.88) * pow(uRef, 0.12) * size;
+        float s = uUnit * pow(dist, 0.60) * pow(uRef, 0.40) * size;
         vec2 corner = uv - 0.5;
         mv.xy += vec2(aChar.x + corner.x, corner.y) * s;
         gl_Position = projectionMatrix * mv;
@@ -619,7 +618,7 @@ async function init(){
         vUv = (vec2(mod(gi, uGrid.x), floor(gi / uGrid.x)) + vec2(uv.x, 1.0 - uv.y)) / uGrid;
 
         float fade = clamp(1.0 - dist / uFar, 0.0, 1.0);
-        vA = bright * (0.18 + 0.82 * fade * fade);
+        vA = bright * (0.10 + 0.90 * fade * fade);
       }
     `,
     fragmentShader:`
@@ -651,7 +650,6 @@ function sizeUnit(){
   const px = MOBILE ? 15 : 19;
   const h = 2 * Math.tan(camera.fov * Math.PI / 360);
   field.material.uniforms.uUnit.value = px * h / innerHeight;
-  densityBase = innerWidth < 640 ? 3.5e8 : 8e8;
 }
 
 /* ==================================================================
@@ -733,12 +731,12 @@ function fly(dt){
 }
 
 /* ==================================================================
-   PICKING — every rendered word, not just the lit ones
+   PICKING — every word in the lexicon, nothing excluded
    ================================================================== */
 const _mvp = new THREE.Matrix4();
 function pick(px, py, radius){
   const r2 = radius*radius;
-  let best = -1, bestD = r2, bestZ = 1e9;
+  let best = -1, bestScore = 1e9;
   camera.updateMatrixWorld();
   camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
   _mvp.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
@@ -748,22 +746,21 @@ function pick(px, py, radius){
     const x = POS[i*3], y = POS[i*3+1], z = POS[i*3+2];
     const w = e[3]*x + e[7]*y + e[11]*z + e[15];
     if (w <= 0.4) continue;
-    /* replicate the shader's magnitude cull so you can only click
-       what is actually on the screen */
     const vz = -(vm[2]*x + vm[6]*y + vm[10]*z + vm[14]);
     const dist = Math.max(vz, 1);
-    if (i !== selected && i !== target && i !== here &&
-        RANK[i] > density * Math.pow(dist, -2.2)) continue;
 
     const cx = (e[0]*x + e[4]*y + e[8]*z + e[12]) / w;
     const cy = (e[1]*x + e[5]*y + e[9]*z + e[13]) / w;
     if (cx < -1.3 || cx > 1.3 || cy < -1.3 || cy > 1.3) continue;
     const sx = (cx*0.5 + 0.5) * innerWidth;
     const sy = (-cy*0.5 + 0.5) * innerHeight;
-    const d = (sx-px)*(sx-px) + (sy-py)*(sy-py);
-    if (d < bestD || (d < r2 && dist < bestZ - 40)){
-      bestD = d; bestZ = dist; best = i;
-    }
+    const d2 = (sx-px)*(sx-px) + (sy-py)*(sy-py);
+    if (d2 > r2) continue;
+    /* with the whole lexicon drawn, a tap lands on dozens of words at
+       once. depth decides: you get the one in front of you, not the
+       distant speck that happened to fall a pixel closer. */
+    const score = Math.sqrt(d2) + dist * 0.04;
+    if (score < bestScore){ bestScore = score; best = i; }
   }
   return best;
 }
@@ -999,11 +996,11 @@ function tick(){
 
   fly(dt);
 
-  /* stillness resolves the rare words; speed burns them off */
+  /* everything stays on screen; stillness just lets the rare ones rise */
   const sp = cam.vel.length();
-  const want = densityBase * (1 + 2.4 * Math.max(0, 1 - sp / CRUISE));
-  density += (want - density) * Math.min(1, dt * 2.2);
-  field.material.uniforms.uDensity.value = density;
+  const want = Math.max(0, 1 - sp / CRUISE);
+  calm += (want - calm) * Math.min(1, dt * 2.2);
+  field.material.uniforms.uCalm.value = calm;
 
   /* local truing, a few hundred words at a time */
   if (frame % 2 === 0){
