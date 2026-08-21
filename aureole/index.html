@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUREOLE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;
+    --fg:#ffffff;
+    --dim:#b9b9b9;          /* supporting copy — deliberately high, never grey mud */
+    --pin:#8fb9ff;          /* pinned: zero admissible moves */
+    --unk:#ff9d6b;          /* unknown: we could not ask */
+    --pick:#ffffff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+    font-size:16px; line-height:1.5;
+  }
+  a{color:var(--fg)}
+
+  .wrap{max-width:900px; margin:0 auto; padding:34px 22px 140px}
+
+  h1{
+    font-size:15px; font-weight:700; letter-spacing:.55em;
+    margin:0 0 6px; text-transform:uppercase;
+  }
+  .sub{font-size:12px; color:var(--dim); margin:0 0 30px; letter-spacing:.06em}
+
+  /* input keeps a visible box — a bare field reads as decoration */
+  .bar{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px}
+  input[type=text]{
+    flex:1 1 300px; min-width:0;
+    font-family:inherit; font-size:13px; color:var(--fg);
+    background:#0d0d0d; border:1px solid #4a4a4a; border-radius:0;
+    padding:10px 12px;
+  }
+  input[type=text]::placeholder{color:#8a8a8a}
+  input[type=text]:focus{outline:none; border-color:var(--fg); background:#141414}
+  button{
+    font-family:inherit; font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    background:none; color:var(--fg); border:none; padding:10px 6px; cursor:pointer;
+  }
+  button:hover{color:var(--dim)}
+  button[disabled]{color:#666; cursor:default}
+
+  .note{font-size:11.5px; color:var(--dim); margin:0 0 34px; letter-spacing:.03em}
+
+  .who{font-size:12px; color:var(--dim); margin-bottom:26px; letter-spacing:.05em}
+  .who b{color:var(--fg); font-weight:400}
+
+  /* the field: piles of synonyms in black space */
+  .field{
+    display:flex; flex-wrap:wrap; align-items:center;
+    gap:30px 42px; padding:8px 0 26px;
+  }
+  .cluster{position:relative; display:inline-block}
+  .syn{
+    position:absolute; left:50%; top:50%;
+    font-family:inherit; white-space:nowrap; cursor:pointer;
+    color:var(--fg); mix-blend-mode:screen;   /* overlaps brighten on black */
+    will-change:transform;
+    transition:color .15s, opacity .2s;
+  }
+  .syn:hover{color:#fff; opacity:1 !important; font-weight:700; z-index:30; mix-blend-mode:normal}
+  .cluster.chosen .syn{opacity:.16}
+  .cluster.chosen .syn.picked{opacity:1; color:var(--pick); font-weight:700; mix-blend-mode:normal}
+
+  /* a word with zero admissible moves is not a cloud — it is just itself */
+  .lone{position:relative; display:inline-block; white-space:nowrap; letter-spacing:.02em}
+  .lone.pinned{color:var(--pin)}
+  .lone.unknown{color:var(--unk)}
+  .lone .mk{font-size:9px; vertical-align:super; opacity:.85}
+
+  .punct{color:var(--dim); align-self:center}
+
+  .status{
+    font-size:11.5px; color:var(--dim); letter-spacing:.04em;
+    margin-top:20px; line-height:1.9;
+  }
+  .status b{color:var(--fg); font-weight:400}
+  .key i{font-style:normal}
+  .key .p{color:var(--pin)} .key .u{color:var(--unk)}
+
+  .toggles{display:flex; gap:22px; flex-wrap:wrap; margin-top:22px; font-size:11.5px; color:var(--dim); letter-spacing:.05em}
+  .toggles label{display:inline-flex; align-items:center; gap:7px; cursor:pointer}
+  .toggles input{accent-color:#fff; width:13px; height:13px}
+
+  .msg{font-size:12.5px; color:var(--dim); padding:40px 0; letter-spacing:.05em; line-height:2}
+  .msg.err{color:var(--unk)}
+
+  .foot{margin-top:54px; font-size:11px; color:var(--dim); letter-spacing:.04em; line-height:2}
+  .foot a{color:var(--fg)}
+
+  @media (prefers-reduced-motion:reduce){ .syn{transition:color .15s} }
+  @media (max-width:560px){
+    .wrap{padding:26px 16px 120px}
+    .field{gap:26px 32px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Aureole</h1>
+  <p class="sub">a thesaurus reader for atproto</p>
+
+  <div class="bar">
+    <input id="src" type="text" spellcheck="false" placeholder="bsky.app post url / at:// uri / @handle">
+    <button id="go">read</button>
+    <button id="demo">demo</button>
+  </div>
+  <p class="note">
+    the source text is not shown. each word becomes a pile of its own synonyms,
+    overlapping. hover to lift one out; click to fix a reading.
+  </p>
+
+  <div id="out"></div>
+
+  <div class="foot">
+    posts via the public atproto appview · synonyms via
+    <a href="https://www.datamuse.com/api/" target="_blank" rel="noopener">datamuse</a><br>
+    <a href="https://opposite.city/">opposite.city</a>
+  </div>
+</div>
+
+<script>
+"use strict";
+const API="https://public.api.bsky.app/xrpc";
+const $=s=>document.querySelector(s);
+const out=$("#out");
+let raf=null, parts=[];
+
+/* ---------------- cache: survives reloads, so throttling hurts once ------- */
+const CK="aureole.syn.v2.";
+const TTL=1000*60*60*24*30;
+function cacheGet(w){
+  try{ const r=JSON.parse(localStorage.getItem(CK+w)); if(!r) return null;
+       if(Date.now()-r.t>TTL) return null; return r; }catch{ return null; }
+}
+function cacheSet(w,rec){ try{ localStorage.setItem(CK+w,JSON.stringify({...rec,t:Date.now()})); }catch{} }
+
+/* ---------------- atproto ------------------------------------------------ */
+async function resolveHandle(h){
+  const r=await fetch(`${API}/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(h)}`);
+  if(!r.ok) throw new Error("could not resolve that handle");
+  return (await r.json()).did;
+}
+async function toPostUri(input){
+  input=input.trim();
+  if(input.startsWith("at://")) return input;
+  const m=input.match(/profile\/([^\/]+)\/post\/([^\/?#]+)/);
+  if(m){
+    const actor=decodeURIComponent(m[1]), rkey=m[2];
+    const did=actor.startsWith("did:")?actor:await resolveHandle(actor);
+    return `at://${did}/app.bsky.feed.post/${rkey}`;
+  }
+  const handle=input.replace(/^@/,"").replace(/^https?:\/\//,"").split(/[\/?#]/)[0];
+  if(handle.includes(".")||handle.startsWith("did:")){
+    const did=handle.startsWith("did:")?handle:await resolveHandle(handle);
+    const f=await fetch(`${API}/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(did)}&limit=1&filter=posts_no_replies`);
+    if(!f.ok) throw new Error("could not load that author feed");
+    const feed=(await f.json()).feed;
+    if(!feed||!feed.length) throw new Error("that account has no readable posts");
+    return feed[0].post.uri;
+  }
+  throw new Error("paste a post url, an at:// uri, or a handle");
+}
+async function fetchPost(uri){
+  const r=await fetch(`${API}/app.bsky.feed.getPostThread?uri=${encodeURIComponent(uri)}&depth=0`);
+  if(!r.ok) throw new Error("that post could not be fetched");
+  const t=(await r.json()).thread;
+  if(!t||!t.post) throw new Error("no post found there");
+  return t.post;
+}
+
+/* ---------------- thesaurus ----------------------------------------------
+   Three outcomes, kept strictly apart. Collapsing them is what makes a
+   rate-limit look like a semantic constraint:
+     ok      -> synonyms exist
+     pinned  -> the lexicon answered, and there are none (zero moves)
+     unknown -> we never got an answer (429 / offline). NOT a constraint.
+-------------------------------------------------------------------------- */
+const LOCAL={
+  every:["each","all","any"],sentence:["phrase","clause","line","utterance"],
+  quiet:["still","hushed","silent","calm"],crowd:["throng","swarm","horde","mass"],
+  beneath:["under","below","underneath"],each:["every","all"],
+  ordinary:["common","plain","usual","everyday"],word:["term","name","token"],
+  hovers:["floats","lingers","drifts","poises"],soft:["gentle","mild","faint","tender"],
+  swarm:["throng","cloud","horde","flock"],nearby:["close","adjacent","neighboring"],
+  meanings:["senses","imports","significations"],waiting:["lingering","pausing","pending"],
+  chosen:["picked","selected","elected"],reading:["perusing","scanning"],
+  becomes:["turns","grows"],kind:["sort","type","manner"],
+  weather:["climate","conditions"],clouds:["mists","vapors","plumes"],
+  gather:["collect","amass","cluster"],drift:["float","wander","stray"],
+  settle:["rest","alight","subside"],new:["fresh","novel","recent"],
+  shapes:["forms","figures","contours"]
+};
+
+let throttled=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function askDatamuse(word,attempt=0){
+  try{
+    const r=await fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}&max=8`);
+    if(r.status===429||r.status===503){
+      if(attempt<2){ await sleep(700*(attempt+1)); return askDatamuse(word,attempt+1); }
+      throttled=true; return {state:"unknown",words:[]};
+    }
+    if(!r.ok) return {state:"unknown",words:[]};
+    const d=await r.json();
+    const w=d.map(x=>x.word).filter(x=>x.toLowerCase()!==word).slice(0,5);
+    return w.length?{state:"ok",words:w}:{state:"pinned",words:[]};
+  }catch{ return {state:"unknown",words:[]}; }
+}
+
+async function lookup(word){
+  const key=word.toLowerCase();
+  const hit=cacheGet(key);
+  if(hit) return {state:hit.state,words:hit.words};
+
+  let rec=await askDatamuse(key);
+  if(rec.state==="unknown" && LOCAL[key])            // local rescue for offline
+    rec={state:"ok",words:LOCAL[key].filter(w=>w!==key).slice(0,5)};
+
+  if(rec.state!=="unknown") cacheSet(key,rec);       // never cache a failure
+  return rec;
+}
+
+/* bounded concurrency — a 40-word post must not open 40 sockets at once,
+   which is what earns the 429 in the first place */
+async function mapLimit(items,limit,fn){
+  const res=new Array(items.length); let i=0;
+  await Promise.all(Array.from({length:Math.min(limit,items.length)},async()=>{
+    while(i<items.length){ const n=i++; res[n]=await fn(items[n],n); }
+  }));
+  return res;
+}
+
+const esc=s=>(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------------- field --------------------------------------------------- */
+function stop(){ if(raf) cancelAnimationFrame(raf); raf=null; parts=[]; }
+
+async function buildField(text,field,status){
+  stop(); field.innerHTML=""; throttled=false;
+
+  const toks=text.split(/(\s+|[^\w'-]+)/).filter(t=>t&&!/^\s+$/.test(t));
+  const isWord=t=>/^\w[\w'-]*$/.test(t)&&t.length>2;
+
+  // dedupe: repeated words cost one lookup, not many
+  const uniq=[...new Set(toks.filter(isWord).map(t=>t.toLowerCase()))];
+  status.innerHTML=`<b>reading ${uniq.length} distinct words…</b>`;
+  const recs=await mapLimit(uniq,5,lookup);
+  const table=new Map(uniq.map((w,i)=>[w,recs[i]]));
+
+  let mobile=0,pinned=0,unknown=0,moves=0,flip=false;
+
+  for(const tok of toks){
+    if(isWord(tok)){
+      const rec=table.get(tok.toLowerCase())||{state:"unknown",words:[]};
+      if(rec.state==="ok"){
+        mobile++; moves+=rec.words.length;
+        const c=document.createElement("span"); c.className="cluster";
+        field.appendChild(c);
+        pile(c,rec.words,()=>flip=!flip);
+      }else{
+        if(rec.state==="pinned") pinned++; else unknown++;
+        const l=document.createElement("span");
+        l.className="lone "+rec.state;
+        l.innerHTML=esc(tok)+`<span class="mk">${rec.state==="pinned"?"0":"?"}</span>`;
+        l.title=rec.state==="pinned"?"no synonyms in the lexicon — zero moves"
+                                    :"lookup failed — constraint unknown";
+        field.appendChild(l);
+      }
+    }else{
+      const p=document.createElement("span"); p.className="punct"; p.textContent=tok.trim();
+      if(p.textContent) field.appendChild(p);
+    }
+  }
+
+  const avg=mobile?(moves/mobile).toFixed(1):"0";
+  status.innerHTML=
+    `<b>${mobile}</b> words with moves · avg <b>${avg}</b> each` +
+    ` · <span class="key"><i class="p">${pinned} pinned</i></span>` +
+    (unknown?` · <span class="key"><i class="u">${unknown} unknown</i></span>`:"") +
+    (throttled?`<br>the thesaurus rate-limited this read — <b>unknown</b> is a missing answer, not a locked word. reload to retry; answers already found are cached.`:"");
+  animate();
+}
+
+function pile(cluster,words,flip){
+  const n=words.length;
+  const base=Math.max(13,22-n*1.1);
+  let maxW=0;
+  words.forEach((w,i)=>{
+    const el=document.createElement("span");
+    el.className="syn"; el.textContent=w;
+    el.style.fontSize=base+"px";
+    el.style.opacity=String(0.5+Math.random()*0.35);   // never mud
+    if(flip()) el.style.fontStyle="italic";
+    cluster.appendChild(el);
+    maxW=Math.max(maxW,el.getBoundingClientRect().width);
+    const a=(i/n)*Math.PI*2+Math.random()*0.5;
+    const r=i===0?0:(5+Math.random()*13);
+    const hx=Math.cos(a)*r, hy=Math.sin(a)*r*0.65;
+    el.style.transform=`translate(calc(-50% + ${hx}px), calc(-50% + ${hy}px))`;
+    el.addEventListener("click",e=>{
+      e.stopPropagation();
+      const was=cluster.classList.contains("chosen")&&el.classList.contains("picked");
+      cluster.querySelectorAll(".syn").forEach(s=>s.classList.remove("picked"));
+      if(was) cluster.classList.remove("chosen");
+      else{ cluster.classList.add("chosen"); el.classList.add("picked"); }
+    });
+    parts.push({el,hx,hy,phase:Math.random()*Math.PI*2,sp:.5+Math.random()*.8});
+  });
+  cluster.style.width=(maxW+26)+"px";
+  cluster.style.height=(base+22)+"px";
+}
+
+function animate(){
+  let last=performance.now();
+  const step=now=>{
+    const dt=Math.min(48,now-last); last=now;
+    const on=window.__drift, amp=window.__loose?1.9:1;
+    for(const f of parts){
+      f.phase+=0.0012*dt*f.sp;
+      const ox=on?Math.cos(f.phase)*3.2*amp:0;
+      const oy=on?Math.sin(f.phase*1.25)*2.6*amp:0;
+      f.el.style.transform=`translate(calc(-50% + ${f.hx+ox}px), calc(-50% + ${f.hy+oy}px))`;
+    }
+    raf=requestAnimationFrame(step);
+  };
+  if(window.__drift===undefined) window.__drift=true;
+  raf=requestAnimationFrame(step);
+}
+
+/* ---------------- render -------------------------------------------------- */
+function shell(post){
+  const a=post.author||{}, rec=post.record||{};
+  out.innerHTML=`
+    <div class="who"><b>${esc(a.displayName||a.handle||"unknown")}</b> @${esc(a.handle||"")}</div>
+    <div class="field" id="field"></div>
+    <div class="status" id="status"></div>
+    <div class="toggles">
+      <label><input type="checkbox" id="t-drift" checked> drift</label>
+      <label><input type="checkbox" id="t-loose"> looser</label>
+    </div>`;
+  window.__drift=true; window.__loose=false;
+  buildField(rec.text||"(no text)",$("#field"),$("#status"));
+  $("#t-drift").onchange=e=>window.__drift=e.target.checked;
+  $("#t-loose").onchange=e=>window.__loose=e.target.checked;
+}
+function say(t,cls=""){ stop(); out.innerHTML=`<div class="msg ${cls}">${esc(t)}</div>`; }
+
+const DEMO={author:{displayName:"Aureole",handle:"aureole.demo"},
+  record:{text:"Every sentence is a quiet crowd. Beneath each ordinary word hovers a soft swarm of nearby meanings, waiting to be chosen. Reading becomes a kind of weather: clouds gather, drift, and settle into new shapes."}};
+
+async function load(v){
+  $("#go").disabled=true;
+  say("resolving…");
+  try{ const uri=await toPostUri(v); say("fetching…"); shell(await fetchPost(uri)); }
+  catch(e){ say(e.message||"something went wrong","err"); }
+  finally{ $("#go").disabled=false; }
+}
+$("#go").onclick=()=>{const v=$("#src").value.trim(); if(v) load(v);};
+$("#src").onkeydown=e=>{ if(e.key==="Enter"){const v=$("#src").value.trim(); if(v) load(v);} };
+$("#demo").onclick=()=>shell(DEMO);
+say("paste a post, or run the demo.");
+</script>
+</body>
+</html>
