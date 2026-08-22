@@ -96,6 +96,14 @@
   }
   #boot.off{opacity:0;pointer-events:none}
 
+  #err{
+    position:fixed;left:0;right:0;top:0;z-index:40;pointer-events:none;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+    background:#000;color:#fff;font-size:11px;line-height:1.5;
+    word-break:break-word;display:none;
+  }
+  #err.on{display:block}
+
   @media (max-width:640px){
     #ui{font-size:12px;padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom))}
     #hint{font-size:10px;line-height:1.6}
@@ -114,6 +122,7 @@
 <body>
 
 <div id="boot">charting 20,480 words</div>
+<div id="err"></div>
 
 <div id="ui">
   <div id="top">
@@ -171,6 +180,22 @@ const N = 20480, K = 8, SCALE = 520.0;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MOBILE = matchMedia('(max-width:640px)').matches;
 const boot = document.getElementById('boot');
+
+/* ==================================================================
+   The container that builds this piece cannot reach opposite.city, so
+   a failure here is invisible to whoever is fixing it. Say it out loud
+   on the page instead of only in a console nobody has open on a phone.
+   ================================================================== */
+let errShown = false, safeMode = false;
+function report(msg){
+  if (errShown) return;
+  errShown = true;
+  const box = document.getElementById('err');
+  box.textContent = String(msg && msg.message || msg).slice(0, 400);
+  box.classList.add('on');
+}
+addEventListener('error', e => report(e.message || e.error));
+addEventListener('unhandledrejection', e => report(e.reason));
 
 /* ==================================================================
    DATA
@@ -342,7 +367,7 @@ function hopsFrom(t){
 const DW = 256, DH = 80;                       // 256 * 80 == 20480
 const DISP = new Float32Array(DW*DH*4);
 const POS  = new Float32Array(N*3);            // POS0 + DISP, cpu side
-let dispTex = null, dispDirty = true;
+let dispTex = null, dispDirty = true, TRUING = true;
 
 const ACTIVE = new Int32Array(4096);
 const CAND = new Int32Array(4096), CANDD = new Float32Array(4096);
@@ -549,7 +574,17 @@ async function init(){
     }
   }
 
-  dispTex = new THREE.DataTexture(DISP, DW, DH, THREE.RGBAFormat, THREE.FloatType);
+  /* The truing pass reads a float texture in the VERTEX shader. That is
+     ordinary on WebGL2 and absent on some older contexts, where it fails
+     at link time and takes the whole render with it. Degrade instead. */
+  const gl = renderer.getContext();
+  const vertexTexUnits = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+  TRUING = vertexTexUnits > 0 &&
+           (renderer.capabilities.isWebGL2 || renderer.extensions.has('OES_texture_float'));
+
+  dispTex = TRUING
+    ? new THREE.DataTexture(DISP, DW, DH, THREE.RGBAFormat, THREE.FloatType)
+    : new THREE.DataTexture(new Uint8Array(DW*DH*4), DW, DH, THREE.RGBAFormat, THREE.UnsignedByteType);
   dispTex.minFilter = dispTex.magFilter = THREE.NearestFilter;
   dispTex.needsUpdate = true;
 
@@ -576,7 +611,7 @@ async function init(){
       uDispSize:{value:new THREE.Vector2(DW,DH)},
       uUnit:{value:1}, uRef:{value:150}, uTime:{value:0},
       uGrid:{value:new THREE.Vector2(COLS,ROWS)},
-      uFar:{value:2200}, uCalm:{value:1}, uN:{value:N},
+      uFar:{value:2200}, uCalm:{value:1}, uN:{value:N}, uTrue:{value: TRUING ? 1 : 0},
       uPulse:{value: REDUCED ? 0 : 1}
     },
     vertexShader:`
@@ -587,12 +622,15 @@ async function init(){
       attribute float aIdx;
       uniform sampler2D uDisp;
       uniform vec2 uDispSize, uGrid;
-      uniform float uUnit, uRef, uTime, uFar, uPulse, uCalm, uN;
+      uniform float uUnit, uRef, uTime, uFar, uPulse, uCalm, uN, uTrue;
       varying vec2 vUv;
       varying float vA;
       void main(){
-        vec2 duv = (vec2(mod(aIdx, uDispSize.x), floor(aIdx / uDispSize.x)) + 0.5) / uDispSize;
-        vec3 wp = aWordPos + texture2D(uDisp, duv).xyz;
+        vec3 wp = aWordPos;
+        if (uTrue > 0.5){
+          vec2 duv = (vec2(mod(aIdx, uDispSize.x), floor(aIdx / uDispSize.x)) + 0.5) / uDispSize;
+          wp += texture2D(uDisp, duv).xyz;
+        }
 
         vec4 mv = modelViewMatrix * vec4(wp, 1.0);
         float dist = max(-mv.z, 1.0);
@@ -1058,6 +1096,14 @@ const clock = new THREE.Clock();
 let frame = 0, uiT = 0;
 
 function tick(){
+  /* three re-requests the animation frame AFTER this callback, so a
+     single uncaught throw stops the loop forever and looks exactly like
+     a frozen, unclickable piece. Catch, name it, and keep flying. */
+  try { frameBody(); }
+  catch (err){ report(err); safeMode = true; }
+}
+
+function frameBody(){
   const dt = Math.min(clock.getDelta(), 0.05);
   field.material.uniforms.uTime.value += dt;
   frame++;
@@ -1071,7 +1117,7 @@ function tick(){
   field.material.uniforms.uCalm.value = calm;
 
   /* local truing, a few hundred words at a time */
-  if (frame % 2 === 0){
+  if (TRUING && !safeMode && frame % 2 === 0){
     gatherActive(cam.pos.x, cam.pos.y, cam.pos.z);
     const m = relax();
     settle = settle * 0.9 + m * 0.1;
@@ -1089,7 +1135,9 @@ function tick(){
        are pressing, the gesture layer is dead. if it reads a number and
        nothing appears to move, the camera is. */
     document.getElementById('hover').textContent =
-      hoverLabel || (Math.round(sp) + ' u/s' + ((cruise || holdThrust) ? ' \u00b7 thrust' : ''));
+      hoverLabel || (Math.round(sp) + ' u/s'
+        + ((cruise || holdThrust) ? ' \u00b7 thrust' : '')
+        + (TRUING ? '' : ' \u00b7 flat'));
   }
 
   if (!done && here === target){
@@ -1105,6 +1153,7 @@ init().catch(err => {
   boot.textContent = (err && err.message === 'no data source')
     ? 'the word data could not be found'
     : 'this piece needs webgl';
+  report(err);
   console.error(err);
 });
 </script>
