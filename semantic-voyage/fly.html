@@ -67,6 +67,8 @@
   #find input::placeholder{color:rgba(255,255,255,.6)}
   #find input:focus{border-color:#fff}
 
+  #acts{display:flex;gap:1.6em;justify-content:flex-end;align-items:baseline;margin-top:8px}
+  #fly{font-size:15px;letter-spacing:.34em;color:#fff}
   button{
     pointer-events:auto;background:none;border:0;padding:4px 0;
     font:inherit;font-size:10px;letter-spacing:.22em;text-transform:uppercase;
@@ -102,6 +104,8 @@
     #hops{font-size:26px}
     #panel{max-width:58vw}
     #p-word{font-size:18px}
+    #fly{font-size:17px;padding:10px 0}
+    #acts{gap:1.2em}
     #find input{width:120px}
   }
   @media (prefers-reduced-motion:reduce){#arrived,#boot,#panel{transition:none}}
@@ -118,7 +122,7 @@
       <div id="voyage"><b id="w-from">—</b><span class="to">&rarr;</span><b id="w-to">—</b></div>
     </div>
     <div id="hint">
-      <span class="wide">drag to look &middot; hold or W to fly<br>all 20,480 words are here, all at once<br>click any one of them to travel</span><span class="narrow">drag to look &middot; hold to fly<br>all 20,480 words, all at once<br>tap any one to travel</span>
+      <span class="wide">you are always drifting &middot; FLY for speed<br>drag to look &middot; W A S D also fly<br>every one of 20,480 words is clickable</span><span class="narrow">you are always drifting<br>tap FLY for speed &middot; drag to look<br>tap any of 20,480 words to travel</span>
     </div>
   </div>
 
@@ -141,7 +145,10 @@
       <div class="lab">hops to target</div>
       <div id="units"></div>
       <div id="find"><input id="q" type="text" placeholder="find a word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="find a word"></div>
-      <button id="new">new voyage</button>
+      <div id="acts">
+        <button id="fly">fly</button>
+        <button id="new">new voyage</button>
+      </div>
     </div>
   </div>
 </div>
@@ -664,7 +671,7 @@ const cam = {
 };
 const keys = new Set();
 let thrust = 0, strafe = 0, lift = 0, boost = false, holdThrust = false;
-let autopilot = -1;
+let autopilot = -1, cruise = false, hoverLabel = '';
 const CRUISE = 78, DRAG = 0.16, ACC = 240;
 
 const fwd = new THREE.Vector3(), rightV = new THREE.Vector3(), upV = new THREE.Vector3(0,1,0);
@@ -690,8 +697,16 @@ function fly(dt){
   let ax = 0, ay = 0, az = 0;
   const a = ACC * (boost ? 3.0 : 1);
 
-  const th = holdThrust ? 1 : thrust;
+  const engaged = cruise || holdThrust;
+  const th = engaged ? 1 : thrust;
   if (th){ ax += fwd.x*th*a; ay += fwd.y*th*a; az += fwd.z*th*a; }
+  /* FREE FLOATING, literally: with no throttle and no word singled out
+     you still drift forward. the space is never inert, so travel can
+     never depend on a gesture landing correctly. */
+  if (!engaged && !thrust && selected < 0 && autopilot < 0){
+    const dr = a * 0.14;
+    ax += fwd.x*dr; ay += fwd.y*dr; az += fwd.z*dr;
+  }
   if (strafe){ ax += rightV.x*strafe*a; ay += rightV.y*strafe*a; az += rightV.z*strafe*a; }
   if (lift){ ay += lift*a; }
 
@@ -765,6 +780,21 @@ function pick(px, py, radius){
     if (score < bestScore){ bestScore = score; best = i; }
   }
   return best;
+}
+
+let pickAt = 0;
+function tryPick(x, y, slop){
+  const now = performance.now();
+  if (now - pickAt < 250) return;          // pointerup and click both fire; take one
+  pickAt = now;
+  let hit = pick(x, y, slop);
+  if (hit < 0) hit = pick(x, y, slop * 2.2);   // widen once rather than miss
+  if (hit >= 0) select(hit);
+  else {
+    selected = -1; autopilot = -1;
+    document.getElementById('panel').classList.remove('on');
+    paint();
+  }
 }
 
 function nearestWord(){
@@ -878,19 +908,33 @@ function arrive(){
    ================================================================== */
 function bindInput(){
   const el = renderer.domElement;
-  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0, tdown = 0, held = false;
-  let id = null, touch = false;
+  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0, held = false;
+  let id = null, touch = false, pressAt = 0;
   const SENS = 0.0032, THRUST_MS = 200, TAP_MS = 350, DEADZONE = 3;
 
-  const drift = (x, y) => Math.hypot(x - sx0, y - sy0);
+  const travelled = (x, y) => Math.hypot(x - sx0, y - sy0);
+  const beginPress = (x, y) => {
+    if (!pressAt) pressAt = performance.now();
+    lx = sx0 = x; ly = sy0 = y;
+  };
+  const endPress = () => { pressAt = 0; held = false; holdThrust = false; };
 
   el.addEventListener('contextmenu', e => e.preventDefault());
 
+  /* Touch events run ALONGSIDE pointer events, not instead of them.
+     Three rounds of this failing on a device I cannot reach says the
+     throttle must not hang off any single event family. */
+  el.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (t) beginPress(t.clientX, t.clientY);
+  }, {passive:true});
+  el.addEventListener('touchend', endPress);
+  el.addEventListener('touchcancel', endPress);
+
   el.addEventListener('pointerdown', e => {
-    id = e.pointerId; down = true; held = false;
+    id = e.pointerId; down = true;
     touch = e.pointerType !== 'mouse';
-    lx = sx0 = e.clientX; ly = sy0 = e.clientY;
-    tdown = performance.now();
+    beginPress(e.clientX, e.clientY);
     try { el.setPointerCapture(id); } catch(err){}
   });
 
@@ -900,7 +944,7 @@ function bindInput(){
     lx = e.clientX; ly = e.clientY;
     /* a resting finger still jitters a pixel at a time — swallow that,
        or the view slides away during what was meant as a tap */
-    if (drift(e.clientX, e.clientY) < DEADZONE) return;
+    if (travelled(e.clientX, e.clientY) < DEADZONE) return;
     cam.yaw   -= dx * SENS;
     cam.pitch -= dy * SENS;
     cam.pitch = Math.max(-1.48, Math.min(1.48, cam.pitch));
@@ -909,36 +953,39 @@ function bindInput(){
 
   const release = (e, cancelled) => {
     if (e.pointerId !== id) return;
-    const dur = performance.now() - tdown;
-    const moved = drift(e.clientX, e.clientY);
-    down = false; held = false; holdThrust = false;
+    const dur = performance.now() - (pressAt || performance.now());
+    const moved = travelled(e.clientX, e.clientY);
+    down = false;
+    endPress();
     try { el.releasePointerCapture(id); } catch(err){}
     id = null;
     if (cancelled) return;
-    /* A TAP IS DISTANCE FROM WHERE THE FINGER LANDED, never the length
-       of the path it wandered. Accumulating |dx|+|dy| meant a 120Hz
-       digitizer spent a resting thumb past the threshold in a fraction
-       of a second, so on a touchscreen no tap ever survived to reach
-       the picker and nothing was clickable. */
     if (dur < TAP_MS && moved < (touch ? 26 : 14)){
-      const hit = pick(e.clientX, e.clientY, touch ? 60 : 44);
-      if (hit >= 0) select(hit);
-      else {
-        selected = -1; autopilot = -1;
-        document.getElementById('panel').classList.remove('on');
-        paint();
-      }
+      tryPick(e.clientX, e.clientY, touch ? 60 : 44);
     }
   };
   el.addEventListener('pointerup', e => release(e, false));
   el.addEventListener('pointercancel', e => release(e, true));
 
-  /* a press that outlives a tap becomes throttle. gated on `down` too,
-     so a lost pointerup can never leave the engine stuck on */
+  /* the browser's own tap synthesis is better tuned than anything I can
+     hand-roll, and it is the one path that cannot be broken by my own
+     slop maths. tryPick debounces so this and pointerup do not double. */
+  el.addEventListener('click', e => {
+    if (travelled(e.clientX, e.clientY) > 30) return;
+    tryPick(e.clientX, e.clientY, MOBILE ? 60 : 44);
+  });
+
   setInterval(() => {
-    if (down && !held && performance.now() - tdown > THRUST_MS) held = true;
-    holdThrust = down && held;
+    if (pressAt && !held && performance.now() - pressAt > THRUST_MS) held = true;
+    holdThrust = !!pressAt && held;
   }, 30);
+
+  const flyBtn = document.getElementById('fly');
+  const setCruise = v => { cruise = v; flyBtn.textContent = v ? 'stop' : 'fly'; };
+  flyBtn.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    setCruise(!cruise);
+  });
 
   el.addEventListener('wheel', e => {
     e.preventDefault();
@@ -977,7 +1024,7 @@ function bindInput(){
     if (now - hoverT < 90) return;
     hoverT = now;
     const hit = pick(e.clientX, e.clientY, 30);
-    document.getElementById('hover').textContent = hit >= 0 ? WORDS[hit] : '';
+    hoverLabel = hit >= 0 ? WORDS[hit] : '';
   });
 
   const q = document.getElementById('q');
@@ -1038,9 +1085,11 @@ function tick(){
   }
   if (performance.now() - uiT > 120){
     uiT = performance.now(); ui();
-    /* on touch there is no hover readout, so reuse the line to confirm
-       the throttle actually engaged */
-    if (MOBILE) document.getElementById('hover').textContent = sp > 3 ? 'flying' : '';
+    /* a live instrument, not decoration: if this reads 0 u/s while you
+       are pressing, the gesture layer is dead. if it reads a number and
+       nothing appears to move, the camera is. */
+    document.getElementById('hover').textContent =
+      hoverLabel || (Math.round(sp) + ' u/s' + ((cruise || holdThrust) ? ' \u00b7 thrust' : ''));
   }
 
   if (!done && here === target){
