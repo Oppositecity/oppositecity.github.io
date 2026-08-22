@@ -8,114 +8,126 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
-  body { font-family: 'Courier Prime', 'Courier New', monospace; background: #000; color: #fff; overflow-x: hidden; }
+  body {
+    font-family: 'Courier Prime', 'Courier New', monospace;
+    background: #000; color: #fff; overflow-x: hidden;
+  }
   button, input { font-family: inherit; }
   #app { min-height: 100%; display: flex; flex-direction: column; }
 
-  header { padding: 1.4rem 1.1rem 1rem; flex-shrink: 0; }
+  header { padding: 1.4rem 1.1rem 0.9rem; flex-shrink: 0; }
   h1 { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.32em; color: #fff; }
-  .tagline { margin-top: 0.35rem; font-size: 0.72rem; letter-spacing: 0.05em; color: #cfcfcf; }
-  .tagline a { color: #cfcfcf; }
+  .tagline { margin-top: 0.4rem; font-size: 0.72rem; letter-spacing: 0.04em; color: #e0e0e0; line-height: 1.5; }
+  .tagline a { color: #fff; }
 
-  .controls { padding: 0 1.1rem 0.9rem; flex-shrink: 0; }
-  .search-box { display: flex; border: 1px solid #fff; padding: 0.55rem 0.7rem; gap: 0.5rem; align-items: center; }
-  .search-box input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 0.9rem; letter-spacing: 0.02em; }
-  .search-box input::placeholder { color: #8a8a8a; }
-  .search-box button { background: transparent; border: none; color: #cfcfcf; font-size: 0.85rem; cursor: pointer; }
+  .controls { padding: 0 1.1rem; flex-shrink: 0; }
 
-  /* ---------- decade accordion: primary chronological navigation ---------- */
-  .decade-rail { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.9rem; }
-  .decade-chip {
-    background: transparent; border: 1px solid #555; color: #cfcfcf;
-    font-size: 0.72rem; letter-spacing: 0.05em; padding: 0.42rem 0.7rem;
-    cursor: pointer; white-space: nowrap;
+  .search-box {
+    display: flex; border: 1px solid #fff; padding: 0.6rem 0.75rem;
+    gap: 0.5rem; align-items: center;
   }
-  .decade-chip.open { border-color: #fff; color: #fff; }
-  .decade-chip.has-selection { border-color: #fff; color: #000; background: #fff; }
-
-  .year-row {
-    display: flex; flex-wrap: wrap; gap: 0.3rem;
-    margin-top: 0.55rem; padding: 0.6rem; border: 1px dotted #333;
+  .search-box input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #fff; font-size: 0.9rem; letter-spacing: 0.02em; min-width: 0;
   }
-  .year-chip {
-    background: transparent; border: 1px solid #444; color: #9a9a9a;
-    font-size: 0.68rem; padding: 0.32rem 0.55rem; cursor: pointer;
+  .search-box input::placeholder { color: #a8a8a8; }
+  .search-box button {
+    background: transparent; border: none; color: #fff;
+    font-size: 0.8rem; letter-spacing: 0.1em; cursor: pointer; flex-shrink: 0;
   }
-  .year-chip.active { border-color: #fff; color: #000; background: #fff; }
 
-  .genre-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
+  /* ---------- the single year strip: horizontal, snapping, always visible ---------- */
+  .year-strip {
+    display: flex; gap: 0.1rem; margin-top: 1.1rem;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.2rem;
+  }
+  .year-strip::-webkit-scrollbar { display: none; }
+  .year-btn {
+    background: transparent; border: none; cursor: pointer;
+    scroll-snap-align: center; flex-shrink: 0;
+    color: #a0a0a0; font-size: 0.85rem; letter-spacing: 0.04em;
+    padding: 0.3rem 0.5rem; line-height: 1.2;
+    transition: color 0.12s, font-size 0.12s;
+  }
+  .year-btn.active { color: #fff; font-size: 1.5rem; font-weight: 700; padding: 0 0.6rem; }
+
+  .strip-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 0.5rem; font-size: 0.68rem; letter-spacing: 0.05em; color: #d0d0d0;
+  }
+  .strip-meta button {
+    background: transparent; border: none; color: #d0d0d0;
+    font-size: 0.68rem; letter-spacing: 0.08em; cursor: pointer;
+    text-transform: uppercase; padding: 0.2rem 0;
+  }
+  .strip-meta button.on { color: #fff; }
+
+  .genre-row { display: none; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
+  .genre-row.open { display: flex; }
   .genre-chip {
-    background: transparent; border: 1px solid #3a3a3a; color: #9a9a9a;
-    font-size: 0.63rem; letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 0.28rem 0.55rem; cursor: pointer;
+    background: transparent; border: none; cursor: pointer;
+    color: #a0a0a0; font-size: 0.68rem; letter-spacing: 0.06em;
+    text-transform: lowercase; padding: 0.25rem 0;
+    margin-right: 0.55rem;
   }
-  .genre-chip.active { border-color: #fff; color: #fff; }
-
-  /* ---------- current-year header with step arrows ---------- */
-  .year-header {
-    display: flex; align-items: center; justify-content: center; gap: 0.9rem;
-    margin-top: 0.85rem; padding-top: 0.7rem; border-top: 1px dotted #2a2a2a;
-  }
-  .year-step {
-    background: transparent; border: 1px solid #fff; color: #fff;
-    width: 1.8rem; height: 1.8rem; font-size: 0.85rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .year-step:disabled { border-color: #444; color: #444; cursor: default; }
-  .year-big { font-size: 1rem; letter-spacing: 0.1em; color: #fff; min-width: 3.6rem; text-align: center; }
-  .count-line { font-size: 0.66rem; color: #9a9a9a; letter-spacing: 0.03em; text-align: center; margin-top: 0.35rem; }
+  .genre-chip.active { color: #fff; font-weight: 700; }
 
   /* ---------- results ---------- */
-  main { flex: 1; padding: 0.6rem 1.1rem 6rem; overflow-y: auto; }
-  .status { font-size: 0.75rem; color: #9a9a9a; padding: 1rem 0; letter-spacing: 0.03em; text-align: center; }
-  .track { padding: 0.7rem 0; cursor: pointer; display: flex; justify-content: space-between; gap: 0.8rem; }
-  .track + .track { border-top: 1px dotted #2a2a2a; }
-  .track-info { min-width: 0; }
-  .track-title { font-size: 0.88rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .track-meta { font-size: 0.72rem; color: #9a9a9a; margin-top: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .track.playing .track-title { color: #fff; font-weight: 700; }
-  .track.playing .track-meta { color: #cfcfcf; }
-
-  .load-more {
-    display: block; width: 100%; margin-top: 1.2rem; padding: 0.75rem;
-    background: transparent; border: 1px solid #fff; color: #fff;
-    font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  main { flex: 1; padding: 1.1rem 1.1rem 7rem; }
+  .status { font-size: 0.78rem; color: #d0d0d0; padding: 1.2rem 0; letter-spacing: 0.04em; }
+  .status.err { color: #fff; }
+  .retry {
+    display: inline-block; margin-top: 0.7rem; background: transparent;
+    border: 1px solid #fff; color: #fff; padding: 0.5rem 1rem;
+    font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
   }
-  .load-more:disabled { border-color: #444; color: #444; cursor: default; }
-  .list-end { font-size: 0.68rem; color: #666; letter-spacing: 0.06em; padding: 1.2rem 0 0.4rem; text-align: center; }
+
+  .track { padding: 0.62rem 0; cursor: pointer; display: flex; gap: 0.7rem; align-items: baseline; }
+  .track-mark { width: 0.9rem; flex-shrink: 0; color: #fff; font-size: 0.7rem; }
+  .track-info { min-width: 0; flex: 1; }
+  .track-title { font-size: 0.9rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-meta { font-size: 0.72rem; color: #c4c4c4; margin-top: 0.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track.playing .track-title { font-weight: 700; }
+
+  .list-end { font-size: 0.7rem; color: #d0d0d0; letter-spacing: 0.08em; padding: 1.6rem 0 0.5rem; }
+  #sentinel { height: 1px; }
 
   /* ---------- now playing overlay ---------- */
   #now-playing { position: fixed; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; padding: 1.4rem 1.4rem 1.6rem; z-index: 20; }
   #now-playing.open { display: flex; }
   .np-top { width: 100%; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-  .np-close { background: transparent; border: none; color: #cfcfcf; font-size: 0.85rem; letter-spacing: 0.1em; cursor: pointer; padding: 0.4rem; }
-  .np-label { font-size: 0.68rem; letter-spacing: 0.15em; color: #9a9a9a; text-transform: uppercase; }
+  .np-close { background: transparent; border: none; color: #fff; font-size: 0.78rem; letter-spacing: 0.12em; cursor: pointer; padding: 0.4rem; text-transform: uppercase; }
+  .np-label { font-size: 0.68rem; letter-spacing: 0.16em; color: #d0d0d0; text-transform: uppercase; }
   .np-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; max-width: 340px; }
-  #disc { width: min(58vw, 230px); height: min(58vw, 230px); border-radius: 50%; position: relative; margin-bottom: 2rem; flex-shrink: 0; }
+  #disc { width: min(52vw, 210px); height: min(52vw, 210px); border-radius: 50%; position: relative; margin-bottom: 1.8rem; flex-shrink: 0; }
   #disc canvas { width: 100%; height: 100%; display: block; }
   #disc.spin { animation: spin 2.6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .np-title { font-size: 1.15rem; font-weight: 400; color: #fff; text-align: center; line-height: 1.35; max-width: 320px; }
-  .np-creator { font-size: 0.85rem; color: #cfcfcf; margin-top: 0.4rem; text-align: center; }
-  .np-year { font-size: 0.68rem; color: #9a9a9a; letter-spacing: 0.08em; margin-top: 0.55rem; }
+  .np-title { font-size: 1.1rem; font-weight: 400; color: #fff; text-align: center; line-height: 1.35; }
+  .np-creator { font-size: 0.85rem; color: #e0e0e0; margin-top: 0.45rem; text-align: center; }
+  .np-year { font-size: 0.7rem; color: #d0d0d0; letter-spacing: 0.1em; margin-top: 0.6rem; }
   .np-progress { width: 100%; margin-top: 1.8rem; }
-  .np-bar { width: 100%; height: 3px; background: #333; cursor: pointer; position: relative; }
+  .np-bar { width: 100%; height: 3px; background: #555; cursor: pointer; position: relative; }
   .np-bar-fill { height: 100%; background: #fff; width: 0%; }
-  .np-times { display: flex; justify-content: space-between; font-size: 0.68rem; color: #9a9a9a; margin-top: 0.4rem; letter-spacing: 0.03em; }
+  .np-times { display: flex; justify-content: space-between; font-size: 0.68rem; color: #d0d0d0; margin-top: 0.45rem; letter-spacing: 0.04em; }
   .np-controls { display: flex; align-items: center; justify-content: center; gap: 2.2rem; margin-top: 1.6rem; }
   .np-controls button { background: transparent; border: none; color: #fff; cursor: pointer; }
   .np-play { font-size: 1.1rem; border: 1px solid #fff !important; width: 3.4rem; height: 3.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .np-skip { font-size: 1.3rem; }
-  .np-error { font-size: 0.72rem; color: #cfcfcf; margin-top: 1rem; text-align: center; }
+  .np-error { font-size: 0.74rem; color: #fff; margin-top: 1rem; text-align: center; min-height: 1rem; }
 
   /* ---------- mini player ---------- */
-  #mini { position: fixed; left: 0; right: 0; bottom: 0; display: none; align-items: center; gap: 0.7rem; padding: 0.6rem 1rem; background: #000; border-top: 1px solid #2a2a2a; z-index: 10; }
+  #mini { position: fixed; left: 0; right: 0; bottom: 0; display: none; align-items: center; gap: 0.75rem; padding: 0.7rem 1.1rem 1rem; background: #000; z-index: 10; }
   #mini.show { display: flex; }
-  #mini button { background: transparent; border: 1px solid #fff; color: #fff; width: 2.1rem; height: 2.1rem; border-radius: 50%; flex-shrink: 0; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #mini button { background: transparent; border: 1px solid #fff; color: #fff; width: 2.2rem; height: 2.2rem; border-radius: 50%; flex-shrink: 0; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   #mini-info { flex: 1; min-width: 0; cursor: pointer; }
-  #mini-title { font-size: 0.78rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mini-creator { font-size: 0.68rem; color: #9a9a9a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #mini-time { font-size: 0.65rem; color: #9a9a9a; flex-shrink: 0; }
+  #mini-title { font-size: 0.8rem; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mini-creator { font-size: 0.7rem; color: #c4c4c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #mini-time { font-size: 0.68rem; color: #d0d0d0; flex-shrink: 0; }
 
   ::selection { background: #fff; color: #000; }
   a { color: #fff; }
@@ -132,28 +144,27 @@
   <div class="controls">
     <div class="search-box">
       <input id="search-input" type="text" placeholder="search title, artist, song..." autocomplete="off">
-      <button id="search-btn">go</button>
+      <button id="search-btn">GO</button>
     </div>
 
-    <div class="decade-rail" id="decade-rail"></div>
-    <div class="year-row" id="year-row" style="display:none"></div>
+    <div class="year-strip" id="year-strip"></div>
+
+    <div class="strip-meta">
+      <span id="count-line"></span>
+      <button id="genre-toggle">genres</button>
+    </div>
+
     <div class="genre-row" id="genre-row"></div>
-
-    <div class="year-header" id="year-header" style="display:none">
-      <button class="year-step" id="year-prev">‹</button>
-      <div class="year-big" id="year-big">—</div>
-      <button class="year-step" id="year-next">›</button>
-    </div>
-    <div class="count-line" id="count-line"></div>
   </div>
 
   <main id="results">
-    <div class="status" id="status">pick a decade to open its years</div>
+    <div class="status" id="status">loading...</div>
+    <div id="sentinel"></div>
   </main>
 </div>
 
 <div id="mini">
-  <button id="mini-play">▶</button>
+  <button id="mini-play">&#9654;</button>
   <div id="mini-info">
     <div id="mini-title">—</div>
     <div id="mini-creator">—</div>
@@ -178,9 +189,9 @@
     </div>
 
     <div class="np-controls">
-      <button class="np-skip" id="np-prev">⟨⟨</button>
-      <button class="np-play" id="np-play">▶</button>
-      <button class="np-skip" id="np-next">⟩⟩</button>
+      <button class="np-skip" id="np-prev">&#10218;&#10218;</button>
+      <button class="np-play" id="np-play">&#9654;</button>
+      <button class="np-skip" id="np-next">&#10219;&#10219;</button>
     </div>
     <div class="np-error" id="np-error"></div>
   </div>
@@ -192,43 +203,49 @@
 (function () {
   "use strict";
 
-  /* ---------------- JSONP ---------------- */
+  /* ---------------------------------------------------------------
+     JSONP — archive.org sends no CORS headers, so every call is a
+     script tag. Fails fast: if the script loads but never invokes the
+     callback (a malformed / error response), bail immediately rather
+     than sitting on a long timeout.
+  --------------------------------------------------------------- */
   var jsonpCounter = 0;
-  function jsonp(url) {
+  function jsonp(url, timeoutMs) {
     return new Promise(function (resolve, reject) {
-      var cbName = "shellac_cb_" + (jsonpCounter++) + "_" + Date.now();
+      var cb = "shellac_cb_" + (jsonpCounter++) + "_" + Date.now();
       var script = document.createElement("script");
-      var timeout = setTimeout(function () { cleanup(); reject(new Error("timeout")); }, 15000);
-      function cleanup() { clearTimeout(timeout); delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); }
-      window[cbName] = function (data) { cleanup(); resolve(data); };
-      var sep = url.indexOf("?") === -1 ? "?" : "&";
-      script.src = url + sep + "callback=" + cbName;
-      script.onerror = function () { cleanup(); reject(new Error("network")); };
-      document.body.appendChild(script);
+      var done = false;
+      var timer = setTimeout(function () { fail("timeout"); }, timeoutMs || 12000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+      function fail(msg) { if (done) return; done = true; cleanup(); reject(new Error(msg)); }
+
+      window[cb] = function (data) { if (done) return; done = true; cleanup(); resolve(data); };
+      script.onerror = function () { fail("network"); };
+      script.onload = function () {
+        // if the callback already fired, done === true and this no-ops
+        setTimeout(function () { fail("no-callback"); }, 250);
+      };
+      script.src = url + (url.indexOf("?") === -1 ? "?" : "&") + "callback=" + cb;
+      document.head.appendChild(script);
     });
   }
 
-  /* ---------------- decades, each expanding to its own years ---------------- */
-  var DECADES = [
-    { label: "1890s", start: 1890, end: 1899 },
-    { label: "1900s", start: 1900, end: 1909 },
-    { label: "1910s", start: 1910, end: 1919 },
-    { label: "1920s", start: 1920, end: 1929 },
-    { label: "1930s", start: 1930, end: 1939 },
-    { label: "1940s", start: 1940, end: 1949 },
-    { label: "1950s", start: 1950, end: 1959 }
-  ];
-  DECADES.forEach(function (d) {
-    d.years = [];
-    for (var y = d.start; y <= d.end; y++) d.years.push(y);
-  });
-  function decadeIndexForYear(y) {
-    for (var i = 0; i < DECADES.length; i++) if (y >= DECADES[i].start && y <= DECADES[i].end) return i;
-    return 0;
-  }
+  /* ---------------------------------------------------------------
+     Constants
+  --------------------------------------------------------------- */
+  var YEAR_MIN = 1900;
+  var YEAR_MAX = 1959;
+  var BOOT_YEAR = 1929;
+  var PAGE_SIZE = 100;
+  var MAX_PAGE = 40;       // advancedsearch rejects deep paging; 4000 items is plenty
 
   var GENRES = [
-    { label: "all genres", subject: null },
+    { label: "all", subject: null },
     { label: "jazz", subject: "jazz" },
     { label: "blues", subject: "blues" },
     { label: "classical", subject: "classical" },
@@ -239,64 +256,34 @@
     { label: "band", subject: "band music" }
   ];
 
-  var PAGE_SIZE = 200;
-  var AUTO_FETCH_CAP_PAGES = 15; // safety net: auto-fetch up to ~3000 items, then hand off to a manual button
-
   var state = {
-    expandedDecade: null,
-    year: null,
+    year: BOOT_YEAR,
     genre: GENRES[0],
     query: "",
-    mode: null,          // 'year' | 'search'
+    mode: "year",      // 'year' | 'search'
     tracks: [],
-    start: 0,
+    page: 0,           // last page successfully fetched
     numFound: 0,
-    hasMore: false,
-    autoFetching: false,
-    pagesFetchedThisLoad: 0,
-    index: -1,
-    playing: false
+    exhausted: false,
+    loading: false,
+    token: 0,          // invalidates in-flight requests when the query changes
+    index: -1
   };
 
-  var el = {
-    searchInput: document.getElementById("search-input"),
-    searchBtn: document.getElementById("search-btn"),
-    decadeRail: document.getElementById("decade-rail"),
-    yearRow: document.getElementById("year-row"),
-    genreRow: document.getElementById("genre-row"),
-    yearHeader: document.getElementById("year-header"),
-    yearPrev: document.getElementById("year-prev"),
-    yearNext: document.getElementById("year-next"),
-    yearBig: document.getElementById("year-big"),
-    countLine: document.getElementById("count-line"),
-    results: document.getElementById("results"),
-    status: document.getElementById("status"),
-    mini: document.getElementById("mini"),
-    miniPlay: document.getElementById("mini-play"),
-    miniTitle: document.getElementById("mini-title"),
-    miniCreator: document.getElementById("mini-creator"),
-    miniTime: document.getElementById("mini-time"),
-    miniInfo: document.getElementById("mini-info"),
-    np: document.getElementById("now-playing"),
-    npClose: document.getElementById("np-close"),
-    npTitle: document.getElementById("np-title"),
-    npCreator: document.getElementById("np-creator"),
-    npYear: document.getElementById("np-year"),
-    npPlay: document.getElementById("np-play"),
-    npPrev: document.getElementById("np-prev"),
-    npNext: document.getElementById("np-next"),
-    npBar: document.getElementById("np-bar"),
-    npBarFill: document.getElementById("np-bar-fill"),
-    npElapsed: document.getElementById("np-elapsed"),
-    npDuration: document.getElementById("np-duration"),
-    npError: document.getElementById("np-error"),
-    disc: document.getElementById("disc"),
-    audio: document.getElementById("audio")
-  };
+  var el = {};
+  ["search-input","search-btn","year-strip","count-line","genre-toggle","genre-row",
+   "results","status","sentinel","mini","mini-play","mini-title","mini-creator",
+   "mini-time","mini-info","now-playing","np-close","np-title","np-creator","np-year",
+   "np-play","np-prev","np-next","np-bar","np-bar-fill","np-elapsed","np-duration",
+   "np-error","disc","audio"].forEach(function (id) {
+    el[id] = document.getElementById(id);
+  });
 
-  /* ---------------- disc canvas (dithered groove rings) ---------------- */
+  /* ---------------------------------------------------------------
+     Disc canvas — ordered-dither groove rings
+  --------------------------------------------------------------- */
   (function drawDisc() {
-    var c = el.disc.querySelector("canvas");
+    var c = el["disc"].querySelector("canvas");
     var ctx = c.getContext("2d");
     var size = c.width, r = size / 2;
     ctx.fillStyle = "#000";
@@ -311,350 +298,474 @@
         var frac = ring - Math.floor(ring);
         var threshold = bayer[y % 4][x % 4] / 16;
         if (frac < 0.5 && frac > threshold * 0.5) {
-          ctx.fillStyle = "rgba(255,255,255,0.55)";
+          ctx.fillStyle = "rgba(255,255,255,0.6)";
           ctx.fillRect(x, y, 1, 1);
         }
       }
     }
     ctx.fillStyle = "#000";
     ctx.beginPath(); ctx.arc(r, r, r * 0.16, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#fff";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(r, r, r * 0.16, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(r, r, 2, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.fill();
   })();
 
-  /* ---------------- decade accordion ---------------- */
-  function renderDecadeRail() {
-    el.decadeRail.innerHTML = "";
-    DECADES.forEach(function (d, i) {
-      var b = document.createElement("button");
-      var hasSelection = state.mode === "year" && state.year >= d.start && state.year <= d.end;
-      b.className = "decade-chip" + (i === state.expandedDecade ? " open" : "") + (hasSelection ? " has-selection" : "");
-      b.textContent = d.label;
-      b.addEventListener("click", function () { toggleDecade(i); });
-      el.decadeRail.appendChild(b);
-    });
-  }
-
-  function toggleDecade(i) {
-    state.expandedDecade = (state.expandedDecade === i) ? null : i;
-    renderDecadeRail();
-    renderYearRow();
-  }
-
-  function renderYearRow() {
-    if (state.expandedDecade === null) {
-      el.yearRow.style.display = "none";
-      el.yearRow.innerHTML = "";
-      return;
+  /* ---------------------------------------------------------------
+     Year strip — one control, snaps, centres the active year
+  --------------------------------------------------------------- */
+  var yearButtons = {};
+  (function buildYearStrip() {
+    var frag = document.createDocumentFragment();
+    for (var y = YEAR_MIN; y <= YEAR_MAX; y++) {
+      (function (yy) {
+        var b = document.createElement("button");
+        b.className = "year-btn";
+        b.textContent = yy;
+        b.addEventListener("click", function () { selectYear(yy); });
+        yearButtons[yy] = b;
+        frag.appendChild(b);
+      })(y);
     }
-    var d = DECADES[state.expandedDecade];
-    el.yearRow.innerHTML = "";
-    el.yearRow.style.display = "flex";
-    d.years.forEach(function (y) {
-      var b = document.createElement("button");
-      b.className = "year-chip" + (state.mode === "year" && state.year === y ? " active" : "");
-      b.textContent = y;
-      b.addEventListener("click", function () { selectYear(y); });
-      el.yearRow.appendChild(b);
-    });
+    el["year-strip"].appendChild(frag);
+  })();
+
+  function paintYearStrip(scroll) {
+    for (var y = YEAR_MIN; y <= YEAR_MAX; y++) {
+      var active = (state.mode === "year" && state.year === y);
+      yearButtons[y].className = "year-btn" + (active ? " active" : "");
+    }
+    if (scroll && state.mode === "year" && yearButtons[state.year]) {
+      var btn = yearButtons[state.year];
+      var strip = el["year-strip"];
+      strip.scrollTo({
+        left: btn.offsetLeft - strip.clientWidth / 2 + btn.offsetWidth / 2,
+        behavior: "smooth"
+      });
+    }
   }
 
   function selectYear(y) {
-    state.query = ""; el.searchInput.value = "";
+    if (y < YEAR_MIN || y > YEAR_MAX) return;
     state.mode = "year";
     state.year = y;
-    state.expandedDecade = decadeIndexForYear(y);
-    renderDecadeRail();
-    renderYearRow();
-    renderYearHeader();
+    state.query = "";
+    el["search-input"].value = "";
+    paintYearStrip(true);
     resetAndLoad();
   }
 
-  function renderYearHeader() {
-    if (state.mode !== "year") {
-      el.yearHeader.style.display = "none";
-      return;
-    }
-    el.yearHeader.style.display = "flex";
-    el.yearBig.textContent = state.year;
-    el.yearPrev.disabled = state.year <= DECADES[0].start;
-    el.yearNext.disabled = state.year >= DECADES[DECADES.length - 1].end;
-  }
-  el.yearPrev.addEventListener("click", function () { if (state.mode === "year" && state.year > DECADES[0].start) selectYear(state.year - 1); });
-  el.yearNext.addEventListener("click", function () { if (state.mode === "year" && state.year < DECADES[DECADES.length - 1].end) selectYear(state.year + 1); });
-
-  /* ---------------- genre row (secondary refinement) ---------------- */
-  function renderGenreRow() {
-    el.genreRow.innerHTML = "";
+  /* ---------------------------------------------------------------
+     Genres — hidden behind one word, not a permanent strip
+  --------------------------------------------------------------- */
+  (function buildGenres() {
     GENRES.forEach(function (g) {
       var b = document.createElement("button");
-      b.className = "genre-chip" + (g === state.genre ? " active" : "");
+      b.className = "genre-chip";
       b.textContent = g.label;
       b.addEventListener("click", function () {
         state.genre = g;
-        renderGenreRow();
-        if (state.mode) resetAndLoad();
+        paintGenres();
+        resetAndLoad();
       });
-      el.genreRow.appendChild(b);
+      g._btn = b;
+      el["genre-row"].appendChild(b);
+    });
+  })();
+  function paintGenres() {
+    GENRES.forEach(function (g) {
+      g._btn.className = "genre-chip" + (g === state.genre ? " active" : "");
     });
   }
+  el["genre-toggle"].addEventListener("click", function () {
+    var open = el["genre-row"].classList.toggle("open");
+    el["genre-toggle"].classList.toggle("on", open);
+  });
 
-  /* ---------------- query building ---------------- */
-  function buildYearQuery() {
-    var parts = ["mediatype:(audio)", "collection:(georgeblood)", "year:(" + state.year + ")"];
-    if (state.genre.subject) parts.push('subject:("' + state.genre.subject + '")');
-    return parts.join(" AND ");
-  }
-  function buildSearchQuery() {
+  /* ---------------------------------------------------------------
+     Query building
+  --------------------------------------------------------------- */
+  function currentQuery() {
     var parts = ["mediatype:(audio)", "collection:(georgeblood)"];
     if (state.genre.subject) parts.push('subject:("' + state.genre.subject + '")');
-    var q = state.query.trim().replace(/"/g, "");
-    parts.push('(title:(' + q + ') OR creator:(' + q + '))');
+    if (state.mode === "search") {
+      var q = state.query.trim().replace(/["()]/g, "");
+      parts.push("(title:(" + q + ") OR creator:(" + q + "))");
+    } else {
+      parts.push("year:(" + state.year + ")");
+    }
     return parts.join(" AND ");
   }
-  function currentQuery() { return state.mode === "search" ? buildSearchQuery() : buildYearQuery(); }
 
-  /* ---------------- loading: auto-fetch everything for a single year ---------------- */
+  /* ---------------------------------------------------------------
+     Loading — page-based (advancedsearch.php pages on &page=, NOT
+     &start=), one page at a time, appended not rebuilt.
+  --------------------------------------------------------------- */
   function resetAndLoad() {
+    state.token++;
     state.tracks = [];
-    state.start = 0;
+    state.page = 0;
     state.numFound = 0;
-    state.hasMore = false;
-    state.autoFetching = false;
-    state.pagesFetchedThisLoad = 0;
+    state.exhausted = false;
+    state.loading = false;
     state.index = -1;
 
-    el.status.style.display = "block";
-    el.status.textContent = state.mode === "search" ? "searching..." : "loading " + state.year + "...";
-    el.results.innerHTML = "";
-    el.results.appendChild(el.status);
-    el.countLine.textContent = "";
+    el["results"].innerHTML = "";
+    el["results"].appendChild(el["status"]);
+    el["results"].appendChild(el["sentinel"]);
+    el["status"].className = "status";
+    el["status"].style.display = "block";
+    el["status"].textContent = state.mode === "search"
+      ? "searching..."
+      : "loading " + state.year + "...";
+    el["count-line"].textContent = "";
+    window.scrollTo(0, 0);
 
-    autoFetchLoop();
+    loadNextPage();
   }
 
-  function fetchOnePage() {
-    var fl = "identifier,title,creator,year";
-    var url = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent(currentQuery()) +
-      "&fl[]=" + fl.split(",").join("&fl[]=") +
-      "&rows=" + PAGE_SIZE + "&start=" + state.start +
-      "&sort[]=year+asc&sort[]=identifier+asc&output=json";
-    return jsonp(url).then(function (data) {
-      var resp = data.response || {};
-      var docs = (resp.docs || []).filter(function (d) { return d.identifier; });
+  function loadNextPage() {
+    if (state.loading || state.exhausted) return;
+    var token = state.token;
+    var nextPage = state.page + 1;
+    if (nextPage > MAX_PAGE) { state.exhausted = true; paintTail(); return; }
+
+    state.loading = true;
+    if (state.tracks.length) paintTail();
+
+    var url = "https://archive.org/advancedsearch.php" +
+      "?q=" + encodeURIComponent(currentQuery()) +
+      "&fl[]=identifier&fl[]=title&fl[]=creator&fl[]=year" +
+      "&rows=" + PAGE_SIZE +
+      "&page=" + nextPage +
+      "&sort[]=identifier+asc" +
+      "&output=json";
+
+    jsonp(url).then(function (data) {
+      if (token !== state.token) return;   // year changed mid-flight — drop it
+      var resp = (data && data.response) || {};
+      var docs = (resp.docs || []).filter(function (d) { return d && d.identifier; });
+
+      state.page = nextPage;
+      state.numFound = resp.numFound || state.tracks.length + docs.length;
+      var startIdx = state.tracks.length;
       state.tracks = state.tracks.concat(docs);
-      state.numFound = resp.numFound || state.tracks.length;
-      state.start += docs.length;
-      state.pagesFetchedThisLoad++;
-      state.hasMore = docs.length > 0 && state.start < state.numFound;
-      return docs.length;
-    });
-  }
+      state.loading = false;
+      if (!docs.length || state.tracks.length >= state.numFound) state.exhausted = true;
 
-  function autoFetchLoop() {
-    state.autoFetching = true;
-    fetchOnePage().then(function () {
-      renderResults();
-      if (state.hasMore && state.pagesFetchedThisLoad < AUTO_FETCH_CAP_PAGES) {
-        autoFetchLoop();
-      } else {
-        state.autoFetching = false;
-        renderResults();
-      }
+      appendTracks(startIdx);
+      paintTail();
+      // if the first page didn't fill the viewport, keep pulling
+      requestAnimationFrame(maybeLoadMore);
     }).catch(function () {
-      state.autoFetching = false;
-      if (!state.tracks.length) {
-        el.status.textContent = "couldn't reach the archive — try again";
-      } else {
-        renderResults();
-      }
+      if (token !== state.token) return;
+      state.loading = false;
+      showError();
     });
   }
 
-  function loadMoreManually() {
-    state.autoFetching = true;
-    renderResults();
-    fetchOnePage().then(function () {
-      state.pagesFetchedThisLoad = 0; // reset the cap window so it can auto-continue again for a while
-      autoFetchLoop();
-    }).catch(function () { state.autoFetching = false; renderResults(); });
+  function appendTracks(from) {
+    el["status"].style.display = "none";
+    var frag = document.createDocumentFragment();
+    for (var i = from; i < state.tracks.length; i++) {
+      frag.appendChild(buildRow(state.tracks[i], i));
+    }
+    el["results"].insertBefore(frag, el["sentinel"]);
   }
 
-  /* ---------------- results ---------------- */
-  function renderResults() {
-    el.results.innerHTML = "";
+  function buildRow(t, i) {
+    var row = document.createElement("div");
+    row.className = "track" + (i === state.index ? " playing" : "");
+    row.dataset.i = i;
 
-    if (!state.tracks.length && !state.autoFetching) {
-      el.status.textContent = state.mode === "search"
-        ? "nothing found — try another search"
-        : "nothing catalogued for " + state.year + " — try another year";
-      el.results.appendChild(el.status);
-      el.countLine.textContent = "";
-      return;
-    }
+    var mark = document.createElement("div");
+    mark.className = "track-mark";
+    mark.textContent = i === state.index ? "\u25B6" : "";
+
+    var info = document.createElement("div");
+    info.className = "track-info";
+    var title = document.createElement("div");
+    title.className = "track-title";
+    title.textContent = cleanTitle(t.title);
+    var meta = document.createElement("div");
+    meta.className = "track-meta";
+    meta.textContent = firstOf(t.creator) || "unknown artist";
+    info.appendChild(title);
+    info.appendChild(meta);
+
+    row.appendChild(mark);
+    row.appendChild(info);
+    row.addEventListener("click", function () { playTrack(i); });
+    return row;
+  }
+
+  /* the tail is the only thing repainted — never the whole list */
+  var tailEl = null;
+  function paintTail() {
+    if (tailEl && tailEl.parentNode) tailEl.parentNode.removeChild(tailEl);
+    tailEl = null;
 
     if (state.numFound) {
-      el.countLine.textContent = state.autoFetching
-        ? "loading... " + state.tracks.length + " of " + state.numFound
-        : state.tracks.length + " of " + state.numFound + " loaded";
+      el["count-line"].textContent = state.exhausted
+        ? state.tracks.length + " of " + state.numFound
+        : state.tracks.length + " of " + state.numFound + " \u00b7 loading";
     }
 
-    state.tracks.forEach(function (t, i) {
-      var row = document.createElement("div");
-      row.className = "track" + (i === state.index ? " playing" : "");
-      var creator = t.creator ? (Array.isArray(t.creator) ? t.creator[0] : t.creator) : "unknown artist";
-      row.innerHTML =
-        '<div class="track-info"><div class="track-title">' + escapeHtml(cleanTitle(t.title)) + '</div>' +
-        '<div class="track-meta">' + escapeHtml(creator) + '</div></div>';
-      row.addEventListener("click", function () { playTrack(i); });
-      el.results.appendChild(row);
-    });
+    if (state.loading && state.tracks.length) {
+      tailEl = document.createElement("div");
+      tailEl.className = "status";
+      tailEl.textContent = "...";
+    } else if (state.exhausted && state.tracks.length) {
+      tailEl = document.createElement("div");
+      tailEl.className = "list-end";
+      tailEl.textContent = state.page >= MAX_PAGE
+        ? "\u2014 first " + state.tracks.length + " of " + state.numFound + " \u2014"
+        : "\u2014 end of " + (state.mode === "search" ? "results" : state.year) + " \u2014";
+    } else if (state.exhausted && !state.tracks.length) {
+      el["status"].style.display = "block";
+      el["status"].className = "status";
+      el["status"].textContent = state.mode === "search"
+        ? "nothing found \u2014 try another search"
+        : "nothing catalogued for " + state.year + " \u2014 swipe or tap another year";
+    }
+    if (tailEl) el["results"].insertBefore(tailEl, el["sentinel"]);
+  }
 
-    if (state.autoFetching) {
-      var loading = document.createElement("div");
-      loading.className = "status";
-      loading.textContent = "loading more automatically...";
-      el.results.appendChild(loading);
-    } else if (state.hasMore) {
-      var more = document.createElement("button");
-      more.className = "load-more";
-      more.textContent = "load remaining " + (state.numFound - state.start);
-      more.addEventListener("click", loadMoreManually);
-      el.results.appendChild(more);
-    } else if (state.tracks.length) {
-      var end = document.createElement("div");
-      end.className = "list-end";
-      end.textContent = "— all " + state.numFound + " loaded —";
-      el.results.appendChild(end);
+  function showError() {
+    if (tailEl && tailEl.parentNode) tailEl.parentNode.removeChild(tailEl);
+    tailEl = document.createElement("div");
+    tailEl.className = "status err";
+    tailEl.textContent = state.tracks.length
+      ? "the archive stopped responding."
+      : "couldn't reach the archive.";
+    var btn = document.createElement("button");
+    btn.className = "retry";
+    btn.textContent = "retry";
+    btn.addEventListener("click", function () {
+      if (tailEl && tailEl.parentNode) tailEl.parentNode.removeChild(tailEl);
+      tailEl = null;
+      if (!state.tracks.length) {
+        el["status"].style.display = "block";
+        el["status"].textContent = "loading...";
+      }
+      loadNextPage();
+    });
+    tailEl.appendChild(document.createElement("br"));
+    tailEl.appendChild(btn);
+    el["status"].style.display = "none";
+    el["results"].insertBefore(tailEl, el["sentinel"]);
+  }
+
+  /* ---------------------------------------------------------------
+     Infinite scroll
+  --------------------------------------------------------------- */
+  function maybeLoadMore() {
+    if (state.loading || state.exhausted) return;
+    var rect = el["sentinel"].getBoundingClientRect();
+    if (rect.top < window.innerHeight + 700) loadNextPage();
+  }
+
+  function startInfiniteScroll() {
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting) loadNextPage();
+      }, { rootMargin: "700px 0px" }).observe(el["sentinel"]);
+    } else {
+      window.addEventListener("scroll", maybeLoadMore, { passive: true });
     }
   }
 
-  function cleanTitle(t) { if (!t) return "untitled"; return Array.isArray(t) ? t[0] : t; }
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
+  /* ---------------------------------------------------------------
+     Swipe the results area to step years
+  --------------------------------------------------------------- */
+  (function swipe() {
+    var x0 = null, y0 = null;
+    el["results"].addEventListener("touchstart", function (e) {
+      if (e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    }, { passive: true });
+    el["results"].addEventListener("touchend", function (e) {
+      if (x0 === null || state.mode !== "year") return;
+      var t = e.changedTouches[0];
+      var dx = t.clientX - x0, dy = t.clientY - y0;
+      x0 = null;
+      if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      selectYear(state.year + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  })();
 
-  /* ---------------- playback ---------------- */
-  function playTrack(i) {
-    state.index = i;
-    var t = state.tracks[i];
-    if (!t) return;
-    el.npError.textContent = "";
-    openNowPlaying(t);
-    resolveAudioUrl(t.identifier).then(function (url) {
-      if (!url) { el.npError.textContent = "no playable audio file found for this item"; return; }
-      el.audio.src = url;
-      el.audio.play().catch(function () {});
-    }).catch(function () { el.npError.textContent = "couldn't load this recording — try another"; });
-    renderResults();
-  }
+  document.addEventListener("keydown", function (e) {
+    if (document.activeElement === el["search-input"]) return;
+    if (state.mode !== "year") return;
+    if (e.key === "ArrowRight") selectYear(state.year + 1);
+    if (e.key === "ArrowLeft") selectYear(state.year - 1);
+  });
 
-  function resolveAudioUrl(identifier) {
-    var url = "https://archive.org/metadata/" + encodeURIComponent(identifier);
-    return jsonp(url).then(function (data) {
-      var files = data.files || [];
-      var mp3 = files.find(function (f) { return f.format === "VBR MP3" || f.format === "MP3"; });
-      if (!mp3) mp3 = files.find(function (f) { return /\.mp3$/i.test(f.name); });
-      if (!mp3) return null;
-      return "https://archive.org/download/" + identifier + "/" + encodeURIComponent(mp3.name);
-    });
-  }
-
-  function openNowPlaying(t) {
-    var creator = t.creator ? (Array.isArray(t.creator) ? t.creator[0] : t.creator) : "unknown artist";
-    el.npTitle.textContent = cleanTitle(t.title);
-    el.npCreator.textContent = creator;
-    el.npYear.textContent = t.year || "";
-    el.miniTitle.textContent = cleanTitle(t.title);
-    el.miniCreator.textContent = creator;
-    el.np.classList.add("open");
-    el.mini.classList.add("show");
-  }
-
+  /* ---------------------------------------------------------------
+     Helpers
+  --------------------------------------------------------------- */
+  function firstOf(v) { return Array.isArray(v) ? v[0] : v; }
+  function cleanTitle(t) { return firstOf(t) || "untitled"; }
   function formatTime(s) {
     if (!isFinite(s) || s < 0) s = 0;
     var m = Math.floor(s / 60), sec = Math.floor(s % 60);
     return m + ":" + (sec < 10 ? "0" : "") + sec;
   }
 
-  function setPlayingUI(playing) {
-    state.playing = playing;
-    el.npPlay.textContent = playing ? "❚❚" : "▶";
-    el.miniPlay.textContent = playing ? "❚❚" : "▶";
-    el.disc.classList.toggle("spin", playing);
+  /* ---------------------------------------------------------------
+     Playback
+  --------------------------------------------------------------- */
+  function markRow(i, on) {
+    var row = el["results"].querySelector('.track[data-i="' + i + '"]');
+    if (!row) return;
+    row.classList.toggle("playing", on);
+    var mark = row.querySelector(".track-mark");
+    if (mark) mark.textContent = on ? "\u25B6" : "";
   }
 
-  el.audio.addEventListener("play", function () { setPlayingUI(true); });
-  el.audio.addEventListener("pause", function () { setPlayingUI(false); });
-  el.audio.addEventListener("ended", function () { nextTrack(); });
-  el.audio.addEventListener("error", function () { if (el.audio.src) el.npError.textContent = "playback error — try another recording"; });
-  el.audio.addEventListener("timeupdate", function () {
-    var d = el.audio.duration || 0, c = el.audio.currentTime || 0;
-    var pct = d ? (c / d) * 100 : 0;
-    el.npBarFill.style.width = pct + "%";
-    el.npElapsed.textContent = formatTime(c);
-    el.npDuration.textContent = formatTime(d);
-    el.miniTime.textContent = formatTime(c);
-  });
+  function playTrack(i) {
+    var t = state.tracks[i];
+    if (!t) return;
+    if (state.index >= 0) markRow(state.index, false);
+    state.index = i;
+    markRow(i, true);
+
+    el["np-error"].textContent = "";
+    openNowPlaying(t);
+
+    var token = state.token;
+    resolveAudioUrl(t.identifier).then(function (url) {
+      if (token !== state.token) return;
+      if (!url) { el["np-error"].textContent = "no playable file for this item"; return; }
+      el["audio"].src = url;
+      el["audio"].play().catch(function () {});
+    }).catch(function () {
+      el["np-error"].textContent = "couldn't load this recording \u2014 try another";
+    });
+  }
+
+  function resolveAudioUrl(identifier) {
+    return jsonp("https://archive.org/metadata/" + encodeURIComponent(identifier)).then(function (data) {
+      var files = (data && data.files) || [];
+      var mp3 = null;
+      for (var i = 0; i < files.length; i++) {
+        if (files[i].format === "VBR MP3" || files[i].format === "MP3") { mp3 = files[i]; break; }
+      }
+      if (!mp3) {
+        for (var j = 0; j < files.length; j++) {
+          if (/\.mp3$/i.test(files[j].name || "")) { mp3 = files[j]; break; }
+        }
+      }
+      if (!mp3) return null;
+      return "https://archive.org/download/" + identifier + "/" + encodeURIComponent(mp3.name);
+    });
+  }
+
+  function openNowPlaying(t) {
+    var creator = firstOf(t.creator) || "unknown artist";
+    el["np-title"].textContent = cleanTitle(t.title);
+    el["np-creator"].textContent = creator;
+    el["np-year"].textContent = firstOf(t.year) || (state.mode === "year" ? state.year : "");
+    el["mini-title"].textContent = cleanTitle(t.title);
+    el["mini-creator"].textContent = creator;
+    el["now-playing"].classList.add("open");
+    el["mini"].classList.add("show");
+  }
+
+  function setPlayingUI(playing) {
+    el["np-play"].innerHTML = playing ? "&#10074;&#10074;" : "&#9654;";
+    el["mini-play"].innerHTML = playing ? "&#10074;&#10074;" : "&#9654;";
+    el["disc"].classList.toggle("spin", playing);
+  }
 
   function togglePlay() {
-    if (!el.audio.src) return;
-    if (el.audio.paused) el.audio.play().catch(function () {});
-    else el.audio.pause();
+    if (!el["audio"].src) return;
+    if (el["audio"].paused) el["audio"].play().catch(function () {});
+    else el["audio"].pause();
   }
 
   function nextTrack() {
     if (state.index < state.tracks.length - 1) { playTrack(state.index + 1); return; }
-    // fully exhausted this year (everything's loaded, since we auto-fetch to completion) — roll to the next year
-    if (state.mode === "year" && !state.hasMore && !state.autoFetching && state.year < DECADES[DECADES.length - 1].end) {
-      var nextY = state.year + 1;
-      selectYear(nextY);
-      // queue autoplay of the first track once it loads
-      var check = setInterval(function () {
-        if (!state.autoFetching && state.tracks.length) {
-          clearInterval(check);
-          playTrack(0);
-        } else if (!state.autoFetching && !state.hasMore && !state.tracks.length) {
-          clearInterval(check);
-        }
+    if (!state.exhausted) {
+      // pull the next page, then continue playing into it
+      var want = state.index + 1;
+      var token = state.token;
+      loadNextPage();
+      var tries = 0;
+      var iv = setInterval(function () {
+        if (token !== state.token || tries++ > 60) { clearInterval(iv); return; }
+        if (state.tracks[want]) { clearInterval(iv); playTrack(want); }
+        else if (state.exhausted && !state.loading) { clearInterval(iv); rollToNextYear(); }
       }, 200);
+      return;
     }
+    rollToNextYear();
   }
+
+  function rollToNextYear() {
+    if (state.mode !== "year" || state.year >= YEAR_MAX) return;
+    var token;
+    selectYear(state.year + 1);
+    token = state.token;
+    var tries = 0;
+    var iv = setInterval(function () {
+      if (token !== state.token || tries++ > 60) { clearInterval(iv); return; }
+      if (state.tracks.length) { clearInterval(iv); playTrack(0); }
+      else if (state.exhausted && !state.loading) { clearInterval(iv); rollToNextYear(); }
+    }, 200);
+  }
+
   function prevTrack() { if (state.index > 0) playTrack(state.index - 1); }
 
-  el.npPlay.addEventListener("click", togglePlay);
-  el.miniPlay.addEventListener("click", togglePlay);
-  el.npNext.addEventListener("click", nextTrack);
-  el.npPrev.addEventListener("click", prevTrack);
-  el.npClose.addEventListener("click", function () { el.np.classList.remove("open"); });
-  el.miniInfo.addEventListener("click", function () { el.np.classList.add("open"); });
-  el.npBar.addEventListener("click", function (e) {
-    var rect = el.npBar.getBoundingClientRect();
-    var pct = (e.clientX - rect.left) / rect.width;
-    if (el.audio.duration) el.audio.currentTime = pct * el.audio.duration;
+  el["audio"].addEventListener("play", function () { setPlayingUI(true); });
+  el["audio"].addEventListener("pause", function () { setPlayingUI(false); });
+  el["audio"].addEventListener("ended", nextTrack);
+  el["audio"].addEventListener("error", function () {
+    if (el["audio"].src) el["np-error"].textContent = "playback error \u2014 try another recording";
+  });
+  el["audio"].addEventListener("timeupdate", function () {
+    var d = el["audio"].duration || 0, c = el["audio"].currentTime || 0;
+    el["np-bar-fill"].style.width = (d ? (c / d) * 100 : 0) + "%";
+    el["np-elapsed"].textContent = formatTime(c);
+    el["np-duration"].textContent = formatTime(d);
+    el["mini-time"].textContent = formatTime(c);
   });
 
-  function doSearch() {
-    state.query = el.searchInput.value;
-    if (state.query.trim()) {
-      state.mode = "search";
-      renderDecadeRail();
-      renderYearHeader();
-      resetAndLoad();
-    }
-  }
-  el.searchBtn.addEventListener("click", doSearch);
-  el.searchInput.addEventListener("keydown", function (e) { if (e.key === "Enter") doSearch(); });
+  el["np-play"].addEventListener("click", togglePlay);
+  el["mini-play"].addEventListener("click", togglePlay);
+  el["np-next"].addEventListener("click", nextTrack);
+  el["np-prev"].addEventListener("click", prevTrack);
+  el["np-close"].addEventListener("click", function () { el["now-playing"].classList.remove("open"); });
+  el["mini-info"].addEventListener("click", function () { el["now-playing"].classList.add("open"); });
+  el["np-bar"].addEventListener("click", function (e) {
+    var rect = el["np-bar"].getBoundingClientRect();
+    var pct = (e.clientX - rect.left) / rect.width;
+    if (el["audio"].duration) el["audio"].currentTime = pct * el["audio"].duration;
+  });
 
-  /* ---------------- boot ---------------- */
-  renderGenreRow();
-  renderDecadeRail();
-  toggleDecade(0);           // open the earliest decade
-  selectYear(DECADES[0].start); // and load its first year straight away
+  /* ---------------------------------------------------------------
+     Search
+  --------------------------------------------------------------- */
+  function doSearch() {
+    var q = el["search-input"].value.trim();
+    if (!q) { selectYear(state.year); return; }
+    state.query = q;
+    state.mode = "search";
+    paintYearStrip(false);
+    resetAndLoad();
+  }
+  el["search-btn"].addEventListener("click", doSearch);
+  el["search-input"].addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { el["search-input"].blur(); doSearch(); }
+  });
+
+  /* ---------------------------------------------------------------
+     Boot
+  --------------------------------------------------------------- */
+  paintGenres();
+  paintYearStrip(false);
+  window.addEventListener("load", function () { paintYearStrip(true); });
+  resetAndLoad();
+  startInfiniteScroll();
 })();
 </script>
 </body>
