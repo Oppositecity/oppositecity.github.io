@@ -123,6 +123,30 @@
 
 <div id="boot">charting 20,480 words</div>
 <div id="err"></div>
+<script>
+/* Plain script, deliberately. The module's own error handlers are no use
+   if the MODULE is what failed to load — nothing in it ever runs. This
+   registers before any of that and catches it from outside. */
+window.__err = function(msg){
+  var box = document.getElementById('err');
+  if (!box || box.className.indexOf('on') >= 0) return;
+  box.textContent = String(msg).slice(0, 400);
+  box.className = 'on';
+};
+window.addEventListener('error', function(e){
+  var src = e.target && (e.target.src || e.target.href);
+  window.__err(e.message || (src ? 'failed to load ' + src : '') || e.error || 'unknown error');
+}, true);
+window.addEventListener('unhandledrejection', function(e){
+  window.__err((e.reason && e.reason.message) || e.reason || 'unhandled rejection');
+});
+setTimeout(function(){
+  var b = document.getElementById('boot');
+  if (b && b.className.indexOf('off') < 0){
+    window.__err('still loading after 15s \u2014 three.js may be unreachable from this network');
+  }
+}, 15000);
+</script>
 
 <div id="ui">
   <div id="top">
@@ -174,7 +198,15 @@
 </script>
 
 <script type="module">
-import * as THREE from 'three';
+/* One CDN is one point of failure for the entire piece. Try the mapped
+   specifier, fall back to another host, and let the classic handler
+   above speak if both are unreachable. */
+let THREE;
+try {
+  THREE = await import('three');
+} catch (e){
+  THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+}
 
 const N = 20480, K = 8, SCALE = 520.0;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -186,16 +218,10 @@ const boot = document.getElementById('boot');
    a failure here is invisible to whoever is fixing it. Say it out loud
    on the page instead of only in a console nobody has open on a phone.
    ================================================================== */
-let errShown = false, safeMode = false;
+let safeMode = false;
 function report(msg){
-  if (errShown) return;
-  errShown = true;
-  const box = document.getElementById('err');
-  box.textContent = String(msg && msg.message || msg).slice(0, 400);
-  box.classList.add('on');
+  if (window.__err) window.__err((msg && msg.message) || msg);
 }
-addEventListener('error', e => report(e.message || e.error));
-addEventListener('unhandledrejection', e => report(e.reason));
 
 /* ==================================================================
    DATA
