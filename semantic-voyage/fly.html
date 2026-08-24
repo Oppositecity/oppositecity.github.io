@@ -269,7 +269,11 @@ function fromText(text){
     const open = text.indexOf('id="' + id + '"');
     if (open < 0) return null;
     const s = text.indexOf('>', open) + 1;
-    const e = text.indexOf('</script>', s);
+    /* ESCAPED DELIBERATELY. An HTML parser closes a script element at
+       the first literal closing tag, no matter what JS thinks it is
+       inside a string. Unescaped, this line silently truncated the
+       module and threw away the entire engine below it. */
+    const e = text.indexOf('<\/script>', s);
     if (s <= 0 || e < 0) return null;
     out[id] = text.slice(s, e).trim();
   }
