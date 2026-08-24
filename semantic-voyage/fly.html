@@ -127,23 +127,38 @@
 /* Plain script, deliberately. The module's own error handlers are no use
    if the MODULE is what failed to load — nothing in it ever runs. This
    registers before any of that and catches it from outside. */
-window.__err = function(msg){
+window.__fatal = false;
+window.__err = function(msg, fatal){
   var box = document.getElementById('err');
-  if (!box || box.className.indexOf('on') >= 0) return;
+  if (!box) return;
+  /* A cosmetic failure must never squat on the banner and hide the real
+     fault behind it — that is exactly how a missing font masked a dead
+     data source for five rounds. */
+  if (window.__fatal && !fatal) return;
+  if (box.className.indexOf('on') >= 0 && !fatal) return;
   box.textContent = String(msg).slice(0, 400);
   box.className = 'on';
+  if (fatal) window.__fatal = true;
 };
 window.addEventListener('error', function(e){
-  var src = e.target && (e.target.src || e.target.href);
-  window.__err(e.message || (src ? 'failed to load ' + src : '') || e.error || 'unknown error');
+  var t = e.target || {};
+  var src = t.src || t.href;
+  if (src && /fonts\.(googleapis|gstatic)\.com/.test(src)) return;   // cosmetic, ignore
+  window.__err(e.message || (src ? 'failed to load ' + src : '') || e.error || 'unknown error', true);
 }, true);
+
+/* Opened straight off disk, the sibling data file cannot be reached and
+   nothing will ever render. Say so, with the address that does work. */
+if (location.protocol === 'file:'){
+  window.__err('this is the source file, opened from disk. its word data lives in a sibling file on the server, so nothing can load here. open opposite.city/semantic-voyage/fly.html instead.', true);
+}
 window.addEventListener('unhandledrejection', function(e){
-  window.__err((e.reason && e.reason.message) || e.reason || 'unhandled rejection');
+  window.__err((e.reason && e.reason.message) || e.reason || 'unhandled rejection', true);
 });
 setTimeout(function(){
   var b = document.getElementById('boot');
   if (b && b.className.indexOf('off') < 0){
-    window.__err('still loading after 15s \u2014 three.js may be unreachable from this network');
+    window.__err('still loading after 15s \u2014 three.js or the word data may be unreachable from this network', true);
   }
 }, 15000);
 </script>
@@ -220,7 +235,7 @@ const boot = document.getElementById('boot');
    ================================================================== */
 let safeMode = false;
 function report(msg){
-  if (window.__err) window.__err((msg && msg.message) || msg);
+  if (window.__err) window.__err((msg && msg.message) || msg, true);
 }
 
 /* ==================================================================
@@ -230,7 +245,12 @@ function report(msg){
    promoted build reads data.html; the staging build falls back to
    the original index.html, which still carries its own blobs.
    ================================================================== */
-const DATA_SOURCES = ['./data.html', './index.html'];
+const DATA_SOURCES = [
+  './data.html',
+  './index.html',
+  /* last resort: a copy saved anywhere can still borrow the live data */
+  'https://opposite.city/semantic-voyage/index.html'
+];
 const BLOBS = ['d-words','d-pos','d-knn','d-sim','d-rank'];
 
 function fromDocument(doc){
@@ -1179,6 +1199,9 @@ init().catch(err => {
   boot.textContent = (err && err.message === 'no data source')
     ? 'the word data could not be found'
     : 'this piece needs webgl';
+  if (err && err.message === 'no data source'){
+    report('the word data could not be found. if you opened a saved copy of this file, use opposite.city/semantic-voyage/fly.html instead.');
+  }
   report(err);
   console.error(err);
 });
