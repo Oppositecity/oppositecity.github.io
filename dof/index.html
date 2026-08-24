@@ -91,6 +91,7 @@
   }
   body.showmoves .w.done .moves{display:block}
   .moves u{display:block;text-decoration:none}
+  .moves s{display:block;text-decoration:none;color:var(--pinned);opacity:.75}
   .moves em{font-style:normal;color:var(--quiet)}
 
   /* ---------- controls ---------- */
@@ -186,7 +187,7 @@
   <button id="go">Measure</button>
   <button class="tog" id="pos" aria-pressed="true">Match part of speech</button>
   <button class="tog" id="syl" aria-pressed="false">Lock syllable count</button>
-  <button class="tog" id="mov" aria-pressed="false">Show moves</button>
+  <button class="tog" id="mov" aria-pressed="true">Show moves</button>
   <button class="tog" id="num" aria-pressed="false">Show bits</button>
 </div>
 <div id="status">Tap a word after measuring to see where its freedom went.</div>
@@ -330,7 +331,8 @@ async function measure(word, prev, next, opts){
       label: CHANNELS[i].label,
       bare: filtered.length,
       ctx: kept.length,
-      sample: kept.slice(0, 7).map(c => c.word)
+      sample: kept.slice(0, 7).map(c => c.word),
+      closed: filtered.filter(c => !attested(c.word.toLowerCase())).slice(0, 7).map(c => c.word)
     });
   });
 
@@ -405,15 +407,26 @@ function paint(i, m){
     m.gap ? "no entry" : (m.bits === Infinity ? "pinned" : m.bits.toFixed(1) + " bits");
 
   /* round-robin across the open channels so every move is represented */
-  const picked = [];
-  const open = m.chans.filter(c => c.sample.length);
-  for (let d = 0; picked.length < 6 && open.some(c => c.sample[d]); d++)
-    for (const c of open){ if (c.sample[d] && picked.length < 6) picked.push(c.sample[d]); }
+  const pick = (chans, field, n) => {
+    const out = [], live = chans.filter(c => c[field].length);
+    for (let d = 0; out.length < n && live.some(c => c[field][d]); d++)
+      for (const c of live){ if (c[field][d] && out.length < n) out.push(c[field][d]); }
+    return out;
+  };
+  const picked = pick(m.chans, "sample", 6);
 
   const mv = el.querySelector(".moves");
-  mv.innerHTML = picked.length
-    ? picked.map(w => `<u>${w}</u>`).join("")
-    : `<em>${m.gap ? "no entry" : "no move"}</em>`;
+  if (picked.length){
+    mv.innerHTML = picked.map(w => `<u>${w}</u>`).join("");
+  } else if (!m.gap){
+    /* nothing survived — show what context took away, marked as closed */
+    const lost = pick(m.chans, "closed", 4);
+    mv.innerHTML = lost.length
+      ? lost.map(w => `<s>${w}</s>`).join("") + `<em>closed</em>`
+      : `<em>no candidates</em>`;
+  } else {
+    mv.innerHTML = `<em>no entry</em>`;
+  }
 }
 
 function summarise(){
@@ -537,6 +550,7 @@ toggle("syl", v => { opts.syl = v; });
 toggle("num", v => { document.body.classList.toggle("shownum", v); });
 toggle("mov", v => { document.body.classList.toggle("showmoves", v); });
 
+document.body.classList.add("showmoves");
 build(tokenize($("input").value));
 </script>
 </body>
