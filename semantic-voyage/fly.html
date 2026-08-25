@@ -188,7 +188,7 @@ setTimeout(function(){
       <div class="lab">nearest</div>
       <div id="here">—</div>
       <div id="hover"></div>
-      <div id="build" class="lab">build 11</div>
+      <div id="build" class="lab">build 12</div>
     </div>
     <div id="right">
       <div id="hops">—</div>
@@ -424,7 +424,10 @@ let dispTex = null, dispDirty = true, TRUING = true;
 const ACTIVE = new Int32Array(4096);
 const CAND = new Int32Array(4096), CANDD = new Float32Array(4096);
 let activeN = 0;
-const RELAX_R = 210, RELAX_MAX = 800, ITER = 2;
+const RELAX_R = 210, ITER = 2;
+const RELAX_MAX = MOBILE ? 300 : 800;      // the truing pass is the hot loop
+const RELAX_EVERY = MOBILE ? 6 : 2;
+const NEAREST_EVERY = MOBILE ? 8 : 4;
 const DMIN = 9, ANCHOR = 0.0025, RATE = 0.05, MAXSTEP = 1.2, MAXDISP = 150;
 let settle = 1;                                 // 0 = converged
 
@@ -598,7 +601,7 @@ async function init(){
   camera = new THREE.PerspectiveCamera(66, innerWidth/innerHeight, 0.4, 4000);
   renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
   renderer.setClearColor(0x000000, 1);
   document.body.appendChild(renderer.domElement);
 
@@ -790,10 +793,11 @@ function fly(dt){
   const engaged = cruise || holdThrust;
   const th = engaged ? 1 : thrust;
   if (th){ ax += fwd.x*th*a; ay += fwd.y*th*a; az += fwd.z*th*a; }
-  /* FREE FLOATING, literally: with no throttle and no word singled out
-     you still drift forward. the space is never inert, so travel can
-     never depend on a gesture landing correctly. */
-  if (!engaged && !thrust && selected < 0 && autopilot < 0){
+  /* FREE FLOATING, literally: with no throttle and no autopilot you
+     still drift forward. NOTE: this used to also require `selected < 0`,
+     which meant one successful tap stopped all motion permanently —
+     measured at 0.0 u/s forever after. Never gate motion on selection. */
+  if (!engaged && !thrust && autopilot < 0){
     const dr = a * 0.14;
     ax += fwd.x*dr; ay += fwd.y*dr; az += fwd.z*dr;
   }
@@ -878,7 +882,8 @@ function tryPick(x, y, slop){
   if (now - pickAt < 250) return;          // pointerup and click both fire; take one
   pickAt = now;
   let hit = pick(x, y, slop);
-  if (hit < 0) hit = pick(x, y, slop * 2.2);   // widen once rather than miss
+  if (hit < 0) hit = pick(x, y, slop * 2.5);   // widen once rather than miss
+  if (hit < 0) hit = pick(x, y, slop * 5.0);   // and again — a tap should land
   if (hit >= 0) select(hit);
   else {
     selected = -1; autopilot = -1;
@@ -1051,7 +1056,7 @@ function bindInput(){
     id = null;
     if (cancelled) return;
     if (dur < TAP_MS && moved < (touch ? 26 : 14)){
-      tryPick(e.clientX, e.clientY, touch ? 60 : 44);
+      tryPick(e.clientX, e.clientY, touch ? 80 : 44);
     }
   };
   el.addEventListener('pointerup', e => release(e, false));
@@ -1062,7 +1067,7 @@ function bindInput(){
      slop maths. tryPick debounces so this and pointerup do not double. */
   el.addEventListener('click', e => {
     if (travelled(e.clientX, e.clientY) > 30) return;
-    tryPick(e.clientX, e.clientY, MOBILE ? 60 : 44);
+    tryPick(e.clientX, e.clientY, MOBILE ? 80 : 44);
   });
 
   setInterval(() => {
@@ -1145,7 +1150,7 @@ function readKeys(){
    LOOP
    ================================================================== */
 const clock = new THREE.Clock();
-let frame = 0, uiT = 0;
+let frame = 0, uiT = 0, fpsT = 0, fpsN = 0, fps = 0;
 
 function tick(){
   /* three re-requests the animation frame AFTER this callback, so a
@@ -1159,6 +1164,9 @@ function frameBody(){
   const dt = Math.min(clock.getDelta(), 0.05);
   field.material.uniforms.uTime.value += dt;
   frame++;
+  fpsN++;
+  const nowp = performance.now();
+  if (nowp - fpsT > 500){ fps = Math.round(fpsN*1000/(nowp - fpsT)); fpsN = 0; fpsT = nowp; }
 
   fly(dt);
 
@@ -1169,7 +1177,7 @@ function frameBody(){
   field.material.uniforms.uCalm.value = calm;
 
   /* local truing, a few hundred words at a time */
-  if (TRUING && !safeMode && frame % 2 === 0){
+  if (TRUING && !safeMode && frame % RELAX_EVERY === 0){
     gatherActive(cam.pos.x, cam.pos.y, cam.pos.z);
     const m = relax();
     settle = settle * 0.9 + m * 0.1;
@@ -1177,7 +1185,7 @@ function frameBody(){
   }
   if (dispDirty){ dispTex.needsUpdate = true; dispDirty = false; }
 
-  if (frame % 4 === 0){
+  if (frame % NEAREST_EVERY === 0){
     const nw = nearestWord();
     if (nw !== here){ here = nw; paint(); }
   }
@@ -1190,6 +1198,8 @@ function frameBody(){
       hoverLabel || (Math.round(sp) + ' u/s'
         + ((cruise || holdThrust) ? ' \u00b7 thrust' : '')
         + (TRUING ? '' : ' \u00b7 flat'));
+    document.getElementById('build').textContent =
+      'build 12 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
   }
 
   if (!done && here === target){
