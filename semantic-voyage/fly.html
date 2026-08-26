@@ -32,7 +32,7 @@
 
   #top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
   #voyage{font-size:15px}
-  #voyage .to{color:rgba(255,255,255,.8);padding:0 .5em}
+  #measure{font-size:12px;color:rgba(255,255,255,.88);min-height:1.4em}
   #hint{text-align:right;white-space:nowrap;color:rgba(255,255,255,.84)}
 
   #mid{display:flex;align-items:center;justify-content:flex-end;pointer-events:none}
@@ -40,11 +40,12 @@
     pointer-events:none;text-align:right;max-width:min(46vw,320px);
     opacity:0;transition:opacity .35s ease;
   }
-  #panel.on{opacity:1;pointer-events:auto}
+  #panel.on{opacity:1}
   #p-word{font-size:22px;line-height:1.2}
   #p-rank{color:rgba(255,255,255,.82);font-size:11px;margin-bottom:8px}
   #p-near{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
   #p-near a{
+    pointer-events:auto;                     /* ONLY the links, never the box */
     color:#fff;text-decoration:none;cursor:pointer;font-size:12px;
     display:flex;gap:.7em;justify-content:flex-end;
   }
@@ -59,8 +60,9 @@
   #hops{font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
   #units{font-size:12px;color:rgba(255,255,255,.86);font-variant-numeric:tabular-nums}
 
-  #find{pointer-events:auto;margin-top:12px;display:flex;justify-content:flex-end}
+  #find{margin-top:12px;display:flex;justify-content:flex-end}
   #find input{
+    pointer-events:auto;
     font:inherit;font-size:12px;width:150px;padding:5px 8px;
     background:#000;color:#fff;border:1px solid rgba(255,255,255,.75);
     border-radius:0;outline:none;
@@ -77,16 +79,6 @@
   button:hover,button:focus-visible{color:#fff}
   button:focus-visible{outline:1px solid #fff;outline-offset:3px}
 
-  #arrived{
-    position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.92);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:14px;text-align:center;padding:24px;
-    opacity:0;pointer-events:none;transition:opacity .6s ease;
-  }
-  #arrived.on{opacity:1;pointer-events:auto}
-  #arrived h1{font-size:13px;font-weight:400;letter-spacing:.5em;text-indent:.5em;color:rgba(255,255,255,.86)}
-  #arrived .word{font-size:min(13vw,58px)}
-  #arrived .stat{font-size:13px;color:rgba(255,255,255,.9);max-width:36ch;line-height:1.6}
 
   #boot{
     position:fixed;inset:0;z-index:30;background:#000;
@@ -115,7 +107,7 @@
     #acts{gap:1.2em}
     #find input{width:120px}
   }
-  @media (prefers-reduced-motion:reduce){#arrived,#boot,#panel{transition:none}}
+  @media (prefers-reduced-motion:reduce){#boot,#panel{transition:none}}
 </style>
 </head>
 <body>
@@ -165,8 +157,9 @@ setTimeout(function(){
 <div id="ui">
   <div id="top">
     <div>
-      <div class="lab">voyage</div>
-      <div id="voyage"><b id="w-from">—</b><span class="to">&rarr;</span><b id="w-to">—</b></div>
+      <div class="lab">last jump</div>
+      <div id="voyage"><span id="jump">—</span></div>
+      <div id="measure"></div>
     </div>
     <div id="hint">
       <span class="wide">click a word to jump to it<br>drag to look around &middot; nothing moves on its own<br>all 20,480 words are clickable</span><span class="narrow">tap a word to jump to it<br>drag to look around<br>nothing moves on its own</span>
@@ -186,26 +179,20 @@ setTimeout(function(){
       <div class="lab">nearest</div>
       <div id="here">—</div>
       <div id="hover"></div>
-      <div id="build" class="lab">build 13</div>
+      <div id="build" class="lab">build 14</div>
     </div>
     <div id="right">
-      <div id="hops">—</div>
-      <div class="lab">hops to target</div>
+      <div id="hops">0</div>
+      <div class="lab">jumps measured</div>
       <div id="units"></div>
       <div id="find"><input id="q" type="text" placeholder="find a word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="find a word"></div>
       <div id="acts">
-        <button id="new">new voyage</button>
+        <button id="new">drop me elsewhere</button>
       </div>
     </div>
   </div>
 </div>
 
-<div id="arrived">
-  <h1>arrived</h1>
-  <div class="word" id="a-word">—</div>
-  <div class="stat" id="a-stat"></div>
-  <button id="again">voyage again</button>
-</div>
 
 <script type="importmap">
 {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
@@ -392,7 +379,6 @@ function decode(D){
 
 
 /* ---------- hop distance, undirected, from the target ---------- */
-let HOPS = null;
 function hopsFrom(t){
   const d = new Int32Array(N).fill(-1), q = new Int32Array(N);
   let head = 0, tail = 0;
@@ -584,8 +570,8 @@ let scene, camera, renderer, field, stateAttr;
 const wordStart = new Int32Array(N), wordLen = new Int32Array(N);
 
 /* states: 0 field, 1 neighbour of selection, 2 selected, 3 nearest, 4 target */
-let here = 0, target = 0, origin = 0, selected = -1, done = false;
-let calm = 1;
+let here = 0, selected = -1, lastWord = -1;
+let jumps = 0, spanned = 0, calm = 1;
 
 async function init(){
   const D = await loadData();
@@ -740,7 +726,7 @@ async function init(){
   sizeUnit();
 
   bindInput();
-  newVoyage();
+  dropIn();
   boot.classList.add('off');
   renderer.setAnimationLoop(tick);
 }
@@ -838,6 +824,24 @@ function travel(dt){
 }
 
 /* ==================================================================
+   MEASURING A JUMP
+   There are no 300d vectors in this atlas, so an exact cosine exists
+   for exactly one thing: the 122,901 true edges. Between any other
+   pair there is no measurement to be had — only the count of real
+   relations you would have to cross. So a jump is either VERIFIED,
+   carrying the real number, or it is unmeasured and says so plainly.
+   Roughly 15% of nearby taps land on a true relation, which is often
+   enough to hunt for and rare enough to be worth finding.
+   ================================================================== */
+function relate(a, b){
+  if (a < 0 || a === b) return null;
+  for (let j=SSTART[a]; j<SSTART[a+1]; j++){
+    if (SADJ[j] === b) return { verified:true, cos:SSIM[j] };
+  }
+  return { verified:false, hops: hopsFrom(a)[b] };
+}
+
+/* ==================================================================
    PICKING — every word in the lexicon, nothing excluded
    ================================================================== */
 const _mvp = new THREE.Matrix4();
@@ -917,12 +921,24 @@ function paint(){
     }
     setWordState(selected, 2); touch(selected);
   }
-  setWordState(target, 4); touch(target);
   setWordState(here, 3); touch(here);
   stateAttr.needsUpdate = true;
 }
 
 function select(i){
+  const rel = relate(lastWord, i);
+  if (rel){
+    jumps++;
+    spanned += Math.hypot(POS[i*3]-POS[lastWord*3],
+                          POS[i*3+1]-POS[lastWord*3+1],
+                          POS[i*3+2]-POS[lastWord*3+2]);
+    document.getElementById('jump').textContent = WORDS[lastWord] + ' \u2192 ' + WORDS[i];
+    document.getElementById('measure').textContent = rel.verified
+      ? 'cosine ' + rel.cos.toFixed(3) + ' \u00b7 verified adjacency'
+      : (rel.hops < 0 ? 'unreachable \u00b7 no measurement exists'
+                      : rel.hops + ' relations apart \u00b7 unmeasured');
+  }
+  lastWord = i;
   selected = i;
   jumpTo(i);
   const order = [];
@@ -946,51 +962,23 @@ function select(i){
 
 function ui(){
   document.getElementById('here').textContent = WORDS[here];
-  const h = HOPS ? HOPS[here] : -1;
-  document.getElementById('hops').textContent = h < 0 ? '\u221e' : h;
-  const t = new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2]);
-  document.getElementById('units').textContent = Math.round(t.distanceTo(cam.pos)) + ' units away';
+  document.getElementById('hops').textContent = jumps;
+  document.getElementById('units').textContent = Math.round(spanned) + ' units spanned';
 }
 
-function newVoyage(){
-  done = false;
-  document.getElementById('arrived').classList.remove('on');
+function dropIn(){
   document.getElementById('panel').classList.remove('on');
   selected = -1; autopilot = -1; jump.on = false;
 
-  origin = (Math.random()*N)|0;
-  HOPS = hopsFrom(origin);
-  /* a destination that is genuinely far through the graph,
-     which is not at all the same as far across the map */
-  let bestT = -1, bestH = -1;
-  for (let tries=0; tries<4000; tries++){
-    const c = (Math.random()*N)|0;
-    if (HOPS[c] > bestH && HOPS[c] > 0){ bestH = HOPS[c]; bestT = c; }
-    if (bestH >= 7) break;
-  }
-  target = bestT >= 0 ? bestT : (origin+1) % N;
-  HOPS = hopsFrom(target);
-
-  cam.pos.set(POS[origin*3], POS[origin*3+1], POS[origin*3+2] + 34);
+  const at = (Math.random()*N)|0;
+  cam.pos.set(POS[at*3], POS[at*3+1], POS[at*3+2] + 34);
   cam.yaw = Math.PI; cam.pitch = 0;
   applyCamera();
-  here = origin;
-
-  document.getElementById('w-from').textContent = WORDS[origin];
-  document.getElementById('w-to').textContent = WORDS[target];
+  here = at;
+  lastWord = at;
+  document.getElementById('jump').textContent = WORDS[at];
+  document.getElementById('measure').textContent = 'dropped in \u00b7 nothing measured yet';
   paint(); ui();
-}
-
-function arrive(){
-  done = true;
-  const t = new THREE.Vector3(POS[origin*3], POS[origin*3+1], POS[origin*3+2]);
-  const flown = Math.round(t.distanceTo(new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2])));
-  const hopsAway = hopsFrom(origin)[target];
-  document.getElementById('a-word').textContent = WORDS[target];
-  document.getElementById('a-stat').textContent =
-    WORDS[origin] + ' and ' + WORDS[target] + ' sit ' + flown +
-    ' units apart on the map and ' + hopsAway + ' hops apart in meaning.';
-  document.getElementById('arrived').classList.add('on');
 }
 
 /* ==================================================================
@@ -1072,7 +1060,7 @@ function bindInput(){
 
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    if (e.key.toLowerCase() === 'n') newVoyage();
+    if (e.key.toLowerCase() === 'n') dropIn();
   });
 
   addEventListener('resize', () => {
@@ -1103,8 +1091,7 @@ function bindInput(){
     select(i); q.blur();
   });
 
-  document.getElementById('new').onclick = newVoyage;
-  document.getElementById('again').onclick = newVoyage;
+  document.getElementById('new').onclick = dropIn;
 }
 
 /* ==================================================================
@@ -1157,10 +1144,9 @@ function frameBody(){
       hoverLabel || ((jump.on ? 'jumping' : 'holding')
         + (TRUING ? '' : ' \u00b7 flat'));
     document.getElementById('build').textContent =
-      'build 13 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
+      'build 14 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
   }
 
-  if (!done && here === target && !jump.on) arrive();
 
   renderer.render(scene, camera);
 }
