@@ -69,7 +69,6 @@
   #find input:focus{border-color:#fff}
 
   #acts{display:flex;gap:1.6em;justify-content:flex-end;align-items:baseline;margin-top:8px}
-  #fly{font-size:15px;letter-spacing:.34em;color:#fff}
   button{
     pointer-events:auto;background:none;border:0;padding:4px 0;
     font:inherit;font-size:10px;letter-spacing:.22em;text-transform:uppercase;
@@ -113,7 +112,6 @@
     #hops{font-size:26px}
     #panel{max-width:58vw}
     #p-word{font-size:18px}
-    #fly{font-size:17px;padding:10px 0}
     #acts{gap:1.2em}
     #find input{width:120px}
   }
@@ -171,7 +169,7 @@ setTimeout(function(){
       <div id="voyage"><b id="w-from">—</b><span class="to">&rarr;</span><b id="w-to">—</b></div>
     </div>
     <div id="hint">
-      <span class="wide">you are always drifting &middot; FLY for speed<br>drag to look &middot; W A S D also fly<br>every one of 20,480 words is clickable</span><span class="narrow">you are always drifting<br>tap FLY for speed &middot; drag to look<br>tap any of 20,480 words to travel</span>
+      <span class="wide">click a word to jump to it<br>drag to look around &middot; nothing moves on its own<br>all 20,480 words are clickable</span><span class="narrow">tap a word to jump to it<br>drag to look around<br>nothing moves on its own</span>
     </div>
   </div>
 
@@ -188,7 +186,7 @@ setTimeout(function(){
       <div class="lab">nearest</div>
       <div id="here">—</div>
       <div id="hover"></div>
-      <div id="build" class="lab">build 12</div>
+      <div id="build" class="lab">build 13</div>
     </div>
     <div id="right">
       <div id="hops">—</div>
@@ -196,7 +194,6 @@ setTimeout(function(){
       <div id="units"></div>
       <div id="find"><input id="q" type="text" placeholder="find a word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="find a word"></div>
       <div id="acts">
-        <button id="fly">fly</button>
         <button id="new">new voyage</button>
       </div>
     </div>
@@ -755,17 +752,23 @@ function sizeUnit(){
 }
 
 /* ==================================================================
-   FLIGHT — free, inertial, no orbit target
+   TRAVEL — discrete
+   The camera has no velocity and no drift. It is exactly where you
+   last sent it. Clicking a word starts a jump: an eased move to a
+   standoff in front of that word, and nothing else ever moves you.
+   Free flight was the bug. A continuous throttle has no natural
+   stopping point, so any stray input launches you into empty space
+   with no way back and nothing on screen to steer by.
    ================================================================== */
-const cam = {
-  pos: new THREE.Vector3(),
-  vel: new THREE.Vector3(),
-  yaw: 0, pitch: 0
+const cam = { pos: new THREE.Vector3(), yaw: 0, pitch: 0 };
+let autopilot = -1, hoverLabel = '';
+const STANDOFF = 30;
+
+const jump = {
+  on:false, t:0, dur:1,
+  from:new THREE.Vector3(), to:new THREE.Vector3(),
+  yaw0:0, yaw1:0, pitch0:0, pitch1:0
 };
-const keys = new Set();
-let thrust = 0, strafe = 0, lift = 0, boost = false, holdThrust = false;
-let autopilot = -1, cruise = false, hoverLabel = '';
-const CRUISE = 78, DRAG = 0.16, ACC = 240;
 
 const fwd = new THREE.Vector3(), rightV = new THREE.Vector3(), upV = new THREE.Vector3(0,1,0);
 function heading(){
@@ -778,66 +781,59 @@ function heading(){
   return fwd;
 }
 
-const _look = new THREE.Vector3(), _to = new THREE.Vector3();
+const _look = new THREE.Vector3(), _to = new THREE.Vector3(), _dir = new THREE.Vector3();
 function applyCamera(){
   camera.position.copy(cam.pos);
   _look.copy(cam.pos).add(heading());
   camera.lookAt(_look);
 }
 
-function fly(dt){
-  heading();
-  let ax = 0, ay = 0, az = 0;
-  const a = ACC * (boost ? 3.0 : 1);
+function shortest(a, b){
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI*2;
+  while (d < -Math.PI) d += Math.PI*2;
+  return d;
+}
 
-  const engaged = cruise || holdThrust;
-  const th = engaged ? 1 : thrust;
-  if (th){ ax += fwd.x*th*a; ay += fwd.y*th*a; az += fwd.z*th*a; }
-  /* FREE FLOATING, literally: with no throttle and no autopilot you
-     still drift forward. NOTE: this used to also require `selected < 0`,
-     which meant one successful tap stopped all motion permanently —
-     measured at 0.0 u/s forever after. Never gate motion on selection. */
-  if (!engaged && !thrust && autopilot < 0){
-    const dr = a * 0.14;
-    ax += fwd.x*dr; ay += fwd.y*dr; az += fwd.z*dr;
+/* Land short of the word, on the line you approached along, so it
+   finishes dead ahead at a readable size instead of inside your face
+   or somewhere behind your shoulder. */
+function jumpTo(i){
+  _to.set(POS[i*3], POS[i*3+1], POS[i*3+2]);
+  _dir.copy(_to).sub(cam.pos);
+  const d = _dir.length();
+  if (d < 1e-3) _dir.set(0,0,1); else _dir.normalize();
+
+  jump.from.copy(cam.pos);
+  jump.to.copy(_to).addScaledVector(_dir, -STANDOFF);
+  jump.yaw0 = cam.yaw;
+  jump.pitch0 = cam.pitch;
+  jump.yaw1 = cam.yaw + shortest(cam.yaw, Math.atan2(_dir.x, _dir.z));
+  jump.pitch1 = Math.max(-1.48, Math.min(1.48, Math.asin(Math.max(-1, Math.min(1, _dir.y)))));
+  /* far words take longer, but never long enough that you wait on it */
+  jump.dur = REDUCED ? 0.001 : Math.min(1.9, 0.42 + Math.min(d, 900)/900 * 1.3);
+  jump.t = 0;
+  jump.on = true;
+  autopilot = i;
+  settle = 1;                 // the truing pass has new ground to cover
+}
+
+function travel(dt){
+  if (!jump.on){ applyCamera(); return; }
+  jump.t += dt;
+  let u = jump.t / jump.dur;
+  if (u >= 1){ u = 1; jump.on = false; }
+  /* eased both ends: an abrupt start and stop reads as a teleport and
+     you lose all sense of where you just went */
+  const k = u < 0.5 ? 4*u*u*u : 1 - Math.pow(-2*u + 2, 3)/2;
+  cam.pos.lerpVectors(jump.from, jump.to, k);
+  cam.yaw   = jump.yaw0   + (jump.yaw1   - jump.yaw0)   * k;
+  cam.pitch = jump.pitch0 + (jump.pitch1 - jump.pitch0) * k;
+  if (!jump.on && autopilot >= 0){
+    here = autopilot;
+    autopilot = -1;
+    paint(); ui();
   }
-  if (strafe){ ax += rightV.x*strafe*a; ay += rightV.y*strafe*a; az += rightV.z*strafe*a; }
-  if (lift){ ay += lift*a; }
-
-  if (autopilot >= 0){
-    const to = _to.set(POS[autopilot*3], POS[autopilot*3+1], POS[autopilot*3+2]).sub(cam.pos);
-    const d = to.length();
-    if (d < 26){ autopilot = -1; }
-    else {
-      to.normalize();
-      /* turn the nose, don't teleport the frame */
-      const wantYaw = Math.atan2(to.x, to.z);
-      const wantPitch = Math.asin(Math.max(-1, Math.min(1, to.y)));
-      let dy = wantYaw - cam.yaw;
-      while (dy > Math.PI) dy -= Math.PI*2;
-      while (dy < -Math.PI) dy += Math.PI*2;
-      const turn = Math.min(1, dt * 2.4);
-      cam.yaw += dy * turn;
-      cam.pitch += (wantPitch - cam.pitch) * turn;
-      heading();
-      const push = Math.min(1, d / 320) * a * 0.9;
-      ax += fwd.x*push; ay += fwd.y*push; az += fwd.z*push;
-      /* brake into the arrival */
-      if (d < 130) cam.vel.multiplyScalar(0.965);
-    }
-  }
-
-  cam.vel.x += ax*dt; cam.vel.y += ay*dt; cam.vel.z += az*dt;
-  const damp = Math.pow(DRAG, dt);
-  cam.vel.multiplyScalar(damp);
-  const max = CRUISE * (boost ? 3.4 : 1) * 1.6;
-  if (cam.vel.length() > max) cam.vel.setLength(max);
-  cam.pos.addScaledVector(cam.vel, dt);
-
-  /* the field is finite — drift too far and it eases you back */
-  const r = cam.pos.length();
-  if (r > SCALE*1.9) cam.pos.multiplyScalar(1 - Math.min(0.5, (r - SCALE*1.9) / r) * dt * 1.6);
-
   applyCamera();
 }
 
@@ -886,7 +882,7 @@ function tryPick(x, y, slop){
   if (hit < 0) hit = pick(x, y, slop * 5.0);   // and again — a tap should land
   if (hit >= 0) select(hit);
   else {
-    selected = -1; autopilot = -1;
+    selected = -1;
     document.getElementById('panel').classList.remove('on');
     paint();
   }
@@ -928,7 +924,7 @@ function paint(){
 
 function select(i){
   selected = i;
-  autopilot = i;
+  jumpTo(i);
   const order = [];
   for (let j=SSTART[i]; j<SSTART[i+1]; j++) order.push([SADJ[j], SSIM[j]]);
   order.sort((a,b) => b[1]-a[1]);
@@ -960,7 +956,7 @@ function newVoyage(){
   done = false;
   document.getElementById('arrived').classList.remove('on');
   document.getElementById('panel').classList.remove('on');
-  selected = -1; autopilot = -1;
+  selected = -1; autopilot = -1; jump.on = false;
 
   origin = (Math.random()*N)|0;
   HOPS = hopsFrom(origin);
@@ -976,7 +972,6 @@ function newVoyage(){
   HOPS = hopsFrom(target);
 
   cam.pos.set(POS[origin*3], POS[origin*3+1], POS[origin*3+2] + 34);
-  cam.vel.set(0,0,0);
   cam.yaw = Math.PI; cam.pitch = 0;
   applyCamera();
   here = origin;
@@ -1003,16 +998,16 @@ function arrive(){
    ================================================================== */
 function bindInput(){
   const el = renderer.domElement;
-  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0, held = false;
+  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0;
   let id = null, touch = false, pressAt = 0;
-  const SENS = 0.0032, THRUST_MS = 200, TAP_MS = 350, DEADZONE = 3;
+  const SENS = 0.0032, TAP_MS = 350, DEADZONE = 3;
 
   const travelled = (x, y) => Math.hypot(x - sx0, y - sy0);
   const beginPress = (x, y) => {
     if (!pressAt) pressAt = performance.now();
     lx = sx0 = x; ly = sy0 = y;
   };
-  const endPress = () => { pressAt = 0; held = false; holdThrust = false; };
+  const endPress = () => { pressAt = 0; };
 
   el.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -1040,10 +1035,12 @@ function bindInput(){
     /* a resting finger still jitters a pixel at a time — swallow that,
        or the view slides away during what was meant as a tap */
     if (travelled(e.clientX, e.clientY) < DEADZONE) return;
+    /* a jump owns the camera while it runs — letting a drag fight the
+       interpolation mid-flight is how you end up pointing at nothing */
+    if (jump.on) return;
     cam.yaw   -= dx * SENS;
     cam.pitch -= dy * SENS;
     cam.pitch = Math.max(-1.48, Math.min(1.48, cam.pitch));
-    autopilot = -1;
   });
 
   const release = (e, cancelled) => {
@@ -1070,39 +1067,12 @@ function bindInput(){
     tryPick(e.clientX, e.clientY, MOBILE ? 80 : 44);
   });
 
-  setInterval(() => {
-    if (pressAt && !held && performance.now() - pressAt > THRUST_MS) held = true;
-    holdThrust = !!pressAt && held;
-  }, 30);
 
-  const flyBtn = document.getElementById('fly');
-  const setCruise = v => { cruise = v; flyBtn.textContent = v ? 'stop' : 'fly'; };
-  flyBtn.addEventListener('click', e => {
-    e.preventDefault(); e.stopPropagation();
-    setCruise(!cruise);
-  });
 
-  el.addEventListener('wheel', e => {
-    e.preventDefault();
-    autopilot = -1;
-    heading();
-    cam.vel.addScaledVector(fwd, -e.deltaY * 0.55);
-  }, {passive:false});
 
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    keys.add(e.key.toLowerCase());
     if (e.key.toLowerCase() === 'n') newVoyage();
-    if (e.key === 'Shift') boost = true;
-    if (['w','a','s','d','q','e','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())){
-      e.preventDefault(); autopilot = -1;
-    }
-    readKeys();
-  });
-  addEventListener('keyup', e => {
-    keys.delete(e.key.toLowerCase());
-    if (e.key === 'Shift') boost = false;
-    readKeys();
   });
 
   addEventListener('resize', () => {
@@ -1137,15 +1107,6 @@ function bindInput(){
   document.getElementById('again').onclick = newVoyage;
 }
 
-function keyThrust(){
-  return (keys.has('w') || keys.has('arrowup')) ? 1 : (keys.has('s') || keys.has('arrowdown')) ? -1 : 0;
-}
-function readKeys(){
-  thrust = keyThrust();
-  strafe = (keys.has('d') || keys.has('arrowright')) ? 1 : (keys.has('a') || keys.has('arrowleft')) ? -1 : 0;
-  lift   = keys.has('e') ? 1 : keys.has('q') ? -1 : 0;
-}
-
 /* ==================================================================
    LOOP
    ================================================================== */
@@ -1168,16 +1129,18 @@ function frameBody(){
   const nowp = performance.now();
   if (nowp - fpsT > 500){ fps = Math.round(fpsN*1000/(nowp - fpsT)); fpsN = 0; fpsT = nowp; }
 
-  fly(dt);
+  travel(dt);
 
-  /* everything stays on screen; stillness just lets the rare ones rise */
-  const sp = cam.vel.length();
-  const want = Math.max(0, 1 - sp / CRUISE);
+  /* everything stays on screen; stillness just lets the rare ones rise,
+     and standing still is now the normal state rather than the rare one */
+  const want = jump.on ? 0.15 : 1;
   calm += (want - calm) * Math.min(1, dt * 2.2);
   field.material.uniforms.uCalm.value = calm;
 
-  /* local truing, a few hundred words at a time */
-  if (TRUING && !safeMode && frame % RELAX_EVERY === 0){
+  /* local truing, a few hundred words at a time.
+     once the neighbourhood around a stationary camera has converged
+     there is nothing left to correct, so stop burning frames on it */
+  if (TRUING && !safeMode && settle > 2e-4 && frame % RELAX_EVERY === 0){
     gatherActive(cam.pos.x, cam.pos.y, cam.pos.z);
     const m = relax();
     settle = settle * 0.9 + m * 0.1;
@@ -1185,27 +1148,19 @@ function frameBody(){
   }
   if (dispDirty){ dispTex.needsUpdate = true; dispDirty = false; }
 
-  if (frame % NEAREST_EVERY === 0){
-    const nw = nearestWord();
-    if (nw !== here){ here = nw; paint(); }
-  }
   if (performance.now() - uiT > 120){
     uiT = performance.now(); ui();
-    /* a live instrument, not decoration: if this reads 0 u/s while you
-       are pressing, the gesture layer is dead. if it reads a number and
-       nothing appears to move, the camera is. */
+    /* a live instrument, not decoration: "jumping" means the camera is
+       being moved by a click, "holding" means it is exactly where you
+       left it. a frozen frame counter means the loop itself died. */
     document.getElementById('hover').textContent =
-      hoverLabel || (Math.round(sp) + ' u/s'
-        + ((cruise || holdThrust) ? ' \u00b7 thrust' : '')
+      hoverLabel || ((jump.on ? 'jumping' : 'holding')
         + (TRUING ? '' : ' \u00b7 flat'));
     document.getElementById('build').textContent =
-      'build 12 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
+      'build 13 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
   }
 
-  if (!done && here === target){
-    const t = new THREE.Vector3(POS[target*3], POS[target*3+1], POS[target*3+2]);
-    if (t.distanceTo(cam.pos) < 30) arrive();
-  }
+  if (!done && here === target && !jump.on) arrive();
 
   renderer.render(scene, camera);
 }
