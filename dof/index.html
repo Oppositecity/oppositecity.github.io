@@ -57,16 +57,25 @@
 
   .lit{ white-space:pre-wrap; color:var(--quiet); font-size:.8em; vertical-align:top; line-height:1.25; }
 
-  .w{
+  button.w{
+    -webkit-appearance:none;appearance:none;
     display:inline-block;
     vertical-align:top;
+    font:inherit;
+    letter-spacing:inherit;
+    text-transform:none;
+    text-align:left;
+    background:none;
+    border:0;
+    padding:0;
     cursor:pointer;
+    touch-action:manipulation;
     color:var(--quiet);
     transition:color .5s ease;
     margin-bottom:14px;
   }
-  @media (prefers-reduced-motion:reduce){ .w{transition:none} }
-  .w:focus{outline:2px solid var(--free);outline-offset:3px}
+  @media (prefers-reduced-motion:reduce){ button.w{transition:none} }
+  button.w:focus-visible{outline:2px solid var(--free);outline-offset:3px}
   .w.sel .wt{ font-weight:700 }
   .wt{display:block;line-height:1.25}
 
@@ -374,9 +383,9 @@ function build(tokens){
       passageEl.appendChild(s);
       return;
     }
-    const s = document.createElement("span");
+    const s = document.createElement("button");
+    s.type = "button";
     s.className = "w";
-    s.tabIndex = 0;
     s.dataset.i = i;
     const wt = document.createElement("span");
     wt.className = "wt";
@@ -390,7 +399,6 @@ function build(tokens){
     moves.className = "moves";
     s.append(wt, pix, bits, moves);
     s.addEventListener("click", () => open(i));
-    s.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){e.preventDefault();open(i);} });
     passageEl.appendChild(s);
   });
 }
