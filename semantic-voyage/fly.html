@@ -162,7 +162,7 @@ setTimeout(function(){
       <div id="measure"></div>
     </div>
     <div id="hint">
-      <span class="wide">press to aim &middot; release to jump<br>drag to turn &middot; there is no up, and no edge<br>all 20,480 words are clickable</span><span class="narrow">press to aim &middot; release to jump<br>drag to turn &middot; no up, no edge<br>all 20,480 words clickable</span>
+      <span class="wide">tap a word to jump to it<br>HOLD to fly forward &middot; drag to turn<br>no up, no edge, no end</span><span class="narrow">tap a word to jump<br>HOLD to fly &middot; drag to turn<br>no up, no edge, no end</span>
     </div>
   </div>
 
@@ -179,7 +179,7 @@ setTimeout(function(){
       <div class="lab">nearest</div>
       <div id="here">—</div>
       <div id="hover"></div>
-      <div id="build" class="lab">build 16</div>
+      <div id="build" class="lab">build 17</div>
     </div>
     <div id="right">
       <div id="hops">0</div>
@@ -776,13 +776,9 @@ function sizeUnit(){
 }
 
 /* ==================================================================
-   TRAVEL — discrete
-   The camera has no velocity and no drift. It is exactly where you
-   last sent it. Clicking a word starts a jump: an eased move to a
-   standoff in front of that word, and nothing else ever moves you.
-   Free flight was the bug. A continuous throttle has no natural
-   stopping point, so any stray input launches you into empty space
-   with no way back and nothing on screen to steer by.
+   TRAVEL — discrete jumps, plus a throttle
+   Clicking a word eases the camera to a standoff in front of it.
+   Holding flies you forward. Nothing else ever moves you.
    ================================================================== */
 /* ORIENTATION IS A QUATERNION, deliberately.
    Euler yaw/pitch against a fixed world up is what put a floor and a
@@ -794,6 +790,16 @@ function sizeUnit(){
 const cam = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
 let autopilot = -1, hoverLabel = '';
 const STANDOFF = 30;
+
+/* FORWARD FLIGHT, restored. It was cut because a continuous throttle
+   had no natural stopping point — you would sail out of the cloud into
+   empty space with nothing on screen to steer back by. That failure is
+   gone: the field is periodic now, so there is no outside to reach.
+   Heavy drag means releasing stops you in about half a second, and a
+   tap still jumps, so the throttle can never swallow a click. */
+let thrust = 0;
+const vel = new THREE.Vector3(), _f = new THREE.Vector3();
+const FLY_ACC = 280, FLY_DRAG = 0.02;
 
 const jump = {
   on:false, t:0, dur:1,
@@ -838,6 +844,7 @@ function jumpTo(i){
   const d = _dir.length();
   if (d < 1e-3) _dir.set(0,0,1); else _dir.normalize();
 
+  vel.set(0,0,0);            // a jump takes the wheel from the throttle
   jump.from.copy(cam.pos);
   jump.to.copy(_to).addScaledVector(_dir, -STANDOFF);
   jump.q0.copy(cam.quat);
@@ -855,7 +862,32 @@ function jumpTo(i){
 }
 
 function travel(dt){
-  if (!jump.on){ applyCamera(); return; }
+  if (!jump.on){
+    if (thrust){
+      _f.set(0, 0, -1).applyQuaternion(cam.quat);
+      vel.addScaledVector(_f, FLY_ACC * dt);
+    }
+    vel.multiplyScalar(Math.pow(FLY_DRAG, dt));
+    if (vel.lengthSq() > 4){
+      cam.pos.addScaledVector(vel, dt);
+      foldCamera();
+      settle = 1;                    // new ground for the truing pass
+      if (frame % NEAREST_EVERY === 0){
+        const nw = nearestWord();
+        if (nw !== here){
+          here = nw;
+          /* measure the next jump from where you actually are, not from
+             the last word you deliberately chose */
+          lastWord = nw;
+          paint(); ui();
+        }
+      }
+    } else {
+      vel.set(0,0,0);
+    }
+    applyCamera();
+    return;
+  }
   jump.t += dt;
   let u = jump.t / jump.dur;
   if (u >= 1){ u = 1; jump.on = false; }
@@ -1026,6 +1058,7 @@ function ui(){
 function dropIn(){
   document.getElementById('panel').classList.remove('on');
   selected = -1; autopilot = -1; jump.on = false;
+  vel.set(0,0,0);
 
   const at = (Math.random()*N)|0;
   cam.pos.set(POS[at*3], POS[at*3+1], POS[at*3+2] + 34);
@@ -1044,16 +1077,16 @@ function dropIn(){
    ================================================================== */
 function bindInput(){
   const el = renderer.domElement;
-  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0;
+  let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0, held = false;
   let id = null, touch = false, pressAt = 0;
-  const SENS = 0.0032, TAP_MS = 350, DEADZONE = 3;
+  const SENS = 0.0032, TAP_MS = 350, HOLD_MS = 360, DEADZONE = 3;
 
   const travelled = (x, y) => Math.hypot(x - sx0, y - sy0);
   const beginPress = (x, y) => {
     if (!pressAt) pressAt = performance.now();
     lx = sx0 = x; ly = sy0 = y;
   };
-  const endPress = () => { pressAt = 0; };
+  const endPress = () => { pressAt = 0; held = false; thrust = 0; };
 
   el.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -1114,6 +1147,17 @@ function bindInput(){
   el.addEventListener('pointerup', e => release(e, false));
   el.addEventListener('pointercancel', e => release(e, true));
 
+  /* a press that outlives a tap becomes the throttle. HOLD_MS sits just
+     past TAP_MS so the two can never both fire on one press. dragging
+     still turns while you fly, which is the whole point. */
+  setInterval(() => {
+    if (pressAt && !held && performance.now() - pressAt > HOLD_MS){
+      held = true;
+      if (aim >= 0){ aim = -1; aimLabel = ''; paint(); }
+    }
+    thrust = (pressAt && held) ? 1 : 0;
+  }, 30);
+
   /* the browser's own tap synthesis is better tuned than anything I can
      hand-roll, and it is the one path that cannot be broken by my own
      slop maths. tryPick debounces so this and pointerup do not double. */
@@ -1127,7 +1171,13 @@ function bindInput(){
 
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    if (e.key.toLowerCase() === 'n') dropIn();
+    const k = e.key.toLowerCase();
+    if (k === 'n') dropIn();
+    if (k === 'w' || k === 'arrowup'){ e.preventDefault(); thrust = 1; }
+  });
+  addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    if (k === 'w' || k === 'arrowup') thrust = 0;
   });
 
   addEventListener('resize', () => {
@@ -1209,10 +1259,12 @@ function frameBody(){
        being moved by a click, "holding" means it is exactly where you
        left it. a frozen frame counter means the loop itself died. */
     document.getElementById('hover').textContent =
-      aimLabel || hoverLabel || ((jump.on ? 'jumping' : 'holding')
+      aimLabel || hoverLabel || ((jump.on ? 'jumping'
+        : vel.lengthSq() > 4 ? 'flying \u00b7 ' + Math.round(vel.length()) + ' u/s'
+        : 'holding')
         + (TRUING ? '' : ' \u00b7 flat'));
     document.getElementById('build').textContent =
-      'build 16 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
+      'build 17 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
   }
 
 
