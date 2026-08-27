@@ -162,7 +162,7 @@ setTimeout(function(){
       <div id="measure"></div>
     </div>
     <div id="hint">
-      <span class="wide">click a word to jump to it<br>drag to turn &middot; there is no up, and no edge<br>all 20,480 words are clickable</span><span class="narrow">tap a word to jump to it<br>drag to turn &middot; no up, no edge<br>all 20,480 words clickable</span>
+      <span class="wide">press to aim &middot; release to jump<br>drag to turn &middot; there is no up, and no edge<br>all 20,480 words are clickable</span><span class="narrow">press to aim &middot; release to jump<br>drag to turn &middot; no up, no edge<br>all 20,480 words clickable</span>
     </div>
   </div>
 
@@ -179,7 +179,7 @@ setTimeout(function(){
       <div class="lab">nearest</div>
       <div id="here">—</div>
       <div id="hover"></div>
-      <div id="build" class="lab">build 15</div>
+      <div id="build" class="lab">build 16</div>
     </div>
     <div id="right">
       <div id="hops">0</div>
@@ -586,8 +586,8 @@ async function buildAtlas(){
 let scene, camera, renderer, field, stateAttr;
 const wordStart = new Int32Array(N), wordLen = new Int32Array(N);
 
-/* states: 0 field, 1 neighbour of selection, 2 selected, 3 nearest, 4 target */
-let here = 0, selected = -1, lastWord = -1;
+/* states: 0 field, 1 neighbour of selection, 2 selected, 3 nearest, 5 aim */
+let here = 0, selected = -1, lastWord = -1, aim = -1, aimLabel = '';
 let jumps = 0, spanned = 0, calm = 1;
 
 async function init(){
@@ -703,10 +703,16 @@ async function init(){
         bool lit = aState > 0.5;
         float mag = 1.0 - aRank / uN;
 
-        float bright = 0.24 + 0.36 * pow(mag, 1.5);
-        float size   = 0.80 + 0.34 * mag;
-        if (!lit) bright *= mix(0.55, 1.0, max(uCalm, pow(mag, 2.0)));
-        if (aState > 3.5){                       // target
+        /* DISTANCE OWNS SIZE, RARITY OWNS BRIGHTNESS. Previously both
+           variables fought over both channels, so a rare word up close
+           and a common word far away came out the same size and the
+           whole field flattened into one wall at one scale. */
+        float bright = 0.45 + 0.55 * pow(mag, 1.2);
+        float size   = 1.0;
+        if (!lit) bright *= mix(0.62, 1.0, max(uCalm, pow(mag, 2.0)));
+        if (aState > 4.5){                       // aiming at it right now
+          bright = 1.0; size = 1.5;
+        } else if (aState > 3.5){                // target
           bright = 0.78 + 0.22 * sin(uTime * 2.0) * uPulse;
           size = 1.8;
         } else if (aState > 2.5){                // nearest word
@@ -718,7 +724,10 @@ async function init(){
           size = 1.4;
         }
 
-        float s = uUnit * pow(dist, 0.60) * pow(uRef, 0.40) * size;
+        /* near-true perspective. the exponents still sum to 1, so uRef
+           is the distance where size is unchanged, but the near/far
+           ratio across the visible depth goes from 3.5x to 14x. */
+        float s = uUnit * pow(dist, 0.15) * pow(uRef, 0.85) * size;
         vec2 corner = uv - 0.5;
         mv.xy += vec2(aChar.x + corner.x, corner.y) * s;
         gl_Position = projectionMatrix * mv;
@@ -727,7 +736,7 @@ async function init(){
         vUv = (vec2(mod(gi, uGrid.x), floor(gi / uGrid.x)) + vec2(uv.x, 1.0 - uv.y)) / uGrid;
 
         float fade = clamp(1.0 - dist / uFar, 0.0, 1.0);
-        vA = bright * (0.10 + 0.90 * fade * fade);
+        vA = bright * (0.12 + 0.88 * pow(fade, 1.3));
       }
     `,
     fragmentShader:`
@@ -735,13 +744,18 @@ async function init(){
       varying vec2 vUv;
       varying float vA;
       void main(){
+        /* Cut the glyph out and write depth, so a near word HIDES the
+           ones behind it. Additively blending every overlap is what
+           smeared the mid-field into horizontal streaks — text cannot
+           be read through other text. On black, fading to dark reads
+           as distance just as well as fading to transparent did. */
         float a = texture2D(uAtlas, vUv).a;
-        if (a * vA < 0.012) discard;
-        gl_FragColor = vec4(1.0, 1.0, 1.0, a * vA);
+        if (a < 0.45) discard;
+        gl_FragColor = vec4(vec3(vA), 1.0);
       }
     `,
-    transparent:true, blending:THREE.AdditiveBlending,
-    depthTest:false, depthWrite:false
+    transparent:false, blending:THREE.NormalBlending,
+    depthTest:true, depthWrite:true
   });
 
   field = new THREE.Mesh(geo, mat);
@@ -964,6 +978,7 @@ function paint(){
     setWordState(selected, 2); touch(selected);
   }
   setWordState(here, 3); touch(here);
+  if (aim >= 0){ setWordState(aim, 5); touch(aim); }
   stateAttr.needsUpdate = true;
 }
 
@@ -1056,6 +1071,13 @@ function bindInput(){
     id = e.pointerId; down = true;
     touch = e.pointerType !== 'mouse';
     beginPress(e.clientX, e.clientY);
+    /* light up the candidate the instant you touch down, so you can see
+       whether you got the word you meant before letting go */
+    if (!jump.on){
+      let a = pick(e.clientX, e.clientY, touch ? 80 : 44);
+      if (a < 0) a = pick(e.clientX, e.clientY, touch ? 200 : 110);
+      if (a >= 0){ aim = a; aimLabel = '\u2192 ' + WORDS[a]; paint(); }
+    }
     try { el.setPointerCapture(id); } catch(err){}
   });
 
@@ -1066,8 +1088,7 @@ function bindInput(){
     /* a resting finger still jitters a pixel at a time — swallow that,
        or the view slides away during what was meant as a tap */
     if (travelled(e.clientX, e.clientY) < DEADZONE) return;
-    /* a jump owns the camera while it runs — letting a drag fight the
-       interpolation mid-flight is how you end up pointing at nothing */
+    if (aim >= 0){ aim = -1; aimLabel = ''; paint(); }
     if (jump.on) return;
     /* about the camera's OWN axes — post-multiply. no clamp anywhere:
        look straight up, keep going, come out upside down. */
@@ -1081,6 +1102,7 @@ function bindInput(){
     const dur = performance.now() - (pressAt || performance.now());
     const moved = travelled(e.clientX, e.clientY);
     down = false;
+    aim = -1; aimLabel = '';
     endPress();
     try { el.releasePointerCapture(id); } catch(err){}
     id = null;
@@ -1187,10 +1209,10 @@ function frameBody(){
        being moved by a click, "holding" means it is exactly where you
        left it. a frozen frame counter means the loop itself died. */
     document.getElementById('hover').textContent =
-      hoverLabel || ((jump.on ? 'jumping' : 'holding')
+      aimLabel || hoverLabel || ((jump.on ? 'jumping' : 'holding')
         + (TRUING ? '' : ' \u00b7 flat'));
     document.getElementById('build').textContent =
-      'build 15 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
+      'build 16 \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps';
   }
 
 
