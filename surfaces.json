@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-20",
+ "published": "2026-08-27",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -306,6 +306,22 @@
    ],
    "blurb": "A reader that will not show you the text. Every word of a post is replaced by the pile of its own synonyms, laid one over another in the same place, so a sentence arrives as a row of clouds rather than a line. The pile is a measurement as much as an image: a word the language will trade for many others stands thick and nearly unreadable, a word it will barely trade at all stands thin, and the reading you get is whichever word you pull out of each stack. Words the thesaurus answers with nothing are not clouds — they appear alone and marked zero, because a word with no available move is not ambiguous, it is fixed. Words it could not answer for are marked apart from those and never merged with them, since a rate limit is not a constraint on language, and quietly confusing the two is the ordinary way an instrument like this lies. Hover lifts one word clear of the blend; clicking fixes it and sends the rest of the stack to ghost, so a text can be read out of the field one decision at a time — a reading that exists nowhere in the original and is licensed at every point by it.",
    "url": "https://opposite.city/aureole/"
+  },
+  {
+   "slug": "dof",
+   "name": "DEGREES OF FREEDOM",
+   "district": "language",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "semantic constraint",
+    "datamuse",
+    "corpus attestation",
+    "measurement",
+    "writing instrument"
+   ],
+   "blurb": "Aureole's sibling instrument, pointed the other way — not a reading but a measurement of what a reading would cost. Every word is offered four moves: sideways into a synonym, narrower into a hyponym, wider into a hypernym, or sideways again into whatever the corpus keeps finding beside it. Each candidate is then tested against its actual neighbours in the passage, using real bigram attestation rather than a model's opinion — a word survives the corpus check or it doesn't, and only the survivors count as an open channel. What's left is a number between zero and four for every word: how many independent kinds of move the language still permits it, here, in this sentence, with these neighbours. A word with no channels open is pinned. A word absent from the lexicon entirely is marked apart from a pinned word on purpose, since a missing entry is a gap in the instrument and a genuinely closed channel is a fact about the sentence — collapsing the two would make the measurement lie. Tap any word to see exactly which candidates were offered, which survived, and which were closed by context.",
+   "url": "https://opposite.city/dof/"
   }
  ]
 }
