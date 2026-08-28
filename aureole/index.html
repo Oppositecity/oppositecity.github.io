@@ -83,7 +83,7 @@
      neighbouring piles bleed into each other rather than sitting as islands */
   .field{
     display:flex; flex-wrap:wrap; align-items:center;
-    gap:20px 26px; padding:8px 0 26px;
+    gap:26px 34px; padding:8px 0 26px;
   }
   .cluster{position:relative; display:inline-block}
   .syn{
@@ -126,7 +126,7 @@
   @media (prefers-reduced-motion:reduce){ .syn{transition:color .15s} }
   @media (max-width:560px){
     .wrap{padding:26px 16px 120px}
-    .field{gap:14px 18px}
+    .field{gap:18px 22px}
     button.go{width:100%}
   }
 </style>
@@ -261,14 +261,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 async function askDatamuse(word,attempt=0){
   try{
-    const r=await fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}&max=14`);
+    const r=await fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(word)}&max=20`);
     if(r.status===429||r.status===503){
       if(attempt<2){ await sleep(700*(attempt+1)); return askDatamuse(word,attempt+1); }
       throttled=true; return {state:"unknown",words:[]};
     }
     if(!r.ok) return {state:"unknown",words:[]};
     const d=await r.json();
-    const filtered=d.filter(x=>x.word.toLowerCase()!==word).slice(0,11);
+    const filtered=d.filter(x=>x.word.toLowerCase()!==word).slice(0,16);
     const w=filtered.map(x=>({word:x.word, score:typeof x.score==="number"?x.score:0}));
     return w.length?{state:"ok",words:w}:{state:"pinned",words:[]};
   }catch{ return {state:"unknown",words:[]}; }
@@ -281,7 +281,7 @@ async function lookup(word){
 
   let rec=await askDatamuse(key);
   if(rec.state==="unknown" && LOCAL[key]){           // local rescue for offline
-    const local=LOCAL[key].filter(w=>w!==key).slice(0,8);
+    const local=LOCAL[key].filter(w=>w!==key).slice(0,10);
     rec={state:"ok", words:local.map((w,i)=>({word:w, score:local.length-i}))};
   }
 
@@ -350,30 +350,37 @@ async function buildField(text,field,status){
   animate();
 }
 
-/* words sit around the (invisible) source position — distance encodes
-   strength: the strongest match sits closest, looser ones drift outward.
-   Piles pack tighter than before and are allowed to bleed into their
-   neighbours, so the field reads as continuous weather rather than islands. */
+/* words orbit the (invisible) source position on a golden-angle spiral —
+   the same construction as a sunflower seed head. Radius grows with
+   sqrt(index), which spaces points evenly over area instead of crowding
+   the center, so a 14-word pile spreads into a small field rather than
+   collapsing into an illegible smear of overlapping letters. Sorting by
+   Datamuse's own relevance score first means the strongest match always
+   lands nearest the center, biggest, and brightest; weak ones drift out,
+   shrink, and fade — distance IS the reading of strength, not decoration
+   on top of it. */
+const GOLDEN_ANGLE = 2.399963229728653; // radians, ~137.5°
 function pile(cluster,words,flip){
-  const n=words.length;
-  const base=Math.max(14,22-n*0.55);
-  const maxScore=Math.max(...words.map(w=>w.score),1);
-  const Rmin=10, Rmax=20+n*7;
-  let maxW=0,maxX=0,maxY=0;
   const ordered=[...words].sort((a,b)=>b.score-a.score);
+  const n=ordered.length;
+  const maxScore=Math.max(...ordered.map(w=>w.score),1);
+  const step=17;              // px per sqrt(i) — how fast the spiral opens; tuned against font size to avoid collision
+  let maxW=0,maxX=0,maxY=0;
 
   ordered.forEach((rec,i)=>{
+    const strength=maxScore?rec.score/maxScore:1-(i/Math.max(1,n-1));
     const el=document.createElement("span");
     el.className="syn"; el.textContent=rec.word;
-    el.style.fontSize=base+"px";
-    const strength=maxScore?rec.score/maxScore:1-(i/Math.max(1,n-1));
-    const r=Rmin+(1-strength)*(Rmax-Rmin)*(0.7+Math.random()*0.5);
-    el.style.opacity=String(0.65+strength*0.35);        // stronger matches read brighter too
+    const fs=Math.max(11,13+strength*11);
+    el.style.fontSize=fs+"px";
+    el.style.opacity=String(0.32+strength*0.62);   // farther out reads more transparent, not just smaller
     if(flip()) el.style.fontStyle="italic";
     cluster.appendChild(el);
+
+    const r=i===0?0:step*Math.sqrt(i)*(0.92+Math.random()*0.16);
+    const a=i*GOLDEN_ANGLE+(Math.random()-.5)*0.12;
+    const hx=Math.cos(a)*r, hy=Math.sin(a)*r*0.82;
     maxW=Math.max(maxW,el.getBoundingClientRect().width);
-    const a=(i/n)*Math.PI*2+(Math.random()-.5)*0.5;
-    const hx=Math.cos(a)*r, hy=Math.sin(a)*r*0.78;
     maxX=Math.max(maxX,Math.abs(hx)); maxY=Math.max(maxY,Math.abs(hy));
     el.style.transform=`translate(calc(-50% + ${hx}px), calc(-50% + ${hy}px))`;
     el.addEventListener("click",e=>{
@@ -383,12 +390,13 @@ function pile(cluster,words,flip){
       if(was) cluster.classList.remove("chosen");
       else{ cluster.classList.add("chosen"); el.classList.add("picked"); }
     });
-    parts.push({el,hx,hy,phase:Math.random()*Math.PI*2,sp:.5+Math.random()*.8});
+    parts.push({el,hx,hy,phase:Math.random()*Math.PI*2,sp:.4+Math.random()*.5});
   });
-  // reserve roughly half the true footprint on purpose — piles are meant
-  // to bleed into their neighbours now, not sit as separated islands
-  cluster.style.width=(maxW*0.6+maxX*1.1+10)+"px";
-  cluster.style.height=(base+maxY*1.1+10)+"px";
+  // reserve the true footprint — clusters no longer deliberately bleed into
+  // each other; the density now lives inside each spiral, not in collision
+  // between neighbouring words
+  cluster.style.width=(maxW+maxX*2+14)+"px";
+  cluster.style.height=(26+maxY*2+14)+"px";
 }
 
 function animate(){
