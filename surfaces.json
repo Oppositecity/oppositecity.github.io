@@ -172,11 +172,12 @@
     "word embeddings",
     "glove",
     "semantic space",
-    "starfield",
+    "periodic space",
+    "flight",
     "navigation"
    ],
-   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. You travel only by similarity: each word offers the handful nearest it, and reaching anywhere means finding a chain of small resemblances. Frequency works as stellar magnitude, so common words carry across the whole field and rare ones resolve only when you are close.",
-   "url": "https://opposite.city/semantic-voyage/"
+   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. The field is periodic: it repeats in every direction, so there is no up, no edge, and no outside to fall into. Hold to fly forward, tap any word to jump to it. Every jump is measured against the true vectors and comes back either verified, carrying the real cosine, or honestly unmeasured — an exact distance exists only along the 122,901 relations the model actually asserts. Near you the layout quietly corrects itself toward those measurements, since the projection is candid about who your neighbours are and lies about how far anything is.",
+   "url": "https://opposite.city/semantic-voyage/fly.html"
   },
   {
    "slug": "room",
