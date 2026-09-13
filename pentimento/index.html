@@ -54,11 +54,11 @@ window.addEventListener('unhandledrejection',function(e){window.__err(String(e.r
 <canvas id="c"></canvas>
 <div id="land"><div class="col">
 <h1>pentimento</h1>
-<p>Write by choosing from what a language model is actually weighing. Every word opens a field, and any word you have written can be gone back to and chosen again. Nothing moves on its own.</p>
+<p>Write by choosing from what a language model is actually weighing. Every word you commit puts you inside the field of what could come next — it surrounds you, and you turn to read it. Nothing moves on its own.</p>
 <input id="prompt" type="text" value="The opposite of a city is" autocomplete="off" spellcheck="false" aria-label="Opening words">
 <button id="go">begin</button>
 <div id="status" aria-live="polite"></div>
-<p id="fine">GPT-2 runs entirely in this tab. The model is fetched once from Hugging Face (548 MB); what you type never leaves your device. build 7</p>
+<p id="fine">GPT-2 runs entirely in this tab. The model is fetched once from Hugging Face (548 MB); what you type never leaves your device. build 8</p>
 </div></div>
 <div id="read" class="shad"></div>
 <div id="ctl" class="shad"><span id="undo">erase</span><span id="again">new</span></div>
@@ -459,18 +459,20 @@ var FONT='"Courier Prime","Courier New",monospace';
 var worker=null,ready=false,cfg=null,map=null,names=null;
 var steps=[],toks=[],promptLen=0,busy=false,runId=0,aim=null,pendingId=-1,hinted=false;
 var view=0,li=0,fade=null,dirty=true,readKey='',ladKey='',lineKey='';
-var K=1400,N=coarse?430:820,HOLD=5;
+var K=4200,N=coarse?2600:4200,HOLD=4,BUILT=6;
 var W=0,H=0,DPR=1,CX=0,CY=0;
 
-// ---- the cloud ----
-// Position is the model's own unembedding space: three rank-equalised principal
-// axes, the third of them depth. Distance owns size, probability owns brightness,
-// and neither borrows the other's channel.
-var CZ=1000,HDZ=380,DEEP=HDZ*2.6,BASEF=coarse?17:19;
-var SX=0,SY=0;
-var yaw=0,pitch=0,zoom=1,panx=0,pany=0;
-var vyaw=0,vpitch=0,glide=false;
-var YAWMAX=1.0,PITMAX=0.62;
+// ---- the surround ----
+// You stand inside the vocabulary rather than in front of it. Two rank-equalised
+// principal axes of the unembedding put a word somewhere on the sphere around you
+// — one of them all the way round, one from underfoot to overhead — and the third
+// sets how far off it stands. Every direction is occupied. There is no edge to
+// reach, no outside to look in from, and nothing behind you that is not language.
+var RNEAR=430,RFAR=1560,RREF=Math.sqrt(RNEAR*RFAR);
+var FOV0=1.25,FOVMIN=0.62,FOVMAX=1.92;
+var fov=FOV0,FOC=1,FOC0=1,WS=1,BASEF=coarse?17:19;
+var yaw=0,pitch=0,vyaw=0,vpitch=0,glide=false;
+var PITMAX=1.40;
 
 function startWorker(){
   var url=URL.createObjectURL(new Blob([$('wsrc').textContent],{type:'text/javascript'}));
@@ -494,7 +496,7 @@ function begin(){
   if(!text.trim()){statusEl.textContent='Type a few opening words first.';goB.disabled=false;return;}
   runId++;steps=[];toks=[];promptLen=0;aim=null;pendingId=-1;fade=null;busy=true;dirty=true;
   readKey='';ladKey='';lineKey='';view=0;
-  yaw=0;pitch=0;zoom=1;panx=0;pany=0;vyaw=0;vpitch=0;glide=false;
+  yaw=0;pitch=0;fov=FOV0;vyaw=0;vpitch=0;glide=false;
   document.body.classList.add('run');
   measure();buildLadder();
   readEl.textContent='reading your words';lineEl.textContent=text;hintEl.textContent='';
@@ -503,7 +505,9 @@ function begin(){
 
 function measure(){
   CX=W/2;CY=H/2;
-  SX=W*0.355;SY=H*0.30;
+  FOC0=0.5*Math.sqrt(W*H)/Math.tan(FOV0/2);
+  FOC=0.5*Math.sqrt(W*H)/Math.tan(fov/2);
+  WS=BASEF*RREF/FOC0;
   if(hintEl)hintEl.style.bottom=((document.getElementById('line').offsetHeight||44)+34)+'px';
 }
 function resize(){
@@ -512,51 +516,74 @@ function resize(){
   measure();sprites.clear();rebuild();dirty=true;
 }
 
-// ---- what the model was weighing, kept small ----
+// ---- what the model was weighing ----
+// Four thousand candidates a layer, not a few hundred: a surround needs enough
+// to fill every direction. The cutoff is found by one histogram pass over the
+// vocabulary rather than by insertion, which at this size would be quadratic.
+var LOGBUF=null;
 function topK(p,off,V,k){
-  var ids=[],ps=[],floor=-1;
-  for(var v=0;v<V;v++){var x=p[off+v];
-    if(x>floor||ids.length<k){
-      var i=ps.length;while(i>0&&ps[i-1]<x)i--;
-      ids.splice(i,0,v);ps.splice(i,0,x);if(ids.length>k){ids.pop();ps.pop();}
-      if(ids.length===k)floor=ps[k-1];
-    }}
-  return {ids:Uint32Array.from(ids),ps:Float32Array.from(ps)};
+  var B=1024,LO=-36,SC=B/(0-LO),i,x,lp,b;
+  if(!LOGBUF||LOGBUF.length<V)LOGBUF=new Float32Array(V);
+  var hist=new Int32Array(B+2);
+  for(i=0;i<V;i++){
+    x=p[off+i];
+    lp=x>0?Math.log(x):LO; if(lp<LO)lp=LO; if(lp>0)lp=0;
+    LOGBUF[i]=lp;
+    b=((lp-LO)*SC)|0; if(b>B)b=B;
+    hist[b]++;
+  }
+  var c=0,cut=0;
+  for(b=B;b>=0;b--){c+=hist[b];if(c>=k){cut=b;break;}}
+  var ids=[];
+  for(i=0;i<V;i++){
+    b=((LOGBUF[i]-LO)*SC)|0; if(b>B)b=B;
+    if(b>=cut)ids.push(i);
+  }
+  ids.sort(function(a,b2){return p[off+b2]-p[off+a]});
+  if(ids.length>k)ids.length=k;
+  var ps=new Float32Array(ids.length);
+  for(i=0;i<ids.length;i++)ps[i]=p[off+ids[i]];
+  return {ids:Uint32Array.from(ids),ps:ps};
 }
 function probOf(card,id){
   if(!card.at){card.at={};for(var i=0;i<card.ids.length;i++)card.at[card.ids[i]]=card.ps[i];}
   var v=card.at[id];return v===undefined?0:v;
 }
 function jit(id,s){var h=(id*2654435761)>>>0;return ((h%1000)/1000-0.5)*s;}
+function viewDir(){var c=Math.cos(pitch);return [c*Math.sin(yaw),Math.sin(pitch),c*Math.cos(yaw)];}
 
 // ---- placement ----
-// Resolved once per field, in the cloud's own front view, so that orbiting
-// afterwards is pure parallax and never a relayout. A word may be half hidden
-// behind a likelier one — that is the depth — but never wholly swallowed.
+// Resolved in absolute angle, not on the screen, because there is no single view
+// to resolve it for. A word may be up to BUD hidden behind nearer ones and may
+// hide that much of anything already standing; cells belong to whoever is nearest,
+// so nothing is charged twice for ground it had already lost.
+var GC=0.014,GW=Math.ceil(2*Math.PI/GC),GH=Math.ceil(Math.PI/GC),own=null;
+var BUD=0.40,ELMAX=1.53;
 function place(ws){
-  var C=7,BUD=0.44,ox=-W*0.9,oy=-H*0.9;
-  var gw=Math.ceil(W*2.8/C),gh=Math.ceil(H*2.8/C);
-  var own=new Int32Array(gw*gh);own.fill(-1);
-  var tot=[],taken=[],vzs=[];
-  var tkO=new Int32Array(96),tkC=new Int32Array(96),tkN=0,cn=0,cfront=0;
-  var x0,x1,y0,y1;
-  function box(sx,sy,hw,hh){
-    x0=Math.floor((sx-hw-ox)/C);x1=Math.floor((sx+hw-ox)/C);
-    y0=Math.floor((sy-hh-oy)/C);y1=Math.floor((sy+hh-oy)/C);
-    if(x1<0||y1<0||x0>=gw||y0>=gh)return false;
-    if(x0<0)x0=0;if(y0<0)y0=0;if(x1>=gw)x1=gw-1;if(y1>=gh)y1=gh-1;
+  if(!own)own=new Int32Array(GW*GH);
+  own.fill(-1);
+  var tot=[],taken=[],rs=[];
+  var tkO=new Int32Array(160),tkC=new Int32Array(160),tkN=0,cn=0,cfront=0;
+  var gx0,gx1,gy0,gy1;
+  function box(az,el,hw,hh){
+    var aw=hw/Math.max(Math.cos(el),0.12);
+    if(aw>Math.PI)aw=Math.PI;
+    gy0=Math.floor((el+1.5707963-hh)/GC);gy1=Math.floor((el+1.5707963+hh)/GC);
+    if(gy0<0)gy0=0;if(gy1>=GH)gy1=GH-1;
+    if(gy1<gy0)return false;
+    gx0=Math.floor((az+3.1415927-aw)/GC);gx1=Math.floor((az+3.1415927+aw)/GC);
+    if(gx1-gx0>=GW)gx1=gx0+GW-1;
     return true;
   }
-  // A word may be up to BUD hidden behind likelier ones, and may hide that much
-  // of any word already standing. Cells belong to whoever is nearest, so nothing
-  // is charged twice for ground it had already lost.
-  function fits(sx,sy,hw,hh,vz){
+  function fits(az,el,hw,hh,r){
     tkN=0;cn=0;cfront=0;
-    if(!box(sx,sy,hw,hh))return false;
-    for(var gy=y0;gy<=y1;gy++){var r=gy*gw;
-      for(var gx=x0;gx<=x1;gx++){cn++;
-        var o=own[r+gx];if(o<0)continue;
-        if(vzs[o]<vz){cfront++;continue;}
+    if(!box(az,el,hw,hh))return false;
+    for(var gy=gy0;gy<=gy1;gy++){var row=gy*GW;
+      for(var gx=gx0;gx<=gx1;gx++){
+        var g=gx%GW;if(g<0)g+=GW;
+        cn++;
+        var o=own[row+g];if(o<0)continue;
+        if(rs[o]<r){cfront++;continue;}
         var j=0;for(;j<tkN;j++)if(tkO[j]===o){tkC[j]++;break;}
         if(j===tkN){if(tkN>=tkO.length)return false;tkO[tkN]=o;tkC[tkN]=1;tkN++;}
       }}
@@ -564,52 +591,99 @@ function place(ws){
     for(var j2=0;j2<tkN;j2++)if(taken[tkO[j2]]+tkC[j2]>tot[tkO[j2]]*BUD)return false;
     return true;
   }
-  function claim(sx,sy,hw,hh,vz,me){
-    tot[me]=cn;taken[me]=cfront;vzs[me]=vz;
-    box(sx,sy,hw,hh);
-    for(var gy=y0;gy<=y1;gy++){var r=gy*gw;
-      for(var gx=x0;gx<=x1;gx++){var i=r+gx,o=own[i];
+  function claim(az,el,hw,hh,r,me){
+    tot[me]=cn;taken[me]=cfront;rs[me]=r;
+    box(az,el,hw,hh);
+    for(var gy=gy0;gy<=gy1;gy++){var row=gy*GW;
+      for(var gx=gx0;gx<=gx1;gx++){
+        var g=gx%GW;if(g<0)g+=GW;
+        var i=row+g,o=own[i];
         if(o<0)own[i]=me;
-        else if(vzs[o]>vz){taken[o]++;own[i]=me;}
+        else if(rs[o]>r){taken[o]++;own[i]=me;}
       }}
   }
   var out=[];
   for(var i=0;i<ws.length;i++){
-    var w=ws[i],sx=w.sx0,sy=w.sy0,ok=false,cap=Math.max(72,w.hw*2.2);
-    for(var th=0;th<1100;th+=0.24){
-      var rr=1.25*th;if(rr>cap)break;
-      sx=w.sx0+Math.cos(th)*rr;sy=w.sy0+Math.sin(th)*rr*0.88;
-      if(fits(sx,sy,w.hw,w.hh,w.vz0)){ok=true;break;}
+    var w=ws[i],az=w.az,el=w.el,ok=false,cap=Math.max(0.05,w.hw*2.4);
+    for(var th=0;th<1500;th+=0.26){
+      var rr=0.0042*th;if(rr>cap)break;
+      el=w.el+Math.sin(th)*rr;
+      if(el>ELMAX)el=ELMAX;if(el<-ELMAX)el=-ELMAX;
+      az=w.az+Math.cos(th)*rr/Math.max(Math.cos(el),0.12);
+      if(fits(az,el,w.hw,w.hh,w.r)){ok=true;break;}
     }
     if(!ok)continue;
-    claim(sx,sy,w.hw,w.hh,w.vz0,out.length);
-    w.wx=(sx-CX)*w.vz0/CZ;w.wy=(sy-CY)*w.vz0/CZ;
+    claim(az,el,w.hw,w.hh,w.r,out.length);
+    w.az=az;w.el=el;
+    var ce=Math.cos(el);
+    w.dx=ce*Math.sin(az);w.dy=Math.sin(el);w.dz=ce*Math.cos(az);
+    w.px=w.dx*w.r;w.py=w.dy*w.r;w.pz=w.dz*w.r;
     out.push(w);
   }
   return out;
 }
+// The likeliest word is turned to face the way you are already looking, so a new
+// field never leaves you facing nothing. The field turns; the camera does not.
+function align(w,v){
+  var ux=w.dx,uy=w.dy,uz=w.dz;
+  var d=ux*v[0]+uy*v[1]+uz*v[2];
+  if(d>0.999999)return null;
+  var ax,ay,az2;
+  if(d<-0.999999){ax=-uy;ay=ux;az2=0;if(Math.abs(ux)+Math.abs(uy)<1e-6){ax=1;ay=0;}}
+  else{ax=uy*v[2]-uz*v[1];ay=uz*v[0]-ux*v[2];az2=ux*v[1]-uy*v[0];}
+  var n=Math.hypot(ax,ay,az2)||1;ax/=n;ay/=n;az2/=n;
+  var a=Math.acos(Math.max(-1,Math.min(1,d))),c=Math.cos(a),s=Math.sin(a),t=1-c;
+  return [t*ax*ax+c,t*ax*ay-s*az2,t*ax*az2+s*ay,
+          t*ax*ay+s*az2,t*ay*ay+c,t*ay*az2-s*ax,
+          t*ax*az2-s*ay,t*ay*az2+s*ax,t*az2*az2+c];
+}
 function makeField(card,l){
-  var n=Math.min(N,card.ids.length),ws=[],by={};
+  var n=Math.min(N,card.ids.length),ws=[],by={},i;
   var lmax=Math.log(card.ps[0]+1e-12),lmin=Math.log(card.ps[n-1]+1e-12),span=(lmax-lmin)||1;
-  for(var i=0;i<n;i++){
+  var lr=Math.log(RFAR/RNEAR);
+  for(i=0;i<n;i++){
     var id=card.ids[i],p=card.ps[i];
     var t=(Math.log(p+1e-12)-lmin)/span;if(t<0)t=0;if(t>1)t=1;
     var b=0.46+0.54*Math.pow(t,0.5);
-    var hx=map[id*3],hy=map[id*3+1],hz=map[id*3+2];
-    var wz=hz*HDZ+jit(id,HDZ*0.07),vz0=CZ+wz,size0=BASEF*CZ/vz0;
-    var lx=hx*SX+jit(id+104729,SX*0.05),ly=hy*SY+jit(id+7919,SY*0.055);
-    var label=show(id);
-    cx.font=size0.toFixed(2)+'px '+FONT;
-    var tw=cx.measureText(label).width;
-    ws.push({id:id,p:p,b:b,label:label,wz:wz,vz0:vz0,wx:0,wy:0,
-      sx0:CX+CZ*lx/vz0,sy0:CY+CZ*ly/vz0,hw:tw/2+2,hh:size0*0.54+1});
+    var a0=map[id*3],a1=map[id*3+1],a2=map[id*3+2];
+    var az=a0*Math.PI+jit(id,0.03);
+    var e0=a1*0.97;if(e0>1)e0=1;if(e0<-1)e0=-1;
+    var el=Math.asin(e0)+jit(id+31,0.03);
+    if(el>ELMAX)el=ELMAX;if(el<-ELMAX)el=-ELMAX;
+    var r=RNEAR*Math.exp(lr*((a2+1)/2+jit(id+977,0.05)));
+    var label=show(id),angH=WS/r;
+    var ce=Math.cos(el);
+    ws.push({id:id,p:p,b:b,label:label,r:r,az:az,el:el,
+      dx:ce*Math.sin(az),dy:Math.sin(el),dz:ce*Math.cos(az),
+      hw:0.3*label.length*angH+0.004,hh:0.58*angH});
+  }
+  if(ws.length){
+    var R=align(ws[0],viewDir());
+    if(R)for(i=0;i<ws.length;i++){
+      var w=ws[i];
+      var x=R[0]*w.dx+R[1]*w.dy+R[2]*w.dz;
+      var y=R[3]*w.dx+R[4]*w.dy+R[5]*w.dz;
+      var z=R[6]*w.dx+R[7]*w.dy+R[8]*w.dz;
+      w.dx=x;w.dy=y;w.dz=z;
+      w.el=Math.asin(Math.max(-1,Math.min(1,y)));
+      w.az=Math.atan2(x,z);
+    }
   }
   ws=place(ws);
   for(i=0;i<ws.length;i++)by[ws[i].id]=ws[i];
   return {layer:l,words:ws,by:by};
 }
+// Built fields are large, so only a few are kept alive at once.
+function prune(keepS,keepL){
+  var n=0;
+  for(var s=steps.length-1;s>=0;s--){var f=steps[s].fields;if(!f)continue;
+    for(var l=f.length-1;l>=0;l--){if(!f[l])continue;
+      if(s===keepS&&l===keepL)continue;
+      if(++n>BUILT)f[l]=null;}}
+}
 function field(s,l){var st=steps[s];if(!st||!st.cards)return null;
-  if(!st.fields[l])st.fields[l]=makeField(st.cards[l],l);return st.fields[l];}
+  if(!st.fields[l]){st.fields[l]=makeField(st.cards[l],l);prune(s,l);}
+  return st.fields[l];}
 function here(){return field(view,li);}
 function rebuild(){for(var i=0;i<steps.length;i++)if(steps[i].fields)steps[i].fields=new Array((cfg?cfg.L:12)+1);fade=null;dirty=true;}
 
@@ -624,12 +698,12 @@ function onStep(m){
   swap(was,here(),still?200:620);
   paintLadder();paintLine();dirty=true;
   if(!hinted){hinted=true;hintEl.textContent=coarse
-    ?'tap a word to write it \u00b7 drag to turn the cloud \u00b7 pinch to pull back\ntap a written word below to return to it'
-    :'click a word to write it \u00b7 drag to turn the cloud \u00b7 scroll to pull back\nclick a written word below to return to it';}
+    ?'tap a word to write it \u00b7 drag to look around \u00b7 pinch to widen\ntap a written word below to return to it'
+    :'click a word to write it \u00b7 drag to look around \u00b7 scroll to widen\nclick a written word below to return to it';}
 }
-// Every change of field is a rearrangement: shared words fly to their new place,
-// words that were not there before come forward out of the dark, words that are
-// leaving recede into it.
+// Every change of field is a rearrangement: shared words sweep around the sphere
+// to their new bearing, words that were not there before come forward out of the
+// dark, words that are leaving recede into it.
 function swap(from,to,dur){
   if(!to){fade=null;return;}
   fade={t0:performance.now(),dur:dur,from:from||null,to:to};
@@ -748,7 +822,7 @@ function sprite(label,bi,sk){
   g.fillText(label,mx,my);
   e={c:c,w:c.width/DPR,h:c.height/DPR,size:size};
   sprites.set(key,e);
-  while(sprites.size>900)sprites.delete(sprites.keys().next().value);
+  while(sprites.size>1400)sprites.delete(sprites.keys().next().value);
   return e;
 }
 
@@ -761,8 +835,8 @@ function frameBody(now){
   if(!document.body.classList.contains('run')||!steps.length){if(dirty){blank();dirty=false;}return;}
   if(glide){
     yaw+=vyaw*dt;pitch+=vpitch*dt;clampCam();
-    var f=Math.exp(-dt*2.4);vyaw*=f;vpitch*=f;
-    if(Math.abs(vyaw)+Math.abs(vpitch)<0.02){glide=false;vyaw=0;vpitch=0;}
+    var f=Math.exp(-dt*5.5);vyaw*=f;vpitch*=f;
+    if(Math.abs(vyaw)+Math.abs(vpitch)<0.06){glide=false;vyaw=0;vpitch=0;}
     dirty=true;
   }
   var k=1;
@@ -778,41 +852,49 @@ function frameBody(now){
   paintLine();
   var lk=li+'/'+busy+'/'+steps.length+'/'+view+'/'+(aim?aim.id:-1);
   if(lk!==ladKey){ladKey=lk;paintLadder();undoB.classList.toggle('off',busy||steps.length<2);}
-  if(diagEl.style.display==='block')diagEl.textContent='f'+frame+'  '+Math.round(fps)+' fps\nword '+view+' of '+(steps.length-1)+'  '+(st.ms||0)+' ms\nzoom '+zoom.toFixed(2)+'  yaw '+yaw.toFixed(2)+'  drawn '+vis.length+'\nglyphs '+sprites.size;
+  if(diagEl.style.display==='block')diagEl.textContent='f'+frame+'  '+Math.round(fps)+' fps\nword '+view+' of '+(steps.length-1)+'  '+(st.ms||0)+' ms\nfov '+Math.round(fov*57.3)+'\u00b0  yaw '+Math.round(yaw*57.3)+'\u00b0  drawn '+vis.length+'\nglyphs '+sprites.size;
 }
 function clampCam(){
-  if(yaw>YAWMAX){yaw=YAWMAX;vyaw=0;}if(yaw<-YAWMAX){yaw=-YAWMAX;vyaw=0;}
   if(pitch>PITMAX){pitch=PITMAX;vpitch=0;}if(pitch<-PITMAX){pitch=-PITMAX;vpitch=0;}
+  if(yaw>Math.PI)yaw-=6.2831853;if(yaw<-Math.PI)yaw+=6.2831853;
 }
 function collect(e){
   vis.length=0;
   var to=fade?fade.to:here(),from=fade?fade.from:null;
   if(!to&&!from)return;
-  var dist=CZ*zoom;
+  FOC=0.5*Math.sqrt(W*H)/Math.tan(fov/2);
   var cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
-  function add(w,x,y,z,a,b){
-    var x1=x*cy+z*sy,z1=-x*sy+z*cy;
-    var y2=y*cp-z1*sp,z2=y*sp+z1*cp;
-    var vz=dist+z2;if(vz<90)return;
-    var size=BASEF*CZ/vz;if(size<5)return;
+  function add(w,px,py,pz,r,a,b){
+    var x1=px*cy-pz*sy,z1=px*sy+pz*cy;
+    var y2=py*cp-z1*sp,z2=py*sp+z1*cp;
+    if(z2<40)return;
+    var size=WS*FOC/r;if(size<5)return;
     if(size<8.5)a*=(size-5)/3.5;
     if(a<=0.02)return;
-    var sx=CX+panx+CZ*x1/vz,sy2=CY+pany+CZ*y2/vz;
-    if(sx<-260||sx>W+260||sy2<-140||sy2>H+140)return;
-    var fog=1-0.30*Math.max(0,Math.min(1,(vz-(dist-HDZ))/(2*HDZ)));
-    vis.push({id:w.id,p:w.p,label:w.label,b:b,sx:sx,sy:sy2,size:size,a:a*fog,vz:vz});
+    var sx=CX+FOC*x1/z2,sy2=CY-FOC*y2/z2;
+    if(sx<-300||sx>W+300||sy2<-160||sy2>H+160)return;
+    var fog=1-0.30*Math.max(0,Math.min(1,(r-RNEAR)/(RFAR-RNEAR)));
+    vis.push({id:w.id,p:w.p,label:w.label,b:b,sx:sx,sy:sy2,size:size,a:a*fog,r:r});
   }
-  var i,w,o;
+  var anim=!!fade,i,w,o;
   if(to)for(i=0;i<to.words.length;i++){
     w=to.words[i];o=from?from.by[w.id]:null;
-    if(o)add(w,o.wx+(w.wx-o.wx)*e,o.wy+(w.wy-o.wy)*e,o.wz+(w.wz-o.wz)*e,1,o.b+(w.b-o.b)*e);
-    else add(w,w.wx,w.wy,w.wz+(1-e)*DEEP,e,w.b);
+    if(o){
+      // sweep along the sphere rather than straight through the middle of the room
+      var dx=o.dx+(w.dx-o.dx)*e,dy=o.dy+(w.dy-o.dy)*e,dz=o.dz+(w.dz-o.dz)*e;
+      var n=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+      var r=o.r+(w.r-o.r)*e;
+      add(w,dx/n*r,dy/n*r,dz/n*r,r,1,o.b+(w.b-o.b)*e);
+    }
+    else if(anim){var rr=w.r*(1+1.7*(1-e));add(w,w.dx*rr,w.dy*rr,w.dz*rr,rr,e,w.b);}
+    else add(w,w.px,w.py,w.pz,w.r,1,w.b);
   }
   if(from)for(i=0;i<from.words.length;i++){
     w=from.words[i];if(to&&to.by[w.id])continue;
-    add(w,w.wx,w.wy,w.wz+e*DEEP,1-e,w.b);
+    var r2=w.r*(1+1.7*e);
+    add(w,w.dx*r2,w.dy*r2,w.dz*r2,r2,1-e,w.b);
   }
-  vis.sort(function(a,b){return b.vz-a.vz});
+  vis.sort(function(a,b){return b.r-a.r});
 }
 function paint(){
   var hot=pendingId>=0?pendingId:aim?aim.id:-1,hotW=null;
@@ -852,18 +934,13 @@ function pickAt(x,y,slop){
     var dx=x<v.sx-hw?v.sx-hw-x:x>v.sx+hw?x-(v.sx+hw):0;
     var dy=y<v.sy-hh?v.sy-hh-y:y>v.sy+hh?y-(v.sy+hh):0;
     var dd=Math.hypot(dx,dy);if(dd>slop)continue;
-    var sc=dd*4+v.vz*0.004;
+    var sc=dd*4+v.r*0.004;
     if(sc<bs){bs=sc;best=v;}
   }
   return best?{id:best.id,p:best.p}:null;
 }
 function two(){var a=[];pts.forEach(function(p){a.push(p)});return a;}
-function setZoom(z){zoom=Math.max(0.52,Math.min(1.9,z));}
-function clampPan(){
-  var mx=W*0.85,my=H*0.85;
-  if(panx>mx)panx=mx;if(panx<-mx)panx=-mx;
-  if(pany>my)pany=my;if(pany<-my)pany=-my;
-}
+function setFov(f){fov=Math.max(FOVMIN,Math.min(FOVMAX,f));}
 cv.addEventListener('pointerdown',function(e){
   if(cv.setPointerCapture)cv.setPointerCapture(e.pointerId);
   pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -878,8 +955,7 @@ cv.addEventListener('pointerdown',function(e){
   }else if(pts.size===2){
     aim=null;down=null;ladKey='';
     var a=two();
-    pinch={d0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1,z0:zoom,
-      cx0:(a[0].x+a[1].x)/2,cy0:(a[0].y+a[1].y)/2,px0:panx,py0:pany};
+    pinch={d0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1,f0:fov};
   }
   dirty=true;
 });
@@ -888,19 +964,18 @@ cv.addEventListener('pointermove',function(e){
   pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pinch&&pts.size>=2){
     var a=two();
-    setZoom(pinch.z0*pinch.d0/(Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1));
-    panx=pinch.px0+((a[0].x+a[1].x)/2-pinch.cx0);
-    pany=pinch.py0+((a[0].y+a[1].y)/2-pinch.cy0);
-    clampPan();dirty=true;return;
+    setFov(pinch.f0*pinch.d0/(Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1));
+    dirty=true;return;
   }
   if(!down)return;
   var dx=e.clientX-down.x,dy=e.clientY-down.y;
   if(!down.moved&&Math.hypot(dx,dy)>down.slop){down.moved=true;aim=null;ladKey='';}
   if(down.moved){
-    yaw=down.yaw-dx*0.0032;pitch=down.pitch+dy*0.0026;clampCam();
+    var k=fov/FOV0*0.0042;
+    yaw=down.yaw-dx*k;pitch=down.pitch+dy*k;clampCam();
     var now=performance.now(),ddt=Math.max(8,now-down.lt);
-    vyaw=-(e.clientX-down.lx)/ddt*1000*0.0032;
-    vpitch=(e.clientY-down.ly)/ddt*1000*0.0026;
+    vyaw=-(e.clientX-down.lx)/ddt*1000*k;
+    vpitch=(e.clientY-down.ly)/ddt*1000*k;
     down.lx=e.clientX;down.ly=e.clientY;down.lt=now;
   }
   dirty=true;
@@ -911,6 +986,7 @@ function release(e,cancel){
   if(down&&!cancel&&!down.moved&&aim)choose(aim.id);
   else if(down&&down.moved){
     aim=null;
+    if(vyaw>3)vyaw=3;if(vyaw<-3)vyaw=-3;if(vpitch>3)vpitch=3;if(vpitch<-3)vpitch=-3;
     if(!cancel&&performance.now()-down.lt<90&&Math.abs(vyaw)+Math.abs(vpitch)>0.25)glide=true;
     else{vyaw=0;vpitch=0;}
   }
@@ -921,7 +997,7 @@ cv.addEventListener('pointercancel',function(e){release(e,true)});
 cv.addEventListener('contextmenu',function(e){e.preventDefault();});
 cv.addEventListener('wheel',function(e){
   e.preventDefault();if(!steps.length)return;
-  setZoom(zoom*Math.exp(e.deltaY*0.0012));dirty=true;
+  setFov(fov*Math.exp(e.deltaY*0.0012));dirty=true;
 },{passive:false});
 addEventListener('keydown',function(e){
   if(e.target===promptEl){if(e.key==='Enter')goB.click();return;}
@@ -931,7 +1007,7 @@ addEventListener('keydown',function(e){
   else if(e.key==='ArrowUp')goView(view-1);
   else if(e.key==='ArrowDown')goView(view+1);
   else if(e.key==='Backspace'||e.key==='z'||e.key==='Z')erase();
-  else if(e.key==='0'){yaw=0;pitch=0;zoom=1;panx=0;pany=0;dirty=true;}
+  else if(e.key==='0'){yaw=0;pitch=0;fov=FOV0;dirty=true;}
   else if(e.key==='d'||e.key==='D'){diagEl.style.display=diagEl.style.display==='block'?'none':'block';dirty=true;}
 });
 goB.addEventListener('click',function(){
