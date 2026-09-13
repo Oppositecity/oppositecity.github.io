@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-27",
+ "published": "2026-09-13",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -322,6 +322,22 @@
    ],
    "blurb": "Aureole's sibling instrument, pointed the other way — not a reading but a measurement of what a reading would cost. Every word is offered four moves: sideways into a synonym, narrower into a hyponym, wider into a hypernym, or sideways again into whatever the corpus keeps finding beside it. Each candidate is then tested against its actual neighbours in the passage, using real bigram attestation rather than a model's opinion — a word survives the corpus check or it doesn't, and only the survivors count as an open channel. What's left is a number between zero and four for every word: how many independent kinds of move the language still permits it, here, in this sentence, with these neighbours. A word with no channels open is pinned. A word absent from the lexicon entirely is marked apart from a pinned word on purpose, since a missing entry is a gap in the instrument and a genuinely closed channel is a fact about the sentence — collapsing the two would make the measurement lie. Tap any word to see exactly which candidates were offered, which survived, and which were closed by context.",
    "url": "https://opposite.city/dof/"
+  },
+  {
+   "slug": "pentimento",
+   "name": "PENTIMENTO",
+   "district": "language",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "logit lens",
+    "gpt-2",
+    "in-browser inference",
+    "possibility field",
+    "depth"
+   ],
+   "blurb": "A sentence written by choosing from what a language model is actually weighing. GPT-2 runs entirely in the tab — half a gigabyte fetched once and held as bf16, nothing typed ever leaving the device — and each word you commit opens the field of candidates for the next one. The words are placed by the model's own unembedding, three principal axes of it, two across and the third into the screen, so words stand behind words and the near ones cut holes in the far ones. Distance owns size and probability owns brightness; neither borrows the other's channel, so the improbable tail recedes into the dark without shrinking, and a likely word stays bright wherever it happens to sit. Down the right edge is the model's depth stood on end: thirteen rungs, one per layer, each showing what that stage of the residual stream alone would have said, since the lens can be applied anywhere in the stack and not only at the top. Hold a word and every rung switches to that word's probability there, which is the honest way to watch a guess resolve — or fail to. Nothing moves unless you move it. Every move rearranges the whole field: shared words fly to new places, the ones that no longer apply recede. Any word already written can be returned to and chosen differently, and the rest of the sentence is truncated and rewritten from there, which is what the painters meant by the word.",
+   "url": "https://opposite.city/pentimento/"
   }
  ]
 }
