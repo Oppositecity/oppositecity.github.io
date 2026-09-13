@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>pentimento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000;color:#fff;overflow:hidden}
+body{font-family:"Courier Prime","Courier New",monospace;-webkit-text-size-adjust:100%;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#err{position:fixed;top:0;left:0;right:0;z-index:9;background:#fff;color:#000;font-size:15px;line-height:1.4;padding:10px 14px;display:none;white-space:pre-wrap;user-select:text;-webkit-user-select:text}
+#land{position:fixed;inset:0;overflow-y:auto;padding:max(12vh,44px) 7vw 40px;z-index:5;background:#000}
+#land .col{max-width:31rem}
+h1{font-weight:400;font-size:clamp(46px,13vw,104px);line-height:.9;letter-spacing:-.02em;margin-bottom:.5em}
+#land p{font-size:17px;line-height:1.5;margin-bottom:1em}
+#prompt{display:block;width:100%;font:inherit;font-size:20px;color:#fff;background:#000;border:2px solid #fff;padding:12px 14px;margin:1.6em 0 14px;border-radius:0;user-select:text;-webkit-user-select:text}
+#prompt:focus{outline:3px solid #fff;outline-offset:3px}
+#go{font:inherit;font-size:18px;color:#000;background:#fff;border:0;padding:10px 22px;cursor:pointer;border-radius:0}
+#go:focus-visible{outline:3px solid #fff;outline-offset:3px}
+#go:disabled{cursor:default}
+#status{font-size:16px;line-height:1.5;margin-top:16px;min-height:3em}
+#fine{font-size:14px;line-height:1.55;margin-top:2.4em}
+.shad{text-shadow:0 0 8px #000,0 0 3px #000,0 0 17px #000,0 0 30px #000}
+#read{position:fixed;left:16px;top:max(14px,env(safe-area-inset-top));right:30vw;z-index:3;font-size:15px;line-height:1.45;white-space:pre-wrap;pointer-events:none}
+#ctl{position:fixed;right:12px;top:max(14px,env(safe-area-inset-top));z-index:4;display:flex;gap:18px;font-size:15px}
+#ctl span{cursor:pointer;-webkit-tap-highlight-color:transparent}
+#ctl span.off{opacity:.4;cursor:default}
+#lad{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:4;font-size:13px;line-height:1.36;display:flex;flex-direction:column;align-items:flex-end}
+#lad .r{display:flex;justify-content:flex-end;align-items:baseline;gap:.55em;cursor:pointer;padding:0 4px;white-space:pre;-webkit-tap-highlight-color:transparent}
+#lad .r.on{background:#fff;color:#000;text-shadow:none}
+#lad .n{width:1.5em;text-align:right}
+#line{position:fixed;left:16px;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:4;font-size:clamp(17px,4.5vw,23px);line-height:1.45;max-height:26vh;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+#line .w{white-space:pre;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#line .w.fixed{cursor:default;opacity:.8}
+#line .w.at,#line .w.pend{background:#fff;color:#000;text-shadow:none}
+#hint{position:fixed;left:16px;right:30vw;z-index:3;font-size:15px;line-height:1.45;pointer-events:none;white-space:pre-wrap}
+#diag{position:fixed;left:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:6;font-size:13px;display:none;pointer-events:none;white-space:pre}
+.run #land{display:none}
+body:not(.run) #read,body:not(.run) #ctl,body:not(.run) #line,body:not(.run) #hint,body:not(.run) #lad{display:none}
+</style>
+<script>
+// Outside any module so it can report even if everything else fails to parse.
+window.__err=function(msg,fatal){try{var b=document.getElementById('err');if(!b)return;if(!fatal&&b.dataset.fatal)return;b.textContent=msg;b.style.display='block';if(fatal)b.dataset.fatal='1';}catch(e){}};
+window.addEventListener('error',function(e){var t=e.target;if(t&&t!==window&&(t.href||t.src)){var u=t.href||t.src;if(/fonts\.(googleapis|gstatic)/.test(u))return;window.__err('could not load '+u,true);return;}window.__err((e.message||'error')+(e.lineno?' (line '+e.lineno+')':''),true);},true);
+window.addEventListener('unhandledrejection',function(e){window.__err(String(e.reason&&e.reason.message||e.reason),true);});
+</script>
+</head>
+<body>
+<div id="err" role="alert"></div>
+<canvas id="c"></canvas>
+<div id="land"><div class="col">
+<h1>pentimento</h1>
+<p>Write by choosing from what a language model is actually weighing. Every word opens a field, and any word you have written can be gone back to and chosen again. Nothing moves on its own.</p>
+<input id="prompt" type="text" value="The opposite of a city is" autocomplete="off" spellcheck="false" aria-label="Opening words">
+<button id="go">begin</button>
+<div id="status" aria-live="polite"></div>
+<p id="fine">GPT-2 runs entirely in this tab. The model is fetched once from Hugging Face (548 MB); what you type never leaves your device. build 7</p>
+</div></div>
+<div id="read" class="shad"></div>
+<div id="ctl" class="shad"><span id="undo">erase</span><span id="again">new</span></div>
+<div id="lad" class="shad"></div>
+<div id="line" class="shad"><div id="lineInner"></div></div>
+<div id="hint" class="shad"></div>
+<div id="diag" class="shad"></div>
+<script type="text/plain" id="wsrc">
+'use strict';
+// PENTIMENTO worker. GPT-2 forward pass + logit lens, weights held as bf16.
+const LUT = new Float32Array(65536);
+{ const u = new Uint32Array(1), f = new Float32Array(u.buffer);
+  for (let h = 0; h < 65536; h++) { u[0] = h << 16; LUT[h] = f[0]; } }
+
+let W = null, IDX = null, cfg = null, P = {}, KV = null, pos = 0;
+let seq = [];
+let vocab = null, enc = null, ranks = null, bdec = null, benc = null, cache = null;
+
+function say(m, tr) { self.postMessage(m, tr || []); }
+
+function concat(a, b) { const r = new Uint8Array(a.length + b.length); r.set(a, 0); r.set(b, a.length); return r; }
+
+function strip(n) { return n.startsWith('transformer.') ? n.slice(12) : n; }
+
+// Stream a safetensors body, converting every wanted F32 tensor to bf16 as it arrives.
+async function loadST(reader, onProgress) {
+  let head = new Uint8Array(0), hlen = -1, ready = false;
+  let wanted = [], wi = 0, carry = new Uint8Array(0), rel = 0, dataLen = 0, total = 0;
+  for (;;) {
+    const r = await reader.read();
+    if (r.done) break;
+    let chunk = r.value;
+    if (!ready) {
+      head = concat(head, chunk);
+      if (hlen < 0 && head.length >= 8) hlen = Number(new DataView(head.buffer, 0, 8).getBigUint64(0, true));
+      if (hlen < 0 || head.length < 8 + hlen) continue;
+      const hdr = JSON.parse(new TextDecoder().decode(head.subarray(8, 8 + hlen)));
+      const tensors = {};
+      for (const k in hdr) {
+        if (k === '__metadata__') continue;
+        const t = hdr[k], [s, e] = t.data_offsets;
+        dataLen = Math.max(dataLen, e);
+        const n = strip(k);
+        if (/\.attn\.(bias|masked_bias)$/.test(n)) continue;
+        if (t.dtype !== 'F32') throw new Error('tensor ' + n + ' is ' + t.dtype + ', expected F32');
+        if (s % 4) throw new Error('tensor ' + n + ' is not 4-byte aligned');
+        wanted.push({ n, s: s / 4, e: e / 4, shape: t.shape });
+      }
+      wanted.sort((a, b) => a.s - b.s);
+      for (const t of wanted) { t.off = total; total += t.e - t.s; tensors[t.n] = { off: t.off, shape: t.shape }; }
+      W = new Uint16Array(total);
+      IDX = { tensors, total };
+      total = 8 + hlen + dataLen;
+      chunk = head.subarray(8 + hlen); head = null; ready = true;
+    }
+    const pend = carry.length ? concat(carry, chunk) : chunk.slice();
+    const n4 = pend.length >>> 2, u32 = new Uint32Array(pend.buffer, 0, n4);
+    const f0 = rel >>> 2, f1 = f0 + n4;
+    while (wi < wanted.length && wanted[wi].e <= f0) wi++;
+    for (let k = wi; k < wanted.length && wanted[k].s < f1; k++) {
+      const t = wanted[k], a = Math.max(t.s, f0), b = Math.min(t.e, f1);
+      let o = t.off + (a - t.s);
+      for (let i = a - f0, end = b - f0; i < end; i++) { const u = u32[i]; W[o++] = (u + 0x7FFF + ((u >>> 16) & 1)) >>> 16; }
+    }
+    carry = pend.slice(n4 << 2);
+    rel += n4 << 2;
+    if (onProgress) onProgress(8 + hlen + rel, total);
+  }
+  if (!ready || rel < dataLen) throw new Error('model file ended early (' + rel + ' of ' + dataLen + ' bytes)');
+}
+
+function T(n) { const t = IDX.tensors[n]; if (!t) throw new Error('model file is missing ' + n); return t; }
+function vecF32(n) { const t = T(n), len = t.shape.reduce((a, b) => a * b, 1), r = new Float32Array(len);
+  for (let i = 0; i < len; i++) r[i] = LUT[W[t.off + i]]; return r; }
+
+function setup(nHead) {
+  let L = 0; while (IDX.tensors['h.' + L + '.ln_1.weight']) L++;
+  const wte = T('wte.weight'), wpe = T('wpe.weight');
+  cfg = { L, V: wte.shape[0], D: wte.shape[1], C: wpe.shape[0], H: nHead };
+  if (cfg.D % cfg.H) throw new Error('hidden size ' + cfg.D + ' not divisible by ' + cfg.H + ' heads');
+  P = { wte: wte.off, wpe: wpe.off, lnfg: vecF32('ln_f.weight'), lnfb: vecF32('ln_f.bias'), layers: [] };
+  for (let l = 0; l < L; l++) {
+    const p = 'h.' + l + '.';
+    P.layers.push({
+      g1: vecF32(p + 'ln_1.weight'), b1: vecF32(p + 'ln_1.bias'),
+      wqkv: T(p + 'attn.c_attn.weight').off, bqkv: vecF32(p + 'attn.c_attn.bias'),
+      wo: T(p + 'attn.c_proj.weight').off, bo: vecF32(p + 'attn.c_proj.bias'),
+      g2: vecF32(p + 'ln_2.weight'), b2: vecF32(p + 'ln_2.bias'),
+      wfc: T(p + 'mlp.c_fc.weight').off, bfc: vecF32(p + 'mlp.c_fc.bias'),
+      wpr: T(p + 'mlp.c_proj.weight').off, bpr: vecF32(p + 'mlp.c_proj.bias'),
+    });
+  }
+  reset();
+}
+
+function reset() {
+  KV = [];
+  for (let l = 0; l < cfg.L; l++) KV.push({ k: new Float32Array(cfg.C * cfg.D), v: new Float32Array(cfg.C * cfg.D) });
+  pos = 0;
+}
+
+function layerNorm(X, n, D, g, b) {
+  const Y = new Float32Array(n * D);
+  for (let t = 0; t < n; t++) {
+    const o = t * D; let m = 0;
+    for (let i = 0; i < D; i++) m += X[o + i];
+    m /= D; let v = 0;
+    for (let i = 0; i < D; i++) { const d = X[o + i] - m; v += d * d; }
+    const s = 1 / Math.sqrt(v / D + 1e-5);
+    for (let i = 0; i < D; i++) Y[o + i] = (X[o + i] - m) * s * g[i] + b[i];
+  }
+  return Y;
+}
+
+// Y[n,out] = X[n,in] @ W[in,out] + bias   (GPT-2 Conv1D layout, row-major)
+function mm(X, n, din, dout, woff, bias) {
+  const Y = new Float32Array(n * dout);
+  for (let t = 0; t < n; t++) Y.set(bias, t * dout);
+  if (n === 1) {
+    for (let i = 0; i < din; i++) {
+      const xv = X[i]; if (xv === 0) continue;
+      const base = woff + i * dout;
+      for (let j = 0; j < dout; j++) Y[j] += xv * LUT[W[base + j]];
+    }
+    return Y;
+  }
+  const row = new Float32Array(dout);
+  for (let i = 0; i < din; i++) {
+    const base = woff + i * dout;
+    for (let j = 0; j < dout; j++) row[j] = LUT[W[base + j]];
+    for (let t = 0; t < n; t++) {
+      const xv = X[t * din + i]; if (xv === 0) continue;
+      const yo = t * dout;
+      for (let j = 0; j < dout; j++) Y[yo + j] += xv * row[j];
+    }
+  }
+  return Y;
+}
+
+const GC = Math.sqrt(2 / Math.PI);
+function gelu(X) { for (let i = 0; i < X.length; i++) { const x = X[i]; X[i] = 0.5 * x * (1 + Math.tanh(GC * (x + 0.044715 * x * x * x))); } }
+
+// Runs tokens through the model, returns the residual stream at the LAST position
+// after the embedding and after every block: (L+1) x D.
+function forward(tokens) {
+  const { L, D, H, C } = cfg, n = tokens.length, hd = D / H, sc = 1 / Math.sqrt(hd);
+  if (pos + n > C) throw new Error('context full (' + C + ' tokens)');
+  const X = new Float32Array(n * D), states = new Float32Array((L + 1) * D);
+  for (let t = 0; t < n; t++) {
+    const eo = P.wte + tokens[t] * D, po = P.wpe + (pos + t) * D;
+    for (let i = 0; i < D; i++) X[t * D + i] = LUT[W[eo + i]] + LUT[W[po + i]];
+  }
+  states.set(X.subarray((n - 1) * D, n * D), 0);
+  const att = new Float32Array(C);
+  for (let l = 0; l < L; l++) {
+    const p = P.layers[l], kv = KV[l];
+    const A = layerNorm(X, n, D, p.g1, p.b1);
+    const QKV = mm(A, n, D, 3 * D, p.wqkv, p.bqkv);
+    for (let t = 0; t < n; t++) {
+      kv.k.set(QKV.subarray(t * 3 * D + D, t * 3 * D + 2 * D), (pos + t) * D);
+      kv.v.set(QKV.subarray(t * 3 * D + 2 * D, t * 3 * D + 3 * D), (pos + t) * D);
+    }
+    const O = new Float32Array(n * D);
+    for (let t = 0; t < n; t++) {
+      const last = pos + t, qo = t * 3 * D;
+      for (let h = 0; h < H; h++) {
+        const ho = h * hd; let mx = -Infinity;
+        for (let s = 0; s <= last; s++) {
+          let d = 0; const ko = s * D + ho;
+          for (let i = 0; i < hd; i++) d += QKV[qo + ho + i] * kv.k[ko + i];
+          d *= sc; att[s] = d; if (d > mx) mx = d;
+        }
+        let z = 0;
+        for (let s = 0; s <= last; s++) { att[s] = Math.exp(att[s] - mx); z += att[s]; }
+        const oo = t * D + ho;
+        for (let s = 0; s <= last; s++) {
+          const w = att[s] / z, vo = s * D + ho;
+          for (let i = 0; i < hd; i++) O[oo + i] += w * kv.v[vo + i];
+        }
+      }
+    }
+    const Pj = mm(O, n, D, D, p.wo, p.bo);
+    for (let i = 0; i < X.length; i++) X[i] += Pj[i];
+    const M = layerNorm(X, n, D, p.g2, p.b2);
+    const F = mm(M, n, D, 4 * D, p.wfc, p.bfc); gelu(F);
+    const P2 = mm(F, n, 4 * D, D, p.wpr, p.bpr);
+    for (let i = 0; i < X.length; i++) X[i] += P2[i];
+    states.set(X.subarray((n - 1) * D, n * D), (l + 1) * D);
+  }
+  pos += n;
+  return states;
+}
+
+// Logit lens: ln_f then the tied unembedding, applied to every stage. Returns softmax probs (L+1) x V.
+function lens(states) {
+  const { L, D, V } = cfg, S = L + 1;
+  const hn = layerNorm(states, S, D, P.lnfg, P.lnfb);
+  const probs = new Float32Array(S * V), row = new Float32Array(D);
+  for (let v = 0; v < V; v++) {
+    const base = P.wte + v * D;
+    for (let i = 0; i < D; i++) row[i] = LUT[W[base + i]];
+    for (let s = 0; s < S; s++) {
+      let d = 0; const ho = s * D;
+      for (let i = 0; i < D; i++) d += hn[ho + i] * row[i];
+      probs[s * V + v] = d;
+    }
+  }
+  for (let s = 0; s < S; s++) {
+    const o = s * V; let mx = -Infinity, z = 0;
+    for (let v = 0; v < V; v++) if (probs[o + v] > mx) mx = probs[o + v];
+    for (let v = 0; v < V; v++) { const e = Math.exp(probs[o + v] - mx); probs[o + v] = e; z += e; }
+    for (let v = 0; v < V; v++) probs[o + v] /= z;
+  }
+  return probs;
+}
+
+// A fixed 3D map of every token: the top three principal axes of the unembedding,
+// each rank-equalised so the dense core fills the volume. Order is preserved.
+// The third axis is depth: it is semantic, not a restatement of probability.
+function tokenMap() {
+  const { D, V } = cfg, S = Math.min(6000, V), step = V / S;
+  const X = new Float32Array(S * D), mean = new Float64Array(D);
+  for (let r = 0; r < S; r++) {
+    const base = P.wte + Math.floor(r * step) * D;
+    for (let i = 0; i < D; i++) { const x = LUT[W[base + i]]; X[r * D + i] = x; mean[i] += x; }
+  }
+  for (let i = 0; i < D; i++) mean[i] /= S;
+  for (let r = 0; r < S; r++) for (let i = 0; i < D; i++) X[r * D + i] -= mean[i];
+  let seed = 7; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296) - 0.5;
+  const comps = [];
+  for (let c = 0; c < 3; c++) {
+    let v = new Float64Array(D); for (let i = 0; i < D; i++) v[i] = rnd();
+    const Xv = new Float64Array(S);
+    for (let it = 0; it < 64; it++) {
+      for (const u of comps) { let d = 0; for (let i = 0; i < D; i++) d += v[i] * u[i]; for (let i = 0; i < D; i++) v[i] -= d * u[i]; }
+      for (let r = 0; r < S; r++) { let d = 0; const o = r * D; for (let i = 0; i < D; i++) d += X[o + i] * v[i]; Xv[r] = d; }
+      const nv = new Float64Array(D);
+      for (let r = 0; r < S; r++) { const a = Xv[r], o = r * D; for (let i = 0; i < D; i++) nv[i] += a * X[o + i]; }
+      let nrm = 0; for (let i = 0; i < D; i++) nrm += nv[i] * nv[i]; nrm = Math.sqrt(nrm) || 1;
+      for (let i = 0; i < D; i++) v[i] = nv[i] / nrm;
+    }
+    for (const u of comps) { let d = 0; for (let i = 0; i < D; i++) d += v[i] * u[i]; for (let i = 0; i < D; i++) v[i] -= d * u[i]; }
+    comps.push(v);
+  }
+  const pc = [new Float32Array(V), new Float32Array(V), new Float32Array(V)];
+  for (let t = 0; t < V; t++) {
+    const base = P.wte + t * D; let a = 0, b = 0, c2 = 0;
+    for (let i = 0; i < D; i++) {
+      const x = LUT[W[base + i]] - mean[i];
+      a += x * comps[0][i]; b += x * comps[1][i]; c2 += x * comps[2][i];
+    }
+    pc[0][t] = a; pc[1][t] = b; pc[2][t] = c2;
+  }
+  const map = new Float32Array(3 * V), idx = new Uint32Array(V);
+  for (let c = 0; c < 3; c++) {
+    for (let t = 0; t < V; t++) idx[t] = t;
+    idx.sort((x, y) => pc[c][x] - pc[c][y]);
+    for (let r = 0; r < V; r++) map[idx[r] * 3 + c] = (r + 0.5) / V * 2 - 1;
+  }
+  return map;
+}
+
+// ---- GPT-2 byte-level BPE ----
+function bytesToUnicode() {
+  const bs = [];
+  for (let i = 33; i <= 126; i++) bs.push(i);
+  for (let i = 161; i <= 172; i++) bs.push(i);
+  for (let i = 174; i <= 255; i++) bs.push(i);
+  const cs = bs.slice(); let n = 0;
+  for (let b = 0; b < 256; b++) if (!bs.includes(b)) { bs.push(b); cs.push(256 + n); n++; }
+  const m = {}; bs.forEach((b, i) => { m[b] = String.fromCharCode(cs[i]); }); return m;
+}
+function setupTokenizer(vocabJson, mergesTxt) {
+  enc = vocabJson; vocab = [];
+  for (const k in enc) vocab[enc[k]] = k;
+  ranks = new Map();
+  const lines = mergesTxt.split('\n');
+  let r = 0;
+  for (const line of lines) {
+    if (!line || line.startsWith('#version')) continue;
+    ranks.set(line, r++);
+  }
+  benc = bytesToUnicode(); bdec = {};
+  for (const b in benc) bdec[benc[b]] = +b;
+  cache = new Map();
+}
+const PAT = /'s|'t|'re|'ve|'m|'ll|'d| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+/gu;
+function bpe(tok) {
+  if (cache.has(tok)) return cache.get(tok);
+  let word = Array.from(tok);
+  while (word.length > 1) {
+    let best = -1, br = Infinity;
+    for (let i = 0; i < word.length - 1; i++) {
+      const rk = ranks.get(word[i] + ' ' + word[i + 1]);
+      if (rk !== undefined && rk < br) { br = rk; best = i; }
+    }
+    if (best < 0) break;
+    const a = word[best], b = word[best + 1], nw = [];
+    for (let i = 0; i < word.length;) {
+      if (i < word.length - 1 && word[i] === a && word[i + 1] === b) { nw.push(a + b); i += 2; }
+      else { nw.push(word[i]); i++; }
+    }
+    word = nw;
+  }
+  cache.set(tok, word); return word;
+}
+function encode(text) {
+  const out = [], te = new TextEncoder();
+  for (const m of text.matchAll(PAT)) {
+    const s = Array.from(te.encode(m[0]), b => benc[b]).join('');
+    for (const piece of bpe(s)) { const id = enc[piece]; if (id === undefined) throw new Error('no token for ' + piece); out.push(id); }
+  }
+  return out;
+}
+function bytesOf(id) { return Array.from(vocab[id] || '', c => bdec[c]); }
+function decodeOne(id) {
+  const b = bytesOf(id), txt = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(b));
+  if (txt.includes('\uFFFD')) return b.map(x => x.toString(16).padStart(2, '0')).join(' ');
+  return txt;
+}
+function decodeSeq(ids) { const b = []; for (const id of ids) b.push(...bytesOf(id)); return new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(b)); }
+
+// ---- messages ----
+const CACHE = 'pentimento-gpt2-v1';
+async function cachedText(url) {
+  let c = null; try { c = await caches.open(CACHE); const hit = await c.match(url); if (hit) return await hit.text(); } catch (e) {}
+  const r = await fetch(url); if (!r.ok) throw new Error('could not fetch ' + url + ' (HTTP ' + r.status + ')');
+  const t = await r.text(); try { if (c) await c.put(url, new Response(t)); } catch (e) {}
+  return t;
+}
+async function load(m) {
+  const cfgJson = JSON.parse(await cachedText(m.base + 'config.json'));
+  say({ type: 'status', text: 'reading the tokenizer' });
+  setupTokenizer(JSON.parse(await cachedText(m.base + 'vocab.json')), await cachedText(m.base + 'merges.txt'));
+  let fromCache = false;
+  if (m.persist) {
+    try {
+      const c = await caches.open(CACHE), idx = await c.match('/bf16-index'), buf = await c.match('/bf16-arena');
+      if (idx && buf) {
+        say({ type: 'status', text: 'opening the saved model' });
+        IDX = await idx.json(); W = new Uint16Array(await buf.arrayBuffer());
+        if (W.length !== IDX.total) throw new Error('stale cache');
+        fromCache = true;
+      }
+    } catch (e) { W = null; IDX = null; }
+  }
+  if (!fromCache) {
+    const r = await fetch(m.base + 'model.safetensors');
+    if (!r.ok || !r.body) throw new Error('could not fetch the model (HTTP ' + r.status + ')');
+    let last = 0;
+    await loadST(r.body.getReader(), (got, total) => {
+      const now = Date.now(); if (now - last < 120 && got < total) return; last = now;
+      say({ type: 'progress', got, total });
+    });
+    let room = true;
+    try { const est = await navigator.storage.estimate(); room = (est.quota - est.usage) > 700e6; } catch (e) {}
+    if (m.persist && room) {
+      try { const c = await caches.open(CACHE);
+        await c.put('/bf16-index', new Response(JSON.stringify(IDX)));
+        await c.put('/bf16-arena', new Response(W.buffer)); } catch (e) {}
+    }
+  }
+  setup(cfgJson.n_head || 12);
+  say({ type: 'status', text: 'mapping ' + cfg.V.toLocaleString() + ' tokens' });
+  const map = tokenMap();
+  const names = new Array(cfg.V); for (let i = 0; i < cfg.V; i++) names[i] = decodeOne(i);
+  say({ type: 'ready', cfg, map, names, cached: fromCache }, [map.buffer]);
+}
+function step(tokens, run) {
+  const t0 = Date.now();
+  const states = forward(tokens), probs = lens(states);
+  seq.push(...tokens);
+  say({ type: 'step', run, input: tokens[tokens.length - 1], pos: pos - 1, text: decodeSeq(seq), probs, ms: Date.now() - t0 }, [probs.buffer]);
+}
+self.onmessage = async (e) => {
+  const m = e.data;
+  try {
+    if (m.type === 'load') await load(m);
+    else if (m.type === 'prompt') { reset(); seq = []; const ids = encode(m.text); if (!ids.length) throw new Error('the prompt is empty'); say({ type: 'tokens', ids, run: m.run }); step(ids, m.run); }
+    else if (m.type === 'next') step([m.token], m.run);
+    else if (m.type === 'rewind') { const n = Math.max(1, Math.min(pos, m.pos | 0)); pos = n; seq.length = n; }
+  } catch (err) { say({ type: 'error', run: m.run, text: String(err && err.message || err) }); }
+};
+</script>
+<script>
+(function(){
+'use strict';
+var BASE='https://huggingface.co/openai-community/gpt2/resolve/main/';
+var coarse=matchMedia('(pointer:coarse)').matches;
+var still=matchMedia('(prefers-reduced-motion:reduce)').matches;
+var $=function(id){return document.getElementById(id)};
+var cv=$('c'),cx=cv.getContext('2d');
+var goB=$('go'),statusEl=$('status'),promptEl=$('prompt');
+var readEl=$('read'),lineEl=$('lineInner'),hintEl=$('hint'),ladEl=$('lad'),diagEl=$('diag');
+var undoB=$('undo'),againB=$('again');
+var FONT='"Courier Prime","Courier New",monospace';
+
+var worker=null,ready=false,cfg=null,map=null,names=null;
+var steps=[],toks=[],promptLen=0,busy=false,runId=0,aim=null,pendingId=-1,hinted=false;
+var view=0,li=0,fade=null,dirty=true,readKey='',ladKey='',lineKey='';
+var K=1400,N=coarse?430:820,HOLD=5;
+var W=0,H=0,DPR=1,CX=0,CY=0;
+
+// ---- the cloud ----
+// Position is the model's own unembedding space: three rank-equalised principal
+// axes, the third of them depth. Distance owns size, probability owns brightness,
+// and neither borrows the other's channel.
+var CZ=1000,HDZ=380,DEEP=HDZ*2.6,BASEF=coarse?17:19;
+var SX=0,SY=0;
+var yaw=0,pitch=0,zoom=1,panx=0,pany=0;
+var vyaw=0,vpitch=0,glide=false;
+var YAWMAX=1.0,PITMAX=0.62;
+
+function startWorker(){
+  var url=URL.createObjectURL(new Blob([$('wsrc').textContent],{type:'text/javascript'}));
+  worker=new Worker(url);
+  worker.onerror=function(e){window.__err('model worker failed: '+(e.message||'unknown')+(e.lineno?' (line '+e.lineno+')':''),true);};
+  worker.onmessage=onMsg;
+  worker.postMessage({type:'load',base:BASE,persist:true});
+}
+function mb(n){return Math.round(n/1048576)}
+function onMsg(e){
+  var m=e.data;
+  if(m.type==='status')statusEl.textContent=m.text;
+  else if(m.type==='progress')statusEl.textContent='downloading GPT-2, '+mb(m.got)+' of '+mb(m.total)+' MB';
+  else if(m.type==='ready'){ready=true;cfg=m.cfg;map=m.map;names=m.names;K=Math.min(K,cfg.V);N=Math.min(N,K);statusEl.textContent=m.cached?'opened the saved model':'model ready';begin();}
+  else if(m.type==='tokens'){if(m.run===runId){toks=Array.prototype.slice.call(m.ids);promptLen=toks.length;}}
+  else if(m.type==='step'){if(m.run===runId)onStep(m);}
+  else if(m.type==='error'){if(m.run!==undefined&&m.run!==runId)return;busy=false;pendingId=-1;dirty=true;window.__err(m.text,true);statusEl.textContent=m.text;goB.disabled=false;}
+}
+function begin(){
+  var text=promptEl.value;
+  if(!text.trim()){statusEl.textContent='Type a few opening words first.';goB.disabled=false;return;}
+  runId++;steps=[];toks=[];promptLen=0;aim=null;pendingId=-1;fade=null;busy=true;dirty=true;
+  readKey='';ladKey='';lineKey='';view=0;
+  yaw=0;pitch=0;zoom=1;panx=0;pany=0;vyaw=0;vpitch=0;glide=false;
+  document.body.classList.add('run');
+  measure();buildLadder();
+  readEl.textContent='reading your words';lineEl.textContent=text;hintEl.textContent='';
+  worker.postMessage({type:'prompt',text:text,run:runId});
+}
+
+function measure(){
+  CX=W/2;CY=H/2;
+  SX=W*0.355;SY=H*0.30;
+  if(hintEl)hintEl.style.bottom=((document.getElementById('line').offsetHeight||44)+34)+'px';
+}
+function resize(){
+  DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
+  measure();sprites.clear();rebuild();dirty=true;
+}
+
+// ---- what the model was weighing, kept small ----
+function topK(p,off,V,k){
+  var ids=[],ps=[],floor=-1;
+  for(var v=0;v<V;v++){var x=p[off+v];
+    if(x>floor||ids.length<k){
+      var i=ps.length;while(i>0&&ps[i-1]<x)i--;
+      ids.splice(i,0,v);ps.splice(i,0,x);if(ids.length>k){ids.pop();ps.pop();}
+      if(ids.length===k)floor=ps[k-1];
+    }}
+  return {ids:Uint32Array.from(ids),ps:Float32Array.from(ps)};
+}
+function probOf(card,id){
+  if(!card.at){card.at={};for(var i=0;i<card.ids.length;i++)card.at[card.ids[i]]=card.ps[i];}
+  var v=card.at[id];return v===undefined?0:v;
+}
+function jit(id,s){var h=(id*2654435761)>>>0;return ((h%1000)/1000-0.5)*s;}
+
+// ---- placement ----
+// Resolved once per field, in the cloud's own front view, so that orbiting
+// afterwards is pure parallax and never a relayout. A word may be half hidden
+// behind a likelier one — that is the depth — but never wholly swallowed.
+function place(ws){
+  var C=7,BUD=0.44,ox=-W*0.9,oy=-H*0.9;
+  var gw=Math.ceil(W*2.8/C),gh=Math.ceil(H*2.8/C);
+  var own=new Int32Array(gw*gh);own.fill(-1);
+  var tot=[],taken=[],vzs=[];
+  var tkO=new Int32Array(96),tkC=new Int32Array(96),tkN=0,cn=0,cfront=0;
+  var x0,x1,y0,y1;
+  function box(sx,sy,hw,hh){
+    x0=Math.floor((sx-hw-ox)/C);x1=Math.floor((sx+hw-ox)/C);
+    y0=Math.floor((sy-hh-oy)/C);y1=Math.floor((sy+hh-oy)/C);
+    if(x1<0||y1<0||x0>=gw||y0>=gh)return false;
+    if(x0<0)x0=0;if(y0<0)y0=0;if(x1>=gw)x1=gw-1;if(y1>=gh)y1=gh-1;
+    return true;
+  }
+  // A word may be up to BUD hidden behind likelier ones, and may hide that much
+  // of any word already standing. Cells belong to whoever is nearest, so nothing
+  // is charged twice for ground it had already lost.
+  function fits(sx,sy,hw,hh,vz){
+    tkN=0;cn=0;cfront=0;
+    if(!box(sx,sy,hw,hh))return false;
+    for(var gy=y0;gy<=y1;gy++){var r=gy*gw;
+      for(var gx=x0;gx<=x1;gx++){cn++;
+        var o=own[r+gx];if(o<0)continue;
+        if(vzs[o]<vz){cfront++;continue;}
+        var j=0;for(;j<tkN;j++)if(tkO[j]===o){tkC[j]++;break;}
+        if(j===tkN){if(tkN>=tkO.length)return false;tkO[tkN]=o;tkC[tkN]=1;tkN++;}
+      }}
+    if(!cn||cfront>cn*BUD)return false;
+    for(var j2=0;j2<tkN;j2++)if(taken[tkO[j2]]+tkC[j2]>tot[tkO[j2]]*BUD)return false;
+    return true;
+  }
+  function claim(sx,sy,hw,hh,vz,me){
+    tot[me]=cn;taken[me]=cfront;vzs[me]=vz;
+    box(sx,sy,hw,hh);
+    for(var gy=y0;gy<=y1;gy++){var r=gy*gw;
+      for(var gx=x0;gx<=x1;gx++){var i=r+gx,o=own[i];
+        if(o<0)own[i]=me;
+        else if(vzs[o]>vz){taken[o]++;own[i]=me;}
+      }}
+  }
+  var out=[];
+  for(var i=0;i<ws.length;i++){
+    var w=ws[i],sx=w.sx0,sy=w.sy0,ok=false,cap=Math.max(72,w.hw*2.2);
+    for(var th=0;th<1100;th+=0.24){
+      var rr=1.25*th;if(rr>cap)break;
+      sx=w.sx0+Math.cos(th)*rr;sy=w.sy0+Math.sin(th)*rr*0.88;
+      if(fits(sx,sy,w.hw,w.hh,w.vz0)){ok=true;break;}
+    }
+    if(!ok)continue;
+    claim(sx,sy,w.hw,w.hh,w.vz0,out.length);
+    w.wx=(sx-CX)*w.vz0/CZ;w.wy=(sy-CY)*w.vz0/CZ;
+    out.push(w);
+  }
+  return out;
+}
+function makeField(card,l){
+  var n=Math.min(N,card.ids.length),ws=[],by={};
+  var lmax=Math.log(card.ps[0]+1e-12),lmin=Math.log(card.ps[n-1]+1e-12),span=(lmax-lmin)||1;
+  for(var i=0;i<n;i++){
+    var id=card.ids[i],p=card.ps[i];
+    var t=(Math.log(p+1e-12)-lmin)/span;if(t<0)t=0;if(t>1)t=1;
+    var b=0.46+0.54*Math.pow(t,0.5);
+    var hx=map[id*3],hy=map[id*3+1],hz=map[id*3+2];
+    var wz=hz*HDZ+jit(id,HDZ*0.07),vz0=CZ+wz,size0=BASEF*CZ/vz0;
+    var lx=hx*SX+jit(id+104729,SX*0.05),ly=hy*SY+jit(id+7919,SY*0.055);
+    var label=show(id);
+    cx.font=size0.toFixed(2)+'px '+FONT;
+    var tw=cx.measureText(label).width;
+    ws.push({id:id,p:p,b:b,label:label,wz:wz,vz0:vz0,wx:0,wy:0,
+      sx0:CX+CZ*lx/vz0,sy0:CY+CZ*ly/vz0,hw:tw/2+2,hh:size0*0.54+1});
+  }
+  ws=place(ws);
+  for(i=0;i<ws.length;i++)by[ws[i].id]=ws[i];
+  return {layer:l,words:ws,by:by};
+}
+function field(s,l){var st=steps[s];if(!st||!st.cards)return null;
+  if(!st.fields[l])st.fields[l]=makeField(st.cards[l],l);return st.fields[l];}
+function here(){return field(view,li);}
+function rebuild(){for(var i=0;i<steps.length;i++)if(steps[i].fields)steps[i].fields=new Array((cfg?cfg.L:12)+1);fade=null;dirty=true;}
+
+// ---- moves ----
+function onStep(m){
+  busy=false;
+  var was=steps.length?here():null;
+  var cards=[];for(var l=0;l<=cfg.L;l++)cards.push(topK(m.probs,l*cfg.V,cfg.V,K));
+  steps.push({cards:cards,text:m.text,pos:m.pos,ms:m.ms,fields:new Array(cfg.L+1)});
+  for(var i=0;i<steps.length-HOLD;i++)if(steps[i].fields)steps[i].fields=null;
+  view=steps.length-1;pendingId=-1;aim=null;li=cfg.L;ladKey='';lineKey='';
+  swap(was,here(),still?200:620);
+  paintLadder();paintLine();dirty=true;
+  if(!hinted){hinted=true;hintEl.textContent=coarse
+    ?'tap a word to write it \u00b7 drag to turn the cloud \u00b7 pinch to pull back\ntap a written word below to return to it'
+    :'click a word to write it \u00b7 drag to turn the cloud \u00b7 scroll to pull back\nclick a written word below to return to it';}
+}
+// Every change of field is a rearrangement: shared words fly to their new place,
+// words that were not there before come forward out of the dark, words that are
+// leaving recede into it.
+function swap(from,to,dur){
+  if(!to){fade=null;return;}
+  fade={t0:performance.now(),dur:dur,from:from||null,to:to};
+}
+function goLayer(l){
+  if(busy||!steps.length)return;
+  l=Math.max(0,Math.min(cfg.L,l));if(l===li)return;
+  var from=here();li=l;ladKey='';var to=here();if(!to){li=from?from.layer:li;return;}
+  aim=null;swap(from,to,still?160:480);paintLadder();dirty=true;
+}
+function goView(v){
+  if(busy||v<0||v>=steps.length||v===view)return;
+  if(!steps[v].cards)return;
+  if(!steps[v].fields)steps[v].fields=new Array(cfg.L+1);
+  var from=here();view=v;li=cfg.L;ladKey='';
+  aim=null;swap(from,here(),still?160:520);
+  paintLadder();paintLine();dirty=true;
+}
+function choose(id){
+  if(busy||!ready||!steps.length)return;
+  var st=steps[view];
+  if(st.pos+2>=cfg.C){window.__err('the model has read as much as it can hold (1,024 tokens)');return;}
+  if(view<steps.length-1){
+    steps.length=view+1;toks.length=promptLen+view;
+    worker.postMessage({type:'rewind',pos:st.pos+1,run:runId});
+  }
+  busy=true;pendingId=id;aim=null;hintEl.textContent='';ladKey='';
+  toks.push(id);paintLine();dirty=true;
+  worker.postMessage({type:'next',token:id,run:runId});
+}
+function erase(){
+  if(busy||steps.length<2)return;
+  goView(steps.length-2);
+  steps.length=Math.min(steps.length,view+1);toks.length=promptLen+view;
+  worker.postMessage({type:'rewind',pos:steps[view].pos+1,run:runId});
+  paintLine();dirty=true;
+}
+
+function show(id){var n=names[id];if(n==='\n')return '\u00b6';n=n.replace(/\n/g,'\u00b6').replace(/\t/g,'\u21e5');return n.trim()===''?'\u2423':n.replace(/^ /,'');}
+function pct(p){if(p>=0.1)return Math.round(p*100)+'%';if(p>=0.001)return (p*100).toFixed(1)+'%';return '<0.1%';}
+function pctTiny(p){if(p>=0.1)return Math.round(p*100)+'%';if(p>=0.01)return (p*100).toFixed(1)+'%';return '\u00b7';}
+function layerName(l){return l===cfg.L?'what could come next':l===0?'before any thinking':'as it looked at layer '+l;}
+function clip(s,n){return s.length>n?s.slice(0,n):s;}
+
+// ---- the ladder: one rung per layer, the model's depth stood on end ----
+function buildLadder(){
+  ladEl.innerHTML='';
+  for(var l=cfg?cfg.L:12;l>=0;l--){
+    var r=document.createElement('div');r.className='r';r.dataset.l=l;
+    var w=document.createElement('span');w.className='w';
+    var n=document.createElement('span');n.className='n';n.textContent=l===0?'in':l;
+    r.appendChild(w);r.appendChild(n);ladEl.appendChild(r);
+  }
+  ladEl.onclick=function(e){
+    var t=e.target;while(t&&t!==ladEl&&!t.classList.contains('r'))t=t.parentNode;
+    if(t&&t.dataset&&t.dataset.l!==undefined)goLayer(+t.dataset.l);
+  };
+}
+function paintLadder(){
+  if(!cfg||!ladEl.firstChild||!steps.length)return;
+  var st=steps[view];if(!st||!st.cards)return;
+  var rs=ladEl.children;
+  for(var i=0;i<rs.length;i++){
+    var l=+rs[i].dataset.l,card=st.cards[l];
+    var txt=aim?pctTiny(probOf(card,aim.id)):clip(show(card.ids[0]),7);
+    var wEl=rs[i].firstChild;
+    if(wEl.textContent!==txt)wEl.textContent=txt;
+    var on=l===li;
+    if(on!==rs[i].classList.contains('on'))rs[i].classList.toggle('on',on);
+  }
+}
+function paintLine(){
+  var key=toks.join(',')+'|'+view+'|'+pendingId;
+  if(key===lineKey)return;lineKey=key;
+  lineEl.innerHTML='';
+  for(var i=0;i<toks.length;i++){
+    var s=document.createElement('span');
+    s.textContent=names[toks[i]];
+    var step=i-promptLen;
+    if(i<promptLen){s.className='w fixed';}
+    else{s.className='w';s.dataset.v=step;
+      if(step===view&&pendingId<0)s.className='w at';}
+    lineEl.appendChild(s);
+  }
+  if(pendingId>=0){var p=document.createElement('span');p.className='w pend';p.textContent=names[pendingId];lineEl.appendChild(p);}
+  var lh=document.getElementById('line').offsetHeight||44;
+  hintEl.style.bottom=(lh+34)+'px';
+}
+lineEl.addEventListener('click',function(e){
+  var t=e.target;if(!t.dataset||t.dataset.v===undefined)return;
+  goView(+t.dataset.v);
+});
+
+// ---- glyphs ----
+// Each word is drawn once into its own small canvas, white on a black aura, and
+// then blitted. The aura is what lets a near word cut a hole in a far one.
+var sprites=new Map();
+var LS=1/Math.log(Math.pow(2,1/3));
+function sizeKey(s){return Math.round(Math.log(s)*LS)}
+function sizeOf(k){return Math.exp(k/LS)}
+function sprite(label,bi,sk){
+  var key=label+'|'+bi+'|'+sk,e=sprites.get(key);
+  if(e)return e;
+  var size=sizeOf(sk),fs=size*DPR;
+  var c=document.createElement('canvas'),g=c.getContext('2d');
+  g.font=fs.toFixed(2)+'px '+FONT;
+  var tw=g.measureText(label).width,pad=Math.ceil(fs*0.34);
+  c.width=Math.ceil(tw)+pad*2;c.height=Math.ceil(fs*1.35)+pad*2;
+  g.font=fs.toFixed(2)+'px '+FONT;g.textBaseline='middle';g.textAlign='center';
+  g.lineJoin='round';g.miterLimit=2;g.strokeStyle='#000';
+  var mx=c.width/2,my=c.height/2;
+  g.globalAlpha=0.6;g.lineWidth=fs*0.55;g.strokeText(label,mx,my);
+  g.globalAlpha=1;g.lineWidth=fs*0.26;g.strokeText(label,mx,my);
+  var v=Math.round(255*bi/15);
+  g.fillStyle='rgb('+v+','+v+','+v+')';
+  g.fillText(label,mx,my);
+  e={c:c,w:c.width/DPR,h:c.height/DPR,size:size};
+  sprites.set(key,e);
+  while(sprites.size>900)sprites.delete(sprites.keys().next().value);
+  return e;
+}
+
+// ---- drawing ----
+var vis=[],last=performance.now(),fps=60,frame=0;
+function blank(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#000';cx.fillRect(0,0,W,H);}
+function tick(now){requestAnimationFrame(tick);try{frameBody(now);}catch(e){window.__err('frame: '+e.message,true);}}
+function frameBody(now){
+  var dt=Math.min(0.1,(now-last)/1000);last=now;fps=fps*0.95+(1/Math.max(dt,1e-3))*0.05;
+  if(!document.body.classList.contains('run')||!steps.length){if(dirty){blank();dirty=false;}return;}
+  if(glide){
+    yaw+=vyaw*dt;pitch+=vpitch*dt;clampCam();
+    var f=Math.exp(-dt*2.4);vyaw*=f;vpitch*=f;
+    if(Math.abs(vyaw)+Math.abs(vpitch)<0.02){glide=false;vyaw=0;vpitch=0;}
+    dirty=true;
+  }
+  var k=1;
+  if(fade){k=(now-fade.t0)/fade.dur;if(k<0)k=0;if(k>1)k=1;dirty=true;if(k>=1)fade=null;}
+  if(!dirty)return;dirty=false;frame++;
+  var e=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+  blank();collect(e);paint();
+  var st=steps[view],card=st&&st.cards?st.cards[li]:null;
+  var r=busy?'working out what could follow'
+    :aim?show(aim.id)+' '+pct(probOf(card,aim.id))
+    :layerName(li)+(card?'\n'+show(card.ids[0])+' '+pct(card.ps[0]):'');
+  if(r!==readKey){readKey=r;readEl.textContent=r;}
+  paintLine();
+  var lk=li+'/'+busy+'/'+steps.length+'/'+view+'/'+(aim?aim.id:-1);
+  if(lk!==ladKey){ladKey=lk;paintLadder();undoB.classList.toggle('off',busy||steps.length<2);}
+  if(diagEl.style.display==='block')diagEl.textContent='f'+frame+'  '+Math.round(fps)+' fps\nword '+view+' of '+(steps.length-1)+'  '+(st.ms||0)+' ms\nzoom '+zoom.toFixed(2)+'  yaw '+yaw.toFixed(2)+'  drawn '+vis.length+'\nglyphs '+sprites.size;
+}
+function clampCam(){
+  if(yaw>YAWMAX){yaw=YAWMAX;vyaw=0;}if(yaw<-YAWMAX){yaw=-YAWMAX;vyaw=0;}
+  if(pitch>PITMAX){pitch=PITMAX;vpitch=0;}if(pitch<-PITMAX){pitch=-PITMAX;vpitch=0;}
+}
+function collect(e){
+  vis.length=0;
+  var to=fade?fade.to:here(),from=fade?fade.from:null;
+  if(!to&&!from)return;
+  var dist=CZ*zoom;
+  var cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  function add(w,x,y,z,a,b){
+    var x1=x*cy+z*sy,z1=-x*sy+z*cy;
+    var y2=y*cp-z1*sp,z2=y*sp+z1*cp;
+    var vz=dist+z2;if(vz<90)return;
+    var size=BASEF*CZ/vz;if(size<5)return;
+    if(size<8.5)a*=(size-5)/3.5;
+    if(a<=0.02)return;
+    var sx=CX+panx+CZ*x1/vz,sy2=CY+pany+CZ*y2/vz;
+    if(sx<-260||sx>W+260||sy2<-140||sy2>H+140)return;
+    var fog=1-0.30*Math.max(0,Math.min(1,(vz-(dist-HDZ))/(2*HDZ)));
+    vis.push({id:w.id,p:w.p,label:w.label,b:b,sx:sx,sy:sy2,size:size,a:a*fog,vz:vz});
+  }
+  var i,w,o;
+  if(to)for(i=0;i<to.words.length;i++){
+    w=to.words[i];o=from?from.by[w.id]:null;
+    if(o)add(w,o.wx+(w.wx-o.wx)*e,o.wy+(w.wy-o.wy)*e,o.wz+(w.wz-o.wz)*e,1,o.b+(w.b-o.b)*e);
+    else add(w,w.wx,w.wy,w.wz+(1-e)*DEEP,e,w.b);
+  }
+  if(from)for(i=0;i<from.words.length;i++){
+    w=from.words[i];if(to&&to.by[w.id])continue;
+    add(w,w.wx,w.wy,w.wz+e*DEEP,1-e,w.b);
+  }
+  vis.sort(function(a,b){return b.vz-a.vz});
+}
+function paint(){
+  var hot=pendingId>=0?pendingId:aim?aim.id:-1,hotW=null;
+  cx.textBaseline='middle';cx.textAlign='center';cx.lineJoin='round';cx.miterLimit=2;
+  for(var i=0;i<vis.length;i++){
+    var v=vis[i];
+    if(v.id===hot){hotW=v;continue;}
+    cx.globalAlpha=busy?v.a*0.55:v.a;
+    if(v.size>56){
+      cx.font=v.size.toFixed(2)+'px '+FONT;cx.strokeStyle='#000';
+      cx.lineWidth=v.size*0.26;cx.strokeText(v.label,v.sx,v.sy);
+      var g=Math.round(255*v.b);cx.fillStyle='rgb('+g+','+g+','+g+')';
+      cx.fillText(v.label,v.sx,v.sy);continue;
+    }
+    var sp=sprite(v.label,Math.round(v.b*15),sizeKey(v.size));
+    var sc=v.size/sp.size,w=sp.w*sc,h=sp.h*sc;
+    cx.drawImage(sp.c,v.sx-w/2,v.sy-h/2,w,h);
+  }
+  cx.globalAlpha=1;
+  if(hotW){
+    cx.font=hotW.size.toFixed(2)+'px '+FONT;
+    var tw=cx.measureText(hotW.label).width;
+    cx.globalAlpha=hotW.a;cx.fillStyle='#fff';
+    cx.fillRect(hotW.sx-tw/2-5,hotW.sy-hotW.size*0.68,tw+10,hotW.size*1.36);
+    cx.fillStyle='#000';cx.fillText(hotW.label,hotW.sx,hotW.sy);
+    cx.globalAlpha=1;cx.textAlign='left';
+  }
+}
+
+// ---- input. A tap is displacement from where the finger landed, never path. --
+var pts=new Map(),down=null,pinch=null;
+function pickAt(x,y,slop){
+  var best=null,bs=1e9;
+  for(var i=0;i<vis.length;i++){
+    var v=vis[i];if(v.a<0.55||v.size<7)continue;
+    var hw=v.size*0.31*v.label.length+4,hh=v.size*0.62;
+    var dx=x<v.sx-hw?v.sx-hw-x:x>v.sx+hw?x-(v.sx+hw):0;
+    var dy=y<v.sy-hh?v.sy-hh-y:y>v.sy+hh?y-(v.sy+hh):0;
+    var dd=Math.hypot(dx,dy);if(dd>slop)continue;
+    var sc=dd*4+v.vz*0.004;
+    if(sc<bs){bs=sc;best=v;}
+  }
+  return best?{id:best.id,p:best.p}:null;
+}
+function two(){var a=[];pts.forEach(function(p){a.push(p)});return a;}
+function setZoom(z){zoom=Math.max(0.52,Math.min(1.9,z));}
+function clampPan(){
+  var mx=W*0.85,my=H*0.85;
+  if(panx>mx)panx=mx;if(panx<-mx)panx=-mx;
+  if(pany>my)pany=my;if(pany<-my)pany=-my;
+}
+cv.addEventListener('pointerdown',function(e){
+  if(cv.setPointerCapture)cv.setPointerCapture(e.pointerId);
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  glide=false;vyaw=0;vpitch=0;
+  if(!steps.length)return;
+  if(pts.size===1){
+    var touch=e.pointerType!=='mouse';
+    down={x:e.clientX,y:e.clientY,slop:touch?18:7,moved:false,yaw:yaw,pitch:pitch,
+      lx:e.clientX,ly:e.clientY,lt:performance.now()};
+    if(!busy)aim=pickAt(e.clientX,e.clientY,touch?15:5);
+    ladKey='';
+  }else if(pts.size===2){
+    aim=null;down=null;ladKey='';
+    var a=two();
+    pinch={d0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1,z0:zoom,
+      cx0:(a[0].x+a[1].x)/2,cy0:(a[0].y+a[1].y)/2,px0:panx,py0:pany};
+  }
+  dirty=true;
+});
+cv.addEventListener('pointermove',function(e){
+  if(!pts.has(e.pointerId))return;
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&pts.size>=2){
+    var a=two();
+    setZoom(pinch.z0*pinch.d0/(Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1));
+    panx=pinch.px0+((a[0].x+a[1].x)/2-pinch.cx0);
+    pany=pinch.py0+((a[0].y+a[1].y)/2-pinch.cy0);
+    clampPan();dirty=true;return;
+  }
+  if(!down)return;
+  var dx=e.clientX-down.x,dy=e.clientY-down.y;
+  if(!down.moved&&Math.hypot(dx,dy)>down.slop){down.moved=true;aim=null;ladKey='';}
+  if(down.moved){
+    yaw=down.yaw-dx*0.0032;pitch=down.pitch+dy*0.0026;clampCam();
+    var now=performance.now(),ddt=Math.max(8,now-down.lt);
+    vyaw=-(e.clientX-down.lx)/ddt*1000*0.0032;
+    vpitch=(e.clientY-down.ly)/ddt*1000*0.0026;
+    down.lx=e.clientX;down.ly=e.clientY;down.lt=now;
+  }
+  dirty=true;
+});
+function release(e,cancel){
+  pts.delete(e.pointerId);
+  if(pinch){if(pts.size<2)pinch=null;down=null;dirty=true;return;}
+  if(down&&!cancel&&!down.moved&&aim)choose(aim.id);
+  else if(down&&down.moved){
+    aim=null;
+    if(!cancel&&performance.now()-down.lt<90&&Math.abs(vyaw)+Math.abs(vpitch)>0.25)glide=true;
+    else{vyaw=0;vpitch=0;}
+  }
+  down=null;ladKey='';dirty=true;
+}
+cv.addEventListener('pointerup',function(e){release(e,false)});
+cv.addEventListener('pointercancel',function(e){release(e,true)});
+cv.addEventListener('contextmenu',function(e){e.preventDefault();});
+cv.addEventListener('wheel',function(e){
+  e.preventDefault();if(!steps.length)return;
+  setZoom(zoom*Math.exp(e.deltaY*0.0012));dirty=true;
+},{passive:false});
+addEventListener('keydown',function(e){
+  if(e.target===promptEl){if(e.key==='Enter')goB.click();return;}
+  if(!document.body.classList.contains('run'))return;
+  if(e.key==='ArrowLeft')goLayer(li-1);
+  else if(e.key==='ArrowRight')goLayer(li+1);
+  else if(e.key==='ArrowUp')goView(view-1);
+  else if(e.key==='ArrowDown')goView(view+1);
+  else if(e.key==='Backspace'||e.key==='z'||e.key==='Z')erase();
+  else if(e.key==='0'){yaw=0;pitch=0;zoom=1;panx=0;pany=0;dirty=true;}
+  else if(e.key==='d'||e.key==='D'){diagEl.style.display=diagEl.style.display==='block'?'none':'block';dirty=true;}
+});
+goB.addEventListener('click',function(){
+  goB.disabled=true;
+  if(ready){begin();goB.disabled=false;return;}
+  statusEl.textContent=coarse?'starting (on a phone this is a 548 MB download and about 300 MB of memory)':'starting';
+  if(!worker)startWorker();
+});
+undoB.addEventListener('click',erase);
+againB.addEventListener('click',function(){
+  runId++;document.body.classList.remove('run');busy=false;aim=null;fade=null;dirty=true;
+  goB.disabled=false;statusEl.textContent='';promptEl.focus();
+});
+addEventListener('resize',resize);
+resize();
+function boot(){requestAnimationFrame(tick);}
+if(document.fonts&&document.fonts.load){Promise.race([document.fonts.load('20px "Courier Prime"'),new Promise(function(r){setTimeout(r,2500)})]).then(boot,boot);}else boot();
+})();
+</script>
+</body>
+</html>
