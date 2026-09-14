@@ -32,6 +32,7 @@ h1{font-weight:400;font-size:clamp(46px,13vw,104px);line-height:.9;letter-spacin
 #lad{position:fixed;right:10px;top:50%;transform:translateY(-50%);z-index:4;font-size:13px;line-height:1.36;display:flex;flex-direction:column;align-items:flex-end}
 #lad .r{display:flex;justify-content:flex-end;align-items:baseline;gap:.55em;cursor:pointer;padding:0 4px;white-space:pre;-webkit-tap-highlight-color:transparent}
 #lad .r.on{background:#fff;color:#000;text-shadow:none}
+#lad .e{width:3.1em;text-align:right;font-size:.88em}
 #lad .n{width:1.5em;text-align:right}
 #line{position:fixed;left:16px;right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:4;font-size:clamp(17px,4.5vw,23px);line-height:1.45;max-height:26vh;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
 #line .w{white-space:pre;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -54,11 +55,11 @@ window.addEventListener('unhandledrejection',function(e){window.__err(String(e.r
 <canvas id="c"></canvas>
 <div id="land"><div class="col">
 <h1>pentimento</h1>
-<p>Write by choosing from what a language model is actually weighing. Every word you commit puts you inside the field of what could come next — it surrounds you, and you turn to read it. Nothing moves on its own.</p>
+<p>A language model does not arrive at a word all at once. It passes a running state through twelve blocks, and a guess condenses out of noise along the way. This puts you inside that state: a horizon of every word still in play, which you turn to read. Drag up and down and you travel the twelve layers, watching the field rearrange itself as the model makes up its mind. Tap a word to write it and the whole thing re-forms around what comes next.</p>
 <input id="prompt" type="text" value="The opposite of a city is" autocomplete="off" spellcheck="false" aria-label="Opening words">
 <button id="go">begin</button>
 <div id="status" aria-live="polite"></div>
-<p id="fine">GPT-2 runs entirely in this tab. The model is fetched once from Hugging Face (548 MB); what you type never leaves your device. build 8</p>
+<p id="fine">GPT-2 runs entirely in this tab. The model is fetched once from Hugging Face (548 MB); what you type never leaves your device. build 9</p>
 </div></div>
 <div id="read" class="shad"></div>
 <div id="ctl" class="shad"><span id="undo">erase</span><span id="again">new</span></div>
@@ -458,21 +459,27 @@ var FONT='"Courier Prime","Courier New",monospace';
 
 var worker=null,ready=false,cfg=null,map=null,names=null;
 var steps=[],toks=[],promptLen=0,busy=false,runId=0,aim=null,pendingId=-1,hinted=false;
-var view=0,li=0,fade=null,dirty=true,readKey='',ladKey='',lineKey='';
-var K=4200,N=coarse?2600:4200,HOLD=4,BUILT=6;
-var W=0,H=0,DPR=1,CX=0,CY=0;
+var view=0,trans=null,dirty=true,readKey='',ladKey='',lineKey='';
+var K=4200,N=coarse?1500:2200,HOLD=4;
+var W=0,H=0,DPR=1,SDPR=1,CX=0,CY=0;
 
-// ---- the surround ----
-// You stand inside the vocabulary rather than in front of it. Two rank-equalised
-// principal axes of the unembedding put a word somewhere on the sphere around you
-// — one of them all the way round, one from underfoot to overhead — and the third
-// sets how far off it stands. Every direction is occupied. There is no edge to
-// reach, no outside to look in from, and nothing behind you that is not language.
-var RNEAR=430,RFAR=1560,RREF=Math.sqrt(RNEAR*RFAR);
-var FOV0=1.25,FOVMIN=0.62,FOVMAX=1.92;
-var fov=FOV0,FOC=1,FOC0=1,WS=1,BASEF=coarse?17:19;
-var yaw=0,pitch=0,vyaw=0,vpitch=0,glide=false;
-var PITMAX=1.40;
+// ---- the band ----
+// A horizon of words rather than a sphere of them. Two rank-equalised principal
+// axes of the unembedding give each word a bearing — one all the way round, one
+// a little above to a little below the eyeline — and the third sets how far off
+// it stands. A sphere has poles, and a pole is both a fixed point you rotate
+// around and the place a lat/long layout falls apart; a band has neither. The
+// band is sized to the screen so every word in it can be reached by turning.
+var RNEAR=480,RFAR=1500,RREF=Math.sqrt(RNEAR*RFAR);
+var HFOV=1.05,ELMAX=0.5,FOC=1,WS=1,BASEF=coarse?15:17;
+var yaw=0,vyaw=0,glide=false;
+
+// ---- the layer axis ----
+// The primary gesture. depth runs 0..L continuously; the field shown is the two
+// neighbouring layers blended, so the rearrangement between them is something
+// you drive with a finger at your own speed, forwards and back, rather than a
+// transition that happens to you.
+var depth=0,PERLAYER=60;
 
 function startWorker(){
   var url=URL.createObjectURL(new Blob([$('wsrc').textContent],{type:'text/javascript'}));
@@ -494,9 +501,8 @@ function onMsg(e){
 function begin(){
   var text=promptEl.value;
   if(!text.trim()){statusEl.textContent='Type a few opening words first.';goB.disabled=false;return;}
-  runId++;steps=[];toks=[];promptLen=0;aim=null;pendingId=-1;fade=null;busy=true;dirty=true;
-  readKey='';ladKey='';lineKey='';view=0;
-  yaw=0;pitch=0;fov=FOV0;vyaw=0;vpitch=0;glide=false;
+  runId++;steps=[];toks=[];promptLen=0;aim=null;pendingId=-1;trans=null;busy=true;dirty=true;
+  readKey='';ladKey='';lineKey='';view=0;yaw=0;vyaw=0;glide=false;depth=0;
   document.body.classList.add('run');
   measure();buildLadder();
   readEl.textContent='reading your words';lineEl.textContent=text;hintEl.textContent='';
@@ -505,30 +511,33 @@ function begin(){
 
 function measure(){
   CX=W/2;CY=H/2;
-  FOC0=0.5*Math.sqrt(W*H)/Math.tan(FOV0/2);
-  FOC=0.5*Math.sqrt(W*H)/Math.tan(fov/2);
-  WS=BASEF*RREF/FOC0;
+  FOC=W/(4*Math.tan(HFOV/4));
+  ELMAX=Math.min(0.72,2*Math.atan(H/(4*FOC))*0.90);
+  WS=BASEF*RREF/FOC;
+  PERLAYER=Math.max(38,H/14);
   if(hintEl)hintEl.style.bottom=((document.getElementById('line').offsetHeight||44)+34)+'px';
 }
 function resize(){
-  DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  DPR=Math.min(devicePixelRatio||1,2);SDPR=Math.min(devicePixelRatio||1,1.25);
+  W=innerWidth;H=innerHeight;
   cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);
   measure();sprites.clear();rebuild();dirty=true;
 }
 
 // ---- what the model was weighing ----
-// Four thousand candidates a layer, not a few hundred: a surround needs enough
-// to fill every direction. The cutoff is found by one histogram pass over the
-// vocabulary rather than by insertion, which at this size would be quadratic.
+// The cutoff is found by one histogram pass over the vocabulary. The same pass
+// gives the layer's entropy, from which: how many words are effectively still in
+// play at this depth. That number is the piece's second dimension — it falls from
+// thousands at the embedding to a handful at the top, and you can watch it fall.
 var LOGBUF=null;
 function topK(p,off,V,k){
-  var B=1024,LO=-36,SC=B/(0-LO),i,x,lp,b;
+  var B=1024,LO=-36,SC=B/(0-LO),i,x,lp,b,ent=0;
   if(!LOGBUF||LOGBUF.length<V)LOGBUF=new Float32Array(V);
   var hist=new Int32Array(B+2);
   for(i=0;i<V;i++){
     x=p[off+i];
     lp=x>0?Math.log(x):LO; if(lp<LO)lp=LO; if(lp>0)lp=0;
-    LOGBUF[i]=lp;
+    LOGBUF[i]=lp; ent-=x*lp;
     b=((lp-LO)*SC)|0; if(b>B)b=B;
     hist[b]++;
   }
@@ -543,35 +552,37 @@ function topK(p,off,V,k){
   if(ids.length>k)ids.length=k;
   var ps=new Float32Array(ids.length);
   for(i=0;i<ids.length;i++)ps[i]=p[off+ids[i]];
-  return {ids:Uint32Array.from(ids),ps:ps};
+  return {ids:Uint32Array.from(ids),ps:ps,eff:Math.exp(ent)};
 }
 function probOf(card,id){
   if(!card.at){card.at={};for(var i=0;i<card.ids.length;i++)card.at[card.ids[i]]=card.ps[i];}
   var v=card.at[id];return v===undefined?0:v;
 }
 function jit(id,s){var h=(id*2654435761)>>>0;return ((h%1000)/1000-0.5)*s;}
-function viewDir(){var c=Math.cos(pitch);return [c*Math.sin(yaw),Math.sin(pitch),c*Math.cos(yaw)];}
 
 // ---- placement ----
-// Resolved in absolute angle, not on the screen, because there is no single view
-// to resolve it for. A word may be up to BUD hidden behind nearer ones and may
-// hide that much of anything already standing; cells belong to whoever is nearest,
-// so nothing is charged twice for ground it had already lost.
-var GC=0.014,GW=Math.ceil(2*Math.PI/GC),GH=Math.ceil(Math.PI/GC),own=null;
-var BUD=0.40,ELMAX=1.53;
+// Resolved in absolute angle, once per layer, so turning afterwards is pure
+// parallax. A word may be up to BUD hidden behind nearer ones and may hide that
+// much of anything already standing; cells belong to whoever is nearest, so
+// nothing is charged twice for ground it had already lost. Azimuth wraps; the
+// band has no top or bottom edge case because cos(elevation) never approaches
+// zero inside it.
+var GCELL=0.011,GW=0,GH=0,own=null,BUD=0.36;
+function grid(){
+  var gw=Math.ceil(6.2831853/GCELL),gh=Math.ceil((2*ELMAX+0.2)/GCELL);
+  if(gw!==GW||gh!==GH||!own){GW=gw;GH=gh;own=new Int32Array(GW*GH);}
+}
 function place(ws){
-  if(!own)own=new Int32Array(GW*GH);
-  own.fill(-1);
-  var tot=[],taken=[],rs=[];
+  grid();own.fill(-1);
+  var tot=[],taken=[],rs=[],EL0=ELMAX+0.1;
   var tkO=new Int32Array(160),tkC=new Int32Array(160),tkN=0,cn=0,cfront=0;
   var gx0,gx1,gy0,gy1;
   function box(az,el,hw,hh){
-    var aw=hw/Math.max(Math.cos(el),0.12);
-    if(aw>Math.PI)aw=Math.PI;
-    gy0=Math.floor((el+1.5707963-hh)/GC);gy1=Math.floor((el+1.5707963+hh)/GC);
+    var aw=hw/Math.cos(el);
+    gy0=Math.floor((el+EL0-hh)/GCELL);gy1=Math.floor((el+EL0+hh)/GCELL);
     if(gy0<0)gy0=0;if(gy1>=GH)gy1=GH-1;
     if(gy1<gy0)return false;
-    gx0=Math.floor((az+3.1415927-aw)/GC);gx1=Math.floor((az+3.1415927+aw)/GC);
+    gx0=Math.floor((az+3.1415927-aw)/GCELL);gx1=Math.floor((az+3.1415927+aw)/GCELL);
     if(gx1-gx0>=GW)gx1=gx0+GW-1;
     return true;
   }
@@ -604,12 +615,12 @@ function place(ws){
   }
   var out=[];
   for(var i=0;i<ws.length;i++){
-    var w=ws[i],az=w.az,el=w.el,ok=false,cap=Math.max(0.05,w.hw*2.4);
+    var w=ws[i],az=w.az,el=w.el,ok=false,cap=Math.max(0.05,w.hw*2.2);
     for(var th=0;th<1500;th+=0.26){
-      var rr=0.0042*th;if(rr>cap)break;
-      el=w.el+Math.sin(th)*rr;
+      var rr=0.0040*th;if(rr>cap)break;
+      el=w.el+Math.sin(th)*rr*0.55;
       if(el>ELMAX)el=ELMAX;if(el<-ELMAX)el=-ELMAX;
-      az=w.az+Math.cos(th)*rr/Math.max(Math.cos(el),0.12);
+      az=w.az+Math.cos(th)*rr/Math.cos(el);
       if(fits(az,el,w.hw,w.hh,w.r)){ok=true;break;}
     }
     if(!ok)continue;
@@ -622,104 +633,92 @@ function place(ws){
   }
   return out;
 }
-// The likeliest word is turned to face the way you are already looking, so a new
-// field never leaves you facing nothing. The field turns; the camera does not.
-function align(w,v){
-  var ux=w.dx,uy=w.dy,uz=w.dz;
-  var d=ux*v[0]+uy*v[1]+uz*v[2];
-  if(d>0.999999)return null;
-  var ax,ay,az2;
-  if(d<-0.999999){ax=-uy;ay=ux;az2=0;if(Math.abs(ux)+Math.abs(uy)<1e-6){ax=1;ay=0;}}
-  else{ax=uy*v[2]-uz*v[1];ay=uz*v[0]-ux*v[2];az2=ux*v[1]-uy*v[0];}
-  var n=Math.hypot(ax,ay,az2)||1;ax/=n;ay/=n;az2/=n;
-  var a=Math.acos(Math.max(-1,Math.min(1,d))),c=Math.cos(a),s=Math.sin(a),t=1-c;
-  return [t*ax*ax+c,t*ax*ay-s*az2,t*ax*az2+s*ay,
-          t*ax*ay+s*az2,t*ay*ay+c,t*ay*az2-s*ax,
-          t*ax*az2-s*ay,t*ay*az2+s*ax,t*az2*az2+c];
-}
-function makeField(card,l){
-  var n=Math.min(N,card.ids.length),ws=[],by={},i;
+function makeField(st,l){
+  var card=st.cards[l],n=Math.min(N,card.ids.length),ws=[],by={},i;
   var lmax=Math.log(card.ps[0]+1e-12),lmin=Math.log(card.ps[n-1]+1e-12),span=(lmax-lmin)||1;
   var lr=Math.log(RFAR/RNEAR);
   for(i=0;i<n;i++){
     var id=card.ids[i],p=card.ps[i];
     var t=(Math.log(p+1e-12)-lmin)/span;if(t<0)t=0;if(t>1)t=1;
-    var b=0.46+0.54*Math.pow(t,0.5);
+    // Probability owns brightness and nothing else owns brightness. There is no
+    // distance fog: size already says how far away a word is, and a word dimmed
+    // twice is a word you cannot read.
+    var b=0.52+0.48*Math.pow(t,0.5);
     var a0=map[id*3],a1=map[id*3+1],a2=map[id*3+2];
-    var az=a0*Math.PI+jit(id,0.03);
-    var e0=a1*0.97;if(e0>1)e0=1;if(e0<-1)e0=-1;
-    var el=Math.asin(e0)+jit(id+31,0.03);
+    var az=a0*Math.PI+st.spin+jit(id,0.03);
+    if(az>Math.PI)az-=6.2831853;if(az<-Math.PI)az+=6.2831853;
+    var el=a1*ELMAX*0.94+jit(id+31,0.02);
     if(el>ELMAX)el=ELMAX;if(el<-ELMAX)el=-ELMAX;
     var r=RNEAR*Math.exp(lr*((a2+1)/2+jit(id+977,0.05)));
     var label=show(id),angH=WS/r;
     var ce=Math.cos(el);
     ws.push({id:id,p:p,b:b,label:label,r:r,az:az,el:el,
       dx:ce*Math.sin(az),dy:Math.sin(el),dz:ce*Math.cos(az),
-      hw:0.3*label.length*angH+0.004,hh:0.58*angH});
-  }
-  if(ws.length){
-    var R=align(ws[0],viewDir());
-    if(R)for(i=0;i<ws.length;i++){
-      var w=ws[i];
-      var x=R[0]*w.dx+R[1]*w.dy+R[2]*w.dz;
-      var y=R[3]*w.dx+R[4]*w.dy+R[5]*w.dz;
-      var z=R[6]*w.dx+R[7]*w.dy+R[8]*w.dz;
-      w.dx=x;w.dy=y;w.dz=z;
-      w.el=Math.asin(Math.max(-1,Math.min(1,y)));
-      w.az=Math.atan2(x,z);
-    }
+      hw:0.3*label.length*angH+0.004,hh:0.60*angH});
   }
   ws=place(ws);
   for(i=0;i<ws.length;i++)by[ws[i].id]=ws[i];
   return {layer:l,words:ws,by:by};
 }
-// Built fields are large, so only a few are kept alive at once.
-function prune(keepS,keepL){
-  var n=0;
-  for(var s=steps.length-1;s>=0;s--){var f=steps[s].fields;if(!f)continue;
-    for(var l=f.length-1;l>=0;l--){if(!f[l])continue;
-      if(s===keepS&&l===keepL)continue;
-      if(++n>BUILT)f[l]=null;}}
+function field(s,l){
+  var st=steps[s];if(!st||!st.cards)return null;
+  if(l<0)l=0;if(l>cfg.L)l=cfg.L;
+  if(!st.fields[l])st.fields[l]=makeField(st,l);
+  return st.fields[l];
 }
-function field(s,l){var st=steps[s];if(!st||!st.cards)return null;
-  if(!st.fields[l]){st.fields[l]=makeField(st.cards[l],l);prune(s,l);}
-  return st.fields[l];}
-function here(){return field(view,li);}
-function rebuild(){for(var i=0;i<steps.length;i++)if(steps[i].fields)steps[i].fields=new Array((cfg?cfg.L:12)+1);fade=null;dirty=true;}
+function rebuild(){for(var i=0;i<steps.length;i++)if(steps[i].fields)steps[i].fields=new Array((cfg?cfg.L:12)+1);trans=null;dirty=true;}
+// While nothing is moving, lay out the layers you have not visited yet, nearest
+// first, one per frame, so that scrubbing never waits on a build.
+function warm(){
+  var st=steps[view];if(!st||!st.cards)return false;
+  var near=Math.round(depth);
+  for(var d=0;d<=cfg.L;d++){
+    for(var s=-1;s<=1;s+=2){
+      var l=near+d*s;
+      if(l<0||l>cfg.L)continue;
+      if(!st.fields[l]){st.fields[l]=makeField(st,l);return true;}
+      if(d===0)break;
+    }
+  }
+  return false;
+}
 
 // ---- moves ----
 function onStep(m){
   busy=false;
-  var was=steps.length?here():null;
-  var cards=[];for(var l=0;l<=cfg.L;l++)cards.push(topK(m.probs,l*cfg.V,cfg.V,K));
-  steps.push({cards:cards,text:m.text,pos:m.pos,ms:m.ms,fields:new Array(cfg.L+1)});
+  var was=steps.length?shown():null;
+  var cards=[],l;
+  for(l=0;l<=cfg.L;l++)cards.push(topK(m.probs,l*cfg.V,cfg.V,K));
+  // The whole step is turned once, so that the likeliest word faces the way you
+  // are already looking. Scrubbing the layer axis must not spin the world, so the
+  // turn belongs to the step and not to the layer.
+  var top=cards[cfg.L].ids[0];
+  var st={cards:cards,text:m.text,pos:m.pos,ms:m.ms,spin:0,fields:new Array(cfg.L+1)};
+  st.spin=yaw-(map[top*3]*Math.PI+jit(top,0.03));
+  steps.push(st);
   for(var i=0;i<steps.length-HOLD;i++)if(steps[i].fields)steps[i].fields=null;
-  view=steps.length-1;pendingId=-1;aim=null;li=cfg.L;ladKey='';lineKey='';
-  swap(was,here(),still?200:620);
+  for(i=0;i<steps.length-1;i++)if(steps[i].fields)steps[i].fields=new Array(cfg.L+1);
+  view=steps.length-1;pendingId=-1;aim=null;depth=cfg.L;ladKey='';lineKey='';
+  go(was,field(view,cfg.L),still?200:640);
   paintLadder();paintLine();dirty=true;
   if(!hinted){hinted=true;hintEl.textContent=coarse
-    ?'tap a word to write it \u00b7 drag to look around \u00b7 pinch to widen\ntap a written word below to return to it'
-    :'click a word to write it \u00b7 drag to look around \u00b7 scroll to widen\nclick a written word below to return to it';}
+    ?'drag up and down to move through the model\u2019s layers \u00b7 sideways to turn\ntap a word to write it'
+    :'drag up and down to move through the model\u2019s layers \u00b7 sideways to turn\nclick a word to write it';}
 }
-// Every change of field is a rearrangement: shared words sweep around the sphere
-// to their new bearing, words that were not there before come forward out of the
-// dark, words that are leaving recede into it.
-function swap(from,to,dur){
-  if(!to){fade=null;return;}
-  fade={t0:performance.now(),dur:dur,from:from||null,to:to};
+function go(from,to,dur){
+  if(!to){trans=null;return;}
+  trans={t0:performance.now(),dur:dur,from:from||null,to:to};
 }
 function goLayer(l){
   if(busy||!steps.length)return;
-  l=Math.max(0,Math.min(cfg.L,l));if(l===li)return;
-  var from=here();li=l;ladKey='';var to=here();if(!to){li=from?from.layer:li;return;}
-  aim=null;swap(from,to,still?160:480);paintLadder();dirty=true;
+  depth=Math.max(0,Math.min(cfg.L,l));aim=null;ladKey='';dirty=true;
 }
 function goView(v){
   if(busy||v<0||v>=steps.length||v===view)return;
   if(!steps[v].cards)return;
   if(!steps[v].fields)steps[v].fields=new Array(cfg.L+1);
-  var from=here();view=v;li=cfg.L;ladKey='';
-  aim=null;swap(from,here(),still?160:520);
+  var from=shown();view=v;depth=cfg.L;ladKey='';
+  aim=null;go(from,field(view,cfg.L),still?160:520);
   paintLadder();paintLine();dirty=true;
 }
 function choose(id){
@@ -741,21 +740,34 @@ function erase(){
   worker.postMessage({type:'rewind',pos:steps[view].pos+1,run:runId});
   paintLine();dirty=true;
 }
+function shown(){var lo=Math.floor(depth);return field(view,depth-lo>0.5?lo+1:lo);}
 
 function show(id){var n=names[id];if(n==='\n')return '\u00b6';n=n.replace(/\n/g,'\u00b6').replace(/\t/g,'\u21e5');return n.trim()===''?'\u2423':n.replace(/^ /,'');}
 function pct(p){if(p>=0.1)return Math.round(p*100)+'%';if(p>=0.001)return (p*100).toFixed(1)+'%';return '<0.1%';}
 function pctTiny(p){if(p>=0.1)return Math.round(p*100)+'%';if(p>=0.01)return (p*100).toFixed(1)+'%';return '\u00b7';}
-function layerName(l){return l===cfg.L?'what could come next':l===0?'before any thinking':'as it looked at layer '+l;}
+function eff(n){
+  if(n>=10000)return Math.round(n/1000)+'k';
+  if(n>=1000)return (n/1000).toFixed(1)+'k';
+  if(n>=100)return String(Math.round(n));
+  return n.toFixed(1);
+}
 function clip(s,n){return s.length>n?s.slice(0,n):s;}
 
-// ---- the ladder: one rung per layer, the model's depth stood on end ----
+// ---- the ladder ----
+// GPT-2 is twelve blocks with a running state between them. Each rung reads that
+// state at one point and applies the model's own last step — the final layernorm
+// and the unembedding — as if it had been asked to answer there. That is the
+// logit lens. Rung 12 is the real answer; rung 0 is the embedding with no
+// thinking in it; the rungs between are stages the model never reports. Each
+// carries what it would have said and how many words were still in play.
 function buildLadder(){
   ladEl.innerHTML='';
   for(var l=cfg?cfg.L:12;l>=0;l--){
     var r=document.createElement('div');r.className='r';r.dataset.l=l;
     var w=document.createElement('span');w.className='w';
+    var e=document.createElement('span');e.className='e';
     var n=document.createElement('span');n.className='n';n.textContent=l===0?'in':l;
-    r.appendChild(w);r.appendChild(n);ladEl.appendChild(r);
+    r.appendChild(w);r.appendChild(e);r.appendChild(n);ladEl.appendChild(r);
   }
   ladEl.onclick=function(e){
     var t=e.target;while(t&&t!==ladEl&&!t.classList.contains('r'))t=t.parentNode;
@@ -765,13 +777,15 @@ function buildLadder(){
 function paintLadder(){
   if(!cfg||!ladEl.firstChild||!steps.length)return;
   var st=steps[view];if(!st||!st.cards)return;
-  var rs=ladEl.children;
+  var cur=Math.round(depth),rs=ladEl.children;
   for(var i=0;i<rs.length;i++){
     var l=+rs[i].dataset.l,card=st.cards[l];
     var txt=aim?pctTiny(probOf(card,aim.id)):clip(show(card.ids[0]),7);
-    var wEl=rs[i].firstChild;
+    var wEl=rs[i].children[0],eEl=rs[i].children[1];
     if(wEl.textContent!==txt)wEl.textContent=txt;
-    var on=l===li;
+    var ev=eff(card.eff);
+    if(eEl.textContent!==ev)eEl.textContent=ev;
+    var on=l===cur;
     if(on!==rs[i].classList.contains('on'))rs[i].classList.toggle('on',on);
   }
 }
@@ -798,100 +812,127 @@ lineEl.addEventListener('click',function(e){
 });
 
 // ---- glyphs ----
-// Each word is drawn once into its own small canvas, white on a black aura, and
-// then blitted. The aura is what lets a near word cut a hole in a far one.
-var sprites=new Map();
+// One canvas per word per size, white on a black aura, blitted thereafter.
+// Brightness is applied as alpha at draw time rather than baked in, so a word
+// needs one canvas and not one per brightness. The aura is capped in absolute
+// pixels: at 55% of a 10px glyph it is wider than the stems and the word reads
+// as a smudge.
+var sprites=new Map(),made=0,budget=0;
 var LS=1/Math.log(Math.pow(2,1/3));
 function sizeKey(s){return Math.round(Math.log(s)*LS)}
 function sizeOf(k){return Math.exp(k/LS)}
-function sprite(label,bi,sk){
-  var key=label+'|'+bi+'|'+sk,e=sprites.get(key);
+function aura(size){return Math.min(size*0.26,3.6)}
+function sprite(label,sk){
+  var key=label+'|'+sk,e=sprites.get(key);
   if(e)return e;
-  var size=sizeOf(sk),fs=size*DPR;
+  var size=sizeOf(sk),fs=size*SDPR;
   var c=document.createElement('canvas'),g=c.getContext('2d');
   g.font=fs.toFixed(2)+'px '+FONT;
-  var tw=g.measureText(label).width,pad=Math.ceil(fs*0.34);
-  c.width=Math.ceil(tw)+pad*2;c.height=Math.ceil(fs*1.35)+pad*2;
+  var tw=g.measureText(label).width,lw=aura(size)*SDPR,pad=Math.ceil(lw+2);
+  c.width=Math.ceil(tw)+pad*2;c.height=Math.ceil(fs*1.3)+pad*2;
   g.font=fs.toFixed(2)+'px '+FONT;g.textBaseline='middle';g.textAlign='center';
   g.lineJoin='round';g.miterLimit=2;g.strokeStyle='#000';
   var mx=c.width/2,my=c.height/2;
-  g.globalAlpha=0.6;g.lineWidth=fs*0.55;g.strokeText(label,mx,my);
-  g.globalAlpha=1;g.lineWidth=fs*0.26;g.strokeText(label,mx,my);
-  var v=Math.round(255*bi/15);
-  g.fillStyle='rgb('+v+','+v+','+v+')';
-  g.fillText(label,mx,my);
-  e={c:c,w:c.width/DPR,h:c.height/DPR,size:size};
-  sprites.set(key,e);
-  while(sprites.size>1400)sprites.delete(sprites.keys().next().value);
+  g.lineWidth=lw*2;g.strokeText(label,mx,my);
+  g.fillStyle='#fff';g.fillText(label,mx,my);
+  e={c:c,w:c.width/SDPR,h:c.height/SDPR,size:size};
+  sprites.set(key,e);made++;
+  while(sprites.size>Math.max(1200,Math.round(N*1.35)))sprites.delete(sprites.keys().next().value);
   return e;
 }
 
 // ---- drawing ----
-var vis=[],last=performance.now(),fps=60,frame=0;
+var vis=[],last=performance.now(),fps=60,frame=0,drag=null,EMPTY={words:[],by:{}};
 function blank(){cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#000';cx.fillRect(0,0,W,H);}
 function tick(now){requestAnimationFrame(tick);try{frameBody(now);}catch(e){window.__err('frame: '+e.message,true);}}
 function frameBody(now){
   var dt=Math.min(0.1,(now-last)/1000);last=now;fps=fps*0.95+(1/Math.max(dt,1e-3))*0.05;
   if(!document.body.classList.contains('run')||!steps.length){if(dirty){blank();dirty=false;}return;}
   if(glide){
-    yaw+=vyaw*dt;pitch+=vpitch*dt;clampCam();
-    var f=Math.exp(-dt*5.5);vyaw*=f;vpitch*=f;
-    if(Math.abs(vyaw)+Math.abs(vpitch)<0.06){glide=false;vyaw=0;vpitch=0;}
+    yaw+=vyaw*dt;wrapYaw();
+    var f=Math.exp(-dt*5.5);vyaw*=f;
+    if(Math.abs(vyaw)<0.05){glide=false;vyaw=0;}
     dirty=true;
   }
-  var k=1;
-  if(fade){k=(now-fade.t0)/fade.dur;if(k<0)k=0;if(k>1)k=1;dirty=true;if(k>=1)fade=null;}
-  if(!dirty)return;dirty=false;frame++;
-  var e=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
-  blank();collect(e);paint();
-  var st=steps[view],card=st&&st.cards?st.cards[li]:null;
+  var e=0,A=null,B=null;
+  if(trans){
+    var k=(now-trans.t0)/trans.dur;if(k<0)k=0;if(k>1)k=1;
+    dirty=true;
+    e=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    A=trans.from;B=trans.to;
+    if(k>=1)trans=null;
+  }else{
+    var lo=Math.floor(depth);if(lo>=cfg.L)lo=cfg.L>0?cfg.L-1:0;
+    e=depth-lo;if(e<0)e=0;if(e>1)e=1;
+    A=field(view,lo);B=cfg.L>0?field(view,lo+1):A;
+  }
+  // The panel is live whether or not the frame redraws: it is an instrument
+  // readout, and a readout that only updates when something moves is useless
+  // for telling whether anything is moving.
+  if(diagEl.style.display==='block'){
+    var dst=steps[view];
+    diagEl.textContent='f'+frame+'  '+Math.round(fps)+' fps\nword '+view+' of '+(steps.length-1)+'  '+((dst&&dst.ms)||0)+' ms\ndepth '+depth.toFixed(2)+'  yaw '+Math.round(yaw*57.3)+'\u00b0  drawn '+vis.length+'\nglyphs '+sprites.size;
+  }
+  if(!dirty){if(!drag&&warm())return;return;}
+  dirty=false;frame++;
+  // Build glyphs sparingly while a gesture is in flight and greedily when it is
+  // not, so the cache catches up between movements instead of during them.
+  budget=drag?14:60;
+  blank();collect(A,B,e);paint();
+  var st=steps[view],cur=Math.round(depth),card=st&&st.cards?st.cards[cur]:null;
   var r=busy?'working out what could follow'
-    :aim?show(aim.id)+' '+pct(probOf(card,aim.id))
-    :layerName(li)+(card?'\n'+show(card.ids[0])+' '+pct(card.ps[0]):'');
+    :aim?show(aim.id)+' '+pct(probOf(card,aim.id))+' here'
+    :(cur===cfg.L?'layer 12, the answer':cur===0?'layer 0, before any thinking':'layer '+cur+' of '+cfg.L)
+      +(card?'\n'+show(card.ids[0])+' '+pct(card.ps[0])+' \u00b7 '+eff(card.eff)+' words still in play':'');
   if(r!==readKey){readKey=r;readEl.textContent=r;}
   paintLine();
-  var lk=li+'/'+busy+'/'+steps.length+'/'+view+'/'+(aim?aim.id:-1);
+  var lk=cur+'/'+busy+'/'+steps.length+'/'+view+'/'+(aim?aim.id:-1);
   if(lk!==ladKey){ladKey=lk;paintLadder();undoB.classList.toggle('off',busy||steps.length<2);}
-  if(diagEl.style.display==='block')diagEl.textContent='f'+frame+'  '+Math.round(fps)+' fps\nword '+view+' of '+(steps.length-1)+'  '+(st.ms||0)+' ms\nfov '+Math.round(fov*57.3)+'\u00b0  yaw '+Math.round(yaw*57.3)+'\u00b0  drawn '+vis.length+'\nglyphs '+sprites.size;
 }
-function clampCam(){
-  if(pitch>PITMAX){pitch=PITMAX;vpitch=0;}if(pitch<-PITMAX){pitch=-PITMAX;vpitch=0;}
-  if(yaw>Math.PI)yaw-=6.2831853;if(yaw<-Math.PI)yaw+=6.2831853;
-}
-function collect(e){
+function wrapYaw(){if(yaw>Math.PI)yaw-=6.2831853;if(yaw<-Math.PI)yaw+=6.2831853;}
+function collect(A,B,e){
   vis.length=0;
-  var to=fade?fade.to:here(),from=fade?fade.from:null;
-  if(!to&&!from)return;
-  FOC=0.5*Math.sqrt(W*H)/Math.tan(fov/2);
-  var cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  if(!A&&!B)return;
+  if(!B){B=A;e=0;}
+  if(!A)A=EMPTY;
+  var cy=Math.cos(yaw),sy=Math.sin(yaw);
   function add(w,px,py,pz,r,a,b){
     var x1=px*cy-pz*sy,z1=px*sy+pz*cy;
-    var y2=py*cp-z1*sp,z2=py*sp+z1*cp;
-    if(z2<40)return;
-    var size=WS*FOC/r;if(size<5)return;
-    if(size<8.5)a*=(size-5)/3.5;
+    var nn=Math.sqrt(x1*x1+py*py+z1*z1)||1;
+    var ux=x1/nn,uy=py/nn,uz=z1/nn;
+    if(uz<-0.25)return;
+    // Stereographic, not pinhole. A pinhole camera stretches whatever is off its
+    // axis, so the same word grew as it crossed the screen and shrank again —
+    // felt as scale shifting under the hand. This is conformal: one scale factor
+    // for both the position and the size, so they cannot disagree.
+    var t=Math.sqrt((1-uz)/(1+uz)),sc=FOC*(1+t*t);
+    var size=WS*sc/r;if(size<5.5)return;
+    if(size<9)a*=(size-5.5)/3.5;
     if(a<=0.02)return;
-    var sx=CX+FOC*x1/z2,sy2=CY-FOC*y2/z2;
-    if(sx<-300||sx>W+300||sy2<-160||sy2>H+160)return;
-    var fog=1-0.30*Math.max(0,Math.min(1,(r-RNEAR)/(RFAR-RNEAR)));
-    vis.push({id:w.id,p:w.p,label:w.label,b:b,sx:sx,sy:sy2,size:size,a:a*fog,r:r});
+    var hh=Math.sqrt(ux*ux+uy*uy),kk=hh>1e-9?2*FOC*t/hh:0;
+    var sx=CX+kk*ux,sy2=CY-kk*uy;
+    if(sx<-260||sx>W+260||sy2<-150||sy2>H+150)return;
+    // The glyph canvas is keyed on the word's own distance, not on its size after
+    // the conformal factor, so a word has exactly one canvas for the whole session
+    // and turning never evicts anything.
+    vis.push({id:w.id,p:w.p,label:w.label,b:b,sx:sx,sy:sy2,size:size,a:a,r:r,k:sizeKey(WS*FOC/r)});
   }
-  var anim=!!fade,i,w,o;
-  if(to)for(i=0;i<to.words.length;i++){
-    w=to.words[i];o=from?from.by[w.id]:null;
+  var i,w,o;
+  for(i=0;i<B.words.length;i++){
+    w=B.words[i];o=A.by[w.id];
     if(o){
-      // sweep along the sphere rather than straight through the middle of the room
       var dx=o.dx+(w.dx-o.dx)*e,dy=o.dy+(w.dy-o.dy)*e,dz=o.dz+(w.dz-o.dz)*e;
       var n=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
       var r=o.r+(w.r-o.r)*e;
       add(w,dx/n*r,dy/n*r,dz/n*r,r,1,o.b+(w.b-o.b)*e);
+    }else{
+      var rr=w.r*(1+0.8*(1-e));
+      add(w,w.dx*rr,w.dy*rr,w.dz*rr,rr,e,w.b);
     }
-    else if(anim){var rr=w.r*(1+1.7*(1-e));add(w,w.dx*rr,w.dy*rr,w.dz*rr,rr,e,w.b);}
-    else add(w,w.px,w.py,w.pz,w.r,1,w.b);
   }
-  if(from)for(i=0;i<from.words.length;i++){
-    w=from.words[i];if(to&&to.by[w.id])continue;
-    var r2=w.r*(1+1.7*e);
+  for(i=0;i<A.words.length;i++){
+    w=A.words[i];if(B.by[w.id])continue;
+    var r2=w.r*(1+0.8*e);
     add(w,w.dx*r2,w.dy*r2,w.dz*r2,r2,1-e,w.b);
   }
   vis.sort(function(a,b){return b.r-a.r});
@@ -902,15 +943,21 @@ function paint(){
   for(var i=0;i<vis.length;i++){
     var v=vis[i];
     if(v.id===hot){hotW=v;continue;}
-    cx.globalAlpha=busy?v.a*0.55:v.a;
-    if(v.size>56){
-      cx.font=v.size.toFixed(2)+'px '+FONT;cx.strokeStyle='#000';
-      cx.lineWidth=v.size*0.26;cx.strokeText(v.label,v.sx,v.sy);
-      var g=Math.round(255*v.b);cx.fillStyle='rgb('+g+','+g+','+g+')';
-      cx.fillText(v.label,v.sx,v.sy);continue;
+    var al=(busy?v.a*0.55:v.a)*v.b;
+    var sk=v.k,key=v.label+'|'+sk,sp=sprites.get(key);
+    if(!sp){
+      if(budget>0){budget--;sp=sprite(v.label,sk);}
+      else{
+        // No canvas for it yet and no time to make one this frame: draw it plainly
+        // rather than leave a hole, and it will be blitted from the next frame on.
+        cx.globalAlpha=al;cx.font=v.size.toFixed(2)+'px '+FONT;
+        cx.strokeStyle='#000';cx.lineWidth=aura(v.size)*2;cx.strokeText(v.label,v.sx,v.sy);
+        cx.fillStyle='#fff';cx.fillText(v.label,v.sx,v.sy);
+        continue;
+      }
     }
-    var sp=sprite(v.label,Math.round(v.b*15),sizeKey(v.size));
     var sc=v.size/sp.size,w=sp.w*sc,h=sp.h*sc;
+    cx.globalAlpha=al;
     cx.drawImage(sp.c,v.sx-w/2,v.sy-h/2,w,h);
   }
   cx.globalAlpha=1;
@@ -924,8 +971,11 @@ function paint(){
   }
 }
 
-// ---- input. A tap is displacement from where the finger landed, never path. --
-var pts=new Map(),down=null,pinch=null;
+// ---- input ----
+// A tap is displacement from where the finger landed, never accumulated path.
+// A drag commits to one axis at the moment it passes the slop and stays there:
+// sideways turns you, up and down moves you through the layers.
+var pts=new Map(),down=null;
 function pickAt(x,y,slop){
   var best=null,bs=1e9;
   for(var i=0;i<vis.length;i++){
@@ -939,75 +989,63 @@ function pickAt(x,y,slop){
   }
   return best?{id:best.id,p:best.p}:null;
 }
-function two(){var a=[];pts.forEach(function(p){a.push(p)});return a;}
-function setFov(f){fov=Math.max(FOVMIN,Math.min(FOVMAX,f));}
 cv.addEventListener('pointerdown',function(e){
   if(cv.setPointerCapture)cv.setPointerCapture(e.pointerId);
-  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  glide=false;vyaw=0;vpitch=0;
-  if(!steps.length)return;
-  if(pts.size===1){
-    var touch=e.pointerType!=='mouse';
-    down={x:e.clientX,y:e.clientY,slop:touch?18:7,moved:false,yaw:yaw,pitch:pitch,
-      lx:e.clientX,ly:e.clientY,lt:performance.now()};
-    if(!busy)aim=pickAt(e.clientX,e.clientY,touch?15:5);
-    ladKey='';
-  }else if(pts.size===2){
-    aim=null;down=null;ladKey='';
-    var a=two();
-    pinch={d0:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1,f0:fov};
-  }
-  dirty=true;
+  pts.set(e.pointerId,1);
+  glide=false;vyaw=0;
+  if(!steps.length||pts.size>1){down=null;drag=null;return;}
+  var touch=e.pointerType!=='mouse';
+  down={x:e.clientX,y:e.clientY,slop:touch?16:6,axis:0,yaw:yaw,depth:depth,
+    lx:e.clientX,lt:performance.now()};
+  if(!busy)aim=pickAt(e.clientX,e.clientY,touch?15:5);
+  ladKey='';dirty=true;
 });
 cv.addEventListener('pointermove',function(e){
-  if(!pts.has(e.pointerId))return;
-  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(pinch&&pts.size>=2){
-    var a=two();
-    setFov(pinch.f0*pinch.d0/(Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1));
-    dirty=true;return;
-  }
-  if(!down)return;
+  if(!down||!pts.has(e.pointerId))return;
   var dx=e.clientX-down.x,dy=e.clientY-down.y;
-  if(!down.moved&&Math.hypot(dx,dy)>down.slop){down.moved=true;aim=null;ladKey='';}
-  if(down.moved){
-    var k=fov/FOV0*0.0042;
-    yaw=down.yaw-dx*k;pitch=down.pitch+dy*k;clampCam();
-    var now=performance.now(),ddt=Math.max(8,now-down.lt);
-    vyaw=-(e.clientX-down.lx)/ddt*1000*k;
-    vpitch=(e.clientY-down.ly)/ddt*1000*k;
-    down.lx=e.clientX;down.ly=e.clientY;down.lt=now;
+  if(!down.axis&&Math.hypot(dx,dy)>down.slop){
+    down.axis=Math.abs(dx)>Math.abs(dy)?1:2;
+    aim=null;drag=down;ladKey='';
   }
-  dirty=true;
+  if(down.axis===1){
+    yaw=down.yaw-dx*(HFOV/W);wrapYaw();
+    var now=performance.now(),ddt=Math.max(8,now-down.lt);
+    vyaw=-(e.clientX-down.lx)/ddt*1000*(HFOV/W);
+    down.lx=e.clientX;down.lt=now;
+  }else if(down.axis===2){
+    depth=down.depth+(down.y-e.clientY)/PERLAYER;
+    if(depth<0)depth=0;if(depth>cfg.L)depth=cfg.L;
+    ladKey='';
+  }
+  if(down.axis)dirty=true;
 });
 function release(e,cancel){
   pts.delete(e.pointerId);
-  if(pinch){if(pts.size<2)pinch=null;down=null;dirty=true;return;}
-  if(down&&!cancel&&!down.moved&&aim)choose(aim.id);
-  else if(down&&down.moved){
+  if(!down)return;
+  if(!cancel&&!down.axis&&aim)choose(aim.id);
+  else if(down.axis===1){
     aim=null;
-    if(vyaw>3)vyaw=3;if(vyaw<-3)vyaw=-3;if(vpitch>3)vpitch=3;if(vpitch<-3)vpitch=-3;
-    if(!cancel&&performance.now()-down.lt<90&&Math.abs(vyaw)+Math.abs(vpitch)>0.25)glide=true;
-    else{vyaw=0;vpitch=0;}
+    if(vyaw>3)vyaw=3;if(vyaw<-3)vyaw=-3;
+    if(!cancel&&performance.now()-down.lt<90&&Math.abs(vyaw)>0.25)glide=true;else vyaw=0;
+  }else if(down.axis===2){
+    aim=null;depth=Math.round(depth);ladKey='';
   }
-  down=null;ladKey='';dirty=true;
+  down=null;drag=null;dirty=true;
 }
 cv.addEventListener('pointerup',function(e){release(e,false)});
 cv.addEventListener('pointercancel',function(e){release(e,true)});
 cv.addEventListener('contextmenu',function(e){e.preventDefault();});
-cv.addEventListener('wheel',function(e){
-  e.preventDefault();if(!steps.length)return;
-  setFov(fov*Math.exp(e.deltaY*0.0012));dirty=true;
-},{passive:false});
 addEventListener('keydown',function(e){
   if(e.target===promptEl){if(e.key==='Enter')goB.click();return;}
   if(!document.body.classList.contains('run'))return;
-  if(e.key==='ArrowLeft')goLayer(li-1);
-  else if(e.key==='ArrowRight')goLayer(li+1);
-  else if(e.key==='ArrowUp')goView(view-1);
-  else if(e.key==='ArrowDown')goView(view+1);
+  if(e.key==='ArrowUp')goLayer(Math.round(depth)+1);
+  else if(e.key==='ArrowDown')goLayer(Math.round(depth)-1);
+  else if(e.key==='ArrowLeft'){yaw-=0.18;wrapYaw();dirty=true;}
+  else if(e.key==='ArrowRight'){yaw+=0.18;wrapYaw();dirty=true;}
+  else if(e.key==='['&&steps.length)goView(view-1);
+  else if(e.key===']'&&steps.length)goView(view+1);
   else if(e.key==='Backspace'||e.key==='z'||e.key==='Z')erase();
-  else if(e.key==='0'){yaw=0;pitch=0;fov=FOV0;dirty=true;}
+  else if(e.key==='0'){yaw=0;depth=cfg.L;dirty=true;}
   else if(e.key==='d'||e.key==='D'){diagEl.style.display=diagEl.style.display==='block'?'none':'block';dirty=true;}
 });
 goB.addEventListener('click',function(){
@@ -1018,7 +1056,7 @@ goB.addEventListener('click',function(){
 });
 undoB.addEventListener('click',erase);
 againB.addEventListener('click',function(){
-  runId++;document.body.classList.remove('run');busy=false;aim=null;fade=null;dirty=true;
+  runId++;document.body.classList.remove('run');busy=false;aim=null;trans=null;dirty=true;
   goB.disabled=false;statusEl.textContent='';promptEl.focus();
 });
 addEventListener('resize',resize);
