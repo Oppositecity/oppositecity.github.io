@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-09-13",
+ "published": "2026-09-14",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -354,6 +354,23 @@
    ],
    "blurb": "Named for the figure that says a thing by saying what it is not. A sentence is handed to a language model running entirely in the tab, and what comes back is not a completion but the field the sentence was standing in at every position — everything that was available at each word, and the one word taken. Each line is one position, and the alternatives run left to right by how readily the language offered them, on a logarithmic scale that reaches the far end of a fifty-thousand word vocabulary. The word actually used sits at its own place on that scale, so the sentence draws a path: hard against the left margin wherever the writer went where the language was already going, far out to the right wherever they broke away. The distance is measured, not impressionistic — it is the rank, and the cost of each word is its surprisal in bits, which is also what the sentence is priced at when it ends. Nothing is drawn from numbers that fail a check for degeneracy, because an instrument that renders a flat distribution as a picture is lying at exactly the moment it looks most like art. What is left on the page beside the bright path is the negative space of a draft: every word that was there to be used and was refused.",
    "url": "https://opposite.city/apophasis/"
+  },
+  {
+   "slug": "idiophone",
+   "name": "IDIOPHONE",
+   "district": "ambient",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "modal analysis",
+    "q factor",
+    "resonance",
+    "impulse excitation",
+    "atproto",
+    "web audio"
+   ],
+   "blurb": "An idiophone is an instrument that sounds by the vibration of its own body — a bell, a bar, a stone, nothing stretched over it and no column of air inside it. This treats anything as one. Strike an object near the phone and the strike catches itself, because at the moment that matters both hands are on the object. What gets measured is not the sound it made but what it is disposed to do: the frequencies its body will hold, and how long it holds each one. Each mode is lifted out of the recording on its own by heterodyne, its envelope fitted as an exponential, and reported as a decay time and a Q — energy stored against energy lost per cycle, which is the number that separates a bell from a brick and has nothing to do with hardness. Modes whose decay does not actually fit an exponential are thrown away rather than reported, since the failure of an instrument like this is confident numbers for a thud. The six that survive are the instrument. They are played two ways: struck, as pure modes decaying at their measured rates, and bowed, through filters whose sharpness is the measured Q itself. Q is held constant across the keyboard rather than decay time, so transposing up shortens the ring, which is what a smaller object of the same material would really do. A capture is six numbers — small enough to be a record rather than a file, and publishable to your own repository. The archive that results is not of recordings but of dispositions, from which anyone can rebuild the object without ever having heard it.",
+   "url": "https://opposite.city/idiophone/"
   }
  ]
 }
