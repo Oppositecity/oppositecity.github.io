@@ -338,6 +338,22 @@
    ],
    "blurb": "A sentence written by choosing from what a language model is actually weighing. GPT-2 runs entirely in the tab — half a gigabyte fetched once and held as bf16, nothing typed ever leaving the device — and each word you commit opens the field of candidates for the next one. The words are placed by the model's own unembedding, three principal axes of it, two across and the third into the screen, so words stand behind words and the near ones cut holes in the far ones. Distance owns size and probability owns brightness; neither borrows the other's channel, so the improbable tail recedes into the dark without shrinking, and a likely word stays bright wherever it happens to sit. Down the right edge is the model's depth stood on end: thirteen rungs, one per layer, each showing what that stage of the residual stream alone would have said, since the lens can be applied anywhere in the stack and not only at the top. Hold a word and every rung switches to that word's probability there, which is the honest way to watch a guess resolve — or fail to. Nothing moves unless you move it. Every move rearranges the whole field: shared words fly to new places, the ones that no longer apply recede. Any word already written can be returned to and chosen differently, and the rest of the sentence is truncated and rewritten from there, which is what the painters meant by the word.",
    "url": "https://opposite.city/pentimento/"
+  },
+  {
+   "slug": "apophasis",
+   "name": "APOPHASIS",
+   "district": "language",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "negative space",
+    "surprisal",
+    "rank",
+    "in-browser inference",
+    "draft"
+   ],
+   "blurb": "Named for the figure that says a thing by saying what it is not. A sentence is handed to a language model running entirely in the tab, and what comes back is not a completion but the field the sentence was standing in at every position — everything that was available at each word, and the one word taken. Each line is one position, and the alternatives run left to right by how readily the language offered them, on a logarithmic scale that reaches the far end of a fifty-thousand word vocabulary. The word actually used sits at its own place on that scale, so the sentence draws a path: hard against the left margin wherever the writer went where the language was already going, far out to the right wherever they broke away. The distance is measured, not impressionistic — it is the rank, and the cost of each word is its surprisal in bits, which is also what the sentence is priced at when it ends. Nothing is drawn from numbers that fail a check for degeneracy, because an instrument that renders a flat distribution as a picture is lying at exactly the moment it looks most like art. What is left on the page beside the bright path is the negative space of a draft: every word that was there to be used and was refused.",
+   "url": "https://opposite.city/apophasis/"
   }
  ]
 }
