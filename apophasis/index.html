@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>APOPHASIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;
+    --taken:#ffffff;
+    --declined:#7BE8FF;
+    --far:#4FB4D6;
+    --departure:#FF5FA8;
+    --quiet:#C9F1FF;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--taken)}
+  body{
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    font-size:15px;line-height:1.5;padding:20px 14px 48px;
+    max-width:900px;margin:0 auto;overflow-x:hidden;
+  }
+  h1{font-size:15px;font-weight:700;letter-spacing:.6em;margin:0 0 6px}
+  .sub{margin:0 0 8px;color:var(--quiet);font-size:13px;max-width:50ch}
+  .axis{margin:0 0 20px;color:var(--quiet);font-size:12.5px;max-width:50ch}
+
+  textarea{
+    width:100%;background:#000;color:var(--taken);font-family:inherit;
+    font-size:15px;line-height:1.55;border:1px solid var(--far);
+    padding:10px 11px;resize:vertical;min-height:80px;outline:none;border-radius:0;
+  }
+  textarea:focus{border-color:var(--declined)}
+  button{font-family:inherit;font-size:14px;background:none;border:none;
+    color:var(--declined);padding:8px 0;margin:0 22px 0 0;cursor:pointer}
+  button:disabled{color:var(--far);cursor:default}
+  button:focus-visible{outline:1px solid var(--declined);outline-offset:3px}
+  #go{color:var(--taken);margin-top:10px}
+  #status{min-height:20px;color:var(--quiet);font-size:13px}
+
+  #sheet{margin:18px 0 10px;position:relative}
+  .row{position:relative;height:58px}
+  .w{position:absolute;white-space:nowrap;color:var(--declined);transition:opacity .5s ease}
+  .w.far{color:var(--far)}
+  .w.taken{font-weight:700;color:var(--taken)}
+  .row.enter .w{opacity:0}
+
+  #coda{color:var(--taken);font-size:14px;margin-top:22px;max-width:54ch;min-height:1em}
+  #coda b{color:var(--departure);font-weight:700}
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){ .w{transition:none!important} }
+  @media (max-width:420px){
+    body{padding:16px 11px 40px}
+    h1{letter-spacing:.46em}
+    .row{height:54px}
+  }
+</style>
+</head>
+<body>
+
+<h1>APOPHASIS</h1>
+<p class="sub">A sentence shown as the words it declined.</p>
+<p class="axis">Each line is one position. The alternatives run left to right by how readily the language offered them — nearest the left margin is what it wanted most. The bright word is the one taken. Read the bright words downward and you are reading the sentence; read how far right they sit and you are reading how far it departed.</p>
+
+<textarea id="src" spellcheck="false">The river remembers a shape the water has already forgotten.</textarea>
+<button id="go">Reconstruct</button>
+<div id="status"></div>
+
+<div id="sheet"></div>
+
+<div id="controls" class="hidden">
+  <button data-a="back">Back</button>
+  <button data-a="play">Play</button>
+  <button data-a="fwd">Step</button>
+</div>
+
+<div id="coda"></div>
+
+<script>
+/* ---------------------------------------------------------------
+   Inference runs in a module worker. The model, the vocabulary and
+   the logits never touch the main thread, so if it runs out of room
+   the worker dies and the page survives to say so.
+------------------------------------------------------------------ */
+const WORKER_SRC = `
+import { AutoTokenizer, AutoModelForCausalLM, Tensor, env }
+  from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+
+env.backends.onnx.wasm.numThreads = 1;   // no thread pool: phones hate it
+env.backends.onnx.wasm.simd = true;
+
+const K = 56, BOS = 50256, MAXTOK = 44;
+let tok = null, model = null, ex = null;
+const dec = new Map();
+const piece = id => { if(!dec.has(id)) dec.set(id, tok.decode([id])); return dec.get(id); };
+const post = (type, payload) => self.postMessage({ type, ...payload });
+
+async function boot(){
+  post('status', { text:'fetching distilgpt-2 — about 50 mb, cached after this' });
+  tok = await AutoTokenizer.from_pretrained('Xenova/distilgpt2');
+  model = await AutoModelForCausalLM.from_pretrained('Xenova/distilgpt2', {
+    device:'wasm', dtype:'q8',
+    progress_callback: p => {
+      if (p.status === 'progress' && p.total)
+        post('status', { text:'loading ' + Math.round(p.loaded/p.total*100) + '%' });
+    }
+  });
+}
+
+async function run(text){
+  if (!model) await boot();
+  post('status', { text:'reading the sentence' });
+
+  let ids = tok.encode(text);
+  let truncated = false;
+  if (ids.length > MAXTOK){ ids = ids.slice(0, MAXTOK); truncated = true; }
+  const full = [BOS, ...ids], L = full.length;
+
+  const out = await model({
+    input_ids: new Tensor('int64', BigInt64Array.from(full.map(BigInt)), [1, L]),
+    attention_mask: new Tensor('int64', BigInt64Array.from(full.map(() => 1n)), [1, L])
+  });
+  const d = out.logits.data, V = out.logits.dims[2];
+
+  // sanity: a flat row means the graph gave back nothing usable
+  let mn = Infinity, mx = -Infinity;
+  for (let j = 0; j < V; j += 7){ const v = d[j]; if (v<mn) mn=v; if (v>mx) mx=v; }
+  if (!(mx - mn > 1e-4)) throw new Error('the model returned a flat distribution');
+
+  if (!ex) ex = new Float64Array(V);
+  const seq = [];
+  for (let i = 0; i < L - 1; i++){
+    const off = i * V, actual = full[i + 1];
+    let top = -Infinity;
+    for (let j = 0; j < V; j++) if (d[off+j] > top) top = d[off+j];
+    let sum = 0;
+    for (let j = 0; j < V; j++){ const e = Math.exp(d[off+j] - top); ex[j] = e; sum += e; }
+
+    const tI = [], tP = [];
+    for (let j = 0; j < V; j++){
+      const p = ex[j];
+      if (tP.length >= K && p <= tP[tP.length-1]) continue;
+      let k = Math.min(tP.length, K - 1);
+      while (k > 0 && tP[k-1] < p){ tP[k] = tP[k-1]; tI[k] = tI[k-1]; k--; }
+      tP[k] = p; tI[k] = j;
+      if (tP.length > K){ tP.length = K; tI.length = K; }
+    }
+    const pA = ex[actual] / sum;
+    let rank = 1;
+    for (let j = 0; j < V; j++) if (ex[j] > ex[actual]) rank++;
+
+    seq.push({
+      word: piece(actual), actual, rank,
+      bits: -Math.log2(Math.max(pA, 1e-12)),
+      cands: tI.map((id, n) => ({ id, rank:n+1, p: tP[n]/sum, text: piece(id) }))
+    });
+    if (i % 4 === 0) post('status', { text:'position ' + (i+1) + ' of ' + (L-1) });
+  }
+  post('done', { seq, truncated, vocab: V });
+}
+
+self.onmessage = async e => {
+  try { await run(e.data.text); }
+  catch (err){ post('fail', { message: String(err && err.message || err) }); }
+};
+`;
+
+const $ = s => document.querySelector(s);
+const sheet = $('#sheet'), statusEl = $('#status'), codaEl = $('#coda'), controls = $('#controls');
+let worker = null, seq = null, vocab = 50257, idx = 0, playing = false, runId = 0;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const say = t => statusEl.textContent = t;
+
+function ensureWorker(){
+  if (worker) return worker;
+  const url = URL.createObjectURL(new Blob([WORKER_SRC], { type:'text/javascript' }));
+  worker = new Worker(url, { type:'module' });
+  worker.onmessage = e => {
+    const m = e.data;
+    if (m.type === 'status') say(m.text);
+    if (m.type === 'fail'){ say('Stopped: ' + m.message); $('#go').disabled = false; }
+    if (m.type === 'done'){
+      seq = m.seq; vocab = m.vocab; idx = 0;
+      say(m.truncated ? 'reading the first 44 words only' : '');
+      controls.classList.remove('hidden');
+      $('#go').disabled = false;
+      play();
+    }
+  };
+  worker.onerror = err => {
+    say('The model could not start here: ' + (err.message || 'worker failed') +
+        '. It needs to be served over http, not opened as a local file.');
+    $('#go').disabled = false;
+  };
+  return worker;
+}
+
+/* ---------------- the sheet ---------------- */
+
+const show = s => s.replace(/\s/g,'') === '' ? '\u2423' : s.trim();
+const heat = b => {
+  const t = Math.min(1, Math.max(0, (b - 2.5) / 10));
+  return 'rgb(255,' + Math.round(255 - 160*t) + ',' + Math.round(255 - 87*t) + ')';
+};
+const atRank = r => Math.log(r) / Math.log(vocab);
+
+function drawRow(i){
+  const st = seq[i];
+  const row = document.createElement('div');
+  row.className = 'row enter';
+
+  const items = st.cands.map(c => ({ ...c, taken: c.id === st.actual }));
+  const hit = items.find(c => c.taken);
+  if (hit) hit.rank = st.rank;
+  else items.push({ id: st.actual, text: st.word, rank: st.rank, p: Math.pow(2, -st.bits), taken:true });
+
+  const lanes = [8, 30, 72, 90];
+  for (const c of items){
+    const el = document.createElement('span');
+    el.className = 'w' + (c.taken ? ' taken' : c.rank > 16 ? ' far' : '');
+    el.textContent = show(c.text);
+    el.style.left = (atRank(c.rank) * 93).toFixed(2) + '%';
+    el.style.top = (c.taken ? 50 : lanes[(c.id*7 + c.rank*3) % lanes.length]) + '%';
+    el.style.fontSize = (c.taken ? 17 : 11 + 8*Math.pow(c.p,.3)).toFixed(1) + 'px';
+    if (c.taken) el.style.color = heat(st.bits);
+    else el.style.opacity = (0.45 + 0.55*Math.pow(c.p,.25)).toFixed(2);
+    el.title = c.taken
+      ? show(c.text) + ' — taken at rank ' + c.rank.toLocaleString() + ', ' + st.bits.toFixed(1) + ' bits'
+      : show(c.text) + ' — rank ' + c.rank + ', ' + (c.p*100).toFixed(1) + '%';
+    row.appendChild(el);
+  }
+
+  sheet.appendChild(row);
+  requestAnimationFrame(() => row.classList.remove('enter'));
+  row.scrollIntoView({ block:'nearest', behavior:'smooth' });
+}
+
+const redraw = n => { sheet.innerHTML=''; for (let i=0;i<n;i++) drawRow(i); };
+
+function coda(){
+  const worst = seq.reduce((a,b) => b.bits > a.bits ? b : a);
+  const total = seq.reduce((s,x) => s + x.bits, 0);
+  const first = seq.filter(s => s.rank === 1).length;
+  codaEl.innerHTML =
+    total.toFixed(0) + ' bits to say. ' + first + ' of ' + seq.length +
+    ' words were the one the language wanted first. The furthest departure was <b>' +
+    show(worst.word) + '</b>, ranked ' + worst.rank.toLocaleString() +
+    '. Everything to the right of the bright path was available and refused.';
+}
+
+/* ---------------- transport ---------------- */
+
+async function play(){
+  if (playing || !seq) return;
+  playing = true; $('[data-a=play]').textContent = 'Pause';
+  const me = ++runId;
+  while (playing && runId === me && idx < seq.length){
+    drawRow(idx); idx++;
+    await sleep(820);
+  }
+  if (idx >= seq.length) coda();
+  pause();
+}
+const pause = () => { playing = false; $('[data-a=play]').textContent = 'Play'; };
+
+controls.addEventListener('click', e => {
+  const a = e.target.dataset.a; if (!a || !seq) return;
+  if (a === 'play'){ playing ? pause() : play(); return; }
+  pause(); runId++; codaEl.textContent = '';
+  if (a === 'back'){ idx = Math.max(0, idx-1); redraw(idx); }
+  else if (idx < seq.length){ drawRow(idx); idx++; if (idx >= seq.length) coda(); }
+});
+
+$('#go').addEventListener('click', () => {
+  const text = $('#src').value.trim();
+  if (!text){ say('Type a sentence to reconstruct.'); return; }
+  pause(); runId++; $('#go').disabled = true;
+  sheet.innerHTML = ''; codaEl.textContent = ''; seq = null;
+  controls.classList.add('hidden');
+  ensureWorker().postMessage({ text });
+});
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || !seq) return;
+  if (e.code === 'Space'){ e.preventDefault(); playing ? pause() : play(); }
+});
+</script>
+</body>
+</html>
