@@ -8,71 +8,45 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-:root{
-  --ink:#ffffff;
-  --bg:#000000;
-  --live:#7fe3ff;
-  --hot:#ff8a7a;
-}
+:root{--ink:#ffffff;--bg:#000000;--live:#7fe3ff;--hot:#ff8a7a}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{background:var(--bg);color:var(--ink)}
-body{
-  font-family:"Courier Prime","Courier New",Courier,monospace;
-  font-size:15px;line-height:1.45;
-  padding:28px 20px 80px;
-  max-width:560px;margin:0 auto;
-  -webkit-font-smoothing:antialiased;
-}
+body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:15px;line-height:1.45;
+padding:28px 20px 80px;max-width:560px;margin:0 auto;-webkit-font-smoothing:antialiased}
 h1{font-size:15px;font-weight:700;letter-spacing:.44em;margin-bottom:10px}
 .sub{font-size:13px;max-width:44ch;margin-bottom:34px}
 .blk{margin-bottom:34px}
-button{
-  font-family:inherit;font-size:15px;color:var(--ink);
-  background:none;border:none;padding:0;cursor:pointer;
-}
+button{font-family:inherit;font-size:15px;color:var(--ink);background:none;border:none;padding:0;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:2px solid var(--live);outline-offset:3px}
-.big{
-  display:block;width:100%;text-align:left;
-  font-size:19px;font-weight:700;letter-spacing:.2em;
-  padding:16px 0;
-}
-.big[disabled]{opacity:.35;cursor:default}
+.big{display:block;width:100%;text-align:left;font-size:19px;font-weight:700;letter-spacing:.2em;padding:16px 0}
+.big[disabled]{opacity:.4;cursor:default}
+.big.hot{color:var(--live)}
 .state{font-size:13px;min-height:1.45em}
+.floor{font-size:13px;margin-top:6px}
 .meter{height:3px;width:100%;margin-top:14px;background:#1c1c1c}
-.meter i{display:block;height:100%;width:0%;background:var(--ink);transition:width .05s linear}
+.meter i{display:block;height:100%;width:0%;background:var(--ink)}
 .meter.armed i{background:var(--live)}
 canvas{display:block;width:100%;height:132px;margin-bottom:22px}
-
-.mode{display:grid;grid-template-columns:5.6em 4.2em 1fr;gap:10px;align-items:center;padding:7px 0}
+.mode{display:grid;grid-template-columns:5.4em 3.8em 1fr;gap:10px;align-items:center;padding:8px 0}
 .mode .hz{font-size:17px;font-weight:700;text-align:right}
 .mode .q{font-size:13px}
-.mode canvas{height:26px;margin:0}
+.mode canvas{height:38px;margin:0}
 .mode.f .hz,.mode.f .q{color:var(--live)}
-.hdr{display:grid;grid-template-columns:5.6em 4.2em 1fr;gap:10px;font-size:12px;padding-bottom:6px}
+.hdr{display:grid;grid-template-columns:5.4em 3.8em 1fr;gap:10px;font-size:12px;padding-bottom:6px}
 .hdr span:first-child{text-align:right}
-
-input{
-  font-family:inherit;font-size:15px;color:var(--ink);
-  background:#0c0c0c;border:1px solid #4a4a4a;border-radius:2px;
-  padding:11px 12px;width:100%;
-}
+input{font-family:inherit;font-size:15px;color:var(--ink);background:#0c0c0c;
+border:1px solid #4a4a4a;border-radius:2px;padding:11px 12px;width:100%}
 input::placeholder{color:#8f8f8f}
 label{display:block;font-size:13px;margin-bottom:7px}
 .field{margin-bottom:14px}
-
 .pads{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:16px}
-.pad{
-  background:#121212;border-radius:2px;
-  padding:20px 0;font-size:14px;text-align:center;
-  user-select:none;touch-action:manipulation;
-}
+.pad{background:#121212;border-radius:2px;padding:20px 0;font-size:14px;text-align:center;
+user-select:none;touch-action:manipulation}
 .pad.on{background:var(--live);color:#000;font-weight:700}
-.pad[disabled]{opacity:.3}
 .row{display:flex;gap:26px;flex-wrap:wrap;align-items:baseline}
 .tog{font-size:14px}
 .tog.on{color:var(--live);font-weight:700}
 .arc{display:block;width:100%;text-align:left;padding:9px 0;font-size:14px}
-.arc.on{color:var(--live);font-weight:700}
 .note{font-size:13px;max-width:46ch}
 .err{color:var(--hot);font-size:13px;margin-top:10px}
 .ok{color:var(--live);font-size:13px;margin-top:10px}
@@ -86,15 +60,18 @@ label{display:block;font-size:13px;margin-bottom:7px}
 <p class="sub">Strike an object. Its modes and their decay rates are measured, and the object becomes playable — at pitches it never made.</p>
 
 <div class="blk">
-  <button id="listen" class="big">LISTEN</button>
+  <button id="arm" class="big">ARM</button>
   <div class="state" id="state">Microphone is off.</div>
+  <div class="floor" id="floor"></div>
   <div class="meter" id="meter"><i></i></div>
+  <button class="arc hide" id="release">release the microphone</button>
 </div>
 
 <div class="blk hide" id="result">
   <canvas id="spec"></canvas>
-  <div class="hdr"><span>Hz</span><span>Q</span><span>decay</span></div>
+  <div class="hdr"><span>Hz</span><span>Q</span><span>decay against the room</span></div>
   <div id="modes"></div>
+  <p class="note" id="rej"></p>
 </div>
 
 <div class="blk hide" id="playblk">
@@ -135,7 +112,7 @@ label{display:block;font-size:13px;margin-bottom:7px}
 </div>
 
 <script>
-/* ---------- FFT (iterative radix-2) ---------- */
+/* ---------------- FFT ---------------- */
 function fft(re,im){
   const n=re.length;
   for(let i=1,j=0;i<n;i++){
@@ -160,157 +137,234 @@ function fft(re,im){
   }
 }
 
-/* ---------- state ---------- */
-let ctx=null, stream=null, proc=null, src=null;
-let armed=false, capturing=false, capBuf=null, capLen=0, refractory=0;
-let floorRms=0.002;
-const CAP_SEC=2.2;
-let current=null;              // {modes:[{hz,q,amp}], raw:Float32Array, sr, material}
-let archive=[];
-let mode='strike';
-const live=new Map();
-let noiseBuf=null;
+/* ---------------- constants ---------------- */
+const PRE_SEC=0.45;        // pre-strike audio kept, so the room can be measured
+const MAX_SEC=2.2;         // hard ceiling on one capture
+const HOP=128;             // detection + envelope hop
+const RISE_LAG=5;          // ~13ms at 48k: window the rise is measured over
+const RISE_RATIO=6;        // a strike climbs this much in that window; speech does not
+const ARM_TIMEOUT=14000;
+const QUIET_MS=150;        // back at the floor this long and the capture ends
+const MIN_SEC=0.25;
+
+/* ---------------- state ---------------- */
+let ctx=null, stream=null, proc=null, srcNode=null;
+let micOpen=false, armed=false, capturing=false;
+let ring=null, ringW=0, ringN=0;
+let cap=null, capLen=0, capOnset=0, capCut=-1, quietRun=0, armTimer=null;
+let detEnv=[], floorEnv=0.003;
+let current=null, archive=[], mode='strike';
+const live=new Map(); let noiseBuf=null;
 
 const $=id=>document.getElementById(id);
 const setState=t=>$('state').textContent=t;
 
-/* ---------- mic ---------- */
-$('listen').onclick=async()=>{
-  if(armed){stopMic();return;}
+/* ---------------- mic ---------------- */
+async function openMic(){
+  if(micOpen) return true;
   try{
     stream=await navigator.mediaDevices.getUserMedia({audio:{
-      autoGainControl:false, echoCancellation:false, noiseSuppression:false,
-      channelCount:1
-    }});
-  }catch(e){ setState('No microphone. Check the browser permission and try again.'); return; }
-
+      autoGainControl:false,echoCancellation:false,noiseSuppression:false,channelCount:1}});
+  }catch(e){ setState('No microphone. Check the browser permission and try again.'); return false; }
   const t=stream.getAudioTracks()[0];
   try{ await t.applyConstraints({autoGainControl:false,echoCancellation:false,noiseSuppression:false}); }catch(e){}
-
   ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
   await ctx.resume();
-  src=ctx.createMediaStreamSource(stream);
+  ringN=Math.ceil(PRE_SEC*ctx.sampleRate);
+  ring=new Float32Array(ringN); ringW=0;
+  srcNode=ctx.createMediaStreamSource(stream);
   proc=ctx.createScriptProcessor(4096,1,1);
   const mute=ctx.createGain(); mute.gain.value=0;
-  src.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
+  srcNode.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
   proc.onaudioprocess=onBlock;
+  micOpen=true; floorEnv=0.003; detEnv=[];
+  $('release').classList.remove('hide');
+  return true;
+}
 
-  armed=true; floorRms=0.002;
-  $('listen').textContent='STOP';
-  $('meter').classList.add('armed');
-  setState('Listening. Strike something near the phone.');
-};
-
-function stopMic(){
-  armed=false; capturing=false;
+function closeMic(){
+  armed=false; capturing=false; micOpen=false;
+  if(armTimer) clearTimeout(armTimer);
   if(proc){proc.onaudioprocess=null;proc.disconnect();proc=null;}
-  if(src){src.disconnect();src=null;}
+  if(srcNode){srcNode.disconnect();srcNode=null;}
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-  $('listen').textContent='LISTEN';
-  $('meter').classList.remove('armed');
-  $('meter').firstElementChild.style.width='0%';
+  $('arm').textContent='ARM'; $('arm').classList.remove('hot');
+  $('meter').classList.remove('armed'); $('meter').firstElementChild.style.width='0%';
+  $('release').classList.add('hide'); $('floor').textContent='';
   setState('Microphone is off.');
 }
 
-function onBlock(e){
-  const x=e.inputBuffer.getChannelData(0);
-  let s=0; for(let i=0;i<x.length;i++) s+=x[i]*x[i];
-  const rms=Math.sqrt(s/x.length);
-  $('meter').firstElementChild.style.width=Math.min(100,rms*420)+'%';
+$('release').onclick=closeMic;
 
-  if(capturing){
-    const n=Math.min(x.length,capBuf.length-capLen);
-    capBuf.set(x.subarray(0,n),capLen); capLen+=n;
-    if(capLen>=capBuf.length){ capturing=false; refractory=6; analyze(capBuf,ctx.sampleRate); }
-    return;
-  }
-  if(refractory>0){refractory--;return;}
+$('arm').onclick=async()=>{
+  if(armed){ disarm('Disarmed.'); return; }
+  if(!await openMic()) return;
+  armed=true; capturing=false;
+  $('arm').textContent='LISTENING'; $('arm').classList.add('hot');
+  $('meter').classList.add('armed');
+  setState('Waiting for one strike. Get both hands on the object.');
+  if(armTimer) clearTimeout(armTimer);
+  armTimer=setTimeout(()=>{ if(armed&&!capturing) disarm('Nothing struck. Arm again when ready.'); },ARM_TIMEOUT);
+};
 
-  if(rms>Math.max(floorRms*7,0.012)){
-    capBuf=new Float32Array(Math.floor(CAP_SEC*ctx.sampleRate));
-    capBuf.set(x.subarray(0,Math.min(x.length,capBuf.length)),0);
-    capLen=Math.min(x.length,capBuf.length);
-    capturing=true;
-    setState('Caught it. Measuring…');
-  }else{
-    floorRms=floorRms*0.94+rms*0.06;
-  }
+function disarm(msg){
+  armed=false; capturing=false;
+  if(armTimer) clearTimeout(armTimer);
+  $('arm').textContent='ARM'; $('arm').classList.remove('hot');
+  $('meter').classList.remove('armed');
+  if(msg) setState(msg);
 }
 
-/* ---------- analysis ---------- */
-function analyze(buf,sr){
-  // onset
-  let onset=0,peak=0;
-  for(let i=0;i<buf.length;i++){const a=Math.abs(buf[i]); if(a>peak){peak=a;onset=i;}}
-  onset=Math.max(0,onset-Math.floor(sr*0.004));
+/* ---------------- detection ---------------- */
+function onBlock(e){
+  const x=e.inputBuffer.getChannelData(0), sr=ctx.sampleRate;
 
-  // spectrum from a window just past the transient
-  const N=16384, start=Math.min(onset+Math.floor(sr*0.015), Math.max(0,buf.length-N));
+  // hop-level RMS envelope
+  for(let off=0;off+HOP<=x.length;off+=HOP){
+    let s=0; for(let i=0;i<HOP;i++){const v=x[off+i]; s+=v*v;}
+    const e1=Math.sqrt(s/HOP);
+    detEnv.push(e1); if(detEnv.length>200) detEnv.shift();
+
+    // noise floor: fast down, slow up — tracks the room, not the strike
+    if(!capturing){
+      floorEnv = e1<floorEnv ? floorEnv*0.90+e1*0.10 : floorEnv*0.9990+e1*0.0010;
+    }
+
+    const n=detEnv.length;
+    if(n>RISE_LAG+1){
+      const prev=detEnv[n-1-RISE_LAG]+1e-9;
+      const rising = e1/prev>RISE_RATIO && e1>Math.max(floorEnv*7,0.006);
+      if(rising){
+        if(armed&&!capturing) beginCapture(x,off,sr);
+        else if(capturing&&capCut<0&&capLen>Math.floor(sr*0.05)) capCut=capLen+off;
+      }
+    }
+  }
+
+  $('meter').firstElementChild.style.width=Math.min(100,(detEnv[detEnv.length-1]||0)*420)+'%';
+  if(micOpen&&!capturing) $('floor').textContent='room floor '+(20*Math.log10(Math.max(floorEnv,1e-7))).toFixed(0)+' dB';
+
+  // ring buffer of pre-strike audio
+  if(!capturing){
+    for(let i=0;i<x.length;i++){ ring[ringW]=x[i]; ringW=(ringW+1)%ringN; }
+    return;
+  }
+
+  // accumulate
+  const n=Math.min(x.length,cap.length-capLen);
+  cap.set(x.subarray(0,n),capLen); capLen+=n;
+
+  const since=capLen-capOnset;
+  if(since>sr*MIN_SEC){
+    const last=detEnv[detEnv.length-1]||0;
+    if(last<floorEnv*2.5){ quietRun+=x.length; } else quietRun=0;
+    if(quietRun>sr*QUIET_MS/1000){ endCapture(sr); return; }
+  }
+  if(capLen>=cap.length) endCapture(sr);
+}
+
+function beginCapture(x,off,sr){
+  capturing=true; quietRun=0; capCut=-1;
+  cap=new Float32Array(ringN+Math.ceil(MAX_SEC*sr));
+  for(let i=0;i<ringN;i++) cap[i]=ring[(ringW+i)%ringN];
+  capLen=ringN;
+  const back=Math.min(off,Math.floor(sr*0.005));
+  capOnset=capLen+off-back;
+  const n=Math.min(x.length,cap.length-capLen);
+  cap.set(x.subarray(0,n),capLen); capLen+=n;
+  setState('Caught it. Measuring…');
+}
+
+function endCapture(sr){
+  capturing=false;
+  disarm(null);
+  analyze(cap.subarray(0,capLen),sr,capOnset,capCut);
+}
+
+/* ---------------- analysis ---------------- */
+function analyze(buf,sr,onset,cut){
+  const preEnd=Math.max(0,onset-Math.floor(sr*0.01));
+  const hardEnd=cut>0?Math.min(cut-Math.floor(sr*0.01),buf.length):buf.length;
+  if(hardEnd-onset<sr*0.08){ setState('That strike was cut short by a second one. Try again.'); return; }
+
+  const N=16384;
+  const start=Math.min(onset+Math.floor(sr*0.015),Math.max(0,hardEnd-N));
   const re=new Float32Array(N), im=new Float32Array(N);
   for(let i=0;i<N;i++){
-    const v=(start+i<buf.length)?buf[start+i]:0;
+    const k=start+i, v=(k<hardEnd)?buf[k]:0;
     re[i]=v*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));
   }
   fft(re,im);
-  const half=N>>1, mag=new Float32Array(half);
-  let mx=0;
+  const half=N>>1, mag=new Float32Array(half); let mx=0;
   for(let i=0;i<half;i++){ mag[i]=Math.hypot(re[i],im[i]); if(mag[i]>mx)mx=mag[i]; }
-  if(mx<=0){ setState('Too quiet. Strike it harder, or move closer.'); return; }
+  if(mx<=0){ setState('Too quiet. Strike harder, or move closer.'); return; }
 
   const lo=Math.floor(55*N/sr), hi=Math.min(half-2,Math.floor(6500*N/sr));
   const cands=[];
   for(let i=Math.max(2,lo);i<hi;i++){
     if(mag[i]>mag[i-1]&&mag[i]>=mag[i+1]&&mag[i]>mx*0.05){
       const d=0.5*(mag[i-1]-mag[i+1])/(mag[i-1]-2*mag[i]+mag[i+1]+1e-20);
-      cands.push({hz:(i+ (isFinite(d)?d:0))*sr/N, m:mag[i]});
+      cands.push({hz:(i+(isFinite(d)?d:0))*sr/N,m:mag[i]});
     }
   }
   cands.sort((a,b)=>b.m-a.m);
   const picked=[];
   for(const c of cands){
-    if(picked.length>=6) break;
+    if(picked.length>=8) break;
     if(picked.every(p=>Math.abs(p.hz-c.hz)>Math.max(22,c.hz*0.035))) picked.push(c);
   }
   if(!picked.length){ setState('No clear tone in that. Try a harder object, or a sharper tap.'); return; }
 
-  const modes=[];
+  const modes=[]; let rejected=0;
   for(const p of picked){
-    const d=decay(buf,sr,onset,p.hz);
-    if(!d) continue;
-    modes.push({hz:+p.hz.toFixed(2), q:+d.q.toFixed(1), amp:+(p.m/mx).toFixed(3), tau:d.tau, env:d.env, dt:d.dt});
+    if(modes.length>=6) break;
+    const d=decay(buf,sr,preEnd,onset,hardEnd,p.hz);
+    if(!d){ rejected++; continue; }
+    modes.push(Object.assign({hz:+p.hz.toFixed(2),amp:+(p.m/mx).toFixed(3),q:+d.q.toFixed(1)},d));
   }
-  if(!modes.length){ setState('Nothing rang long enough to measure. Try something harder or thinner.'); return; }
+  if(!modes.length){
+    setState('Nothing rose clearly enough above the room to measure. Strike harder, get closer, or try a harder object.');
+    return;
+  }
   modes.sort((a,b)=>a.hz-b.hz);
-
-  current={modes,raw:buf.slice(0),sr,material:''};
+  current={modes,raw:buf.slice(0),sr,material:'',rejected};
   render();
-  setState('Measured '+modes.length+' mode'+(modes.length>1?'s':'')+'. Play it below, or strike again.');
+  setState('Measured '+modes.length+' mode'+(modes.length>1?'s':'')+'. Play it below, or arm again.');
 }
 
-// complex heterodyne envelope + log-linear decay fit
-function decay(buf,sr,onset,hz){
-  const w=2*Math.PI*hz/sr;
-  const a=Math.exp(-2*Math.PI*30/sr);
-  const HOP=64;
-  let I=0,Q=0, env=[], cr=1,ci=0;
-  const rr=Math.cos(w), ri=Math.sin(w);
-  for(let n=onset;n<buf.length;n++){
+/* heterodyne one mode out, measure the room in that same band, fit only above it */
+function decay(buf,sr,preEnd,onset,end,hz){
+  const w=2*Math.PI*hz/sr, a=Math.exp(-2*Math.PI*30/sr);
+  let I=0,Q=0,cr=1,ci=0;
+  const rr=Math.cos(w), ri=Math.sin(w), env=[];
+  for(let n=0;n<end;n++){
     const x=buf[n];
     I=a*I+(1-a)*x*cr; Q=a*Q+(1-a)*x*ci;
     const ncr=cr*rr-ci*ri; ci=cr*ri+ci*rr; cr=ncr;
-    if(((n-onset)&1023)===0){const g=1/Math.hypot(cr,ci); cr*=g; ci*=g;}
-    if((n-onset)%HOP===0) env.push(2*Math.hypot(I,Q));
+    if((n&1023)===0){const g=1/Math.hypot(cr,ci); cr*=g; ci*=g;}
+    if(n%HOP===0) env.push(2*Math.hypot(I,Q));
   }
   const dt=HOP/sr;
-  let pi=0; for(let i=0;i<env.length;i++) if(env[i]>env[pi]) pi=i;
-  const top=env[pi]; if(top<=1e-6) return null;
-  let s=pi; while(s<env.length&&env[s]>top*0.75) s++;
-  let e=s; while(e<env.length&&env[e]>top*0.06) e++;
+  const settle=Math.ceil(0.04/dt), preHi=Math.floor(preEnd/HOP);
+  if(preHi-settle<6) return null;
+
+  // the room, in this mode's band — median is robust to a stray click in the pre-roll
+  const pre=env.slice(settle,preHi).sort((x,y)=>x-y);
+  const noise=Math.max(pre[Math.floor(pre.length/2)],1e-8);
+
+  const onHi=Math.floor(onset/HOP);
+  let pk=onHi; for(let i=onHi;i<env.length;i++) if(env[i]>env[pk]) pk=i;
+  const top=env[pk];
+  if(top<noise*8) return null;                       // never rose clearly above the room
+
+  let s=pk; while(s<env.length&&env[s]>top*0.75) s++;
+  const stop=Math.max(noise*3,top*0.05);             // fit ends at the room, not at a fixed fraction
+  let e=s; while(e<env.length&&env[e]>stop) e++;
   if(e-s<8) return null;
 
   let sx=0,sy=0,sxy=0,sxx=0,n=0;
   for(let i=s;i<e;i++){
-    const t=(i-s)*dt, y=Math.log(Math.max(env[i],1e-9));
+    const t=(i-s)*dt, y=Math.log(env[i]);
     sx+=t;sy+=y;sxy+=t*y;sxx+=t*t;n++;
   }
   const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx+1e-20);
@@ -318,61 +372,87 @@ function decay(buf,sr,onset,hz){
   const inter=(sy-slope*sx)/n;
   let ssr=0,sst=0; const my=sy/n;
   for(let i=s;i<e;i++){
-    const t=(i-s)*dt, y=Math.log(Math.max(env[i],1e-9)), f=inter+slope*t;
+    const t=(i-s)*dt, y=Math.log(env[i]), f=inter+slope*t;
     ssr+=(y-f)*(y-f); sst+=(y-my)*(y-my);
   }
-  if(sst>0 && 1-ssr/sst<0.55) return null;
+  const r2 = sst>0 ? 1-ssr/sst : 0;
+  if(r2<0.6) return null;
   const tau=-1/slope;
   if(tau<0.004||tau>25) return null;
   const q=Math.PI*hz*tau;
   if(q<1.5||q>200000) return null;
-  return {tau,q,env:env.slice(pi,Math.min(env.length,pi+Math.ceil(2.0/dt))),dt};
+  return {tau,q,r2:+r2.toFixed(3),env,dt,pk,fitS:s,fitE:e,top,noise,A:Math.exp(inter)};
 }
 
-/* ---------- drawing ---------- */
-function fit(c,h){
+/* ---------------- drawing ---------------- */
+function fit2(c,h){
   const d=window.devicePixelRatio||1, w=c.clientWidth;
   c.width=w*d; c.height=h*d;
   const g=c.getContext('2d'); g.setTransform(d,0,0,d,0,0);
   return g;
 }
+const LIVE='#7fe3ff';
 
 function drawSpec(){
-  const c=$('spec'), g=fit(c,132), W=c.clientWidth, H=132;
+  const c=$('spec'), g=fit2(c,132), W=c.clientWidth, H=132;
   const {raw,sr}=current;
   const N=8192, re=new Float32Array(N), im=new Float32Array(N);
-  let onset=0,pk=0; for(let i=0;i<raw.length;i++){const a=Math.abs(raw[i]);if(a>pk){pk=a;onset=i;}}
-  const st=Math.min(onset, Math.max(0,raw.length-N));
+  let on=0,pk=0; for(let i=0;i<raw.length;i++){const v=Math.abs(raw[i]); if(v>pk){pk=v;on=i;}}
+  const st=Math.min(on,Math.max(0,raw.length-N));
   for(let i=0;i<N;i++){const v=(st+i<raw.length)?raw[st+i]:0; re[i]=v*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));}
   fft(re,im);
-  const half=N>>1; let mx=1e-9;
-  const mg=new Float32Array(half);
+  const half=N>>1, mg=new Float32Array(half); let mx=1e-9;
   for(let i=0;i<half;i++){mg[i]=Math.hypot(re[i],im[i]); if(mg[i]>mx)mx=mg[i];}
   const f0=40,f1=8000, lx=hz=>W*(Math.log(hz/f0)/Math.log(f1/f0));
   g.clearRect(0,0,W,H);
-  g.strokeStyle='#ffffff'; g.globalAlpha=.55; g.lineWidth=1; g.beginPath();
+  g.strokeStyle='#ffffff'; g.globalAlpha=.6; g.lineWidth=1; g.beginPath();
+  let started=false;
   for(let i=1;i<half;i++){
     const hz=i*sr/N; if(hz<f0||hz>f1) continue;
     const y=H-4-(H-14)*Math.min(1,Math.max(0,(20*Math.log10(mg[i]/mx)+66)/66));
-    const x=lx(hz); i===1?g.moveTo(x,y):g.lineTo(x,y);
+    const x=lx(hz); started?g.lineTo(x,y):(g.moveTo(x,y),started=true);
   }
   g.stroke(); g.globalAlpha=1;
-  g.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--live').trim()||'#7fe3ff';
-  g.lineWidth=1.5;
+  g.strokeStyle=LIVE; g.lineWidth=1.5;
   current.modes.forEach(m=>{
     const x=lx(m.hz); if(x<0||x>W) return;
     g.beginPath(); g.moveTo(x,H-2); g.lineTo(x,H-2-(H-16)*Math.max(.18,m.amp)); g.stroke();
   });
 }
 
-function drawDecay(c,m,maxTau){
-  const g=fit(c,26), W=c.clientWidth, H=26;
+/* measured envelope in dB, the fitted line over it, and the room as a floor */
+function drawFit(c,m,span){
+  const g=fit2(c,38), W=c.clientWidth, H=38, DB=54;
   g.clearRect(0,0,W,H);
-  const span=Math.max(maxTau*3.2,0.08);
-  g.strokeStyle='#ffffff'; g.lineWidth=1.5; g.beginPath();
+  const ydb=v=>{
+    const db=20*Math.log10(Math.max(v,1e-9)/m.top);
+    return H-3-(H-7)*Math.min(1,Math.max(0,(db+DB)/DB));
+  };
+  const xt=t=>t/span*W;
+
+  // the room floor in this band
+  g.strokeStyle='#ffffff'; g.globalAlpha=.55; g.setLineDash([2,4]); g.lineWidth=1;
+  const yn=ydb(m.noise);
+  g.beginPath(); g.moveTo(0,yn); g.lineTo(W,yn); g.stroke();
+  g.setLineDash([]);
+
+  // measured envelope from the peak onward
+  g.globalAlpha=.85; g.strokeStyle='#ffffff'; g.lineWidth=1; g.beginPath();
+  let first=true;
+  for(let i=m.pk;i<m.env.length;i++){
+    const t=(i-m.pk)*m.dt; if(t>span) break;
+    const x=xt(t), y=ydb(m.env[i]);
+    first?(g.moveTo(x,y),first=false):g.lineTo(x,y);
+  }
+  g.stroke(); g.globalAlpha=1;
+
+  // the fit, drawn only where it was actually fitted
+  g.strokeStyle=LIVE; g.lineWidth=1.6; g.beginPath();
+  const t0=(m.fitS-m.pk)*m.dt, t1=Math.min((m.fitE-m.pk)*m.dt,span);
   for(let px=0;px<=W;px++){
-    const t=px/W*span, y=H-2-(H-5)*Math.exp(-t/m.tau);
-    px===0?g.moveTo(px,y):g.lineTo(px,y);
+    const t=px/W*span; if(t<t0||t>t1) continue;
+    const v=m.A*Math.exp(-(t-t0)/m.tau), x=xt(t), y=ydb(v);
+    g.lineTo(x,y);
   }
   g.stroke();
 }
@@ -383,37 +463,37 @@ function render(){
   $('saveblk').classList.remove('hide');
   drawSpec();
   const box=$('modes'); box.innerHTML='';
-  const maxTau=Math.max(...current.modes.map(m=>m.tau));
+  const span=Math.max(...current.modes.map(m=>(m.fitE-m.pk)*m.dt))*1.25;
   current.modes.forEach((m,i)=>{
     const row=document.createElement('div');
     row.className='mode'+(i===0?' f':'');
     row.innerHTML='<div class="hz">'+m.hz.toFixed(1)+'</div><div class="q">'+m.q.toFixed(0)+'</div>';
     const cv=document.createElement('canvas'); row.appendChild(cv); box.appendChild(row);
-    drawDecay(cv,m,maxTau);
+    drawFit(cv,m,span);
   });
+  $('rej').textContent=current.rejected
+    ? current.rejected+' peak'+(current.rejected>1?'s were':' was')+' discarded — no clean exponential above the room.'
+    : '';
   $('mat').value=current.material||'';
   buildPads();
 }
 
-/* ---------- playback ---------- */
+/* ---------------- playback ---------------- */
 function noise(){
   if(noiseBuf) return noiseBuf;
   const n=ctx.sampleRate*2, b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0);
   for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
   return noiseBuf=b;
 }
-
 function strike(ratio){
   const t=ctx.currentTime, out=ctx.createGain();
   out.gain.value=0.5; out.connect(ctx.destination);
   let end=t+0.3;
   current.modes.forEach(m=>{
-    const f=m.hz*ratio;
-    if(f<25||f>18000) return;
-    const tau=m.q/(Math.PI*f);            // Q held: higher pitch rings shorter
+    const f=m.hz*ratio; if(f<25||f>18000) return;
+    const tau=m.q/(Math.PI*f);
     const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
-    const g=ctx.createGain();
-    const a=Math.max(0.02,m.amp)*0.34;
+    const g=ctx.createGain(), a=Math.max(0.02,m.amp)*0.34;
     g.gain.setValueAtTime(a,t);
     const dur=Math.min(tau*6.9,9);
     g.gain.exponentialRampToValueAtTime(a*0.001,t+dur);
@@ -422,10 +502,10 @@ function strike(ratio){
   });
   setTimeout(()=>out.disconnect(),(end-t)*1000+200);
 }
-
 function bowOn(key,ratio){
   const n=ctx.createBufferSource(); n.buffer=noise(); n.loop=true;
-  const out=ctx.createGain(); out.gain.setValueAtTime(0,ctx.currentTime);
+  const out=ctx.createGain();
+  out.gain.setValueAtTime(0,ctx.currentTime);
   out.gain.linearRampToValueAtTime(0.5,ctx.currentTime+0.06);
   out.connect(ctx.destination);
   current.modes.forEach(m=>{
@@ -435,8 +515,7 @@ function bowOn(key,ratio){
     const g=ctx.createGain(); g.gain.value=Math.max(0.05,m.amp)*Math.min(3.2,1+m.q/60);
     n.connect(bp); bp.connect(g); g.connect(out);
   });
-  n.start();
-  live.set(key,{n,out});
+  n.start(); live.set(key,{n,out});
 }
 function bowOff(key){
   const v=live.get(key); if(!v) return;
@@ -447,17 +526,15 @@ function bowOff(key){
   v.out.gain.linearRampToValueAtTime(0,t+0.22);
   setTimeout(()=>{try{v.n.stop();v.out.disconnect();}catch(e){}},400);
 }
-
 function buildPads(){
   const p=$('pads'); p.innerHTML='';
   for(let i=0;i<12;i++){
     const d=document.createElement('div');
     d.className='pad'; d.textContent=i;
     const r=Math.pow(2,i/12);
-    const on=ev=>{ev.preventDefault(); if(!ctx||!current)return;
+    const on=ev=>{ev.preventDefault(); if(!ctx||!current) return;
       d.classList.add('on');
-      if(mode==='bow'){ if(!live.has(i)) bowOn(i,r); } else strike(r);
-    };
+      if(mode==='bow'){ if(!live.has(i)) bowOn(i,r); } else strike(r);};
     const off=()=>{d.classList.remove('on'); if(mode==='bow') bowOff(i);};
     d.addEventListener('pointerdown',on);
     d.addEventListener('pointerup',off);
@@ -466,36 +543,34 @@ function buildPads(){
     p.appendChild(d);
   }
 }
-
 $('tStrike').onclick=()=>{mode='strike';$('tStrike').classList.add('on');$('tBow').classList.remove('on');[...live.keys()].forEach(bowOff);};
 $('tBow').onclick=()=>{mode='bow';$('tBow').classList.add('on');$('tStrike').classList.remove('on');};
 $('tRaw').onclick=()=>{
-  if(!current)return;
+  if(!current) return;
   const b=ctx.createBuffer(1,current.raw.length,current.sr);
   b.getChannelData(0).set(current.raw);
   const s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start();
 };
 
-/* ---------- archive ---------- */
+/* ---------------- archive ---------------- */
 $('keep').onclick=()=>{
   if(!current) return;
   current.material=$('mat').value.trim();
   archive.push({
     material:current.material,
     struck:new Date().toISOString(),
-    modes:current.modes.map(m=>({hz:m.hz,q:m.q,amp:m.amp})),
+    modes:current.modes.map(m=>({hz:m.hz,q:m.q,amp:m.amp,fit:m.r2})),
     _full:current
   });
   renderArchive();
-  setState('Kept. Strike the next thing.');
+  setState('Kept. Arm again for the next thing.');
 };
-
 function renderArchive(){
   $('arcblk').classList.remove('hide');
   $('pubblk').classList.remove('hide');
   $('arcCount').textContent=archive.length+' object'+(archive.length>1?'s':'')+' struck.';
   const box=$('arc'); box.innerHTML='';
-  archive.forEach((a,i)=>{
+  archive.forEach(a=>{
     const b=document.createElement('button');
     b.className='arc';
     b.textContent=(a.material||'unnamed')+' — '+a.modes[0].hz.toFixed(0)+' Hz, Q '+a.modes[0].q.toFixed(0);
@@ -503,7 +578,6 @@ function renderArchive(){
     box.appendChild(b);
   });
 }
-
 $('dl').onclick=()=>{
   const data=archive.map(a=>({$type:'city.opposite.idiophone.capture',material:a.material,struck:a.struck,modes:a.modes}));
   const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
@@ -511,7 +585,7 @@ $('dl').onclick=()=>{
   setTimeout(()=>URL.revokeObjectURL(u),2000);
 };
 
-/* ---------- atproto ---------- */
+/* ---------------- atproto ---------------- */
 $('pub').onclick=async()=>{
   const msg=$('pubmsg'); msg.innerHTML='';
   const id=$('handle').value.trim().replace(/^@/,''), pw=$('pw').value.trim();
@@ -521,8 +595,7 @@ $('pub').onclick=async()=>{
   try{
     const s=await fetch('https://bsky.social/xrpc/com.atproto.server.createSession',{
       method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({identifier:id,password:pw})
-    });
+      body:JSON.stringify({identifier:id,password:pw})});
     if(!s.ok) throw new Error('Login failed. Check the handle and app password.');
     const ses=await s.json();
     let n=0;
@@ -535,9 +608,7 @@ $('pub').onclick=async()=>{
           material:a.material||'unnamed',
           struck:a.struck,
           modes:a.modes,
-          createdAt:new Date().toISOString()
-        }})
-      });
+          createdAt:new Date().toISOString()}})});
       if(r.ok) n++;
     }
     msg.innerHTML='<div class="ok">Published '+n+' of '+archive.length+' to '+ses.handle+'.</div>';
