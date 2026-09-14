@@ -26,13 +26,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--live);outline-o
 .meter{height:3px;width:100%;margin-top:14px;background:#1c1c1c}
 .meter i{display:block;height:100%;width:0%;background:var(--ink)}
 .meter.armed i{background:var(--live)}
-canvas{display:block;width:100%;height:132px;margin-bottom:22px}
-.mode{display:grid;grid-template-columns:5.4em 3.8em 1fr;gap:10px;align-items:center;padding:8px 0}
+.cap{font-size:12px;margin-bottom:8px}
+#sgram{display:block;width:100%;height:228px;margin-bottom:10px;image-rendering:pixelated}
+#spec{display:block;width:100%;height:150px;margin-bottom:10px}
+#ruler{display:block;width:100%;height:64px;margin-bottom:10px}
+.mode{display:grid;grid-template-columns:6.4em 3.4em 1fr;gap:10px;align-items:center;padding:8px 0}
 .mode .hz{font-size:17px;font-weight:700;text-align:right}
+.mode .df{font-size:12px;text-align:right}
 .mode .q{font-size:13px}
-.mode canvas{height:38px;margin:0}
-.mode.f .hz,.mode.f .q{color:var(--live)}
-.hdr{display:grid;grid-template-columns:5.4em 3.8em 1fr;gap:10px;font-size:12px;padding-bottom:6px}
+.mode canvas{display:block;width:100%;height:38px;margin:0}
+.mode.f .hz,.mode.f .df,.mode.f .q{color:var(--live)}
+.hdr{display:grid;grid-template-columns:6.4em 3.4em 1fr;gap:10px;font-size:12px;padding-bottom:6px}
 .hdr span:first-child{text-align:right}
 input{font-family:inherit;font-size:15px;color:var(--ink);background:#0c0c0c;
 border:1px solid #4a4a4a;border-radius:2px;padding:11px 12px;width:100%}
@@ -48,6 +52,10 @@ user-select:none;touch-action:manipulation}
 .tog.on{color:var(--live);font-weight:700}
 .arc{display:block;width:100%;text-align:left;padding:9px 0;font-size:14px}
 .note{font-size:13px;max-width:46ch}
+.verdict{font-size:15px;font-weight:700;margin-bottom:6px}
+.scores{font-size:12px;margin-top:8px}
+.scores div{padding:2px 0}
+.scores .win{color:var(--live);font-weight:700}
 .err{color:var(--hot);font-size:13px;margin-top:10px}
 .ok{color:var(--live);font-size:13px;margin-top:10px}
 .hide{display:none}
@@ -68,10 +76,20 @@ user-select:none;touch-action:manipulation}
 </div>
 
 <div class="blk hide" id="result">
-  <canvas id="spec"></canvas>
-  <div class="hdr"><span>Hz</span><span>Q</span><span>decay against the room</span></div>
+  <canvas id="sgram"></canvas>
+  <p class="cap">the strike falling: time downward, frequency across. high modes die first, so it narrows as it goes.</p>
+
+  <div class="hdr"><span>Hz / &Delta;f</span><span>Q</span><span>decay against the room</span></div>
   <div id="modes"></div>
   <p class="note" id="rej"></p>
+
+  <canvas id="spec"></canvas>
+  <p class="cap">linewidth: each mode drawn at its measured width &Delta;f = f / Q. a narrow peak is a long ring; the same fact twice.</p>
+
+  <canvas id="ruler"></canvas>
+  <div class="verdict" id="verdict"></div>
+  <p class="note" id="vnote"></p>
+  <div class="scores" id="scores"></div>
 </div>
 
 <div class="blk hide" id="playblk">
@@ -105,7 +123,7 @@ user-select:none;touch-action:manipulation}
     <label for="pw">App password</label>
     <input id="pw" type="password" placeholder="xxxx-xxxx-xxxx-xxxx" autocomplete="current-password">
   </div>
-  <p class="note">Publishes every kept capture to your repo as city.opposite.idiophone.capture. Six numbers per object — enough for anyone to rebuild the instrument without the audio.</p>
+  <p class="note">Publishes every kept capture to your repo as city.opposite.idiophone.capture. Each object is a handful of numbers — enough for anyone to rebuild the instrument without the audio.</p>
   <button class="big" id="pub">PUBLISH</button>
   <div id="pubmsg"></div>
   <button class="arc" id="dl">download the archive as JSON</button>
@@ -138,14 +156,26 @@ function fft(re,im){
 }
 
 /* ---------------- constants ---------------- */
-const PRE_SEC=0.45;        // pre-strike audio kept, so the room can be measured
-const MAX_SEC=2.2;         // hard ceiling on one capture
-const HOP=128;             // detection + envelope hop
-const RISE_LAG=5;          // ~13ms at 48k: window the rise is measured over
-const RISE_RATIO=6;        // a strike climbs this much in that window; speech does not
-const ARM_TIMEOUT=14000;
-const QUIET_MS=150;        // back at the floor this long and the capture ends
-const MIN_SEC=0.25;
+const PRE_SEC=0.45, MAX_SEC=2.2, HOP=128;
+const RISE_LAG=5, RISE_RATIO=6, ARM_TIMEOUT=14000, QUIET_MS=150, MIN_SEC=0.25;
+const F_LO=40, F_HI=8000;
+const LIVE='#7fe3ff';
+
+/* Vibrating shapes have their own arithmetic. These are the textbook ratios. */
+const FAMILIES=[
+ {n:'harmonic series — string, open tube', r:[1,2,3,4,5,6,7,8,9,10]},
+ {n:'odd harmonics only — stopped tube',   r:[1,3,5,7,9,11]},
+ {n:'free–free bar — xylophone, chime',    r:[1,2.756,5.404,8.933,13.344]},
+ {n:'clamped bar — tuning fork, reed',     r:[1,6.267,17.55,34.39]},
+ {n:'circular membrane — drumhead',        r:[1,1.594,2.136,2.296,2.653,2.918,3.156,3.501]},
+ {n:'free circular plate — cymbal, gong',  r:[1,1.730,2.328,4.063,5.938]}
+];
+
+const BAYER=[
+ [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
+ [12,44, 4,36,14,46, 6,38],[60,28,52,20,62,30,54,22],
+ [ 3,35,11,43, 1,33, 9,41],[51,19,59,27,49,17,57,25],
+ [15,47, 7,39,13,45, 5,37],[63,31,55,23,61,29,53,21]];
 
 /* ---------------- state ---------------- */
 let ctx=null, stream=null, proc=null, srcNode=null;
@@ -181,7 +211,6 @@ async function openMic(){
   $('release').classList.remove('hide');
   return true;
 }
-
 function closeMic(){
   armed=false; capturing=false; micOpen=false;
   if(armTimer) clearTimeout(armTimer);
@@ -193,7 +222,6 @@ function closeMic(){
   $('release').classList.add('hide'); $('floor').textContent='';
   setState('Microphone is off.');
 }
-
 $('release').onclick=closeMic;
 
 $('arm').onclick=async()=>{
@@ -206,7 +234,6 @@ $('arm').onclick=async()=>{
   if(armTimer) clearTimeout(armTimer);
   armTimer=setTimeout(()=>{ if(armed&&!capturing) disarm('Nothing struck. Arm again when ready.'); },ARM_TIMEOUT);
 };
-
 function disarm(msg){
   armed=false; capturing=false;
   if(armTimer) clearTimeout(armTimer);
@@ -218,66 +245,48 @@ function disarm(msg){
 /* ---------------- detection ---------------- */
 function onBlock(e){
   const x=e.inputBuffer.getChannelData(0), sr=ctx.sampleRate;
-
-  // hop-level RMS envelope
   for(let off=0;off+HOP<=x.length;off+=HOP){
     let s=0; for(let i=0;i<HOP;i++){const v=x[off+i]; s+=v*v;}
     const e1=Math.sqrt(s/HOP);
     detEnv.push(e1); if(detEnv.length>200) detEnv.shift();
-
-    // noise floor: fast down, slow up — tracks the room, not the strike
-    if(!capturing){
-      floorEnv = e1<floorEnv ? floorEnv*0.90+e1*0.10 : floorEnv*0.9990+e1*0.0010;
-    }
-
+    if(!capturing) floorEnv = e1<floorEnv ? floorEnv*0.90+e1*0.10 : floorEnv*0.9990+e1*0.0010;
     const n=detEnv.length;
     if(n>RISE_LAG+1){
       const prev=detEnv[n-1-RISE_LAG]+1e-9;
-      const rising = e1/prev>RISE_RATIO && e1>Math.max(floorEnv*7,0.006);
-      if(rising){
+      if(e1/prev>RISE_RATIO && e1>Math.max(floorEnv*7,0.006)){
         if(armed&&!capturing) beginCapture(x,off,sr);
         else if(capturing&&capCut<0&&capLen>Math.floor(sr*0.05)) capCut=capLen+off;
       }
     }
   }
-
   $('meter').firstElementChild.style.width=Math.min(100,(detEnv[detEnv.length-1]||0)*420)+'%';
   if(micOpen&&!capturing) $('floor').textContent='room floor '+(20*Math.log10(Math.max(floorEnv,1e-7))).toFixed(0)+' dB';
 
-  // ring buffer of pre-strike audio
   if(!capturing){
     for(let i=0;i<x.length;i++){ ring[ringW]=x[i]; ringW=(ringW+1)%ringN; }
     return;
   }
-
-  // accumulate
   const n=Math.min(x.length,cap.length-capLen);
   cap.set(x.subarray(0,n),capLen); capLen+=n;
-
-  const since=capLen-capOnset;
-  if(since>sr*MIN_SEC){
+  if(capLen-capOnset>sr*MIN_SEC){
     const last=detEnv[detEnv.length-1]||0;
-    if(last<floorEnv*2.5){ quietRun+=x.length; } else quietRun=0;
+    if(last<floorEnv*2.5) quietRun+=x.length; else quietRun=0;
     if(quietRun>sr*QUIET_MS/1000){ endCapture(sr); return; }
   }
   if(capLen>=cap.length) endCapture(sr);
 }
-
 function beginCapture(x,off,sr){
   capturing=true; quietRun=0; capCut=-1;
   cap=new Float32Array(ringN+Math.ceil(MAX_SEC*sr));
   for(let i=0;i<ringN;i++) cap[i]=ring[(ringW+i)%ringN];
   capLen=ringN;
-  const back=Math.min(off,Math.floor(sr*0.005));
-  capOnset=capLen+off-back;
+  capOnset=capLen+off-Math.min(off,Math.floor(sr*0.005));
   const n=Math.min(x.length,cap.length-capLen);
   cap.set(x.subarray(0,n),capLen); capLen+=n;
   setState('Caught it. Measuring…');
 }
-
 function endCapture(sr){
-  capturing=false;
-  disarm(null);
+  capturing=false; disarm(null);
   analyze(cap.subarray(0,capLen),sr,capOnset,capCut);
 }
 
@@ -320,19 +329,20 @@ function analyze(buf,sr,onset,cut){
     if(modes.length>=6) break;
     const d=decay(buf,sr,preEnd,onset,hardEnd,p.hz);
     if(!d){ rejected++; continue; }
-    modes.push(Object.assign({hz:+p.hz.toFixed(2),amp:+(p.m/mx).toFixed(3),q:+d.q.toFixed(1)},d));
+    modes.push(Object.assign({hz:+p.hz.toFixed(2),amp:+(p.m/mx).toFixed(3),
+      q:+d.q.toFixed(1), df:+(p.hz/d.q).toFixed(2)},d));
   }
   if(!modes.length){
     setState('Nothing rose clearly enough above the room to measure. Strike harder, get closer, or try a harder object.');
     return;
   }
   modes.sort((a,b)=>a.hz-b.hz);
-  current={modes,raw:buf.slice(0),sr,material:'',rejected};
+  current={modes,raw:buf.slice(0),sr,onset,end:hardEnd,material:'',rejected,
+           shape:classify(modes)};
   render();
   setState('Measured '+modes.length+' mode'+(modes.length>1?'s':'')+'. Play it below, or arm again.');
 }
 
-/* heterodyne one mode out, measure the room in that same band, fit only above it */
 function decay(buf,sr,preEnd,onset,end,hz){
   const w=2*Math.PI*hz/sr, a=Math.exp(-2*Math.PI*30/sr);
   let I=0,Q=0,cr=1,ci=0;
@@ -347,18 +357,16 @@ function decay(buf,sr,preEnd,onset,end,hz){
   const dt=HOP/sr;
   const settle=Math.ceil(0.04/dt), preHi=Math.floor(preEnd/HOP);
   if(preHi-settle<6) return null;
-
-  // the room, in this mode's band — median is robust to a stray click in the pre-roll
   const pre=env.slice(settle,preHi).sort((x,y)=>x-y);
   const noise=Math.max(pre[Math.floor(pre.length/2)],1e-8);
 
   const onHi=Math.floor(onset/HOP);
   let pk=onHi; for(let i=onHi;i<env.length;i++) if(env[i]>env[pk]) pk=i;
   const top=env[pk];
-  if(top<noise*8) return null;                       // never rose clearly above the room
+  if(top<noise*8) return null;
 
   let s=pk; while(s<env.length&&env[s]>top*0.75) s++;
-  const stop=Math.max(noise*3,top*0.05);             // fit ends at the room, not at a fixed fraction
+  const stop=Math.max(noise*3,top*0.05);
   let e=s; while(e<env.length&&env[e]>stop) e++;
   if(e-s<8) return null;
 
@@ -384,43 +392,172 @@ function decay(buf,sr,preEnd,onset,end,hz){
   return {tau,q,r2:+r2.toFixed(3),env,dt,pk,fitS:s,fitE:e,top,noise,A:Math.exp(inter)};
 }
 
+/* ---------------- harmonicity ----------------
+   The base is fitted, not assumed: the lowest mode heard is often not the
+   lowest mode present, so every measured/textbook pairing is tried as a base. */
+function classify(modes){
+  const F=modes.map(m=>m.hz), W=modes.map(m=>Math.max(m.amp,0.08));
+  const out=[];
+  for(const fam of FAMILIES){
+    let best=null;
+    for(const f of F) for(const r of fam.r){
+      const base=f/r;
+      if(base<20||base>F[0]*1.02) continue;
+      let acc=0,wt=0;
+      const map=[], used=new Set();
+      for(let i=0;i<F.length;i++){
+        let bc=1e9,bj=0;
+        for(let j=0;j<fam.r.length;j++){
+          const c=Math.abs(1200*Math.log2(F[i]/(base*fam.r[j])));
+          if(c<bc){bc=c;bj=j;}
+        }
+        bc=Math.min(bc,700);
+        acc+=W[i]*bc*bc; wt+=W[i];
+        used.add(bj);
+        map.push({hz:F[i],ratio:F[i]/base,ref:fam.r[bj],cents:1200*Math.log2(F[i]/(base*fam.r[bj]))});
+      }
+      const err=Math.sqrt(acc/wt);
+      // a family with many closely spaced ratios can match anything, so charge it
+      // for the rungs it left empty inside the range the object actually occupies
+      const loR=F[0]/base*0.98, hiR=F[F.length-1]/base*1.02;
+      const inRange=fam.r.filter(r=>r>=loR&&r<=hiR).length;
+      const cover=inRange?used.size/inRange:1;
+      const score=err+25*(1-Math.min(1,cover));
+      if(!best||score<best.score) best={score,err,base,map};
+    }
+    if(best) out.push({name:fam.n,ratios:fam.r,err:best.err,score:best.score,base:best.base,map:best.map});
+  }
+  out.sort((a,b)=>a.score-b.score);
+  return out;
+}
+
 /* ---------------- drawing ---------------- */
 function fit2(c,h){
   const d=window.devicePixelRatio||1, w=c.clientWidth;
-  c.width=w*d; c.height=h*d;
+  c.width=Math.max(1,Math.round(w*d)); c.height=Math.round(h*d);
   const g=c.getContext('2d'); g.setTransform(d,0,0,d,0,0);
   return g;
 }
-const LIVE='#7fe3ff';
+const lx=(hz,W)=>W*(Math.log(hz/F_LO)/Math.log(F_HI/F_LO));
 
-function drawSpec(){
-  const c=$('spec'), g=fit2(c,132), W=c.clientWidth, H=132;
-  const {raw,sr}=current;
-  const N=8192, re=new Float32Array(N), im=new Float32Array(N);
-  let on=0,pk=0; for(let i=0;i<raw.length;i++){const v=Math.abs(raw[i]); if(v>pk){pk=v;on=i;}}
-  const st=Math.min(on,Math.max(0,raw.length-N));
-  for(let i=0;i<N;i++){const v=(st+i<raw.length)?raw[st+i]:0; re[i]=v*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));}
-  fft(re,im);
-  const half=N>>1, mg=new Float32Array(half); let mx=1e-9;
-  for(let i=0;i<half;i++){mg[i]=Math.hypot(re[i],im[i]); if(mg[i]>mx)mx=mg[i];}
-  const f0=40,f1=8000, lx=hz=>W*(Math.log(hz/f0)/Math.log(f1/f0));
-  g.clearRect(0,0,W,H);
-  g.strokeStyle='#ffffff'; g.globalAlpha=.6; g.lineWidth=1; g.beginPath();
-  let started=false;
-  for(let i=1;i<half;i++){
-    const hz=i*sr/N; if(hz<f0||hz>f1) continue;
-    const y=H-4-(H-14)*Math.min(1,Math.max(0,(20*Math.log10(mg[i]/mx)+66)/66));
-    const x=lx(hz); started?g.lineTo(x,y):(g.moveTo(x,y),started=true);
+/* 3 — the strike falling, one FFT per row, dithered to two tones */
+function drawSgram(){
+  const c=$('sgram'), CELL=3, g=fit2(c,228);
+  const W=c.clientWidth, H=228;
+  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+  const cols=Math.floor(W/CELL), rows=Math.floor(H/CELL);
+  const {raw,sr,onset,end}=current;
+  const N=2048, span=end-onset-N;
+  if(span<N){ return; }
+  const hop=Math.max(64,Math.floor(span/rows));
+  const grid=new Float32Array(rows*cols); let mx=1e-12;
+  const re=new Float32Array(N), im=new Float32Array(N), half=N>>1;
+  const win=new Float32Array(N);
+  for(let i=0;i<N;i++) win[i]=0.5-0.5*Math.cos(2*Math.PI*i/(N-1));
+  for(let r=0;r<rows;r++){
+    const st=onset+r*hop;
+    for(let i=0;i<N;i++){ const k=st+i; re[i]=(k<end?raw[k]:0)*win[i]; im[i]=0; }
+    fft(re,im);
+    for(let x=0;x<cols;x++){
+      const hz=F_LO*Math.pow(F_HI/F_LO,x/(cols-1));
+      const b=hz*N/sr;
+      const b0=Math.floor(b), fr=b-b0;
+      if(b0<1||b0+1>=half) continue;
+      const m0=Math.hypot(re[b0],im[b0]), m1=Math.hypot(re[b0+1],im[b0+1]);
+      const v=m0*(1-fr)+m1*fr;
+      grid[r*cols+x]=v; if(v>mx) mx=v;
+    }
   }
-  g.stroke(); g.globalAlpha=1;
+  const RANGE=58;
+  g.fillStyle='#ffffff';
+  for(let r=0;r<rows;r++){
+    for(let x=0;x<cols;x++){
+      const db=20*Math.log10(Math.max(grid[r*cols+x],1e-12)/mx);
+      const v=Math.min(1,Math.max(0,(db+RANGE)/RANGE));
+      if(v>(BAYER[r&7][x&7]+0.5)/64) g.fillRect(x*CELL,r*CELL,CELL,CELL);
+    }
+  }
   g.strokeStyle=LIVE; g.lineWidth=1.5;
   current.modes.forEach(m=>{
-    const x=lx(m.hz); if(x<0||x>W) return;
-    g.beginPath(); g.moveTo(x,H-2); g.lineTo(x,H-2-(H-16)*Math.max(.18,m.amp)); g.stroke();
+    const x=lx(m.hz,W); if(x<0||x>W) return;
+    g.beginPath(); g.moveTo(x,H); g.lineTo(x,H-7); g.stroke();
   });
 }
 
-/* measured envelope in dB, the fitted line over it, and the room as a floor */
+/* 1 — measured spectrum, with each mode drawn at its own linewidth */
+function drawSpec(){
+  const c=$('spec'), g=fit2(c,150), W=c.clientWidth, H=150;
+  const {raw,sr,onset,end}=current;
+  const N=8192, re=new Float32Array(N), im=new Float32Array(N);
+  const st=Math.min(onset,Math.max(0,end-N));
+  for(let i=0;i<N;i++){const k=st+i, v=(k<end?raw[k]:0); re[i]=v*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));}
+  fft(re,im);
+  const half=N>>1, mg=new Float32Array(half); let mx=1e-9;
+  for(let i=0;i<half;i++){mg[i]=Math.hypot(re[i],im[i]); if(mg[i]>mx)mx=mg[i];}
+  g.clearRect(0,0,W,H);
+  const ydb=v=>H-4-(H-16)*Math.min(1,Math.max(0,(20*Math.log10(Math.max(v,1e-12))+66)/66));
+
+  g.strokeStyle='#ffffff'; g.globalAlpha=.6; g.lineWidth=1; g.beginPath();
+  let started=false;
+  for(let i=1;i<half;i++){
+    const hz=i*sr/N; if(hz<F_LO||hz>F_HI) continue;
+    const x=lx(hz,W), y=ydb(mg[i]/mx);
+    started?g.lineTo(x,y):(g.moveTo(x,y),started=true);
+  }
+  g.stroke(); g.globalAlpha=1;
+
+  // Lorentzian at the measured half-power width — a resonance is this shape
+  g.strokeStyle=LIVE; g.lineWidth=1.4;
+  current.modes.forEach(m=>{
+    const hw=Math.max(m.df/2,sr/N*0.35);
+    g.beginPath(); let go=false;
+    for(let px=0;px<=W;px++){
+      const hz=F_LO*Math.pow(F_HI/F_LO,px/W);
+      if(hz<m.hz-hw*40||hz>m.hz+hw*40) continue;
+      const d=(hz-m.hz)/hw;
+      const v=Math.max(m.amp,0.02)/(1+d*d);
+      const y=ydb(v);
+      go?g.lineTo(px,y):(g.moveTo(px,y),go=true);
+    }
+    g.stroke();
+  });
+}
+
+/* 2 — the ratios laid against the best-matching family */
+function drawRuler(){
+  const c=$('ruler'), g=fit2(c,64), W=c.clientWidth, H=64;
+  g.clearRect(0,0,W,H);
+  const best=current.shape[0]; if(!best) return;
+  const top=Math.max(3,Math.min(14,Math.max(...best.map.map(m=>m.ratio))*1.15));
+  const rx=r=>W*(Math.log(Math.max(r,1))/Math.log(top));
+
+  // textbook ratios, below
+  g.strokeStyle='#ffffff'; g.lineWidth=1; g.globalAlpha=.75;
+  best.ratios.forEach(r=>{
+    if(r>top) return;
+    const x=rx(r);
+    g.beginPath(); g.moveTo(x,H-4); g.lineTo(x,H-17); g.stroke();
+  });
+  g.globalAlpha=1;
+  g.font='11px "Courier Prime",monospace'; g.fillStyle='#ffffff';
+  best.ratios.slice(0,5).forEach(r=>{
+    if(r>top) return;
+    const s=r<10?r.toFixed(r%1?2:0):r.toFixed(0);
+    g.fillText(s,Math.min(W-22,rx(r)+2),H-6);
+  });
+
+  // what was measured, above — the gap between the two rows is the deviation
+  g.strokeStyle=LIVE; g.lineWidth=2;
+  best.map.forEach(m=>{
+    if(m.ratio>top) return;
+    const x=rx(m.ratio);
+    g.beginPath(); g.moveTo(x,4); g.lineTo(x,22); g.stroke();
+    g.globalAlpha=.7; g.lineWidth=1;
+    g.beginPath(); g.moveTo(x,22); g.lineTo(rx(m.ref),H-17); g.stroke();
+    g.globalAlpha=1; g.lineWidth=2;
+  });
+}
+
 function drawFit(c,m,span){
   const g=fit2(c,38), W=c.clientWidth, H=38, DB=54;
   g.clearRect(0,0,W,H);
@@ -429,15 +566,11 @@ function drawFit(c,m,span){
     return H-3-(H-7)*Math.min(1,Math.max(0,(db+DB)/DB));
   };
   const xt=t=>t/span*W;
-
-  // the room floor in this band
   g.strokeStyle='#ffffff'; g.globalAlpha=.55; g.setLineDash([2,4]); g.lineWidth=1;
   const yn=ydb(m.noise);
   g.beginPath(); g.moveTo(0,yn); g.lineTo(W,yn); g.stroke();
   g.setLineDash([]);
-
-  // measured envelope from the peak onward
-  g.globalAlpha=.85; g.strokeStyle='#ffffff'; g.lineWidth=1; g.beginPath();
+  g.globalAlpha=.85; g.lineWidth=1; g.beginPath();
   let first=true;
   for(let i=m.pk;i<m.env.length;i++){
     const t=(i-m.pk)*m.dt; if(t>span) break;
@@ -445,14 +578,11 @@ function drawFit(c,m,span){
     first?(g.moveTo(x,y),first=false):g.lineTo(x,y);
   }
   g.stroke(); g.globalAlpha=1;
-
-  // the fit, drawn only where it was actually fitted
   g.strokeStyle=LIVE; g.lineWidth=1.6; g.beginPath();
   const t0=(m.fitS-m.pk)*m.dt, t1=Math.min((m.fitE-m.pk)*m.dt,span);
   for(let px=0;px<=W;px++){
     const t=px/W*span; if(t<t0||t>t1) continue;
-    const v=m.A*Math.exp(-(t-t0)/m.tau), x=xt(t), y=ydb(v);
-    g.lineTo(x,y);
+    g.lineTo(xt(t),ydb(m.A*Math.exp(-(t-t0)/m.tau)));
   }
   g.stroke();
 }
@@ -461,19 +591,39 @@ function render(){
   $('result').classList.remove('hide');
   $('playblk').classList.remove('hide');
   $('saveblk').classList.remove('hide');
-  drawSpec();
+  drawSgram();
   const box=$('modes'); box.innerHTML='';
   const span=Math.max(...current.modes.map(m=>(m.fitE-m.pk)*m.dt))*1.25;
   current.modes.forEach((m,i)=>{
     const row=document.createElement('div');
     row.className='mode'+(i===0?' f':'');
-    row.innerHTML='<div class="hz">'+m.hz.toFixed(1)+'</div><div class="q">'+m.q.toFixed(0)+'</div>';
+    row.innerHTML='<div><div class="hz">'+m.hz.toFixed(1)+'</div><div class="df">&Delta;f '+
+      (m.df<10?m.df.toFixed(2):m.df.toFixed(1))+'</div></div><div class="q">'+m.q.toFixed(0)+'</div>';
     const cv=document.createElement('canvas'); row.appendChild(cv); box.appendChild(row);
     drawFit(cv,m,span);
   });
   $('rej').textContent=current.rejected
     ? current.rejected+' peak'+(current.rejected>1?'s were':' was')+' discarded — no clean exponential above the room.'
     : '';
+  drawSpec();
+  drawRuler();
+
+  const s=current.shape, b=s[0];
+  if(!b||current.modes.length<3){
+    $('verdict').textContent='too few modes to classify';
+    $('vnote').textContent='Three or more are needed before a set of ratios means anything. Strike it somewhere less damped.';
+    $('scores').innerHTML='';
+  }else{
+    const e=Math.round(b.err);
+    $('verdict').textContent = e<40 ? b.name : e<90 ? 'loosely '+b.name : 'inharmonic';
+    $('vnote').textContent = e<40
+      ? 'Its partials sit within '+e+' cents of that series, from a fitted fundamental of '+b.base.toFixed(1)+' Hz.'
+      : e<90
+      ? 'Closest at '+e+' cents, which is loose. Real objects are rarely ideal shapes, and the boundary conditions are yours.'
+      : 'Its partials match no standard family — nearest is '+Math.round(b.err)+' cents away. Most struck objects are like this, which is why most of them have no pitch.';
+    $('scores').innerHTML=s.map((x,i)=>'<div'+(i===0?' class="win"':'')+'>'+
+      Math.round(x.err)+'¢ &nbsp;'+x.name+'</div>').join('');
+  }
   $('mat').value=current.material||'';
   buildPads();
 }
@@ -556,10 +706,12 @@ $('tRaw').onclick=()=>{
 $('keep').onclick=()=>{
   if(!current) return;
   current.material=$('mat').value.trim();
+  const b=current.shape[0];
   archive.push({
     material:current.material,
     struck:new Date().toISOString(),
-    modes:current.modes.map(m=>({hz:m.hz,q:m.q,amp:m.amp,fit:m.r2})),
+    modes:current.modes.map(m=>({hz:m.hz,q:m.q,df:m.df,amp:m.amp,fit:m.r2})),
+    shape:b&&current.modes.length>2?{family:b.name,cents:+b.err.toFixed(1),base:+b.base.toFixed(2)}:null,
     _full:current
   });
   renderArchive();
@@ -579,7 +731,8 @@ function renderArchive(){
   });
 }
 $('dl').onclick=()=>{
-  const data=archive.map(a=>({$type:'city.opposite.idiophone.capture',material:a.material,struck:a.struck,modes:a.modes}));
+  const data=archive.map(a=>({$type:'city.opposite.idiophone.capture',
+    material:a.material,struck:a.struck,modes:a.modes,shape:a.shape}));
   const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   const a=document.createElement('a'); a.href=u; a.download='idiophone.json'; a.click();
   setTimeout(()=>URL.revokeObjectURL(u),2000);
@@ -608,6 +761,7 @@ $('pub').onclick=async()=>{
           material:a.material||'unnamed',
           struck:a.struck,
           modes:a.modes,
+          shape:a.shape||undefined,
           createdAt:new Date().toISOString()}})});
       if(r.ok) n++;
     }
