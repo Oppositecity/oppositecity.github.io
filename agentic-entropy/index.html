@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SATOR — A CENSUS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#000; --fg:#fff; --hi:#7df9ff; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--fg);
+    font-family:'Courier Prime','Courier New',monospace; -webkit-font-smoothing:none; }
+  body{ min-height:100vh; display:flex; justify-content:center; padding:26px 14px 60px; }
+  .wrap{ width:100%; max-width:560px; }
+  h1{ font-size:15px; font-weight:700; letter-spacing:.34em; margin:0 0 10px; text-align:center; }
+  .sub{ font-size:12px; line-height:1.65; text-align:center; margin:0 0 24px; }
+  .row{ display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-bottom:12px; }
+  .row.last{ margin-bottom:22px; }
+  button{ background:transparent; color:var(--fg); border:0; padding:2px 0;
+    font-family:inherit; font-size:12.5px; letter-spacing:.04em; cursor:pointer; }
+  button.active{ font-weight:700; color:var(--hi); }
+  button:hover,button:focus-visible{ color:var(--hi); outline:none; }
+  .grid-stage{ display:flex; justify-content:center; margin:4px 0 0; }
+  .sq-grid{ display:grid; gap:6px; }
+  .sq-grid input{ width:100%; height:100%; background:#000; color:var(--fg);
+    border:1.5px solid var(--fg); font-family:inherit; font-weight:700;
+    text-align:center; text-transform:uppercase; padding:0; caret-color:transparent; }
+  .sq-grid input.in-word{ background:var(--fg); color:#000; }
+  .sq-grid input:focus{ outline:none; background:var(--fg); color:#000; }
+  .sq-grid input.in-word:focus{ background:#000; color:var(--fg); }
+  .status{ text-align:center; font-size:12.5px; line-height:1.65; margin-top:20px; min-height:1.65em; }
+  .census{ text-align:center; font-size:11.5px; line-height:1.7; margin-top:8px; }
+  table{ border-collapse:collapse; width:100%; font-size:11.5px; margin-top:14px; }
+  th,td{ padding:3px 6px; text-align:right; font-weight:400; }
+  th:first-child,td:first-child{ text-align:left; }
+  thead th{ font-weight:700; }
+  tr.cur td{ color:var(--hi); font-weight:700; }
+  .note{ font-size:11px; line-height:1.75; margin-top:26px; }
+  #panel{ display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SATOR</h1>
+  <p class="sub">rows read as columns, and the whole grid reads as its own half-turn.<br>every cell is bound to its mirrors — edit one letter and the square shifts, but it cannot break form.</p>
+
+  <div class="row" id="langs"></div>
+  <div class="row" id="sizes"></div>
+  <div class="row last">
+    <button id="b-pomp">pompeii</button>
+    <button id="b-rand">another</button>
+    <button id="b-clear">clear</button>
+    <button id="b-census">census</button>
+  </div>
+
+  <div class="grid-stage"><div class="sq-grid" id="grid"></div></div>
+  <div class="status" id="status"></div>
+  <div class="census" id="cline"></div>
+
+  <div id="panel">
+    <table id="table"></table>
+    <p class="note">Counts are complete enumerations of every full sator square available in each language's spell-check dictionary, expanded through its own affix rules — so these are inflected surface forms, not lemmas. The English handful leans on abbreviations; treat it as zero. Klingon is the instructive failure: it has more reversible five-letter words than Latin does in proportion, and still cannot form a single square, because its consonant clusters are locked to particular positions and will not interlock across the transpose. Reversibility is necessary. Positional freedom is what Latin actually has.</p>
+  </div>
+
+  <p class="note" id="foot">a row that spells a real word inverts. the dictionaries live in your browser — nothing typed here leaves this page.</p>
+</div>
+
+<script>
+var SATOR_DATA = {};
+var META = [
+  ["la","Latin"],["es","Spanish"],["nl","Dutch"],["it","Italian"],["ia","Interlingua"],
+  ["hr","Croatian"],["en","English"],["eo","Esperanto"],["is","Icelandic"],
+  ["tlh-Latn","Klingon"],["de","German"]
+];
+var STATS = {};
+var POMPEII = ['sator','arepo','tenet','opera','rotas'];
+var SIZE = { 3:{cell:68,font:30}, 4:{cell:58,font:26}, 5:{cell:50,font:22}, 6:{cell:43,font:17} };
+
+var state = { lang:'la', N:5, cells:[], last:{}, sets:{} };
+var $ = function(id){ return document.getElementById(id); };
+var gridEl=$('grid'), statusEl=$('status'), clineEl=$('cline');
+
+/* ---------- symmetry: transpose (i,j)->(j,i) and 180 rotation (i,j)->(N-1-i,N-1-j) ---------- */
+function orbit(i,j,N){
+  var pts=[[i,j],[j,i],[N-1-i,N-1-j],[N-1-j,N-1-i]], seen={}, out=[];
+  for(var p=0;p<pts.length;p++){ var k=pts[p][0]+','+pts[p][1];
+    if(!seen[k]){ seen[k]=1; out.push(pts[p]); } }
+  return out;
+}
+function propagate(i,j,ch,N){
+  var o=orbit(i,j,N);
+  for(var p=0;p<o.length;p++) state.cells[o[p][0]][o[p][1]].value=ch;
+}
+
+/* ---------- data ---------- */
+function wordSet(lang,N){
+  var key=lang+':'+N;
+  if(state.sets[key]) return state.sets[key];
+  var d=SATOR_DATA[lang], s=new Set();
+  if(d && d.words && d.words[N]){
+    var blob=d.words[N];
+    for(var i=0;i+N<=blob.length;i+=N) s.add(blob.substr(i,N));
+  }
+  state.sets[key]=s; return s;
+}
+function loadLang(lang,cb){
+  if(SATOR_DATA[lang]) return cb();
+  var s=document.createElement('script');
+  s.src='lang/'+lang+'.js';
+  s.onload=cb;
+  s.onerror=function(){ statusEl.textContent='could not load '+lang+' — keep lang/'+lang+'.js beside this page.'; };
+  document.head.appendChild(s);
+}
+function langName(c){ for(var i=0;i<META.length;i++) if(META[i][0]===c) return META[i][1]; return c; }
+
+/* ---------- readout ---------- */
+function refresh(N,note){
+  var set=wordSet(state.lang,N), count=0, filled=0;
+  for(var i=0;i<N;i++){
+    var str='';
+    for(var j=0;j<N;j++){ var v=state.cells[i][j].value||''; if(v) filled++; str+=v.toLowerCase(); }
+    var isW = str.length===N && set.has(str);
+    if(isW) count++;
+    for(var j2=0;j2<N;j2++) state.cells[i][j2].classList.toggle('in-word',isW);
+  }
+  if(note){ statusEl.textContent=note; return; }
+  if(!filled) statusEl.textContent='blank '+N+'\u00d7'+N+' \u2014 still in form. type anywhere.';
+  else if(!count) statusEl.textContent='in form \u2014 no row spells a word in '+langName(state.lang)+'.';
+  else statusEl.textContent='in form \u2014 '+count+' of '+N+' rows spell a real word.';
+}
+function setCensus(){
+  var st=STATS[state.lang], N=state.N;
+  var s=st && st.stat && st.stat[N];
+  if(!s){ clineEl.textContent=''; return; }
+  var n=s.sq;
+  clineEl.textContent = n===0
+    ? langName(state.lang)+' holds no '+N+'\u00d7'+N+' sator square at all.'
+    : langName(state.lang)+' holds '+n.toLocaleString()+' sator square'+(n===1?'':'s')+' at '+N+'\u00d7'+N+
+      ' \u2014 from '+s.n.toLocaleString()+' words, '+s.rev.toLocaleString()+' of them reversible.';
+}
+
+/* ---------- grid ---------- */
+function nextPos(i,j,N){ var x=i*N+j+1; return x>=N*N?null:[Math.floor(x/N),x%N]; }
+function prevPos(i,j,N){ var x=i*N+j-1; return x<0?null:[Math.floor(x/N),x%N]; }
+
+function buildGrid(N){
+  gridEl.innerHTML=''; var z=SIZE[N]||SIZE[5];
+  gridEl.style.gridTemplateColumns='repeat('+N+', '+z.cell+'px)';
+  gridEl.style.gridTemplateRows='repeat('+N+', '+z.cell+'px)';
+  state.cells=[];
+  for(var i=0;i<N;i++){
+    var row=[];
+    for(var j=0;j<N;j++){
+      var inp=document.createElement('input');
+      inp.type='text'; inp.autocomplete='off'; inp.autocorrect='off';
+      inp.autocapitalize='characters'; inp.spellcheck=false;
+      inp.setAttribute('aria-label','row '+(i+1)+' column '+(j+1));
+      inp.style.fontSize=z.font+'px';
+      /* no maxlength: with maxlength=1 a filled cell rejects keystrokes on mobile
+         unless the text is selected, which makes cells feel dead on retype. */
+      (function(ii,jj){
+        inp.addEventListener('input',function(){
+          var raw=this.value.replace(/[^\p{L}]/gu,'');
+          var v=raw.length?raw[raw.length-1].toUpperCase():'';
+          propagate(ii,jj,v,N); refresh(N);
+          if(v){ var np=nextPos(ii,jj,N); if(np) state.cells[np[0]][np[1]].focus(); }
+        });
+        inp.addEventListener('keydown',function(e){
+          if(e.key==='Backspace'){
+            if(this.value===''){ var pp=prevPos(ii,jj,N);
+              if(pp){ state.cells[pp[0]][pp[1]].focus(); propagate(pp[0],pp[1],'',N); refresh(N); } }
+            else { propagate(ii,jj,'',N); refresh(N); }
+            e.preventDefault(); return;
+          }
+          var m=null;
+          if(e.key==='ArrowRight') m=[ii,Math.min(jj+1,N-1)];
+          else if(e.key==='ArrowLeft') m=[ii,Math.max(jj-1,0)];
+          else if(e.key==='ArrowDown') m=[Math.min(ii+1,N-1),jj];
+          else if(e.key==='ArrowUp') m=[Math.max(ii-1,0),jj];
+          if(m){ state.cells[m[0]][m[1]].focus(); e.preventDefault(); }
+        });
+        inp.addEventListener('focus',function(){ var el=this;
+          setTimeout(function(){ try{ el.select(); }catch(e){} },0); });
+      })(i,j);
+      gridEl.appendChild(inp); row.push(inp);
+    }
+    state.cells.push(row);
+  }
+}
+function seed(rows,N,note){
+  for(var i=0;i<N;i++) for(var j=0;j<N;j++)
+    state.cells[i][j].value=(rows[i][j]||'').toUpperCase();
+  refresh(N,note);
+}
+function clear(N,note){
+  for(var i=0;i<N;i++) for(var j=0;j<N;j++) state.cells[i][j].value='';
+  refresh(N,note);
+}
+function flatRows(f,N){ var r=[]; for(var i=0;i<N;i++) r.push(f.slice(i*N,(i+1)*N)); return r; }
+function pick(N){
+  var d=SATOR_DATA[state.lang], list=(d&&d.sol&&d.sol[N])||[];
+  if(!list.length) return null;
+  if(list.length===1) return list[0];
+  var c,g=0; do{ c=list[Math.floor(Math.random()*list.length)]; g++; }
+  while(c===state.last[state.lang+N] && g<12);
+  state.last[state.lang+N]=c; return c;
+}
+
+/* ---------- controls ---------- */
+function chips(){
+  var L=$('langs'); L.innerHTML='';
+  META.forEach(function(m){
+    var b=document.createElement('button');
+    b.textContent=m[1]; b.className=(m[0]===state.lang?'active':'');
+    b.onclick=function(){ state.lang=m[0]; state.sets={}; go(true); };
+    L.appendChild(b);
+  });
+  var S=$('sizes'); S.innerHTML='';
+  [3,4,5,6].forEach(function(n){
+    var b=document.createElement('button');
+    b.textContent=n+'\u00d7'+n; b.className=(n===state.N?'active':'');
+    b.onclick=function(){ state.N=n; go(true); };
+    S.appendChild(b);
+  });
+}
+function go(reseed){
+  chips();
+  loadLang(state.lang,function(){
+    buildGrid(state.N); setCensus(); drawTable();
+    if(!reseed) return;
+    if(state.lang==='la' && state.N===5){ seed(POMPEII,5,'the Pompeii square. change any letter.'); return; }
+    var f=pick(state.N);
+    if(f) seed(flatRows(f,state.N),state.N,null);
+    else clear(state.N, langName(state.lang)+' offers none at this size. build one by hand \u2014 the form will hold.');
+  });
+}
+function drawTable(){
+  var t=$('table'), h='<thead><tr><th>language</th><th>3\u00d73</th><th>4\u00d74</th><th>5\u00d75</th><th>6\u00d76</th></tr></thead><tbody>';
+  META.forEach(function(m){
+    var st=STATS[m[0]]; if(!st) return;
+    h+='<tr class="'+(m[0]===state.lang?'cur':'')+'"><td>'+m[1]+'</td>';
+    [3,4,5,6].forEach(function(n){
+      var s=st.stat[n]; h+='<td>'+(s?s.sq.toLocaleString():'\u2014')+'</td>';
+    });
+    h+='</tr>';
+  });
+  t.innerHTML=h+'</tbody>';
+}
+
+$('b-pomp').onclick=function(){ state.lang='la'; state.N=5; state.sets={}; chips();
+  loadLang('la',function(){ buildGrid(5); setCensus(); drawTable();
+    seed(POMPEII,5,'the Pompeii square. change any letter.'); }); };
+$('b-rand').onclick=function(){
+  var f=pick(state.N);
+  if(f){ seed(flatRows(f,state.N),state.N,null); return; }
+  if(state.lang==='la'&&state.N===5) seed(POMPEII,5,'here is the Latin one again.');
+  else clear(state.N, langName(state.lang)+' offers none at this size. build one by hand \u2014 the form will hold.');
+};
+$('b-clear').onclick=function(){ clear(state.N,null); };
+$('b-census').onclick=function(){
+  var p=$('panel'), open=p.style.display==='block';
+  p.style.display=open?'none':'block';
+  this.className=open?'':'active';
+  if(!open) p.scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+fetch('stats.json').then(function(r){ return r.json(); })
+  .then(function(s){ STATS=s; go(true); })
+  .catch(function(){ statusEl.textContent='could not load stats.json — keep it beside this page.'; });
+</script>
+</body>
+</html>
