@@ -143,13 +143,20 @@
     <li><a href="https://opposite.city/bz/">BZ</a> — reaction-diffusion, excitable media, phase singularity, fullscreen</li>
     <li><a href="https://opposite.city/polyrhythm/">POLYRHYTHMIC TIME CLOCK</a> — clock, polyrhythm, web audio, interval</li>
     <li><a href="https://opposite.city/kelp/">KELP</a> — aleatoric, percussion, web audio, spring chain, pixel</li>
-    <li><a href="https://opposite.city/semantic-voyage/">SEMANTIC VOYAGE</a> — word embeddings, glove, semantic space, starfield, navigation</li>
+    <li><a href="https://opposite.city/semantic-voyage/fly.html">SEMANTIC VOYAGE</a> — word embeddings, glove, semantic space, periodic space, flight, navigation</li>
     <li><a href="https://opposite.city/room/">ROOM</a> — lucier, recursive drift, synonym chain, syllable lock, irreversible</li>
     <li><a href="https://opposite.city/wind/">YOU ARE THE WIND</a> — ekman spiral, coriolis, pressure gradient, voxel raycast, first person</li>
     <li><a href="https://opposite.city/ambiguity/">AMBIGUATOR</a> — notation, ambiguity, symbol dictionary, cross-domain, parser</li>
     <li><a href="https://opposite.city/syllababbler/">SYLLABABBLER</a> — morphology, neologism, greek, latin, coinage</li>
     <li><a href="https://opposite.city/ephemeris/">EPHEMERIS</a> — orbital debris, horoscope, rulership, tle, kepler</li>
     <li><a href="https://opposite.city/poemstream/">POEMSTREAM</a> — keystroke, process, provenance, atproto, revision</li>
+    <li><a href="https://opposite.city/shellac/">SHELLAC</a> — 78rpm, internet archive, public domain, chronological browse, shellac disc</li>
+    <li><a href="https://opposite.city/aureole/">AUREOLE</a> — atproto, thesaurus, synonym cloud, degrees of freedom, bluesky</li>
+    <li><a href="https://opposite.city/dof/">DEGREES OF FREEDOM</a> — semantic constraint, datamuse, corpus attestation, measurement, writing instrument</li>
+    <li><a href="https://opposite.city/pentimento/">PENTIMENTO</a> — logit lens, gpt-2, in-browser inference, possibility field, depth</li>
+    <li><a href="https://opposite.city/apophasis/">APOPHASIS</a> — negative space, surprisal, rank, in-browser inference, draft</li>
+    <li><a href="https://opposite.city/idiophone/">IDIOPHONE</a> — modal analysis, q factor, resonance, impulse excitation, atproto, web audio</li>
+    <li><a href="https://opposite.city/agentic-entropy/">AGENTIC ENTROPY</a> — pathways chart, information thermodynamics, emergy, energy systems language, lombardi, evidence levels</li>
   </ul>
 </div>
 
@@ -163,7 +170,7 @@
 const REGISTRY = {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-08-05",
+ "published": "2026-09-15",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -334,11 +341,12 @@ const REGISTRY = {
     "word embeddings",
     "glove",
     "semantic space",
-    "starfield",
+    "periodic space",
+    "flight",
     "navigation"
    ],
-   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. You travel only by similarity: each word offers the handful nearest it, and reaching anywhere means finding a chain of small resemblances. Frequency works as stellar magnitude, so common words carry across the whole field and rare ones resolve only when you are close.",
-   "url": "https://opposite.city/semantic-voyage/"
+   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. The field is periodic: it repeats in every direction, so there is no up, no edge, and no outside to fall into. Hold to fly forward, tap any word to jump to it. Every jump is measured against the true vectors and comes back either verified, carrying the real cosine, or honestly unmeasured — an exact distance exists only along the 122,901 relations the model actually asserts. Near you the layout quietly corrects itself toward those measurements, since the projection is candid about who your neighbours are and lies about how far anything is.",
+   "url": "https://opposite.city/semantic-voyage/fly.html"
   },
   {
    "slug": "room",
@@ -435,9 +443,124 @@ const REGISTRY = {
    ],
    "blurb": "A poem is normally published as the thing that survived. This publishes the writing. Type, and every keystroke and every pause is kept, including everything deleted, which is most of what happened. Play it back and the poem writes itself again at the speed it was actually written: the four seconds before a line arrives, the word held and then taken away, the passage that came out in one run. Six treatments read the same recording differently. One keeps the deleted characters on the page, so what the poem decided against stays legible beside what it kept. One snaps every delay to a grid, and hesitation becomes rest. Two hand the track to a corruption engine that reads typing rate, so fast passages break into marks that are not quite letters, held breaths stay clean, and everything settles as it ages. The recording is a plain object — delays, deletions, insertions — built to live in the writer's own repository rather than in a database here, signed and content-addressed, so it can be taken elsewhere and played by something that is not this. It is also close to the only claim about authorship still available: not that a person wrote it, but that here is the hour it took them.",
    "url": "https://opposite.city/poemstream/"
+  },
+  {
+   "slug": "shellac",
+   "name": "SHELLAC",
+   "district": "viz",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "78rpm",
+    "internet archive",
+    "public domain",
+    "chronological browse",
+    "shellac disc"
+   ],
+   "blurb": "A player skinned over the Internet Archive's digitized 78rpm collection, no backend, streaming straight from their servers. Browse in the order the records themselves were pressed — 1890s through the 1950s — rather than by genre tags that only ever cover a fraction of the catalog. Tap a year, hear what was being cut.",
+   "url": "https://opposite.city/shellac/"
+  },
+  {
+   "slug": "aureole",
+   "name": "AUREOLE",
+   "district": "language",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "atproto",
+    "thesaurus",
+    "synonym cloud",
+    "degrees of freedom",
+    "bluesky"
+   ],
+   "blurb": "A reader that will not show you the text. Every word of a post is replaced by the pile of its own synonyms, laid one over another in the same place, so a sentence arrives as a row of clouds rather than a line. The pile is a measurement as much as an image: a word the language will trade for many others stands thick and nearly unreadable, a word it will barely trade at all stands thin, and the reading you get is whichever word you pull out of each stack. Words the thesaurus answers with nothing are not clouds — they appear alone and marked zero, because a word with no available move is not ambiguous, it is fixed. Words it could not answer for are marked apart from those and never merged with them, since a rate limit is not a constraint on language, and quietly confusing the two is the ordinary way an instrument like this lies. Hover lifts one word clear of the blend; clicking fixes it and sends the rest of the stack to ghost, so a text can be read out of the field one decision at a time — a reading that exists nowhere in the original and is licensed at every point by it.",
+   "url": "https://opposite.city/aureole/"
+  },
+  {
+   "slug": "dof",
+   "name": "DEGREES OF FREEDOM",
+   "district": "language",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "semantic constraint",
+    "datamuse",
+    "corpus attestation",
+    "measurement",
+    "writing instrument"
+   ],
+   "blurb": "Aureole's sibling instrument, pointed the other way — not a reading but a measurement of what a reading would cost. Every word is offered four moves: sideways into a synonym, narrower into a hyponym, wider into a hypernym, or sideways again into whatever the corpus keeps finding beside it. Each candidate is then tested against its actual neighbours in the passage, using real bigram attestation rather than a model's opinion — a word survives the corpus check or it doesn't, and only the survivors count as an open channel. What's left is a number between zero and four for every word: how many independent kinds of move the language still permits it, here, in this sentence, with these neighbours. A word with no channels open is pinned. A word absent from the lexicon entirely is marked apart from a pinned word on purpose, since a missing entry is a gap in the instrument and a genuinely closed channel is a fact about the sentence — collapsing the two would make the measurement lie. Tap any word to see exactly which candidates were offered, which survived, and which were closed by context.",
+   "url": "https://opposite.city/dof/"
+  },
+  {
+   "slug": "pentimento",
+   "name": "PENTIMENTO",
+   "district": "language",
+   "status": "live",
+   "finish": 75,
+   "tags": [
+    "logit lens",
+    "gpt-2",
+    "in-browser inference",
+    "possibility field",
+    "depth"
+   ],
+   "blurb": "A sentence written by choosing from what a language model is actually weighing. GPT-2 runs entirely in the tab — half a gigabyte fetched once and held as bf16, nothing typed ever leaving the device — and each word you commit opens the field of candidates for the next one. The words are placed by the model's own unembedding, three principal axes of it, two across and the third into the screen, so words stand behind words and the near ones cut holes in the far ones. Distance owns size and probability owns brightness; neither borrows the other's channel, so the improbable tail recedes into the dark without shrinking, and a likely word stays bright wherever it happens to sit. Down the right edge is the model's depth stood on end: thirteen rungs, one per layer, each showing what that stage of the residual stream alone would have said, since the lens can be applied anywhere in the stack and not only at the top. Hold a word and every rung switches to that word's probability there, which is the honest way to watch a guess resolve — or fail to. Nothing moves unless you move it. Every move rearranges the whole field: shared words fly to new places, the ones that no longer apply recede. Any word already written can be returned to and chosen differently, and the rest of the sentence is truncated and rewritten from there, which is what the painters meant by the word.",
+   "url": "https://opposite.city/pentimento/"
+  },
+  {
+   "slug": "apophasis",
+   "name": "APOPHASIS",
+   "district": "language",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "negative space",
+    "surprisal",
+    "rank",
+    "in-browser inference",
+    "draft"
+   ],
+   "blurb": "Named for the figure that says a thing by saying what it is not. A sentence is handed to a language model running entirely in the tab, and what comes back is not a completion but the field the sentence was standing in at every position — everything that was available at each word, and the one word taken. Each line is one position, and the alternatives run left to right by how readily the language offered them, on a logarithmic scale that reaches the far end of a fifty-thousand word vocabulary. The word actually used sits at its own place on that scale, so the sentence draws a path: hard against the left margin wherever the writer went where the language was already going, far out to the right wherever they broke away. The distance is measured, not impressionistic — it is the rank, and the cost of each word is its surprisal in bits, which is also what the sentence is priced at when it ends. Nothing is drawn from numbers that fail a check for degeneracy, because an instrument that renders a flat distribution as a picture is lying at exactly the moment it looks most like art. What is left on the page beside the bright path is the negative space of a draft: every word that was there to be used and was refused.",
+   "url": "https://opposite.city/apophasis/"
+  },
+  {
+   "slug": "idiophone",
+   "name": "IDIOPHONE",
+   "district": "ambient",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "modal analysis",
+    "q factor",
+    "resonance",
+    "impulse excitation",
+    "atproto",
+    "web audio"
+   ],
+   "blurb": "An idiophone is an instrument that sounds by the vibration of its own body — a bell, a bar, a stone, nothing stretched over it and no column of air inside it. This treats anything as one. Strike an object near the phone and the strike catches itself, because at the moment that matters both hands are on the object. What gets measured is not the sound it made but what it is disposed to do: the frequencies its body will hold, and how long it holds each one. Each mode is lifted out of the recording on its own by heterodyne, its envelope fitted as an exponential, and reported as a decay time and a Q — energy stored against energy lost per cycle, which is the number that separates a bell from a brick and has nothing to do with hardness. Modes whose decay does not actually fit an exponential are thrown away rather than reported, since the failure of an instrument like this is confident numbers for a thud. The six that survive are the instrument. They are played two ways: struck, as pure modes decaying at their measured rates, and bowed, through filters whose sharpness is the measured Q itself. Q is held constant across the keyboard rather than decay time, so transposing up shortens the ring, which is what a smaller object of the same material would really do. A capture is six numbers — small enough to be a record rather than a file, and publishable to your own repository. The archive that results is not of recordings but of dispositions, from which anyone can rebuild the object without ever having heard it.",
+   "url": "https://opposite.city/idiophone/"
+  },
+  {
+   "slug": "agentic-entropy",
+   "name": "AGENTIC ENTROPY",
+   "district": "viz",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "pathways chart",
+    "information thermodynamics",
+    "emergy",
+    "energy systems language",
+    "lombardi",
+    "evidence levels"
+   ],
+   "blurb": "A metabolic pathways chart of one idea: that records, genomes, minerals and protocols are local order paid for by exporting entropy, and that this can be measured. 184 nodes, from Landauer's bound and the citric acid cycle to Odum's transformity, folk-tale phylogenies and the Omega Point, each printed with its equation, its evidence level, how it could be tested, and its source. Every node carries an energy-systems role (source, producer, storage, consumer, interaction, switch, heat sink, transaction, frame), and 348 connections run between them as routed traces. The proposed measure is η, lasting bits per bit-equivalent of entropy produced; the chart marks what is established physics, what is contested, and what is only a postulate.",
+   "url": "https://opposite.city/agentic-entropy/"
   }
  ]
 };
+
 /* REGISTRY:END */
 
 /* prefer surfaces.json from the host — publishing the file is publishing the
