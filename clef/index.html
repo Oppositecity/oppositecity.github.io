@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clef du système universel — every Fourier system on one surface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Barlow:wght@600;800&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;height:100%;background:#fff;overflow:hidden;font-family:'Barlow Condensed',sans-serif;color:#141414}
+body{touch-action:none}
+svg{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}
+svg text{font-family:'Barlow Condensed','Arial Narrow',sans-serif;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round}
+svg text.nohalo{stroke:none}
+.edge{fill:none;stroke-linecap:round}
+.lnk{cursor:pointer}
+#hud{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);background:#fff;padding:4px 10px;z-index:3;display:flex;gap:16px}
+#hud button{font:inherit;font-size:19px;background:none;border:0;color:#000;padding:3px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+button:focus-visible{outline:2px solid #000}
+</style>
+</head>
+<body>
+<svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pathways chart of Charles Fourier’s universal system"></svg>
+<div id="hud"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="whole">Whole chart</button><button id="save">Save print SVG</button></div>
+<script>
+const SIMPLE = [
+  {
+    className: "Cornus",
+    classNameEN: "The Horned Ones",
+    color: "#5d4037",
+    desc: "The first and most common class — from the budding cuckold to the distaff-bearer.",
+    positions: [
+      { pos: "Avant-poste · 1", posEN: "Outpost", species: [
+        { n: 1, fr: "Le Cocu en herbe ou anticipé", en: "The Budding or Anticipatory Cuckold", desc: "Whose wife had lovers before the wedding and does not bring her virginity to the husband." },
+      ]},
+      { pos: "Avant-garde · 2", posEN: "Vanguard", species: [
+        { n: 2, fr: "Le Cocu présomptif", en: "The Presumptive Cuckold", desc: "Long before marriage, dreads the common fate and tortures himself trying to escape it — his precautions only hasten the event he fears." },
+        { n: 3, fr: "Le Cocu imaginaire", en: "The Imaginary Cuckold", desc: "Not yet a cuckold but despairs believing he is. Suffers imaginary pain before the real thing. Molière painted him." },
+      ]},
+      { pos: "Flanqueurs de droite · 3", posEN: "Right Flankers", species: [
+        { n: 4, fr: "Le Cocu martial ou fanfaron", en: "The Martial or Braggart Cuckold", desc: "Believes his terrifying threats against suitors have shielded him — yet wears the horns all the same, usually planted by the very man who applauds his vigilance." },
+        { n: 5, fr: "Le Cocu argus ou cauteleux", en: "The Argus or Wily Cuckold", desc: "A shrewd operator who knows every trick of love and makes clever arrangements to foil rivals. Wins many battles but, like the finest general, eventually suffers defeat." },
+        { n: 6, fr: "Le Cocu goguenard", en: "The Mocking Cuckold", desc: "Jokes about his fellow cuckolds, calling them imbeciles who deserve their fate. Those who hear him exchange knowing smiles." },
+      ]},
+      { pos: "Ailerette droite · 4", posEN: "Right Winglet", species: [
+        { n: 7, fr: "Le Cocu pur et simple", en: "The Pure and Simple Cuckold", desc: "An honorable jealous man who does not know his disgrace and gives no cause for laughter through boasting or clumsy measures. The most praiseworthy of all species." },
+        { n: 8, fr: "Le Cocu fataliste ou résigné", en: "The Fatalist or Resigned Cuckold", desc: "Lacking personal means to hold his wife, resigns himself to whatever God ordains and falls back on justice and duty — at which point she does not fail to betray him." },
+        { n: 9, fr: "Le Cocu condamné ou désigné", en: "The Condemned or Designated Cuckold", desc: "Afflicted with deformities or infirmities, he dares to take a beautiful wife. The public unanimously condemns him to wear the horns, and the sentence is duly carried out." },
+        { n: 10, fr: "Le Cocu irréprochable ou victimé", en: "The Irreproachable or Victimized Cuckold", desc: "Joins attentiveness to physical and moral advantages and deserves an honest wife in every respect, yet is betrayed by a coquette. The public declares him worthy of a better fate." },
+      ]},
+      { pos: "Aileron droit · 5", posEN: "Right Wing Section", species: [
+        { n: 11, fr: "Le Cocu de prescription", en: "The Cuckold by Prescription", desc: "Makes long absences and voyages, during which nature speaks to the senses of a wife who, after sufficient resistance, is forced by prolonged privation to accept the help of a charitable neighbor." },
+        { n: 12, fr: "Le Cocu absorbé ou préoccupé", en: "The Absorbed or Preoccupied Cuckold", desc: "The torrent of business keeps him constantly away from his wife, to whom he can give no attention; he must close his eyes to the care provided by a discreet friend of the household." },
+        { n: 13, fr: "Le Cocu de santé", en: "The Health Cuckold", desc: "By doctor's orders abstains from the work of the flesh. His wife can do no less than resort to substitutes, without the husband having the right to take offense." },
+        { n: 14, fr: "Le Cocu régénérateur ou conservateur", en: "The Regenerator or Conservator Cuckold", desc: "Takes charge of the community's interests, watches over his fellows' households and warns them of dangers to their honor — meanwhile failing to see what transpires in his own home." },
+        { n: 15, fr: "Le Cocu propagandiste", en: "The Propagandist Cuckold", desc: "Goes about singing the joys of married life, urging everyone to take a wife — and to whom does he deliver these apologies for marriage? Usually to the very man who is cuckolding him." },
+      ]},
+    ]
+  },
+  {
+    className: "Cornettes",
+    classNameEN: "The Short-Horned",
+    color: "#e65100",
+    desc: "The middle class — cuckolds of greater refinement, from the sympathetic to the mystical.",
+    positions: [
+      { pos: "Aile droite · 6", posEN: "Right Wing", species: [
+        { n: 16, fr: "Le Cocu sympathique", en: "The Sympathetic Cuckold", desc: "Grows fond of his wife's lovers and makes them his intimate friends. When she quarrels with her lover, he goes to find him: 'We never see you anymore, we're all sad. Come visit, it will cheer her up.'" },
+        { n: 17, fr: "Le Cocu tolérant ou débonnaire", en: "The Tolerant or Good-Natured Cuckold", desc: "Seeing a lover installed in his house, behaves like a gentleman who wishes to do the honors — confines himself to secret remonstrances with his wife and treats the lover like anyone else." },
+        { n: 18, fr: "Le Cocu réciproque", en: "The Reciprocal Cuckold", desc: "Returns the favor and closes his eyes because he takes his compensation with the wife or relative of the man who cuckolds him. A loan repaid: one keeps quiet in such cases." },
+        { n: 19, fr: "Le Cocu auxiliaire ou coadjuteur", en: "The Auxiliary or Coadjutor Cuckold", desc: "Rarely appears at home except to spread joy, reproaches the timid admirers for not laughing or drinking enough, and urges them to live as good republicans among whom all is shared." },
+        { n: 20, fr: "Le Cocu accélérant ou précipitant", en: "The Accelerating or Precipitating Cuckold", desc: "Works to advance the timetable — hastens to show off his young wife, subscribes her to the theater, encourages her to cherish friends. Like parcels sent by express coach, he arrives sooner at the destination." },
+        { n: 21, fr: "Le Cocu traitable ou bénin", en: "The Manageable or Benign Cuckold", desc: "Can be reasoned with. Suitors persuade him that a husband must make sacrifices for domestic peace and allow his wife harmless diversions — since a woman of principles could never be seduced." },
+      ]},
+      { pos: "Centre de secte · 7", posEN: "Center of the Sect", species: [
+        { n: 22, fr: "Le Cocu optimiste ou bon vivant", en: "The Optimist or Bon Vivant Cuckold", desc: "Sees everything in the best light, amuses himself with his wife's intrigues, drinks to the health of his fellow cuckolds, and finds merriment where others tear their hair. Is he not the wisest?" },
+        { n: 23, fr: "Le Cocu converti ou ravisé", en: "The Converted or Reformed Cuckold", desc: "At first made a great fuss and adjusted to the horns only with difficulty, but has since come to his senses, now joking about the matter and consoling himself with the others." },
+        { n: 24, fr: "Le Cocu fédéral ou coalisé", en: "The Federal or Coalition Cuckold", desc: "Seeing the affair is inevitable, agrees to admit a lover — but one of his choosing. Then they form a coalition, like Pitt and Coburg, to surround the wife and jointly repel other suitors." },
+        { n: 25, fr: "Le Cocu transcendant ou de haute volée", en: "The Transcendent or High-Flying Cuckold", desc: "The cleverest of the entire fraternity, placed at the center. Marries a beautiful woman, shows her off with some fanfare, and once she has aroused universal envy, trades her for a high position or major partnership. 'It isn't cuckoldry at that price.'" },
+        { n: 26, fr: "Le Cocu grandiose ou impassible", en: "The Grandiose or Impassive Cuckold", desc: "Neither distressed nor amused by the cuckoldry he perceives, maintains perfect calm without descending to any action that invites ridicule. Common among the wealthy married for money." },
+        { n: 27, fr: "Le Cocu déserteur ou scissionnaire", en: "The Deserter or Secessionist Cuckold", desc: "Bored with the household's love affairs, publicly renounces his wife and says to each new lover: 'When he's had as much of her as I have, he'll be quite tired of her.'" },
+        { n: 28, fr: "Le Cocu de l'étrier ou prête-nom", en: "The Stirrup or Front-Man Cuckold", desc: "A straw man given a promotion on condition he marry the mistress of a powerful man and adopt the child. Often marries the cow and the calf together; his horns put his foot in the stirrup." },
+      ]},
+      { pos: "Aile gauche · 6", posEN: "Left Wing", species: [
+        { n: 29, fr: "Le Cocu pouponné ou compensé", en: "The Pampered or Compensated Cuckold", desc: "Suspects something, but is so well caressed, coddled, and fussed over by his wife that his suspicions expire the moment she strokes his chin." },
+        { n: 30, fr: "Le Cocu ensorcelé ou à cataracte", en: "The Bewitched or Blinkered Cuckold", desc: "His wife so fascinates and lulls him that he alone is ignorant of escapades that are the talk of the town. He would not believe his own eyes if he caught her in the act." },
+        { n: 31, fr: "Le Cocu glaneur ou banal", en: "The Gleaner or Common Cuckold", desc: "Comes humbly to claim his share of the cake, ardently courting his better half for what she grants to so many others — after whom he modestly comes to glean." },
+        { n: 32, fr: "Le Cocu en tutelle", en: "The Cuckold Under Guardianship", desc: "Whose wife wears the trousers and who cannot function in society without her support. One such was heard to say: 'If my wife were here, she'd know how to answer you.'" },
+        { n: 33, fr: "Le Cocu révérencieux ou à procédés", en: "The Ceremonious or Procedural Cuckold", desc: "A simpleton who retaliates only with polite reasoning. One such, finding a gentleman in bed with his wife, said: 'That is most improper, sir. I never would have expected this of a man like you.'" },
+        { n: 34, fr: "Le Cocu mystique ou encaffardé", en: "The Mystical or Bigoted Cuckold", desc: "Surrounds his wife with priests and holy people to avoid danger, among whom some Tartuffe slips in and plants horns on his head for the greater glory of God." },
+      ]},
+    ]
+  },
+  {
+    className: "Cornards",
+    classNameEN: "The Great-Horned",
+    color: "#b71c1c",
+    desc: "The most extreme class — from the orthodox believer to the posthumous cuckold of two worlds.",
+    positions: [
+      { pos: "Aileron gauche · 5", posEN: "Left Wing Section", species: [
+        { n: 35, fr: "Le Cocu orthodoxe ou endoctriné", en: "The Orthodox or Indoctrinated Cuckold", desc: "The catechumen of the trade — believes in principles and good morals, thinks libertines exaggerate, and places all his hope in his wife's good nature and the influence of morality." },
+        { n: 36, fr: "Le Cocu apostat ou transfuge", en: "The Apostate or Turncoat Cuckold", desc: "After being a model of reason and warning others against the conjugal trap, plunges headfirst into it himself. Such was Molière, who after enlightening the fraternity, enrolled most foolishly." },
+        { n: 37, fr: "Le Cocu matté ou perplexe", en: "The Subdued or Perplexed Cuckold", desc: "Reduced to gnawing his bit in silence. Family or business considerations oblige him to play along with his wife and the friends who know his embarrassing position." },
+        { n: 38, fr: "Le Cocu sordide", en: "The Sordid Cuckold", desc: "A miser who refuses to pay for his wife's wardrobe, forcing her to listen to generous offers — then profits from the gallant who maintains her, deluding himself through the double advantage." },
+        { n: 39, fr: "Le Cocu goujat ou crapuleux", en: "The Boorish or Debauched Cuckold", desc: "A lout against whom the public takes sides, revolted by the contrast between his vile conduct and his wife's good manners. Everyone supports the lady: 'It would be a shame if she were faithful to such a pig.'" },
+      ]},
+      { pos: "Ailerette gauche · 4", posEN: "Left Winglet", species: [
+        { n: 40, fr: "Le Cocu déniaisé, ébahi", en: "The Disabused or Dumbfounded Cuckold", desc: "Having long believed obstinately in his wife's virtue, is finally undeceived by some dramatic event — a gift she makes him — and sadly passes into the ranks of the enlightened." },
+        { n: 41, fr: "Le Cocu récalcitrant", en: "The Recalcitrant Cuckold", desc: "Cannot get used to seeing the gallant around. Makes scenes, causes commotion. Family, friends, and neighbors must intervene to persuade him it's all harmless — but only achieve an uneasy truce." },
+        { n: 42, fr: "Le Cocu fulminant", en: "The Fulminating Cuckold", desc: "Invokes the authorities, the courts, stirs up the public, causes a frightful scandal, threatens violence — and achieves nothing but exposing himself to the ridicule he could have avoided." },
+        { n: 43, fr: "Le Cocu trompette", en: "The Trumpet Cuckold", desc: "Goes about in a tearful voice taking the public into his confidence: 'But sir, I caught them in the act!' He would gladly hire a trumpeter to gather a bigger crowd." },
+      ]},
+      { pos: "Flanqueurs de gauche · 3", posEN: "Left Flankers", species: [
+        { n: 44, fr: "Le Cocu disgracié", en: "The Disgraced Cuckold", desc: "Over whom the wife has taken such an empire that she won't even admit him — he is rarely received at her home, still less allowed to appear in public with her." },
+        { n: 45, fr: "Le Cocu pot-au-feu", en: "The Pot-au-Feu Cuckold", desc: "A subordinate species whom the wife supports and who respectfully lends himself to everything necessary for the smooth operation of her amorous commerce. Not the rarest species." },
+        { n: 46, fr: "Le Cocu cornard ou désespéré", en: "The Desperate Cuckold (George Dandin)", desc: "Molière's George Dandin — endures every conceivable tribulation, duped, ruined, mistreated, outraged by his wife, finding in marriage a sure means of going straight to heaven by doing purgatory on earth." },
+      ]},
+      { pos: "Arrière-garde · 2", posEN: "Rearguard", species: [
+        { n: 47, fr: "Le Cocu porte-bannière", en: "The Banner-Bearer Cuckold", desc: "A fool married to a pretty wife whose credulity, stupidity, ugliness, and avarice provoke a rain of horns. At his appearance, the word 'horns' resounds everywhere and the public elevates him to standard-bearer." },
+        { n: 48, fr: "Le Cocu porte-quenouille", en: "The Distaff-Bearer Cuckold", desc: "Tends the household while the lady goes out to amuse herself. At promenades, she walks ahead with the gallant while he follows behind carrying her handbag and lapdog — less burdened in his arms than on his forehead." },
+      ]},
+      { pos: "Arrière-poste · 1", posEN: "Rear Outpost", species: [
+        { n: 49, fr: "Le Cocu posthume ou des deux mondes", en: "The Posthumous or Two-Worlds Cuckold", desc: "Whose wife bears children 10-12 months after his death. The law awards them to him though he could not have fathered them — cuckold of both worlds, since after bearing horns in this life, more are planted on his coffin." },
+      ]},
+    ]
+  }
+];
+
+const COMPOUND = [
+  { n: 50, fr: "Le Cocu de vocation ou de grâce, cocu quiétiste", en: "The Vocation or Grace Cuckold (Quietist)", desc: "Has by nature what the orthodox has only by training — has never known suspicion, brings to marriage an honest and pure soul, and finds in cuckoldry all the blessings the Constitution promised France: peace, union, concord. The finest paste of cuckold in the fraternity." },
+  { n: 51, fr: "Le Cocu loup-garou", en: "The Werewolf Cuckold", desc: "Makes his house an impregnable fortress, guards more severely than a eunuch around the odalisques, brutalizes not only suitors but all outsiders. But as Philip of Macedon said, no fortress is impregnable if a mule laden with gold can climb to it." },
+  { n: 52, fr: "Le Cocu pédagogue ou précepteur", en: "The Pedagogue or Tutor Cuckold", desc: "Molière's School for Wives — the old man who forms a young innocent destined to share his bed, but another comes along to give better-received lessons. Many philosophers court the mother to marry the daughter." },
+  { n: 53, fr: "Le Cocu vétilleux", en: "The Nitpicking Cuckold", desc: "On some suspicions, perceives in the future an event that is no longer future. He argues with his wife about appearances the public might discuss. She gives reassuring answers. He persists with his good advice, which she graciously accepts — the better to keep his mind at rest and his forehead well-furnished." },
+  { n: 54, fr: "Le Cocu philanthrope ou fraternel", en: "The Philanthropist or Fraternal Cuckold", desc: "Considers men a family of brothers among whom all goods should be common. Good-naturedly raises a troop of children who bear his name but belong to his neighbors — their different fathers' names written on the children's faces." },
+  { n: 55, fr: "Le Cocu à prétention ou avantageux, suffisant", en: "The Pretentious or Self-Important Cuckold", desc: "Believes his wife so honored to have him as husband that she cannot even think of listening to suitors, in whom he sees only unworthy victims. His security makes him a convenient and negligent husband." },
+  { n: 56, fr: "Le Cocu prédicant ou compatissant", en: "The Preaching or Compassionate Cuckold", desc: "Brings his wife the consolations of friendship, paints the sweet charms of virtue. He obtains from her in words and promises as much as the gallants obtain in favors. He triumphs at last — when age drives away all her lovers." },
+  { n: 57, fr: "Le Cocu cosmopolite ou hospitalier", en: "The Cosmopolitan or Hospitable Cuckold", desc: "Whose house resembles an inn, given the number of gallants his wife assembles from every country. They are so numerous that his suspicions cannot settle on any one." },
+  { n: 58, fr: "Le Cocu misanthrope", en: "The Misanthrope Cuckold", desc: "Upon discovering the affair, takes the world in aversion, claims the age is rotten and morals are destroyed. A half-madman, pitiful in his moral jeremiads, who should not have married if he so loathed sharing the fate of so many worthy men." },
+  { n: 59, fr: "Le Cocu enragé, possédé ou maudit", en: "The Enraged, Possessed, or Accursed Cuckold", desc: "The sick jealous man who combines physical and moral disgrace — gout or paralysis prevents him from satisfying and watching over a young wife. Suffering continually in body and spirit, he is truly among the possessed." },
+  { n: 60, fr: "Le Cocu virtuose", en: "The Virtuoso Cuckold", desc: "Passionate about some branch of science or art, befriends all its practitioners. If a music-lover, anyone who plays him a tune on the bagpipes becomes his favorite and gains access to his wife — whom he recommends to their artistic attention." },
+  { n: 61, fr: "Le Cocu délaissé", en: "The Abandoned Cuckold", desc: "A disagreeable man in a mismatched marriage who, after harassing his pretty wife, finds one morning the cage empty and the bird flown, with a divorce summons waiting." },
+  { n: 62, fr: "Le Cocu à toutes sauces", en: "The All-Sauces Cuckold", desc: "Accumulates every dignity of the order. Began as a budding cuckold, then passed through sympathetic, orthodox, bewitched, and all subsequent species — maintaining unalterable serenity throughout. If he dies in time, a court will award him a posthumous child to complete the set." },
+  { n: 63, fr: "Le Cocu d'urgence ou de sauvegarde", en: "The Emergency or Safeguard Cuckold", desc: "Whom a financial crisis or grave danger obliges to close his eyes while his wife's liaisons rescue a failing business, free mortgaged properties, and render other services important enough to make him protect her activities. During the Terror, many such cuckolds saved their heads at the expense of their foreheads." },
+  { n: 64, fr: "Le Cocu escamoté", en: "The Conjured-Away Cuckold", desc: "Whose wife, made pregnant during his absence, delivers furtively with the help of a journey and an honest doctor who fabricates convenient illnesses. He escapes the principal danger — avoids the child and keeps only the horns, which are less costly to maintain." },
+  { n: 65, fr: "Le Cocu prudot ou caméléon", en: "The Prude or Chameleon Cuckold", desc: "Will rail against this very taxonomy, cry offense to morals — a Tartuffe swollen with formulas, bristling with edifying anecdotes, denying well-known liaisons. Typically a hypocrite who courts his servants while preaching principles he believes no more than anyone else." },
+  { n: 66, fr: "Le Cocu judicieux ou de garantie, protococu", en: "The Judicious or Guaranteed Cuckold (Proto-Cuckold)", desc: "The flower of the fraternity. Marries a rich woman by mutual arrangement of liberties. Both know the terms of their bargain and honorably fulfill all conditions: liberty, respect, protection, and reciprocal friendship. Fourier wrote: 'This is the species to which I would aspire if I ever married.'" },
+];
+/* ================= DATA · FOURIER ONLY =================
+   Every entry is taken from Fourier's own text. V2(p) = The Passions of the Human Soul, vol. 2 (1851), page p.
+   Translator's notes and tables in that volume are excluded.                                              */
+const V2=p=>`Fourier, Passions of the Human Soul, vol. 2, p. ${p}`;
+const MX=t=>`Fourier, « ${t} » (tr. in Selections, 1901; marxists.org)`;
+const L2="https://archive.org/details/ThePassionsOfTheHumanSoulAndTheirInfluenceOnSocietyAndCivilizationVolume2";
+const LM=c=>`https://www.marxists.org/reference/archive/fourier/works/${c}.htm`;
+const NODES=[
+/* ---- I · attraction & analogy ---- */
+{id:"attraction",z:"move",t:"move",role:"source",st:"fourier",name:"Attraction passionnée",en:"Passional attraction",
+ gloss:"« Duty proceeds from men, Attraction proceeds from God; if we desire to know the designs of God, we must study Attraction. » Once associates reach about 1,600, the attractions tend to form series of contrasting groups.",src:MX("Of the Role of the Passions"),link:LM("ch01")},
+{id:"serie_nature",z:"move",t:"move",role:"interaction",st:"fourier",name:"The series is God’s order",en:"Kingdoms are ranked in series",
+ gloss:"Naturalists’ tables of the kingdoms already follow it. God distributed animals, vegetables and minerals in one centre and two wings, and the passions tend to develop in the same order.",src:V2("19")},
+{id:"hieroglyph",z:"move",t:"move",role:"frame",st:"fourier",name:"The tree, hieroglyph",en:"of the social world and of the passions",gloss:"Every created type is a portrait of a passional effect. The cat and the felines are « portraits which are offensive by their faithfulness ».",src:V2("185, 262")},
+{id:"nombres",z:"move",t:"move",role:"frame",st:"fourier",name:"Three sacred numbers",en:"Three, seven and twelve",eq:"octave = 7 essential + 5 accessory + 1 unison",gloss:"The passional gamut is analogous to the musical octave: twelve sounds, seven decided, five accidental; the thirteenth repeats the first.",src:V2("197, 235, 312")},
+{id:"unite_uniform",z:"move",t:"move",role:"interaction",st:"fourier",name:"Unity is not uniformity",en:"but the accord of contrasts",gloss:"Nature founds unity of system on a very small number in the material sphere (two bodies, the couple) against a very large one in the spiritual (810 souls).",src:V2("308")},
+{id:"pivotal",z:"move",t:"move",role:"switch",st:"fourier",name:"The pivotal or social movement",en:"diffracts at both extremities",gloss:"Transition takes about one-seventh of a career; subversion about one-eighth of the harmonic portion.",src:V2("413–416")},
+
+/* ---- II · tree ---- */
+{id:"fig_tree",z:"passions",t:"pivot",fig:"tree",wide:true,st:"fourier",name:"L’arbre passionnel direct",en:"The direct tree, first and second powers",
+ gloss:"Trunk: unityism, the love of unity. First power: three primary branches, the foci toward which all men in all ages tend. Second power: the twelve octavian passions, 5 · 4 · 3.",src:V2("196–197")},
+{id:"fig_powers",z:"passions",t:"pivot",fig:"powers",wide:true,st:"fourier",name:"The five powers",en:"Branches counted at each degree",gloss:"« It is useless to extend this analysis of the passional tree to the branches »: Fourier gives only the counts above the second power.",src:V2("202")},
+{id:"unite",z:"passions",t:"pivot",role:"source",st:"fourier",name:"Unityism",en:"Trunk and hyperfocus",gloss:"The tendency to universal unity. It regulates the passions by applying the three distributives, and claims the omnimodal accords, applicable to the whole human race.",src:V2("196, 162")},
+{id:"br_lux",z:"passions",t:"lux",role:"interaction",st:"fourier",name:"Luxism, or sensualism",en:"the desire of luxuries",eq:"5 springs · principle: matter",gloss:"Luxury is internal (health) and external (riches): a perfect ear is useless if the door of the opera is shut to you for want of money.",src:V2("196–197")},
+{id:"br_aff",z:"passions",t:"aff",role:"interaction",st:"fourier",name:"Loveism, or groupism",en:"the desire of groups",eq:"4 springs · principle: God",src:V2("196–197")},
+{id:"br_dis",z:"passions",t:"dis",role:"interaction",st:"fourier",name:"Orderism, or seriism",en:"the desire of series and of the social mechanism",eq:"3 springs · principle: mathematics",
+ gloss:"« In truth the lawgivers of harmony. » Like the driver of a two-horse chariot, they direct the other two classes; left to themselves the horses run away.",src:V2("2–3, 196–197")},
+{id:"animic",z:"passions",t:"pivot",role:"frame",st:"fourier",name:"7 animic · 5 material",en:"The two kinds of octavian notes",gloss:"The four from loveism and the three from seriism are the seven animic; the five from luxism are material.",src:V2("197")},
+{id:"p_gout",z:"passions",t:"lux",role:"source",st:"fourier",name:"1 · Taste",src:V2("197")},
+{id:"p_vue",z:"passions",t:"lux",role:"source",st:"fourier",name:"2 · Sight",src:V2("197")},
+{id:"p_ouie",z:"passions",t:"lux",role:"source",st:"fourier",name:"3 · Hearing",src:V2("197")},
+{id:"p_odorat",z:"passions",t:"lux",role:"source",st:"fourier",name:"4 · Smell",src:V2("197")},
+{id:"p_toucher",z:"passions",t:"lux",role:"source",st:"fourier",name:"5 · Touch-rut",en:"« this last is ambiguous »",src:V2("197")},
+{id:"p_amitie",z:"passions",t:"aff",role:"source",st:"fourier",name:"Friendship",gloss:"In subversion: false friends.",src:V2("44")},
+{id:"p_amour",z:"passions",t:"aff",role:"source",st:"fourier",name:"Love",gloss:"In subversion: false lovers.",src:V2("44")},
+{id:"p_ambition",z:"passions",t:"aff",role:"source",st:"fourier",name:"Ambition",gloss:"Not to be confounded with the cabalist: a man ruining himself to ruin a rival is not ambitious but cabalist. In subversion: swindling associates.",src:V2("13, 23, 44")},
+{id:"p_famillisme",z:"passions",t:"aff",role:"source",st:"fourier",name:"Familism",gloss:"In subversion: avaricious parents.",src:V2("44")},
+{id:"p_cabaliste",z:"passions",t:"dis",role:"source",st:"fourier",name:"10 · The Cabalist",en:"discord · intriguing · dissenting",
+ gloss:"Creates piquant intrigues about the merest trifles, distinguishing tastes by scale or series. « Social salt »: hardly a twelfth of characters can do without cabals. Women have still more ardour for it than men.",src:V2("3–4, 14, 16")},
+{id:"p_papillonne",z:"passions",t:"dis",role:"source",st:"fourier",name:"11 · The Papillon",en:"varying · crossing · alternating",
+ gloss:"The want of variety, relays and contrast in pleasures. Not frivolity: papillonists have gigantic memories. Fourier retains twenty German or Arabic names at one reading and not four French ones.",src:V2("4, 28–31")},
+{id:"p_composite",z:"passions",t:"dis",role:"source",st:"fourier",name:"12 · The Composite",en:"accord · dovetailing · coinciding",
+ gloss:"Exalts pleasures by means of each other; « the voice of God », the foe of reasoning; the most powerful lever of labour. Its enthusiasm cannot last beyond two hours.",src:V2("4–12")},
+
+/* ---- III · characters ---- */
+{id:"fig_gamut",z:"chars",t:"chars",fig:"gamut",wide:true,st:"fourier",name:"Gamme intégrale de l’âme",en:"The 810 characters, by degree",
+ gloss:"Fourier’s own table. Within the 810: five essential degrees (numbered, shaded darker to lighter) and three mixt or neuter ones (lettered, open). The whole gamut has thirteen notes, eight essential and five mixt, as in the octave; the rest are transcendent (next figure).",src:V2("312–313"),link:L2},
+{id:"fig_ladder",z:"chars",t:"chars",fig:"ladder",wide:true,st:"fourier",name:"Transcendent degrees",en:"One couple among how many persons",
+ gloss:"Above the fifth degree characters are transcendent, not needed within one community. The numbers « indicate the quantity of individuals amidst which you may meet a couple of the character ». Degrees 12–17 are Fourier’s marginal note.",src:V2("313, 385")},
+{id:"monogyne",z:"chars",t:"chars",role:"source",st:"fourier",name:"Monogynes",en:"Simple souls · one dominant",eq:"576 of 810",
+ gloss:"« More than two-thirds of the human race », in twelve genera; insipid and uniform even in inconstancy. A monogyne of papillon commits a hundred blunders from the same motive.",src:V2("312, 315")},
+{id:"mixts",z:"chars",t:"chars",role:"switch",st:"fourier",name:"Mixts, or ralliants",en:"The five neuter notes",eq:"dimixt · trimixt · tetramixt · pentamixt · heptamixt",gloss:"Dominants that are inconstant, flickering or occasional. Marginal note on the dimixts: « 88? No, 80; because four binoctaves without ambiguous functions. »",src:V2("312–313")},
+{id:"polygyne",z:"chars",t:"chars",role:"interaction",st:"fourier",name:"Polygynes",en:"Characters of compound gamut",gloss:"The generic name for every degree from digyne to omnigyne.",src:V2("314")},
+{id:"omni",z:"chars",t:"chars",role:"source",st:"fourier",name:"Omnigynes",en:"Seven dominants, affective and distributive",eq:"one couple in ≈ 30,000",
+ gloss:"The most valuable character. Three billion people would give a thousand omnigyne couples, nearly all different in variety.",src:V2("313–314, 384")},
+{id:"damon",z:"chars",t:"chars",role:"frame",st:"fourier",name:"Damon and Aristo",en:"Who is right about love?",
+ gloss:"Damon, faithful to one woman, is right up to about 2,300 in 30,000 — about 1,150 monogyne couples in love. Aristo, who loves seven women at once, is right if his kind, the omnigyne, furnishes two in 30,000. Both are wrong above or below the proportion.",src:V2("311–312")},
+{id:"superdom",z:"chars",t:"chars",role:"switch",st:"fourier",name:"Superdominant",en:"The casting vote",gloss:"Julius Caesar had the papillon as superdominant and dictated four letters at once while writing a fifth.",src:V2("27–28")},
+{id:"biomni",z:"chars",t:"chars",role:"switch",st:"fourier",name:"Bi-potential gamut",en:"The second octave",
+ gloss:"A tri-super-omnigyne couple, the seventeenth degree, among two-and-a-half to three billion: « the passional sovereign of the globe ». The 15th to 17th degrees discover the laws of harmony by inspiration — « and I must necessarily be of this degree ».",src:V2("384–385")},
+{id:"muscles",z:"chars",t:"chars",role:"frame",st:"fourier",name:"810 muscles",en:"The body as sign",gloss:"The 810 characters are represented by the 810 muscles of the human couple, male and female. The spiritual integral is 810; the corporeal, two.",src:V2("308")},
+{id:"integral",z:"chars",t:"chars",role:"storage",st:"fourier",name:"L’âme intégrale",en:"810 contrasted characters",
+ gloss:"« 800,000,000 of men upon the globe, and not one integral soul. » Nero and Robespierre are two brilliant notes of high degree, to be judged only at work in a mechanism of 810.",src:V2("306–307")},
+
+/* ---- IV · groups & series ---- */
+{id:"fig_group",z:"mech",t:"social",fig:"group",wide:true,st:"fourier",name:"Le groupe",en:"Anatomy of a group",
+ gloss:"Seven members is enough: 2 · 3 · 2, the centre doing the most attractive work so it balances the two wings. Nine is perfect: add a pivot and an ambiguous member.",src:MX("The Study of Groups"),link:LM("ch17")},
+{id:"g_false",z:"mech",t:"social",role:"sink",st:"fourier",name:"Groupe faux",en:"The false group",gloss:"Two are false in isolation; civilization made its pivot the most false group of all, the conjugal couple.",src:MX("The Study of Groups")},
+{id:"g_types",z:"mech",t:"social",role:"interaction",st:"fourier",name:"Simple · compound · bastard",en:"Kinds of bond",gloss:"A pure compound joins a pleasure of the soul to one of the senses; two spiritual bonds make only a bastard compound.",src:MX("The Study of Groups")},
+{id:"fig_series",z:"mech",t:"social",fig:"series",wide:true,st:"fourier",name:"La série",en:"Groups ranked by nuance",
+ gloss:"Groups in ascending wing, centre and descending wing. Each group intrigues for its variety and against the two contiguous ones; contrasted groups ally. At least 3 groups.",src:MX("The Passionate Series")+" · "+V2("20, 24"),link:LM("ch18")},
+{id:"pears",z:"mech",t:"social",role:"producer",st:"fourier",name:"The bury pears",en:"Fourier’s worked example",gloss:"Four groups cabal for the blond, grey, brown and green bury pear. If a fruit yields a hundred varieties and thirty suit the district, its growers form a series of thirty groups.",src:V2("20, 24")},
+{id:"trinaire",z:"mech",t:"social",role:"frame",st:"fourier",name:"Trinary division",en:"Two opposed genera and one mixed",eq:"Cabalist · Papillon · Composite = Disagreement · Alternation · Accord",gloss:"The counterpoise found in all series, measured and free.",src:V2("18")},
+{id:"partis",z:"mech",t:"social",role:"frame",st:"fourier",name:"3 genera · 9 species",en:"How any assembly divides",gloss:"The Assembly of ’89: ultra, mild and shuffling royalists; half-royalist, firm and half-demagogue constitutionals; mild, decided and ultra demagogues. « The number three is tabular, and not strictly necessary. »",src:V2("17–18")},
+{id:"composite_k",z:"mech",t:"social",role:"interaction",st:"fourier",name:"Composite: crossed · bastard · multiple",gloss:"Crossed joins soul and senses; bastard joins two of one kind, useful as interlude; multiple piles up several of each.",src:V2("5–6, 10")},
+{id:"papillon_k",z:"mech",t:"social",role:"interaction",st:"fourier",name:"Papillon: 2 species × 2 modes",eq:"contrasted · identical × gradative · improvised",gloss:"Contrasted: sybarites eating milk and black bread from earthen vessels. Improvised: the unannounced feast in the forest doubles the pleasure.",src:V2("32–34")},
+{id:"cabale_k",z:"mech",t:"social",role:"interaction",st:"fourier",name:"Cabalist: harmonic · subversive",gloss:"Harmonic: manufacturers competing to perfect an article. Subversive: merchants underselling to ruin each other — since 1789 their number has tripled for the same trade.",src:V2("21–22")},
+{id:"fig_day",z:"mech",t:"social",fig:"day",wide:true,st:"fourier",name:"A day in harmony",en:"Fourier’s own table",gloss:"Eight sessions, five meals, the Exchange, amusements till eleven. Some times are illegible in the scan and are placed by their order in the table. « Varied in a thousand ways on other days. »",src:V2("47–48"),link:L2},
+{id:"plaisirs",z:"mech",t:"social",role:"storage",st:"fourier",name:"Minimum of pleasures",en:"The poorest harmonian, every day",eq:"7 composite sessions · 5 simple as reliefs · 1 parcours",gloss:"Of twelve sessions: a third with the papillon for tonic, a third with the cabalist, a third with the composite.",src:V2("9, 32")},
+{id:"parcours",z:"mech",t:"social",role:"transaction",st:"fourier",name:"Parcours",en:"Hylas’s morning",gloss:"A postilion from the phalanx of Tibur reaches Lucretile at ten, reads the programme of sixty group-sessions, and spends half an hour each with the tulipists, the green-house and the green bury pears.",src:V2("48–50")},
+{id:"fig_scale",z:"mech",t:"social",fig:"scale",wide:true,st:"fourier",name:"Thresholds of association",en:"The numbers on one scale",src:MX("The Study of Groups")+" · "+MX("The Passionate Series")},
+{id:"menage",z:"mech",t:"social",role:"sink",st:"fourier",name:"The household",en:"One woman, 300 groups’ work",eq:"10–12 genera · 30–40 species · 100–120 varieties · 300–400 shades",src:V2("20–21")},
+{id:"travail",z:"mech",t:"social",role:"producer",st:"fourier",name:"Attractive labour",en:"Seven conditions",
+ eq:"dividends, not wages · shares by capital, labour, talent · ~8 sessions a day · bands of friends in rivalry · elegant workshops · labour divided to the last degree · free choice",src:MX("Attractive Labour"),link:LM("ch26")},
+{id:"perdue",z:"mech",t:"social",role:"sink",st:"fourier",name:"The lost secret",en:"Series existed in the first ages",gloss:"They became disorganized for want of the great agricultural and manufacturing industry needed to support them.",src:V2("51")},
+
+/* ---- V · phalanx ---- */
+{id:"fig_plan",z:"phal",t:"social",fig:"plan",wide:true,st:"fourier",name:"The phalanstery",en:"Schematic",gloss:"One wing contains the caravanserai, with its ball-rooms, so strangers do not encumber the centre.",src:MX("The Phalanstery")+" · "+V2("49"),link:LM("ch27")},
+{id:"phalange",z:"phal",t:"social",role:"storage",st:"fourier",name:"The phalanx",en:"≈ 1,500–1,600 · one square league",gloss:"Graduated in fortune, age, character and knowledge. At least seven-eighths cultivators and manufacturers.",src:MX("The Phalanstery")},
+{id:"canton",z:"phal",t:"social",role:"switch",st:"fourier",name:"Trial phalanx",gloss:"Hilly, watered, near a forest, near but not too near a city — like Lausanne, never flat like Antwerp.",src:MX("The Phalanstery")},
+{id:"fig_partage",z:"phal",t:"social",fig:"partage",wide:true,st:"fourier",name:"Division of profit",gloss:"The three industrial unities: capital, labour, talent. A child of 4½ has its own account.",src:MX("Administrative Institutions and Practices")+" · "+V2("43"),link:LM("ch23")},
+{id:"fig_shares",z:"phal",t:"social",fig:"shares",st:"fourier",name:"1,728 shares",eq:"1,728 = 12³",gloss:"Issued by the regency against land, buildings, flocks and workshops.",src:MX("Administrative Institutions and Practices")},
+{id:"fig_gastro",z:"phal",t:"social",fig:"gastro",wide:true,st:"fourier",name:"Dining classes",en:"In a phalanx of 1,500",gloss:"Five cooking series, one for the animals.",src:MX("Administrative Institutions and Practices")},
+{id:"minimum",z:"phal",t:"social",role:"storage",st:"fourier",name:"The minimum",eq:"5 meals a day · clothing · tools · a room",src:MX("Administrative Institutions and Practices")},
+{id:"regence",z:"phal",t:"social",role:"switch",st:"fourier",name:"Regency",gloss:"Shareholders most distinguished by capital and knowledge.",src:MX("Administrative Institutions and Practices")},
+{id:"areopage",z:"phal",t:"social",role:"switch",st:"fourier",name:"Areopagus",gloss:"It indicates, never orders: it may declare the weather fit for mowing, and each series decides.",src:MX("Administrative Institutions and Practices")},
+{id:"fig_exchange",z:"phal",t:"social",fig:"exchange",wide:true,st:"fourier",name:"The Exchange",en:"Every evening",gloss:"About 1,200 people, twenty sessions each: 24,000 transactions settled in half an hour.",src:MX("The Exchange"),link:LM("ch24")},
+{id:"posting",z:"phal",t:"social",role:"transaction",st:"fourier",name:"The postilion",gloss:"Horses put to in a closed, warmed porch; a fur coat in cold; friends at the next station. « What is meant in harmony by enjoying himself? It is to work. »",src:V2("48")},
+
+/* ---- VI · choirs & ages ---- */
+{id:"fig_choirs",z:"tribes",t:"social",fig:"choirs",wide:true,st:"fourier",name:"32 choirs, 32 planets",en:"Fourier’s table of the phalanx",
+ gloss:"The division of a phalanx into thirty-two choirs and sixteen semi-choirs, analogous to the thirty-two planets. Choirs 2–13 (major) and 18–29 (minor) are the choirs of octave. Only the planets Fourier names in the table are shown.",src:V2("267–268"),link:L2},
+{id:"fig_life",z:"tribes",t:"social",fig:"life",wide:true,st:"fourier",name:"One shape, three scales",en:"A life, a day, a globe",gloss:"Each career has subversions and transitions at its limits around an ascending and descending vibration. A life is divided into sixteen ages, eight ascending and eight descending.",src:V2("413, 417")},
+{id:"teeth",z:"tribes",t:"social",role:"frame",st:"fourier",name:"Sixteen pair of teeth",gloss:"The sixteen tribes and thirty-two choirs are typified by the sixteen pair of teeth; the hyoid bone typifies the regency, or focus.",src:V2("308")},
+{id:"parade",z:"tribes",t:"social",role:"frame",st:"fourier",name:"The phalanx on parade",gloss:"Sixteen tribes, thirty-two choirs, each with its colour and banner.",src:MX("The Phalanx on Parade: Its Sixteen Tribes"),link:LM("ch25")},
+{id:"unites",z:"tribes",t:"social",role:"frame",st:"fourier",name:"Three sexual unities",eq:"men · women · children",gloss:"The balance of influence between them — counted for nothing in civilization.",src:V2("43")},
+{id:"hordes",z:"tribes",t:"social",role:"producer",st:"fourier",name:"Little hordes",gloss:"First session of the day, three to four-thirty in the morning, at the stables.",src:V2("47")},
+{id:"vestal",z:"tribes",t:"social",role:"switch",st:"fourier",name:"The vestal court",gloss:"One of the motives of early rising: in harmony you must be ill to stay in bed after four.",src:V2("112")},
+
+/* ---- VII · career of the globe ---- */
+{id:"fig_career",z:"periods",t:"time",fig:"career",wide:true,st:"fourier",name:"Characteristic scale of the social movement",en:"32 periods, by character",
+ gloss:"Bar height = character of the period: diffraction, subversion, transition, mono-harmony, bi-harmony. Fourier warns it « differs widely » from his division of the 32 periods into four phases.",src:V2("417"),link:L2},
+{id:"per1",z:"periods",t:"time",role:"storage",st:"fourier",name:"1 · Eden",en:"Confused intellectual association",src:V2("2")},
+{id:"per2",z:"periods",t:"time",role:"storage",st:"fourier",name:"2 · Savageism",gloss:"The savage gains his fish and game in the sweat of his brow.",src:V2("2")},
+{id:"per3",z:"periods",t:"time",role:"storage",st:"fourier",name:"3 · Patriarchism",src:V2("2")},
+{id:"per4",z:"periods",t:"time",role:"storage",st:"fourier",name:"4 · Barbarism",src:V2("2")},
+{id:"per5",z:"periods",t:"time",role:"switch",st:"fourier",name:"5 · Civilization",gloss:"With 2–4 one of the « philosophical limbos ».",src:V2("2, 417")},
+{id:"per6",z:"periods",t:"time",role:"switch",st:"fourier",name:"6 · Half-association, guaranteeism",gloss:"Already pleasure combined with labour.",src:V2("2")},
+{id:"per7",z:"periods",t:"time",role:"switch",st:"fourier",name:"7 · Simple mutilated harmony",src:V2("2")},
+{id:"per8",z:"periods",t:"time",role:"source",st:"fourier",name:"8 · Compound diverging harmony",src:V2("2")},
+{id:"per9",z:"periods",t:"time",role:"source",st:"fourier",name:"9 · Compound converging association",src:V2("2")},
+{id:"extremes",z:"periods",t:"time",role:"switch",st:"fourier",name:"Initial and final worlds",eq:"two « centuries » of 144 years = 288 years",gloss:"Humanity issued happy from the hands of God and re-enters his bosom happy; periods 1 and 32 are in contact, like the ends of a circle.",src:V2("417–418")},
+{id:"career80",z:"periods",t:"time",role:"storage",st:"fourier",name:"A career of 80,000 years",gloss:"Transitions intervene « in a career of 80,000 years as in one of 80 days ».",src:V2("437")},
+
+/* ---- VIII · aromal system ---- */
+{id:"aromal",z:"cosmos",t:"cosmos",role:"source",st:"fourier",name:"The aromal movement",gloss:"Fourier knows only the alphabet of astronomy, « but I know besides that, the alphabet of the laws of the aromal movement, entirely unknown to the astronomers ». He interprets the tulip and the lily; 200, 2,000 and 20,000 others remain.",src:V2("252, 264")},
+{id:"types",z:"cosmos",t:"cosmos",role:"transaction",st:"fourier",name:"Created types by star",eq:"sun → orange tree, oak · Mercury → rose, peach",gloss:"Types of brilliant or useful properties come from the sun; wonderful and enchanting ones from the major favourite, or vestal star, Mercury.",src:V2("262")},
+{id:"sun",z:"cosmos",t:"cosmos",role:"source",st:"fourier",name:"The sun",en:"Focus of luxury and light",gloss:"Not reckoned in the movement of the thirty-two; in the table of choirs it is the Areopagus, major and minor.",src:V2("267–268")},
+{id:"moons",z:"cosmos",t:"cosmos",role:"sink",st:"fourier",name:"The earth’s lost moons",gloss:"The earth is for a time dismantled of four of its moons. Our moon is « only a mummy of temporary service » and will be replaced by Vesta. Phoebe is a dead planet, without atmosphere, its seas swallowed.",src:V2("267–268")},
+{id:"aurora",z:"cosmos",t:"cosmos",role:"producer",st:"fourier",name:"Aurora borealis",en:"Diffraction in matter",gloss:"Light generated from the excess of darkness, cutting the polar night — as diffraction binds the extremes of every movement to harmony.",src:V2("416")},
+{id:"metem",z:"cosmos",t:"cosmos",role:"storage",st:"fourier",name:"Metempsychosis",gloss:"The descending subversion of a life: inhumation, decomposition of the body, metempsychosis of the soul. Gestation is its ascending subversion.",src:V2("414")},
+{id:"omniarch",z:"cosmos",t:"cosmos",role:"switch",st:"fourier",name:"Passional omniarchs",gloss:"With the globe at its highest complement, about five billions, its ultimate focus is a couple of the seventeenth degree.",src:V2("153")},
+
+/* ---- IX · civilization, subversive ---- */
+{id:"egoism",z:"civ",t:"time",role:"sink",st:"fourier",name:"The subversive tree",en:"Trunk: egoism",eq:"luxism → counter-luxism · familism → familish",
+ gloss:"Every passion has its caterpillar and its butterfly. In the dark limbos the passions are a compression of the soul, like roots running the sap in an inverse sense. Family spirit is « refined egoism ».",src:V2("207–209")},
+{id:"subversif",z:"civ",t:"time",role:"sink",st:"fourier",name:"Distributives in subversion",eq:"composite → collision · papillon → conflict · cabalist → divergence",
+ gloss:"Collision: two who despise each other unite for profit. Conflict: owner, thief and police, three unproductive functions. Divergence: the man who borrows to live in splendour.",src:V2("44–46")},
+{id:"incompressible",z:"civ",t:"time",role:"sink",st:"fourier",name:"Incompressible passions",gloss:"« Our passions are incompressible; they must have their way in good or in evil. » Every passion has a twofold development, harmonic and subversive.",src:V2("13, 22")},
+{id:"fleaux",z:"civ",t:"time",role:"sink",st:"fourier",name:"The seven scourges",en:"in permanence",gloss:"The general result of discord between nations, provinces, towns, families and members of one family — and so collective and individual egoism.",src:V2("188")},
+{id:"limbos",z:"civ",t:"time",role:"sink",st:"fourier",name:"Philosophical limbos",en:"Periods 2–5",src:V2("417")},
+{id:"bank",z:"civ",t:"bank",role:"sink",st:"fourier",name:"Hierarchy of bankruptcy",en:"Feature 31 of the crimes of trade",eq:"a free series · 3 orders · 9 genera · 36 species",
+ gloss:"« The number of bankruptcy genera which I have collected here can easily be doubled. » Drawn below in its own wings and centre.",src:MX("Hierarchy of Bankruptcy")+" (via Engels, 1845)",link:LM("ch29")},
+{id:"cuck",z:"civ",t:"cuck",role:"sink",st:"fourier",name:"Hierarchy of cuckoldry",en:"« en quarré dédoublé »",eq:"66 species in the manuscript",gloss:"Arranged 1·2·3·4·5·6·7·6·5·4·3·2·1, with outposts, wings, flanks and a centre, then an order of compound species.",src:"Fourier, Hiérarchie du cocuage, manuscript, ed. Maublanc",link:"https://classiques.uqam.ca/classiques/fourier_charles/hierarchie_du_cocuage/hierarchie_du_cocuage.html"},
+{id:"cornus",z:"compound",t:"cuck",role:"sink",st:"fourier",name:"Cornus · Cornettes · Cornards",en:"The three classes of the square"},
+{id:"compose",z:"compound",t:"cuck",role:"sink",st:"fourier",name:"Ordre composé",en:"№ 50–66, outside the square"},
+];
+/* the bankruptcy series, from Fourier's own list */
+const BANKCOLS=[
+ {wing:"RIGHT OR ASCENDING WING · light hues",g:"I · The Innocent",sp:[[1,"Child","A greenhorn’s first prank; « youth counts on your indulgence »."],[2,"Dare-devil","Beginners playing double or quits, then flight."],[3,"Stealthy","« A small arrangement »: 25 per cent off, and it is not called bankruptcy."],[4,"Posthumous","Adjudged after death; the widow’s defalcations are charged to the deceased."]]},
+ {g:"II · The Honourable",sp:[[5,"Goose","Hands everything over; mocked for not feathering his nest."],[6,"Ecstatic","Thinks himself dishonoured; sometimes shoots himself."],[7,"Unprincipled","Lets justice intervene and strip him."]]},
+ {g:"III · The Seductive",sp:[[8,"Amiability","Sweet as honey; begs the creditors to take 50 per cent to spare them the law."],[9,"De bon ton","Liked in refined society; up to 60 per cent is easily composed."],[10,"Amorous","That of pretty ladies; it is not decent to complain."],[11,"By favour","Steals only 40 per cent and gives security for the rest: « a real favour »."],[12,"Sentimental","Pays in floods of feeling and eulogies of your virtue."]]},
+ {wing:"CENTRE · grandiose hues",g:"IV · The Tacticians",sp:[[13,"Fat","Banker Dorante loses his own two million and keeps four of the public’s."],[14,"Cosmopolitan","A series of bankruptcies across several kingdoms."],[15,"Hopeful","Running a house at eighteen, bankrupt by twenty."],[16,"Transcendent","Thirty clerks, ships everywhere, a crash echoing round the world; at least three-quarters lost."],[17,"Graded","Seven or eight in succession; titled Knight, Prince, King, Emperor."]]},
+ {g:"V · The Manoeuvrers",sp:[[18,"Running fire","One house undersells, absconds, and six rivals fall in chain."],[19,"Close-column","Masses fail together so opinion is confused."],[20,"Marching-in-file","Each fails when the last has settled its composition."],[21,"Skirmisher","Small retail failures open and close the campaign."]]},
+ {g:"VI · The Agitators",sp:[[22,"In grand style","Takes the savings of servants and small people; a whole town involved."],[23,"Large-scale","An obscure upstart with no funds matches the bankers."],[24,"Attila","Orleans, 1810: a deficit of 16 million lays the town waste."]]},
+ {wing:"LEFT OR DESCENDING WING · dirty hues",g:"VII · The Cunning Sneakers",sp:[[25,"Compensation","Loses a 100,000-franc lawsuit today, fails for 200,000 tomorrow."],[26,"Out of rank","Puts 300,000 aside to earn 200,000, a third in hand-outs."],[27,"Crescendo","30, then 50, then 80–90 per cent, by acts."],[28,"Godly","Holds the canopy cord at processions; 90 per cent lost."]]},
+ {g:"VIII · The Bunglers",sp:[[29,"Fools’","Landowners lured into trade by fashionable catchwords."],[30,"Invalids’","Eighty, a bachelor with two million, still huckstering."],[31,"Crushing","Rivals ruining themselves to ruin each other."],[32,"Swinish","Ruins himself, his wife and children, against the principles."]]},
+ {g:"IX · The False Brothers",sp:[[33,"Villains’","Petty thefts that make the neighbourhood say « hang him »."],[34,"Gallows-bird","Scapin steals 30,000 of 40,000 and threatens the creditors with justice."],[35,"Fugitive","Bolts by night before rent day."],[36,"For fun","A comic actor offers three per cent; the public laughs."]]},
+];
+BANKCOLS.forEach(c=>{c.ids=c.sp.map(s=>"b"+s[0]);c.sp.forEach(([n,nm,d])=>NODES.push({id:"b"+n,z:"bankform",t:"bank",st:"fourier",name:`${n} · ${nm} bankruptcy`,meta:c.g,gloss:d}))});
+/* species, generated from the verbatim dataset */
+const POSCOLS=[];
+SIMPLE.forEach(c=>c.positions.forEach(p=>{
+  POSCOLS.push({cls:c.className,pos:p.pos,posEN:p.posEN,ids:p.species.map(s=>"s"+s.n)});
+  p.species.forEach(s=>NODES.push({id:"s"+s.n,z:"formation",t:"cuck",st:"fourier",name:`№ ${s.n} · ${s.fr}`,en:s.en,
+    meta:`${c.className} · ${p.posEN}`,gloss:s.desc}));
+}));
+COMPOUND.forEach(s=>NODES.push({id:"s"+s.n,z:"compound",t:"cuck",st:"fourier",name:`№ ${s.n} · ${s.fr}`,en:s.en,meta:"Ordre composé",gloss:s.desc}));
+
+/* ================= RELATIONS — each states a link made in Fourier's text ================= */
+const REL=[
+ ["attraction","serie_nature","lead"],["attraction","unite","lead"],["serie_nature","fig_series","analogy"],
+ ["hieroglyph","fig_tree","analogy"],["nombres","fig_tree","analogy"],["nombres","fig_gamut","analogy"],["unite_uniform","muscles","lead"],["pivotal","fig_life","lead"],
+ ["unite","fig_tree","lead"],["fig_tree","br_lux","lead"],["fig_tree","br_aff","lead"],["fig_tree","br_dis","lead"],["fig_tree","fig_powers","lead"],["fig_tree","animic","lead"],
+ ["br_lux","p_gout","lead"],["br_lux","p_vue","lead"],["br_lux","p_ouie","lead"],["br_lux","p_odorat","lead"],["br_lux","p_toucher","lead"],
+ ["br_aff","p_amitie","lead"],["br_aff","p_amour","lead"],["br_aff","p_ambition","lead"],["br_aff","p_famillisme","lead"],
+ ["br_dis","p_cabaliste","lead"],["br_dis","p_papillonne","lead"],["br_dis","p_composite","lead"],
+ ["p_cabaliste","trinaire","lead"],["p_papillonne","trinaire","lead"],["p_composite","trinaire","lead"],
+ ["p_composite","composite_k","lead"],["p_papillonne","papillon_k","lead"],["p_cabaliste","cabale_k","lead"],["p_cabaliste","partis","lead"],["p_ambition","cabale_k","lead"],
+ ["br_dis","fig_series","lead"],["br_aff","fig_group","lead"],["p_papillonne","superdom","lead"],
+ /* characters */
+ ["fig_tree","fig_gamut","lead"],["fig_gamut","monogyne","lead"],["fig_gamut","mixts","lead"],["fig_gamut","polygyne","lead"],["polygyne","omni","lead"],
+ ["fig_gamut","fig_ladder","lead"],["omni","fig_ladder","lead"],["fig_ladder","biomni","lead"],["biomni","omniarch","lead"],
+ ["p_amour","damon","lead"],["damon","monogyne","lead"],["damon","omni","lead"],["muscles","fig_gamut","analogy"],["integral","fig_gamut","lead"],["superdom","fig_gamut","lead"],
+ ["integral","phalange","lead"],
+ /* groups & series */
+ ["fig_group","fig_series","lead"],["fig_group","g_false","lead"],["fig_group","g_types","lead"],["composite_k","g_types","analogy"],
+ ["fig_series","pears","lead"],["cabale_k","fig_series","lead"],["trinaire","fig_series","lead"],["partis","trinaire","analogy"],
+ ["composite_k","plaisirs","lead"],["papillon_k","plaisirs","lead"],["plaisirs","fig_day","lead"],["parcours","fig_day","lead"],["pears","parcours","lead"],
+ ["fig_day","fig_exchange","lead"],["fig_series","fig_scale","lead"],["fig_scale","phalange","lead"],["fig_series","travail","lead"],
+ ["g_false","menage","lead"],["menage","fig_series","lead"],["perdue","fig_series","lead"],["per1","perdue","lead"],
+ /* phalanx */
+ ["phalange","fig_plan","lead"],["phalange","canton","lead"],["phalange","fig_partage","lead"],["phalange","fig_shares","lead"],["phalange","fig_gastro","lead"],["phalange","fig_exchange","lead"],
+ ["regence","fig_shares","lead"],["regence","minimum","lead"],["areopage","fig_exchange","lead"],["posting","parcours","lead"],["travail","fig_partage","lead"],["unites","fig_partage","analogy"],
+ /* choirs & ages */
+ ["fig_choirs","teeth","analogy"],["fig_choirs","parade","lead"],["sun","fig_choirs","analogy"],["areopage","fig_choirs","lead"],["regence","teeth","analogy"],
+ ["fig_life","fig_career","analogy"],["hordes","fig_day","lead"],["vestal","fig_choirs","lead"],["types","vestal","analogy"],["unites","fig_gastro","lead"],["unites","fig_choirs","lead"],
+ /* career */
+ ["fig_career","per1","lead"],["per1","per2","lead"],["per2","per3","lead"],["per3","per4","lead"],["per4","per5","lead"],["per5","per6","lead"],["per6","per7","lead"],["per7","per8","lead"],["per8","per9","lead"],
+ ["extremes","fig_career","lead"],["career80","fig_career","lead"],["aurora","extremes","analogy"],["metem","fig_life","lead"],
+ /* aromal */
+ ["aromal","types","lead"],["aromal","moons","lead"],["aromal","sun","lead"],["hieroglyph","aromal","lead"],
+ /* civilization */
+ ["fig_tree","egoism","analogy"],["br_dis","subversif","lead"],["incompressible","subversif","lead"],["incompressible","egoism","lead"],
+ ["subversif","fleaux","lead"],["egoism","fleaux","lead"],["per5","limbos","lead"],["limbos","egoism","lead"],
+ ["cabale_k","bank","lead"],["subversif","bank","lead"],["g_false","cuck","lead"],["p_amour","cuck","lead"],
+ ["bank","b1","lead"],["bank","b13","lead"],["bank","b25","lead"],["fig_series","bank","analogy"],["fig_series","cuck","analogy"],
+ ["cuck","cornus","lead"],["cuck","compose","lead"],["cornus","s1","lead"],["cornus","s16","lead"],["cornus","s35","lead"],["compose","s50","lead"],
+ ["s35","s50","lead"],["s1","s62","lead"],["s16","s62","lead"],["s30","s62","lead"],["s35","s62","lead"],["s49","s62","lead"],["s63","bank","lead"],
+];
+for(let i=0;i<POSCOLS.length-1;i++){const a=POSCOLS[i].ids,b=POSCOLS[i+1].ids;REL.push([a[a.length-1],b[0],"lead"])}
+for(let i=0;i<BANKCOLS.length-1;i++){const a=BANKCOLS[i].ids,b=BANKCOLS[i+1].ids;REL.push([a[a.length-1],b[0],"lead"])}
+
+const GLOSS=[
+ ["Attraction","The drive God gives; its study reveals his designs."],
+ ["Unityism","Trunk of the passional tree; tendency to universal unity."],
+ ["Luxism · groupism · seriism","The three primary branches."],
+ ["Octavian passions","The twelve radical notes of the gamut."],
+ ["Monogyne · polygyne · omnigyne","One dominant; several; seven."],
+ ["Mixt, ralliant","A character with inconstant dominants."],
+ ["Superdominant","The dominant with the casting vote."],
+ ["Group","Associates sharing a taste for one function."],
+ ["Series","Groups ranked by nuance, in wings and centre."],
+ ["Parcours","A rapid succession of unexpected pleasures."],
+ ["Vortex","A phalanx seen as a passional organism."],
+ ["Diffraction","Light from excess of darkness; the extremes of a career."],
+ ["Subversion · transition","The limits of every career."],
+ ["Limbo","The obscure periods, 2–5 and 28–31."],
+ ["Counter-march","Passions running in the inverse sense."],
+ ["Civilizee · harmonian","The people of period 5; of harmony."],
+];
+const SOURCES=[
+ ["The Passions of the Human Soul, vol. 2","London: Baillière, 1851. Translated with annotations by Hugh Doherty. Cited as “vol. 2, p.”; the translator’s notes and his age table are not used."],
+ ["Selections from the Works of Fourier","tr. Julia Franklin, 1901, and other translations of Fourier on marxists.org: The Study of Groups, The Passionate Series, The Phalanstery, Administrative Institutions and Practices, The Exchange, The Phalanx on Parade, Attractive Labour, Of the Role of the Passions."],
+ ["Hierarchy of Bankruptcy","from Fourier’s On Trade and Théorie des quatre mouvements, as translated by Engels (1845)."],
+ ["Hiérarchie du cocuage","Fourier’s manuscript, ed. Maublanc (UQAC digital edition). English glosses of the species are paraphrases."],
+];
+/* ================= ENGINE v2 (agentic-entropy system + data figures) ================= */
+const NS='http://www.w3.org/2000/svg', svg=document.getElementById('map');
+const byId={};NODES.forEach(n=>byId[n.id]=n);
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const TYPEC={move:'#1f4fa8',pivot:'#a0740a',lux:'#db2777',aff:'#0a6f8f',dis:'#7b3fa0',chars:'#0f766e',
+  social:'#2b8a3e',time:'#57612a',cosmos:'#c2410c',bank:'#8b5a2b',cuck:'#b0263a'};
+const TYPEL={move:'attraction & analogy',pivot:'unityism & the tree',lux:'luxism, the senses',aff:'groupism, the affections',dis:'seriism, the distributives',
+  chars:'characters',social:'groups, series, phalanx',time:'career of the globe & civilization',cosmos:'aromal system',bank:'bankruptcy',cuck:'cuckoldry'};
+const STAT={fourier:'Fourier’s text'};
+const ROLES={source:['Source','supplies attraction'],producer:['Producer','turns attraction into work'],storage:['Storage','holds people, time or records'],
+  interaction:['Interaction','where passions combine'],transaction:['Transaction','an exchange of work, shares or aroma'],
+  switch:['Switch','a transition, gate or governing body'],sink:['Sink','where passion runs subversively'],frame:['Frame','a table, sign or container']};
+function roleGlyph(r){const s='fill="none" stroke="#000" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"';
+  switch(r){
+  case'source':return`<circle r="22" ${s}/><circle r="4" fill="#000"/>`;
+  case'producer':return`<path d="M-24 -18H2A18 18 0 0 1 2 18H-24Z" ${s}/><path d="M-16 0H4" ${s}/>`;
+  case'storage':return`<path d="M-22 -20Q0 -8 22 -20V18H-22Z" ${s}/>`;
+  case'interaction':return`<path d="M-24 -17H8L24 0L8 17H-24Z" ${s}/><path d="M-13 -6L-3 6M-3 -6L-13 6" ${s}/>`;
+  case'switch':return`<rect x="-22" y="-18" width="44" height="36" ${s}/><path d="M-14 8H-4L6 -8H14" ${s}/>`;
+  case'sink':return`<path d="M0 -22V-2M-22 -2H22M-13 7H13M-5 16H5" ${s}/>`;
+  case'transaction':return`<path d="M0 -24L24 0L0 24L-24 0Z" ${s}/><path d="M-9 -3H9M5 -7L9 -3M9 3H-9M-5 7L-9 3" ${s}/>`;
+  case'frame':return`<rect x="-24" y="-18" width="48" height="36" rx="10" ${s} stroke-dasharray="7 5"/>`;
+  }return''}
+
+/* ---------- geometry ---------- */
+const CELL=800,B=150,NC=20,NR=16,W=B*2+NC*CELL,H=B*2+NR*CELL;
+const LET='ABCDEFGHIJKLMNOPQRST';
+const cellR=(c,r,w,h)=>({x:B+c*CELL,y:B+r*CELL,w:w*CELL,h:h*CELL});
+const REG=[
+ {id:'move',t:'I · ATTRACTION ET ANALOGIE',r:cellR(5,0,4,2)},
+ {id:'passions',t:'II · L’ARBRE PASSIONNEL',r:cellR(9,0,6,4)},
+ {id:'chars',t:'III · LA GAMME INTÉGRALE DES CARACTÈRES',r:cellR(15,0,5,4)},
+ {id:'periods',t:'VII · LA CARRIÈRE DU GLOBE',r:cellR(0,2,5,3)},
+ {id:'cosmos',t:'VIII · LE SYSTÈME AROMAL',r:cellR(5,2,4,3)},
+ {id:'mech',t:'IV · GROUPES ET SÉRIES',r:cellR(9,4,6,4)},
+ {id:'phal',t:'V · LA PHALANGE',r:cellR(15,4,5,5)},
+ {id:'tribes',t:'VI · CHŒURS ET ÂGES',r:cellR(0,5,9,3)},
+ {id:'bankform',t:'IX · HIERARCHY OF BANKRUPTCY — A FREE SERIES: RIGHT WING · CENTRE · LEFT WING',r:cellR(0,8,9,2),custom:true},
+ {id:'civ',t:'IX · LA CIVILISATION, DÉVELOPPEMENT SUBVERSIF',r:cellR(9,8,6,2)},
+ {id:'compound',t:'IX · COCUAGE — ORDRE COMPOSÉ',r:cellR(15,9,5,5)},
+ {id:'formation',t:'IX · HIÉRARCHIE DU COCUAGE EN QUARRÉ DÉDOUBLÉ  1 · 2 · 3 · 4 · 5 · 6 · 7 · 6 · 5 · 4 · 3 · 2 · 1',r:cellR(0,10,15,4),custom:true},
+];
+const INS={title:cellR(0,0,5,2),text:cellR(0,14,20,2)};
+const TRUNKS=[['move','passions','mech','phal'],['periods','civ','formation']];
+/* ---------- text helpers ---------- */
+const mctx=document.createElement('canvas').getContext('2d');
+function wrap(s,font,w){mctx.font=font;const ws=String(s).split(/\s+/);const out=[];let cur='';for(const x of ws){const t=cur?cur+' '+x:x;if(mctx.measureText(t).width>w&&cur){out.push(cur);cur=x}else cur=t}if(cur)out.push(cur);return out}
+function TX(p,x,y,s,font,fill,extra={}){const e=el('text',Object.assign({x,y,style:`font:${font};fill:${fill||'#141414'}`},extra),p);e.textContent=s;return e}
+
+/* ================= FIGURES =================
+   Each draws into g at (0,0), width w, text scale k; returns its height.
+   Black marks; colour only where it repeats the branch key of the lines.        */
+const F_=k=>({s:`${20*k}px "Barlow Condensed", sans-serif`,b:`700 ${21*k}px "Barlow Condensed", sans-serif`,
+  i:`italic ${19*k}px "Barlow Condensed", sans-serif`,big:`800 ${30*k}px "Barlow", sans-serif`,n:`italic ${24*k}px "EB Garamond", serif`});
+function fT(g,x,y,s,font,anchor='start',fill='#000'){if(g)TX(g,x,y,s,font,fill,{'text-anchor':anchor})}
+function fR(g,x,y,w,h,a={}){if(g)el('rect',Object.assign({x,y,width:Math.max(0,w),height:Math.max(0,h),fill:'#000'},a),g)}
+function fL(g,x1,y1,x2,y2,a={}){if(g)el('path',Object.assign({d:`M${x1} ${y1}L${x2} ${y2}`,stroke:'#000','stroke-width':2.4,fill:'none'},a),g)}
+function fC(g,x,y,r,a={}){if(g)el('circle',Object.assign({cx:x,cy:y,r,fill:'#000'},a),g)}
+function fP(g,d,a={}){if(g)el('path',Object.assign({d,stroke:'#000','stroke-width':2.4,fill:'none'},a),g)}
+const BRC={lux:'#db2777',aff:'#0a6f8f',dis:'#7b3fa0'};
+
+const FIG={
+ tree(g,w,k){const f=F_(k),H=w*.62,cx=w/2,base=H-40*k;
+   fP(g,`M${cx-10*k} ${base}L${cx-6*k} ${H*.56}L${cx+6*k} ${H*.56}L${cx+10*k} ${base}Z`,{fill:'#000',stroke:'none'});
+   fT(g,cx,base+30*k,'UNITYISM · the trunk',f.b,'middle');
+   const br=[['lux',1/6,'luxism · 5',P5],['aff',.5,'groupism · 4',P4],['dis',5/6,'seriism · 3',P3]];
+   br.forEach(([b,fx,lab,leaves])=>{const tx=w*fx,ty=H*.4,n=leaves.length,span=w*.3*(n-1)/5;
+     fP(g,`M${cx} ${H*.56}C${cx} ${H*.47} ${tx} ${H*.52} ${tx} ${ty}`,{stroke:BRC[b],'stroke-width':9*k});
+     fT(g,tx,ty+44*k,lab,f.b,'middle',BRC[b]);
+     leaves.forEach((nm,i)=>{const lx=tx-span/2+(n>1?i*span/(n-1):0),ly=ty-110*k-(i%2)*60*k;
+       fP(g,`M${tx} ${ty}L${lx} ${ly+10*k}`,{stroke:BRC[b],'stroke-width':3*k});
+       fC(g,lx,ly,10*k,{fill:BRC[b]});fT(g,lx,ly-18*k,nm,f.b,'middle')})});
+   return H+10*k},
+ pop(g,w,k){const f=F_(k),gap=40*k,cw=(w-gap)/2,p=cw/30,r=p*.36,H=27*p+46*k;
+   [['femmes · 810',0],['hommes · 810',cw+gap]].forEach(([lab,x0])=>{fT(g,x0,30*k,lab,f.b);
+     for(let i=0;i<810;i++){const c=i%30,rw=Math.floor(i/30);fC(g,x0+c*p+p/2,46*k+rw*p+p/2,r)}});
+   return H+8*k},
+ degrees(g,w,k){const f=F_(k),rows=[['Monogyne',1],['Digyne',2],['Trigyne',3],['Tétragyne',4],['Pentagyne',5],['… higher degrees',null],['Omnigyne',12]];
+   const lw=190*k,cw=(w-lw-120*k)/12,rh=34*k;let y=10*k;
+   fT(g,lw,y+16*k,'dominant passions lit, of twelve',f.i);y+=30*k;
+   rows.forEach(([nm,n])=>{fT(g,0,y+rh*.7,nm,f.b);
+     for(let i=0;i<12;i++){const x=lw+i*cw;if(n===null){if(i%2===0)fC(g,x+cw/2,y+rh/2,3*k)}else fR(g,x+2,y+4*k,cw-4,rh-8*k,i<n?{}:{fill:'none',stroke:'#000','stroke-width':1.6})}
+     y+=rh});
+   fT(g,w,40*k,'commoner',f.i,'end');fP(g,`M${w-30*k} ${56*k}V${y-20*k}`,{'marker-end':'url(#m_arrow)'});fT(g,w,y,'rarer',f.i,'end');
+   return y+14*k},
+ group(g,w,k){const f=F_(k),rows=[['Transition',1,'ambiguous member'],['Higher wing',2,'intermediates'],['Centre',3,'initiates · most attractive work'],['Lower wing',2,'beginners'],['Pivot',1,'leader']];
+   const rh=46*k,dx=34*k,cx=w*.3;let y=16*k;
+   rows.forEach(([nm,n,d],i)=>{fT(g,cx-110*k,y+rh*.62,nm,f.b,'end');for(let j=0;j<n;j++)fC(g,cx+(j-(n-1)/2)*dx,y+rh/2,11*k,i===0||i===4?{fill:'#fff',stroke:'#000','stroke-width':3}:{});
+     fT(g,cx+90*k,y+rh*.62,d,f.s);y+=rh});
+   fP(g,`M${cx-70*k} ${16*k+rh}V${16*k+rh*4}`,{'stroke-width':3});fT(g,cx-110*k,y+30*k,'7 = 2·3·2 is enough · 9 is perfect',f.i,'start');y+=40*k;
+   const x2=w*.78,y2=40*k;fT(g,x2,y2,'sub-group of 3: a scale',f.b,'middle');
+   fP(g,`M${x2-70*k} ${y2+40*k}H${x2+70*k}M${x2} ${y2+40*k}V${y2+80*k}`,{'stroke-width':3});fC(g,x2-70*k,y2+52*k,11*k);fC(g,x2,y2+30*k,11*k);fC(g,x2+70*k,y2+52*k,11*k);
+   fT(g,x2,y2+130*k,'false group of 2',f.b,'middle');fC(g,x2-24*k,y2+160*k,11*k);fC(g,x2+24*k,y2+160*k,11*k);fP(g,`M${x2-50*k} ${y2+140*k}L${x2+50*k} ${y2+180*k}`,{'stroke-width':3});
+   fT(g,x2,y2+210*k,'e.g. the conjugal couple',f.i,'middle');
+   return Math.max(y+44*k,y2+226*k)},
+ series(g,w,k){const f=F_(k),labs=['trans.','ascending wing','','centre','','','descending wing','','trans.'],n=9,gw=w/n,cy=150*k;
+   const pos=['T','A','A','C','C','C','D','D','T'];
+   for(let i=0;i<n;i++){const x=i*gw+gw/2;for(let j=0;j<7;j++){const a=j/7*Math.PI*2;fC(g,x+Math.cos(a)*14*k,cy+Math.sin(a)*14*k,4.2*k,pos[i]==='T'?{fill:'#fff',stroke:'#000','stroke-width':1.6}:{})}
+     fT(g,x,cy+46*k,'nuance '+(i+1),f.i,'middle');
+     if(i<n-1){const x1=x+22*k,sg=(gw-44*k)/4;fP(g,`M${x1} ${cy}l${sg} ${-8*k}l${sg} ${16*k}l${sg} ${-16*k}l${sg} ${8*k}`,{'stroke-width':1.8})}}
+   [[1,7],[2,6],[1,6],[2,7]].forEach(([a,b],q)=>{const x1=a*gw+gw/2,x2=b*gw+gw/2,h=60*k+q*16*k;fP(g,`M${x1} ${cy-24*k}C${x1} ${cy-24*k-h} ${x2} ${cy-24*k-h} ${x2} ${cy-24*k}`,{'stroke-width':2.4})});
+   fT(g,w/2,26*k,'arcs: contrasted groups ally (sympathy)',f.s,'middle');
+   const yb=cy+80*k;[['transition',0,1],['ascending wing',1,3],['centre',3,6],['descending wing',6,8],['transition',8,9]].forEach(([nm,a,b])=>{fP(g,`M${a*gw+8} ${yb}V${yb+10*k}H${b*gw-8}V${yb}`,{'stroke-width':2});fT(g,(a+b)/2*gw,yb+34*k,nm,f.b,'middle')});
+   fT(g,w/2,yb+64*k,'zigzags: contiguous similar groups rival (antipathy)',f.s,'middle');
+   return yb+80*k},
+ day(g,w,k){const f=F_(k),t0=3,t1=23,sx=h=>(h-t0)/(t1-t0)*w,y=96*k,bh=40*k,my=y+bh+34*k,ty=my+80*k;
+   const W=[[3,4.5,'hordes · stables'],[5,6.5,'mowing'],[6.5,8,'vines'],[8.5,10.5,'small culture · tents'],[11,12.5,'studies or kitchen'],[14,16,'workshops · greenhouses'],[16.5,17.5,'forests'],[18.5,19.5,'watering'],[19.5,21,'the Exchange'],[21.2,23,'plays · ball · gallantry']];
+   const M=[[4.5,'1 · rising'],[8,'2 · breakfast'],[10.6,'interlude'],[13,'3 · dinner'],[18,'4 · tea'],[21,'5 · supper']];
+   W.forEach(([a,b,nm],i)=>{const ex=nm==='the Exchange',am=i===9;fR(g,sx(a)+2,am?y+bh/2-3:y,sx(b)-sx(a)-4,am?6:bh,ex||am?{fill:'#777'}:{});
+     fT(g,(sx(a)+sx(b))/2,y-10*k-(i%3)*24*k,nm,f.s,'middle')});
+   M.forEach(([h,nm],i)=>{const it=nm==='interlude';fC(g,sx(h),my,it?7*k:11*k,it?{fill:'#fff',stroke:'#000','stroke-width':2.4}:{});fT(g,sx(h),my+30*k+(i%2)*22*k,nm,f.i,'middle')});
+   for(let h=t0;h<=t1;h+=2){fL(g,sx(h),ty,sx(h),ty+10*k);fT(g,sx(h),ty+34*k,h+':00',f.s,'middle')}
+   fT(g,0,ty+66*k,'■ work session · grey: Exchange and evening amusements · ● meal · ○ interlude',f.s);return ty+76*k},
+ scale(g,w,k){const f=F_(k),lo=Math.log(2),hi=Math.log(1800),sx=v=>(Math.log(v)-lo)/(hi-lo)*(w-40*k)+20*k,y=120*k;
+   fL(g,sx(2),y,sx(1800),y,{'stroke-width':3});
+   const M=[[2,'false group'],[3,'sub-group'],[7,'group'],[9,'perfect group'],[12,'group + reserve'],[24,'series, minimum'],[40,'series + reserve'],[400,'simple assoc. · 50 series'],[1550,'compound · 400 series'],[1600,'series of contrasting groups form']];
+   M.forEach(([v,l],i)=>{const x=sx(v),up=i%2===0,yy=up?y-18*k-(i%4===0?46*k:0):y+36*k+(i%4===1?46*k:0);fL(g,x,y-10*k,x,y+10*k,{'stroke-width':3});
+     fT(g,x,yy,(v===1550?'1,500–1,600':v.toLocaleString('en'))+' · '+l,f.s,x>w*.8?'end':x<w*.12?'start':'middle')});
+   fT(g,0,y+150*k,'log scale of persons',f.i);return y+160*k},
+ plan(g,w,k){const f=F_(k),H=w*.62,m=20*k,cw=w*.56,ch=H*.3,wx=w*.2,wh=H*.62,cx0=(w-cw)/2;
+   const box=(x,y,ww,hh)=>fR(g,x,y,ww,hh,{fill:'none',stroke:'#000','stroke-width':3});
+   box(cx0,m+40*k,cw,ch);box(m,m+40*k,wx,wh);box(w-m-wx,m+40*k,wx,wh);
+   fT(g,w/2,m+30*k,'winter court (behind)',f.i,'middle');
+   const lines=(x,y,arr,anchor)=>arr.forEach((s,i)=>fT(g,x,y+i*24*k,s,f.s,anchor));
+   fT(g,w/2,m+74*k,'CENTRE · peaceful uses',f.b,'middle');lines(w/2,m+100*k,['dining halls · finance · libraries','temple · tour d’ordre · telegraph','post · chimes · observatory'],'middle');
+   fT(g,m+wx/2,m+74*k,'WING',f.b,'middle');lines(m+wx/2,m+100*k,['workshops','forge','hammer-work','children','music'],'middle');
+   fT(g,w-m-wx/2,m+74*k,'WING',f.b,'middle');lines(w-m-wx/2,m+100*k,['caravansary','ballrooms','outsiders','pay to visit'],'middle');
+   fT(g,w/2,m+40*k+ch+wh*.35,'parade court',f.i,'middle');
+   const rg=`M${m+wx-14*k} ${m+40*k+wh-10*k}V${m+40*k+ch+14*k}H${w-m-wx+14*k}V${m+40*k+wh-10*k}`;
+   fP(g,rg,{'stroke-width':5,'stroke-dasharray':`${12*k} ${8*k}`});fT(g,w/2,m+40*k+ch+40*k,'rue-galerie — heated street-gallery',f.b,'middle');
+   return m+40*k+wh+20*k},
+ partage(g,w,k){const f=F_(k),cw=w/12,y=34*k,h=46*k;[[0,5,'5/12 labour'],[5,4,'4/12 capital'],[9,3,'3/12 talent']].forEach(([a,n,l],q)=>{
+     for(let i=0;i<n;i++)fR(g,(a+i)*cw+2,y,cw-4,h,q===0?{}:q===1?{fill:'#777'}:{fill:'none',stroke:'#000','stroke-width':2.4});fT(g,a*cw,y-10*k,l,f.b)});
+   return y+h+16*k},
+ shares(g,w,k){const f=F_(k),s0=Math.min(w*.5,240*k),n=12,u=s0/n,ox=w/2,oy=20*k+n*u;
+   const iso=(x,y,z)=>[ox+(x-y)*u*.87,oy+(x+y)*u*.5-z*u],ln=(a,b)=>fL(g,a[0],a[1],b[0],b[1],{'stroke-width':1.1});
+   for(let i=0;i<=n;i++){ln(iso(n,i,0),iso(n,i,n));ln(iso(n,0,i),iso(n,n,i));ln(iso(i,n,0),iso(i,n,n));ln(iso(0,n,i),iso(n,n,i));ln(iso(i,0,n),iso(i,n,n));ln(iso(0,i,n),iso(n,i,n))}
+   const lo=iso(n,n,0);fT(g,w/2,lo[1]+34*k,'12 × 12 × 12 shares',f.b,'middle');return lo[1]+44*k},
+ gastro(g,w,k){const f=F_(k),rows=[['3rd class',90],['2nd class',30],['1st class',10],['to order',5]],p=Math.min(22*k,(w-170*k)/45),lw=160*k;let y=30*k;
+   fT(g,0,20*k,'● = 10 members',f.i);
+   rows.forEach(([nm,n])=>{y+=6*k;fT(g,0,y+p*.8,nm+' · '+n*10,f.b);for(let i=0;i<n;i++)fC(g,lw+(i%45)*p+p/2,y+Math.floor(i/45)*p+p/2,p*.36);y+=Math.ceil(n/45)*p+8*k});
+   fT(g,0,y+26*k,'+ a fifth series cooks for the animals',f.i);return y+36*k},
+ exchange(g,w,k){const f=F_(k),R=Math.min(w*.42,300*k),cx=w/2,cy=R+50*k,ang=i=>(i+.5)/24*Math.PI*2-Math.PI/2;
+   fR(g,cx-70*k,cy-26*k,140*k,52*k,{fill:'#fff',stroke:'#000','stroke-width':3});fT(g,cx,cy+7*k,'director · directrice',f.s,'middle');
+   const sec=[0,1,2,3].map(s=>{const a=ang(s*6+2.5);return[cx+Math.cos(a)*R*.55,cy+Math.sin(a)*R*.55]});
+   for(let i=0;i<24;i++){const a=ang(i),x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R,s=sec[Math.floor(i/6)];
+     fL(g,s[0],s[1],x,y,{'stroke-width':1.3});i%2?fR(g,x-10*k,y-10*k,20*k,20*k):fR(g,x-10*k,y-10*k,20*k,20*k,{fill:'#fff',stroke:'#000','stroke-width':2.4})}
+   sec.forEach(([x,y])=>{fL(g,x,y,cx,cy,{'stroke-width':1.3});fC(g,x,y,12*k)});
+   fT(g,0,cy+R+50*k,'■ 12 women · □ 12 men negotiators · ● 4 secretaries, iron wires to 6 each',f.s);return cy+R+64*k},
+ tribes(g,w,k){const f=F_(k),lw=260*k,ax=w-lw-40*k,sx=a=>lw+a/118*ax,rh=26*k;
+   const T=[['complément ascendant',[['Nourrissons',0,1.25],['Poupons',1.3,2.75],['Lutins',2.75,3]]],['transition ascendante',[['Bambins',3,4.5]]],['aileron ascendant',[['Chérubins',4.5,6.5],['Séraphins',6.5,9]]],
+     ['aile ascendante',[['Lycéens',9,12],['Gymnasiens',12,15.5],['Jouvenceaux',15.5,19.5]]],['CENTRE',[['Adolescents',19.5,24],['Formés',24,30],['Athlétiques',30,37],['Virils · Mûrissants',37,45]]],
+     ['aile descendante',[['Raffinés',45,54],['Tempérés',54,64],['Prudents',64,75]]],['aileron descendant',[['Révérends',75,87],['Vénérables',87,100]]],['transition descendante',[['Patriarches',100,106]]]];
+   let y=90*k;
+   fP(g,`M${sx(0)} ${60*k}L${sx(50)} ${14*k}L${sx(100)} ${60*k}`,{'stroke-width':3});fT(g,sx(50),10*k,'vibration: ascending 0–50 · descending 50–100',f.i,'middle');
+   [[15,'puberty'],[85,'decline']].forEach(([a,l])=>{fL(g,sx(a),64*k,sx(a),0+64*k+0,{});fC(g,sx(a),60*k-(a<50?a:100-a)/50*46*k,5*k);fT(g,sx(a),78*k,l,f.i,'middle')});
+   let tribeN=0;
+   T.forEach(([pos,list])=>{fT(g,0,y+rh*.75,pos,pos==='CENTRE'?f.b:f.i);
+     list.forEach(([nm,a,b])=>{const neutral=pos==='complément ascendant';if(!neutral)tribeN++;
+       fR(g,sx(a),y+4*k,Math.max(3,sx(b)-sx(a)-2),rh-8*k,neutral?{fill:'#fff',stroke:'#000','stroke-width':1.6}:{});
+       fT(g,sx(b)+8*k,y+rh*.75,(neutral?'':tribeN+' · ')+nm,f.s);y+=rh})});
+   fT(g,0,y+rh*.75,'complément descendant',f.i);fT(g,sx(0),y+rh*.75,'Malades · Infirmes · Absents — no age',f.s);y+=rh;
+   fT(g,0,y+rh*.75,'PIVOT',f.b);fP(g,`M${sx(0)} ${y+rh/2}H${sx(100)}`,{'stroke-dasharray':`${8*k} ${6*k}`});fT(g,sx(100)+8*k,y+rh*.75,'Régence · Aréopage — any age',f.s);y+=rh+10*k;
+   for(let a=0;a<=100;a+=10){fL(g,sx(a),y,sx(a),y+8*k);fT(g,sx(a),y+30*k,String(a),f.s,'middle')}fT(g,w,y+30*k,'years',f.i,'end');
+   return y+40*k},
+ periods(g,w,k){const f=F_(k),bw=w/32,base=90*k;
+   fP(g,`M0 ${50*k}Q${w*.25} ${-10*k} ${w/2} ${20*k}T${w} ${50*k}`,{'stroke-width':2});fT(g,w/2,14*k,'ascending vibration · descending vibration',f.i,'middle');
+   for(let i=0;i<32;i++){const n=i+1,h=n<5?26*k:n===5?48*k:n<9?10*k:5*k;fR(g,i*bw+2,base-h,bw-4,h)}
+   fT(g,4*bw+bw/2,base+26*k,'5 · now',f.b,'middle');fT(g,7.5*bw,base+26*k,'8 · Harmony',f.s,'middle');fT(g,24*bw,base+26*k,'9–32',f.s,'middle');
+   return base+36*k},
+};
+const P5=['Taste','Sight','Hearing','Smell','Touch-rut'],P4=['Friendship','Love','Ambition','Familism'],P3=['Cabalist','Papillon','Composite'];
+
+Object.assign(FIG,{
+ powers(g,w,k){const f=F_(k),P=[['trunk',1],['1st power',3],['2nd power',12],['3rd power',32],['4th power',134],['5th power',404]],cw=w/6,p=Math.min(cw/22,12*k);let H=0;
+   const col=(i,j)=>i===1?BRC[['lux','aff','dis'][j]]:i===2?BRC[j<5?'lux':j<9?'aff':'dis']:i===0?'#a0740a':'#000';
+   P.forEach(([nm,n],i)=>{const per=Math.min(Math.ceil(Math.sqrt(n*1.4)),Math.floor((cw-8*k)/p)),x0=i*cw+(cw-per*p)/2;for(let j=0;j<n;j++)fC(g,x0+(j%per)*p+p/2,40*k+Math.floor(j/per)*p+p/2,p*.38,{fill:col(i,j)});
+     const hh=Math.ceil(n/per)*p;H=Math.max(H,hh);});
+   P.forEach(([nm,n],i)=>{fT(g,i*cw+cw/2,24*k,n.toLocaleString('en'),f.big,'middle');fT(g,i*cw+cw/2,40*k+H+30*k,nm,f.b,'middle')});
+   fT(g,0,40*k+H+62*k,'colour only where Fourier names the branch; above the 2nd power he gives counts alone',f.i);return 40*k+H+72*k},
+ gamut(g,w,k){const f=F_(k),R=[['1','Monogynes','1 dominant, of whatever kind',576,'e'],['A','Dimixts','2 ralliants; one affectuous, one distributive',80,'m'],['2','Digynes','2 dominant affectives, or one affective and one distributive',96,'e'],['B','Trimixts','3 ralliants, or inconstant dominants',16,'m'],['3','Trigynes','3 dominants; two distributives, one affective',24,'e'],['4','Tetragynes','4 dominants; at least two distributives',8,'e'],['C','Tetramixts','4 inconstant dominants',8,'m'],['5','Pentagynes','5 dominants; four affectives, one distributive',2,'e']];
+   const gw=Math.min(w*.46,560*k),cols=30,p=gw/cols;let idx=0;const shade=['#000','#fff','#4a4a4a','#fff','#8a8a8a','#bdbdbd','#fff','#e2e2e2'];
+   R.forEach((r,ri)=>{for(let j=0;j<r[3];j++){const c=idx%cols,rw=Math.floor(idx/cols);fR(g,c*p+1,20*k+rw*p+1,p-2,p-2,r[4]==='m'?{fill:'#fff',stroke:'#000','stroke-width':1.3}:{fill:shade[ri]});idx++}});
+   const gh=Math.ceil(810/cols)*p;fT(g,0,14*k,'810 characters · one square each',f.i);
+   const tx=gw+40*k;let y=20*k;
+   R.forEach((r,ri)=>{const mk=r[4]==='m'?{fill:'#fff',stroke:'#000','stroke-width':1.6}:{fill:shade[ri],stroke:'#000','stroke-width':1};fR(g,tx,y+6*k,18*k,18*k,mk);
+     fT(g,tx+30*k,y+22*k,`${r[0]} · ${r[1]}`,f.b);fT(g,w,y+22*k,String(r[3]),f.big,'end');const ls=wrap(r[2],f.s,w-tx-130*k);ls.forEach((q,i)=>fT(g,tx+30*k,y+44*k+i*22*k,q,f.s));y+=Math.max(gh/8,40*k+ls.length*22*k)});
+   fL(g,tx,y+4*k,w,y+4*k);fT(g,w,y+36*k,'810',f.big,'end');fT(g,tx,y+36*k,'filled: essential degree · open: mixt, or neuter',f.i);
+   return Math.max(20*k+gh,y+46*k)+10*k},
+ ladder(g,w,k){const f=F_(k),L=[['D · Pentamixt',2432],['6 · Hexagyne',2434],['E · Heptamixt',9728],['7 · Heptagyne',9740],['8 · Omnigyne',29222],['9 · Bi-omnigyne',120000],['10 · Tri-omnigyne',360000],['11 · Tetra-omnigyne',1440000],['12 · Penta-omn.',4320000,1],['13 · Hexa-omn.',17280000,1],['14 · Hepta-omn.',51840000,1],['15 · Sur-omn.',207360000,1],['16 · Bi-sur-omn.',622080000,1],['17 · Tri-sur-omn.',2488320000,1]];
+   const lo=Math.log10(1000),hi=Math.log10(4e9),sx=v=>40*k+(Math.log10(v)-lo)/(hi-lo)*(w-80*k),rh=30*k;let y=30*k;
+   for(let e=3;e<=9;e++){fL(g,sx(10**e),20*k,sx(10**e),30*k+L.length*rh,{stroke:'#bbb','stroke-width':1});fT(g,sx(10**e),16*k,'10'+['³','⁴','⁵','⁶','⁷','⁸','⁹'][e-3],f.s,'middle')}
+   L.forEach(([nm,v,marg])=>{fC(g,sx(v),y+rh/2,8*k,marg?{fill:'#fff',stroke:'#000','stroke-width':2}:{});const right=sx(v)<w*.62;fT(g,sx(v)+(right?16*k:-16*k),y+rh*.7,`${nm} · ${v.toLocaleString('en')}`,f.s,right?'start':'end');y+=rh});
+   fT(g,0,y+26*k,'● in the table · ○ Fourier’s marginal note · persons among whom one couple of that degree is found (log scale)',f.i);return y+36*k},
+ choirs(g,w,k){const f=F_(k),cw=w/16,ch=70*k;
+   const M=[[1,'Infants','Venus'],[2,'Cherubins'],[3,'Seraphins'],[4,'Lyceans'],[5,'Gymnasians'],[6,'Vestalship'],[7,'Adolesc.'],[8,''],[9,''],[10,''],[11,''],[12,''],[13,''],[14,'Venerables','Saturn'],[15,'Reverends','Earth'],[16,'Patriarchs','Proteus']];
+   const Fm=[[17,'Infants','Mars'],[18,'Cherubins'],[19,'Seraphins'],[20,'Lyceans'],[21,'Gymnasians'],[22,'Troubadourship'],[23,'Adolesc.'],[24,''],[25,''],[26,''],[27,''],[28,''],[29,''],[30,'Venerables','Herschel'],[31,'Reverends','Jupiter'],[32,'Patriarchs','Sappho']];
+   const row=(arr,y,lab)=>{fT(g,0,y-12*k,lab,f.b);arr.forEach(([n,nm,pl],i)=>{const oct=(n>=2&&n<=13)||(n>=18&&n<=29);fR(g,i*cw+2,y,cw-4,ch,oct?{fill:'#000'}:{fill:'#fff',stroke:'#000','stroke-width':2});
+     if(g){TX(g,i*cw+cw/2,y+28*k,String(n),f.b,oct?'#fff':'#000',{'text-anchor':'middle',class:'nohalo'});if(nm){const fs=`${Math.min(18*k,cw/(nm.length*.5))}px "Barlow Condensed", sans-serif`;TX(g,i*cw+cw/2,y+54*k,nm,fs,oct?'#fff':'#000',{'text-anchor':'middle',class:'nohalo'})}}if(pl)fT(g,i*cw+cw/2,y+ch+24*k,pl,f.i,'middle')});
+     fP(g,`M${cw*6+4} ${y+ch+8*k}V${y+ch+16*k}H${cw*13-4}V${y+ch+8*k}`,{'stroke-width':2});fT(g,cw*9.5,y+ch+40*k,'adolescents, seven choirs',f.i,'middle')};
+   fT(g,w/2,20*k,'SUN · the major and minor Areopagus · pivot, not reckoned among the 32',f.b,'middle');
+   row(M,70*k,'MAJOR OR MASCULINE CHOIRS');row(Fm,70*k+ch+110*k,'MINOR OR FEMININE CHOIRS');
+   const y2=70*k+2*ch+170*k;fT(g,0,y2,'■ choirs of octave, 2–13 and 18–29 · □ complement · complementary choirs: masculine A B C between Saturn and Jupiter; feminine D E F between Saturn and Herschel',f.s);
+   return y2+14*k},
+ life(g,w,k){const f=F_(k),bh=40*k,lw=150*k,aw=w-lw;const S={sub:{fill:'#7a7a7a'},tr:{fill:'#fff',stroke:'#000','stroke-width':2},vib:{fill:'#000'},dif:{fill:'#fff',stroke:'#000','stroke-width':2,'stroke-dasharray':'4 3'}};
+   const strips=[['A LIFE · years',80,[[0,6,'tr','anterior transition'],[6,50,'vib','ascending vibration'],[50,76,'vib','descending vibration'],[76,80,'tr','posterior transition']],[0,6,50,76,80]],
+     ['A DAY · equinox hours',24,[[0,5,'sub','supra-night'],[5,6,'tr','dawn'],[6,12,'vib','ascending'],[12,18,'vib','descending'],[18,19,'tr','twilight'],[19,24,'sub','infra-night']],[0,5,6,12,18,19,24]],
+     ['THE GLOBE · periods',32,[[0,1,'dif','diff.'],[1,5,'sub','limbos'],[5,7,'tr','trans.'],[7,16,'vib','ascending'],[16,25,'vib','descending'],[25,27,'tr','trans.'],[27,31,'sub','limbos'],[31,32,'dif','diff.']],[0,1,5,7,16,25,27,31,32]]];
+   let y=10*k;strips.forEach(([nm,T,segs,ticks])=>{fT(g,0,y+20*k,nm,f.b);y+=30*k;const sx=v=>v/T*w;
+     segs.forEach(([a,b2,t,l],i)=>{fR(g,sx(a)+1,y,sx(b2)-sx(a)-2,bh,S[t]);mctx.font=f.s;if(g&&mctx.measureText(l).width+12*k<sx(b2)-sx(a))TX(g,(sx(a)+sx(b2))/2,y+bh*.65,l,f.s,t==='vib'||t==='sub'?'#fff':'#000',{'text-anchor':'middle',class:'nohalo'})});
+     ticks.forEach(v=>fT(g,Math.min(Math.max(sx(v),8*k),w-8*k),y+bh+20*k,String(v),f.s,'middle'));y+=bh+40*k});
+   fT(g,0,y+6*k,'■ vibration · ▒ subversion · □ transition · ┅ diffraction · a life also has gestation and metempsychosis as its subversions',f.i);return y+16*k},
+ career(g,w,k){const f=F_(k),bw=w/32,base=150*k,Hh={d:18,s:36,t:60,m:88,b:118};
+   const typ=n=>n===1||n===32?'d':n<=5||n>=28?'s':n<=7||n>=26?'t':n<=9||n>=24?'m':'b';
+   for(let n=1;n<=32;n++){const t=typ(n),h=Hh[t]*k;fR(g,(n-1)*bw+2,base-h,bw-4,h,t==='d'?{fill:'#fff',stroke:'#000','stroke-width':2,'stroke-dasharray':'4 3'}:t==='s'?{fill:'#7a7a7a'}:t==='t'?{fill:'#fff',stroke:'#000','stroke-width':2}:{fill:'#000'});
+     if([1,5,9,16,17,24,28,32].includes(n))fT(g,(n-.5)*bw,base+22*k,String(n),f.s,'middle')}
+   fP(g,`M${16*bw} ${base-130*k}V${base}`,{'stroke-dasharray':'6 4','stroke-width':2});fT(g,16*bw,base-138*k,'ascending ⋈ descending foci',f.i,'middle');
+   const br=[[1,1,'diffraction citer-Eden'],[2,5,'philosophical limbos'],[6,7,'ascending guaranteeism'],[8,9,'mono-harmonic'],[10,16,'ascending biharmonic'],[17,23,'descending biharmonic'],[24,25,'mono-harm.'],[26,27,'desc. guar.'],[28,31,'apocalyptic limbos'],[32,32,'ulter-Eden']];
+   br.forEach(([a,b,l],i)=>{const x1=(a-1)*bw+3,x2=b*bw-3,yy=base+40*k+(i%2)*34*k;fP(g,`M${x1} ${yy-10*k}V${yy-4*k}H${x2}V${yy-10*k}`,{'stroke-width':1.6});const lx=(x1+x2)/2;fT(g,a===1?x1:b===32?x2:lx,yy+18*k,l,f.s,a===1?'start':b===32?'end':'middle')});
+   fT(g,0,base+130*k,'we are in period 5 · heights: diffraction < subversion < transition < mono-harmony < bi-harmony',f.i);return base+140*k},
+});
+/* ---------- layers ---------- */
+const G=el('g',{},svg);
+const L0=el('g',{},G), LTRUNK=el('g',{},G), LREG=el('g',{},G), LINS=el('g',{},G), LEDGE=el('g',{},G), LBLK=el('g',{},G), LLAB=el('g',{},G);
+el('rect',{x:-3000,y:-3000,width:W+6000,height:H+6000,fill:'#fff'},L0);
+for(let c=0;c<NC;c++){const x=B+c*CELL+CELL/2;
+  TX(L0,x,108,LET[c],'800 84px "Barlow", sans-serif','#000',{'text-anchor':'middle',class:'nohalo'});
+  TX(L0,x,H-42,LET[c],'800 84px "Barlow", sans-serif','#000',{'text-anchor':'middle',class:'nohalo'})}
+for(let r=0;r<NR;r++){const y=B+r*CELL+CELL/2+30;
+  TX(L0,75,y,String(r+1),'800 84px "Barlow", sans-serif','#000',{'text-anchor':'middle',class:'nohalo'});
+  TX(L0,W-75,y,String(r+1),'800 84px "Barlow", sans-serif','#000',{'text-anchor':'middle',class:'nohalo'})}
+REG.forEach(g=>{const {x,y}=g.r;TX(LREG,x+44,y+86,g.t,'800 64px "Barlow", sans-serif','#000',{class:'nohalo'})});
+
+/* ---------- blocks ---------- */
+const FIGMAX={powers:1600,gamut:1500,ladder:1600,choirs:2400,life:1800,career:1600,tree:1500,pop:1300,degrees:1400,group:1500,series:1900,day:1800,scale:1900,plan:1400,gastro:1400,exchange:900,shares:700,partage:1400};
+const anchor={}, cellOf={}, BOX=[], PIN={};
+function FTs(k){const z=v=>Math.round(v*k*10)/10;return{
+ name:`700 ${z(34)}px "Barlow Condensed", sans-serif`,en:`italic ${z(25)}px "Barlow Condensed", sans-serif`,meta:`italic 500 ${z(19)}px "Barlow Condensed", sans-serif`,
+ eq:`italic ${z(27)}px "EB Garamond", serif`,body:`${z(23)}px "Barlow Condensed", sans-serif`,src:`${z(19)}px "Barlow Condensed", sans-serif`,
+ lh:{name:z(36),en:z(27),meta:z(22),eq:z(30),body:z(27),src:z(23)},k}}
+const conns=id=>REL.filter(r=>r[0]===id||r[1]===id).map(([a,b,kk])=>{const o=a===id?b:a;return(kk==='analogy'?'≈ ':a===id?'→ ':'← ')+byId[o].name});
+function block(n,x,y,bw,k,dry){
+  const F=FTs(k);let g=null;
+  const put=(xx,yy,s,font,fill,extra)=>{if(!dry)TX(g,xx,yy,s,font,fill||'#141414',extra)};
+  if(!dry){g=el('g',{transform:`translate(${x},${y})`},LBLK);
+    if(n.role){const ic=el('g',{transform:`translate(${24*k},${22*k}) scale(${.72*k})`},g);ic.innerHTML=roleGlyph(n.role)}}
+  const ix=n.role?58*k:6, tw=bw-ix-6;
+  const nl=wrap(n.name,F.name,tw);nl.forEach((s,i)=>put(ix,34*k+i*F.lh.name,s,F.name,'#000'));
+  let cy=34*k+(nl.length-1)*F.lh.name;
+  const lines=(txt,font,lh,xx,w,fill,extra)=>{const ls=wrap(txt,font,w);ls.forEach((s,i)=>put(xx,cy+lh*(i+1),s,font,fill,extra));cy+=ls.length*lh};
+  if(n.en)lines(n.en,F.en,F.lh.en,ix,tw);
+  lines(n.meta||(n.fig?`figure · ${TYPEL[n.t]}`:`${ROLES[n.role][0]} · ${TYPEL[n.t]}`),F.meta,F.lh.meta,ix,tw);
+  cy+=6*k;
+  if(n.fig){cy+=14*k;let fg=null;if(!dry)fg=el('g',{transform:`translate(6 ${cy})`},g);cy+=FIG[n.fig](fg,Math.min(bw-12,(FIGMAX[n.fig]||1e9)*k),k)+10*k}
+  if(n.eq)lines(n.eq,F.eq,F.lh.eq,6,bw-10);
+  if(n.gloss)lines(n.gloss,F.body,F.lh.body,6,bw-10);
+  if(n.src)lines(n.src,F.src,F.lh.src,6,bw-10);
+  if(n.link){let sh=n.link.replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/^en\.wikipedia\.org\/wiki\//,'wikipedia/');try{sh=decodeURIComponent(sh)}catch(e){}if(sh.length>52)sh=sh.slice(0,50)+'…';
+    lines('↗ '+sh,F.src,F.lh.src,6,bw-10,'#1f4fa8',{'data-href':n.link,class:'lnk','text-decoration':'underline'})}
+  {const items=conns(n.id);if(items.length){mctx.font=F.src;let lx=0,line=0;const lh=F.lh.src,iw=bw-10;cy+=6*k;
+    items.forEach(s=>{const w=mctx.measureText(s).width+16*k;if(lx+w>iw&&lx>0){lx=0;line++}put(6+lx,cy+lh*(line+1),s,F.src);lx+=w});
+    cy+=(line+1)*lh}}
+  if(!dry){anchor[n.id]=[x+(n.role?24*k:6),y+22*k];
+    const c=Math.floor((x-B)/CELL), r=Math.floor((y-B)/CELL);cellOf[n.id]=LET[Math.max(0,Math.min(NC-1,c))]+(r+1)}
+  return cy+30*k;
+}
+/* wide figures run full-width in pairs where they fit, then ordinary entries pack into columns */
+function packRegion(ids,x,y,w,h,k,dry,cols){
+  const gap=64*k;let yy=y;
+  const wide=ids.filter(id=>byId[id].wide), rest=ids.filter(id=>!byId[id].wide);
+  const per=w>=2*1100*k?2:1, fw=(w-(per-1)*gap)/per;
+  for(let i=0;i<wide.length;i+=per){let rowH=0;const cnt=Math.min(per,wide.length-i),rw=(w-(cnt-1)*gap)/cnt;
+    for(let j=0;j<cnt;j++){const id=wide[i+j],bx=x+j*(rw+gap);const hh=block(byId[id],bx,yy,rw,k,dry);
+      if(!dry){BOX.push([bx,yy,rw,hh]);PIN[id]=[bx-18,yy+22*k]}rowH=Math.max(rowH,hh)}
+    yy+=rowH+40*k}
+  const bw=(w-(cols-1)*gap)/cols;const colH=Array(cols).fill(yy);
+  rest.forEach(id=>{let c=0;for(let i=1;i<cols;i++)if(colH[i]<colH[c]-1)c=i;
+    const bx=x+c*(bw+gap),by=colH[c];const hh=block(byId[id],bx,by,bw,k,dry);if(!dry){BOX.push([bx,by,bw,hh]);PIN[id]=[bx-18,by+22*k]}colH[c]+=hh+40*k});
+  return Math.max(yy,...colH)-y;
+}
+function layoutRegions(){
+  REG.filter(g=>!g.custom).forEach(g=>{
+    const ids=NODES.filter(n=>n.z===g.id).map(n=>n.id);
+    let {x,y,w,h}=g.r;x+=40;w-=80;y+=120;h-=150;
+    let best={k:0,c:1};
+    for(let c=1;c<=8;c++){if(w/c<420)break;let lo=0.3,hi=2.6;
+      for(let it=0;it<13;it++){const mid=(lo+hi)/2;const okW=w/c>=520*mid;if(okW&&packRegion(ids,x,y,w,h,mid,true,c)<=h)lo=mid;else hi=mid}
+      if(lo>best.k)best={k:lo,c}}
+    g.k=best.k;packRegion(ids,x,y,w,h,best.k,false,best.c);
+  });
+}
+function layoutForm(regId,cols,hdr){
+  const g=REG.find(r=>r.id===regId);let {x,y,w,h}=g.r;x+=40;w-=80;y+=120;h-=150;
+  const n=cols.length,gap=40,bw=(w-(n-1)*gap)/n;
+  const run=(k,dry)=>{const head=150*k;let maxH=0;
+    cols.forEach((c,i)=>{const cx=x+i*(bw+gap);let cy=y+head;const [t1,t2,t3]=hdr(c,i);
+      if(!dry){if(t1)TX(LINS,cx,y+40*k,t1,`800 ${34*k}px "Barlow", sans-serif`,'#000',{class:'nohalo'});
+        if(t2)TX(LINS,cx,y+86*k,t2,`700 ${28*k}px "Barlow Condensed", sans-serif`,'#000');
+        if(t3)TX(LINS,cx,y+118*k,t3,`italic ${24*k}px "Barlow Condensed", sans-serif`,'#000')}
+      c.ids.forEach(id=>{const hh=block(byId[id],cx,cy,bw,k,dry);if(!dry){BOX.push([cx,cy,bw,hh]);PIN[id]=[cx-16,cy+22*k]}cy+=hh+30*k});
+      maxH=Math.max(maxH,cy-y)});return maxH};
+  let lo=.3,hi=Math.min(2.4,bw/420);for(let i=0;i<14;i++){const m=(lo+hi)/2;if(run(m,true)<=h)lo=m;else hi=m}
+  g.k=lo;run(lo,false);
+}
+function layoutFormation(){
+  layoutForm('formation',POSCOLS,(c,i)=>[(i===0||POSCOLS[i-1].cls!==c.cls)?c.cls.toUpperCase():'',c.pos,c.posEN]);
+  layoutForm('bankform',BANKCOLS,(c)=>[c.wing||'',c.g,'']);
+}
+
+/* ---------- insets ---------- */
+function drawTitle(){const {x,y,w,h}=INS.title;
+  const paras=[
+   ['Charles Fourier’s system as one pathways chart, drawn only from his own writings: the passional tree and its powers, the integral gamut of 810 characters, groups and series, the phalanx, the thirty-two choirs, the career of the globe, the aromal system, and civilization with its hierarchies of bankruptcy and cuckoldry.','italic','EB Garamond'],
+   ['Every entry carries its source line; page numbers refer to The Passions of the Human Soul, vol. 2 (1851). Nothing here is supplied from commentators, and where Fourier gives no number, none is drawn. Fourier arranges his hierarchies as series — wings around a centre — and the chart draws them in that form.','600','Barlow Condensed'],
+   ['How to read: grid letters and numbers locate every entry; the index is at the foot. The symbol before a name is its role in the flow of attraction. Figures carry Fourier’s own numbers — every dot, bar and square counts something he counted. Coloured lines are connections, coloured by the kind of entry they leave: solid leads to, dashed is an analogy Fourier draws. Grey bands are the two roads: attraction to harmony, civilization to its hierarchies. Each entry lists its connections: → leads to, ← comes from, ≈ analogy.','400','Barlow Condensed']];
+  const T1='CLEF DU SYSTÈME UNIVERSEL', T2='CHARLES FOURIER · BESANÇON 1772 – PARIS 1837';
+  const fit=(k,dry)=>{let yy=y+40+120*k;if(!dry){TX(LINS,x+40,yy,T1,`800 ${120*k}px 'Barlow', sans-serif`,'#000',{class:'nohalo'});
+      TX(LINS,x+40,yy+70*k,T2,`600 ${48*k}px 'Barlow', sans-serif`,'#000',{class:'nohalo'})}
+    yy+=110*k;
+    paras.forEach(([p,wt,fam])=>{const f=`${wt==='italic'?'italic ':wt+' '}${34*k}px '${fam}', sans-serif`;const ls=wrap(p,f,w-80);
+      if(!dry)ls.forEach((q,i)=>TX(LINS,x+40,yy+34*k+i*42*k,q,f,'#000'));yy+=ls.length*42*k+26*k});
+    return yy-y};
+  mctx.font=`800 120px 'Barlow'`;let lo=.3,hi=(w-80)/mctx.measureText(T1).width;
+  for(let i=0;i<14;i++){const m=(lo+hi)/2;if(fit(m,true)<=h-40)lo=m;else hi=m}
+  fit(lo,false);
+}
+function drawText(){const {x,y,w,h}=INS.text;
+  const lw=w*0.30, gw=w*0.14, gx=x+lw+60, sw=w*0.16, sx0=gx+gw+60, ix=sx0+sw+60, iw=x+w-ix;
+  const leg=(k,dry)=>{let yy=y+50*k;const f=`${24*k}px 'Barlow Condensed', sans-serif`,fb=`700 ${26*k}px 'Barlow Condensed', sans-serif`,hf=`800 ${48*k}px 'Barlow', sans-serif`,sf=`800 ${28*k}px 'Barlow', sans-serif`;
+    if(!dry)TX(LINS,x,yy,'LEGEND',hf,'#000',{class:'nohalo'});yy+=60*k;
+    if(!dry)TX(LINS,x,yy,'ROLE IN THE FLOW OF ATTRACTION',sf,'#000');yy+=20*k;
+    const rk=Object.entries(ROLES),cw2=lw/2;
+    rk.forEach(([key,[nm,ds]],i)=>{const cx=x+(i%2)*cw2,cy=yy+Math.floor(i/2)*66*k+44*k;
+      if(!dry){LINS.insertAdjacentHTML('beforeend',`<g transform="translate(${cx+22*k} ${cy-8*k}) scale(${.8*k})">${roleGlyph(key)}</g>`);
+        TX(LINS,cx+56*k,cy-10*k,nm,fb,'#000');TX(LINS,cx+56*k,cy+18*k,ds,f,'#000')}});
+    yy+=Math.ceil(rk.length/2)*66*k+50*k;
+    if(!dry)TX(LINS,x,yy,'CONNECTIONS, COLOURED BY WHAT THEY LEAVE',sf,'#000');yy+=20*k;
+    const tk=Object.entries(TYPEC);
+    tk.forEach(([key,c],i)=>{const cx=x+(i%2)*cw2,cy=yy+Math.floor(i/2)*40*k+34*k;
+      if(!dry){el('path',{d:`M${cx} ${cy-8*k}h${70*k}`,stroke:c,'stroke-width':6*k,fill:'none'},LINS);TX(LINS,cx+86*k,cy,TYPEL[key],f,'#000')}});
+    yy+=Math.ceil(tk.length/2)*40*k+40*k;
+    if(!dry){el('path',{d:`M${x} ${yy-8*k}h${70*k}`,stroke:'#000','stroke-width':5*k,fill:'none'},LINS);TX(LINS,x+86*k,yy,'solid: leads to',f,'#000');
+      el('path',{d:`M${x+cw2} ${yy-8*k}h${70*k}`,stroke:'#000','stroke-width':5*k,fill:'none','stroke-dasharray':`${14*k} ${9*k}`},LINS);TX(LINS,x+cw2+86*k,yy,'dashed: corresponds by analogy',f,'#000')}
+    yy+=46*k;
+    if(!dry){el('path',{d:`M${x} ${yy-8*k}h${70*k}`,stroke:'#ececec','stroke-width':30*k,fill:'none'},LINS);TX(LINS,x+86*k,yy,'grey band: one of the two main roads',f,'#000');
+      TX(LINS,x+cw2,yy,'in figures, colour repeats the three branches',f,'#000')}
+    yy+=50*k;
+    return yy-y};
+  let lo=.3,hi=3;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(leg(m,true)<=h-20)lo=m;else hi=m}leg(lo,false);
+  const glo=(k,dry)=>{let yy=y+50*k;if(!dry)TX(LINS,gx,yy,'GLOSSAIRE',`800 ${48*k}px 'Barlow', sans-serif`,'#000',{class:'nohalo'});yy+=30*k;
+    const fb=`700 ${26*k}px 'Barlow Condensed', sans-serif`,f=`${24*k}px 'Barlow Condensed', sans-serif`;
+    GLOSS.forEach(([t,d])=>{yy+=34*k;if(!dry)TX(LINS,gx,yy,t,fb,'#000');const ls=wrap(d,f,gw);ls.forEach((q,i)=>{if(!dry)TX(LINS,gx,yy+30*k*(i+1),q,f,'#000')});yy+=ls.length*30*k+8*k});
+    return yy-y};
+  lo=.3;hi=3;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(glo(m,true)<=h-20)lo=m;else hi=m}glo(lo,false);
+  const srcs=(k,dry)=>{let yy=y+50*k;if(!dry)TX(LINS,sx0,yy,'SOURCES',`800 ${48*k}px 'Barlow', sans-serif`,'#000',{class:'nohalo'});yy+=30*k;
+    const fb=`700 ${26*k}px 'Barlow Condensed', sans-serif`,f=`${24*k}px 'Barlow Condensed', sans-serif`;
+    SOURCES.forEach(([t,d])=>{yy+=34*k;const lt=wrap(t,fb,sw);lt.forEach((q,i)=>{if(!dry)TX(LINS,sx0,yy+i*30*k,q,fb,'#000')});yy+=(lt.length-1)*30*k;
+      const ls=wrap(d,f,sw);ls.forEach((q,i)=>{if(!dry)TX(LINS,sx0,yy+30*k*(i+1),q,f,'#000')});yy+=ls.length*30*k+8*k});
+    return yy-y};
+  lo=.3;hi=3;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(srcs(m,true)<=h-20)lo=m;else hi=m}srcs(lo,false);
+  const items=NODES.map(n=>({n,label:/^s\d+$/.test(n.id)?n.name.replace(/^№ (\d+) · (Le Cocu )?(.*)$/,'$3 ($1)'):/^b\d+$/.test(n.id)?n.name.replace(/^(\d+) · (.*) bankruptcy$/,'$2 bankruptcy ($1)'):n.name}))
+    .sort((a,b)=>a.label.localeCompare(b.label,'fr'));
+  const idx=(k,dry)=>{const lh=30*k,rows=Math.floor((h-80*k)/lh);if(rows<1)return false;const icols=Math.ceil(items.length/rows);const icw=iw/icols;
+    if(!dry)TX(LINS,ix,y+50*k,'INDEX',`800 ${48*k}px 'Barlow', sans-serif`,'#000',{class:'nohalo'});
+    const f=`${24*k}px 'Barlow Condensed', sans-serif`,fb=`700 ${24*k}px 'Barlow Condensed', sans-serif`;mctx.font=f;let ok=true;
+    items.forEach((it,i)=>{const c=Math.floor(i/rows),r=i%rows;const tx=ix+c*icw,ty=y+80*k+lh*(r+1);
+      if(mctx.measureText(it.label).width+60*k>icw)ok=false;
+      if(!dry){TX(LINS,tx,ty,it.label,f,'#000');TX(LINS,tx+icw-20*k,ty,cellOf[it.n.id]||'',fb,'#000',{'text-anchor':'end'})}});
+    return ok};
+  lo=.3;hi=3;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(idx(m,true))lo=m;else hi=m}idx(lo,false);
+}
+/* ---------- routed connections ---------- */
+const COLORS=new Set(Object.values(TYPEC));
+{const defs=el('defs',{},svg);let h='';
+ COLORS.forEach(c=>{h+=`<marker id="m_${c.slice(1)}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`});
+ h+=`<marker id="m_arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#000"/></marker>`;
+ defs.innerHTML=h;}
+const GS=25, GW=Math.ceil(W/GS), GH=Math.ceil(H/GS), N=GW*GH;
+const cost=new Float32Array(N).fill(1);
+const used=new Uint16Array(N);
+function markRect(x,y,w,h,c){const x0=Math.max(0,Math.floor(x/GS)),x1=Math.min(GW-1,Math.floor((x+w)/GS)),y0=Math.max(0,Math.floor(y/GS)),y1=Math.min(GH-1,Math.floor((y+h)/GS));
+  for(let j=y0;j<=y1;j++)for(let i=x0;i<=x1;i++){const q=j*GW+i;if(cost[q]<c)cost[q]=c}}
+function buildGrid(){
+  for(let j=0;j<GH;j++)for(let i=0;i<GW;i++){const x=i*GS,y=j*GS;if(x<B+12||y<B+12||x>W-B-12||y>H-B-12)cost[j*GW+i]=1e6}
+  BOX.forEach(([x,y,w,h])=>markRect(x+4,y+4,w-8,h-12,60));
+  Object.values(INS).forEach(r=>markRect(r.x+30,r.y+30,r.w-60,r.h-60,25));
+  REG.forEach(g=>markRect(g.r.x+40,g.r.y+20,Math.min(g.r.w-80,g.t.length*40),90,30));
+  const f=REG.find(r=>r.id==='formation');markRect(f.r.x+40,f.r.y+110,f.r.w-80,160*(f.k||1),30);
+}
+const HK=new Float32Array(N*2),HV=new Int32Array(N*2);let hn=0;
+function hpush(k,v){let i=hn++;while(i>0){const p=(i-1)>>1;if(HK[p]<=k)break;HK[i]=HK[p];HV[i]=HV[p];i=p}HK[i]=k;HV[i]=v}
+function hpop(){const v=HV[0],k=HK[--hn],x=HV[hn];let i=0;while(true){let l=2*i+1;if(l>=hn)break;if(l+1<hn&&HK[l+1]<HK[l])l++;if(HK[l]>=k)break;HK[i]=HK[l];HV[i]=HV[l];i=l}HK[i]=k;HV[i]=x;return v}
+const gS=new Float32Array(N),par=new Int32Array(N),dirA=new Int8Array(N),stamp=new Uint32Array(N),closed=new Uint32Array(N);let gen=0;
+const DX=[1,-1,0,0],DY=[0,0,1,-1];
+function route(ax,ay,bx,by){
+  gen++;hn=0;
+  const si=Math.min(GW-1,Math.max(0,Math.round(ax/GS))),sj=Math.min(GH-1,Math.max(0,Math.round(ay/GS)));
+  const ti=Math.min(GW-1,Math.max(0,Math.round(bx/GS))),tj=Math.min(GH-1,Math.max(0,Math.round(by/GS)));
+  const s=sj*GW+si,tg=tj*GW+ti;
+  stamp[s]=gen;gS[s]=0;par[s]=-1;dirA[s]=-1;hpush(1.3*(Math.abs(si-ti)+Math.abs(sj-tj)),s);
+  let found=false,iter=0;
+  while(hn>0&&iter<400000){iter++;const c=hpop();if(closed[c]===gen)continue;closed[c]=gen;if(c===tg){found=true;break}
+    const ci=c%GW,cj=(c-ci)/GW,cd=dirA[c];
+    for(let d=0;d<4;d++){const ni=ci+DX[d],nj=cj+DY[d];if(ni<0||nj<0||ni>=GW||nj>=GH)continue;const nq=nj*GW+ni;if(closed[nq]===gen)continue;
+      let cc=cost[nq];if(nq===tg||nq===s)cc=1;if(cc>=1e6)continue;
+      const ng=gS[c]+cc+used[nq]*2.2+(cd>=0&&cd!==d?6:0);
+      if(stamp[nq]!==gen||ng<gS[nq]){stamp[nq]=gen;gS[nq]=ng;par[nq]=c;dirA[nq]=d;hpush(ng+1.3*(Math.abs(ni-ti)+Math.abs(nj-tj)),nq)}}}
+  if(!found)return null;
+  const cells=[];let c=tg;while(c!==-1){cells.push(c);used[c]++;c=par[c]}
+  cells.reverse();
+  const pts=[];
+  for(let k=0;k<cells.length;k++){const q=cells[k],x=(q%GW)*GS,y=Math.floor(q/GW)*GS;
+    if(k===0||k===cells.length-1){pts.push([x,y]);continue}
+    const nq=cells[k+1],d=(nq%GW)-(q%GW)!==0?0:1;const pq=cells[k-1],d0=(q%GW)-(pq%GW)!==0?0:1;if(d!==d0)pts.push([x,y])}
+  return pts;
+}
+function roundPath(p,r=14){if(p.length<2)return'';let d=`M${p[0][0]} ${p[0][1]}`;
+  for(let i=1;i<p.length-1;i++){const [x0,y0]=p[i-1],[x1,y1]=p[i],[x2,y2]=p[i+1];
+    const l1=Math.hypot(x1-x0,y1-y0),l2=Math.hypot(x2-x1,y2-y1),rr=Math.min(r,l1/2,l2/2);
+    if(!l1||!l2)continue;
+    const ax=x1-(x1-x0)/l1*rr,ay=y1-(y1-y0)/l1*rr,bx=x1+(x2-x1)/l2*rr,by=y1+(y2-y1)/l2*rr;
+    d+=`L${ax.toFixed(1)} ${ay.toFixed(1)}Q${x1} ${y1} ${bx.toFixed(1)} ${by.toFixed(1)}`}
+  const q=p[p.length-1];return d+`L${q[0]} ${q[1]}`}
+async function drawEdges(){
+  buildGrid();
+  const pinR=id=>{const g=REG.find(r=>r.id===id);return[g.r.x+g.r.w/2,g.r.y+12]};
+  TRUNKS.forEach(tr=>{for(let i=0;i<tr.length-1;i++){const A=pinR(tr[i]),Bp=pinR(tr[i+1]);const pts=route(A[0],A[1],Bp[0],Bp[1]);
+    if(pts)el('path',{d:roundPath(pts,40),fill:'none',stroke:'#ececec','stroke-width':60,'stroke-linejoin':'round','stroke-linecap':'round'},LTRUNK)}});
+  for(let q=0;q<N;q++)if(used[q])used[q]+=2;
+  const pinOf=id=>PIN[id]||anchor[id];
+  const list=REL.map(r=>{const A=pinOf(r[0]),Bp=pinOf(r[1]);return{r,A,Bp,len:A&&Bp?Math.abs(A[0]-Bp[0])+Math.abs(A[1]-Bp[1]):1e9}}).filter(o=>o.A&&o.Bp).sort((a,b)=>a.len-b.len);
+  const pads=el('g',{},LLAB);
+  Object.keys(PIN).forEach(id=>{const [x,y]=PIN[id];const a=anchor[id];
+    el('path',{d:`M${x} ${y}H${a[0]-22}`,stroke:'#333','stroke-width':3},LEDGE);
+    el('circle',{cx:x,cy:y,r:9,fill:'#fff',stroke:'#000','stroke-width':4},pads)});
+  let n=0;
+  for(const o of list){
+    const [a,b,k]=o.r;const pts=route(o.A[0],o.A[1],o.Bp[0],o.Bp[1]);n++;
+    if(pts&&pts.length>1){pts[0]=[o.A[0],o.A[1]];pts[pts.length-1]=[o.Bp[0],o.Bp[1]];
+      const col=TYPEC[byId[a].t];
+      el('path',{class:'edge',d:roundPath(pts),stroke:col,'stroke-width':3.6,'stroke-opacity':.85,'marker-end':`url(#m_${col.slice(1)})`,'stroke-dasharray':k==='analogy'?'14 9':''},LEDGE)}
+    if(n%12===0)await new Promise(r=>setTimeout(r,0));
+  }
+}
+
+/* ---------- view ---------- */
+let vb={x:0,y:0,w:W,h:H};const cw=()=>svg.clientWidth,ch=()=>svg.clientHeight;
+function apply(){vb.h=vb.w*ch()/cw();svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`)}
+function fit(x,y,w,h){const s=Math.min(cw()/w,ch()/h);vb.w=cw()/s;vb.x=x+w/2-vb.w/2;vb.y=y+h/2-(vb.w*ch()/cw())/2;apply()}
+function zoomAt(px,py,f){const wx=vb.x+px/cw()*vb.w,wy=vb.y+py/ch()*vb.h,nw=Math.min(W*1.6,Math.max(300,vb.w*f));vb.x=wx-px/cw()*nw;vb.y=wy-py/ch()*(nw*ch()/cw());vb.w=nw;apply()}
+let fly=null;
+function flyTo(cx,cy,w,ms=900){cancelAnimationFrame(fly);const a={...vb},t0=performance.now(),b={x:cx-w/2,y:cy-w*ch()/cw()/2,w};
+  if(reduce){Object.assign(vb,b);apply();return}
+  const st=now=>{let k=Math.min(1,(now-t0)/ms);k=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;vb.x=a.x+(b.x-a.x)*k;vb.y=a.y+(b.y-a.y)*k;vb.w=a.w+(b.w-a.w)*k;apply();if(k<1)fly=requestAnimationFrame(st)};fly=requestAnimationFrame(st)}
+const pts=new Map();let moved=0,down=null,pinch=null;
+svg.addEventListener('pointerdown',e=>{cancelAnimationFrame(fly);svg.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=0;down=pts.size===1?e.target:null;
+  if(pts.size===2){const[p,q]=[...pts.values()];pinch=Math.hypot(p.x-q.x,p.y-q.y)}});
+svg.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const pr=pts.get(e.pointerId),c={x:e.clientX,y:e.clientY};
+  if(pts.size===1){const dx=c.x-pr.x,dy=c.y-pr.y;moved+=Math.abs(dx)+Math.abs(dy);vb.x-=dx*vb.w/cw();vb.y-=dy*vb.h/ch();apply()}
+  pts.set(e.pointerId,c);if(pts.size===2){const[p,q]=[...pts.values()],d=Math.hypot(p.x-q.x,p.y-q.y),r=svg.getBoundingClientRect();if(pinch)zoomAt((p.x+q.x)/2-r.left,(p.y+q.y)/2-r.top,pinch/d);pinch=d;moved=99}});
+svg.addEventListener('pointerup',e=>{
+  if(pts.size===1&&moved<8&&down){const hr=down.closest&&down.closest('[data-href]');if(hr)window.open(hr.dataset.href,'_blank','noopener')}
+  pts.delete(e.pointerId);if(pts.size<2)pinch=null});
+svg.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);pinch=null});
+svg.addEventListener('wheel',e=>{e.preventDefault();const r=svg.getBoundingClientRect();zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(e.deltaY*(e.ctrlKey?.012:.0016)))},{passive:false});
+addEventListener('resize',apply);
+document.getElementById('zin').onclick=()=>zoomAt(cw()/2,ch()/2,.6);
+document.getElementById('zout').onclick=()=>zoomAt(cw()/2,ch()/2,1.6);
+document.getElementById('whole').onclick=()=>{const s=Math.min(cw()/W,ch()/H);flyTo(W/2,H/2,cw()/s)};
+document.getElementById('save').onclick=()=>{const c=svg.cloneNode(true);c.setAttribute('viewBox',`0 0 ${W} ${H}`);c.setAttribute('width',W);c.setAttribute('height',H);
+  const st=document.createElementNS(NS,'style');st.textContent="text{paint-order:stroke;stroke:#fff;stroke-width:5px}text.nohalo{stroke:none}";c.prepend(st);
+  const bl=new Blob([new XMLSerializer().serializeToString(c)],{type:'image/svg+xml'});const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='clef-fourier-systeme.svg';document.body.appendChild(a);a.click();a.remove()};
+
+(async()=>{
+  try{await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,2500))])}catch(e){}
+  drawTitle();layoutRegions();layoutFormation();drawText();
+  if(innerWidth<700)fit(B,B,2400,2400);else fit(0,0,W,H);
+  await drawEdges();
+  window.__ready=true;window.__fk=REG.find(r=>r.id==='formation').k;
+})();
+</script></body></html>
