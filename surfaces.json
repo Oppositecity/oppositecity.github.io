@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-09-15",
+ "published": "2026-09-21",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -388,6 +388,22 @@
    ],
    "blurb": "A metabolic pathways chart of one idea: that records, genomes, minerals and protocols are local order paid for by exporting entropy, and that this can be measured. 184 nodes, from Landauer's bound and the citric acid cycle to Odum's transformity, folk-tale phylogenies and the Omega Point, each printed with its equation, its evidence level, how it could be tested, and its source. Every node carries an energy-systems role (source, producer, storage, consumer, interaction, switch, heat sink, transaction, frame), and 348 connections run between them as routed traces. The proposed measure is η, lasting bits per bit-equivalent of entropy produced; the chart marks what is established physics, what is contested, and what is only a postulate.",
    "url": "https://opposite.city/agentic-entropy/"
+  },
+  {
+   "slug": "clef",
+   "name": "CLEF",
+   "district": "viz",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "charles fourier",
+    "taxonomy",
+    "pathways chart",
+    "passions",
+    "810 characters"
+   ],
+   "blurb": "Charles Fourier classified everything — the passions, the eight hundred and ten characters of both sexes, the ranks of cuckoldry and of bankruptcy. This lays those systems on one surface as a pathways chart, every class, order and species in place at once with nothing hidden behind a click. It is drawn only from Fourier's own texts: no commentators, and nothing supplied where he was silent.",
+   "url": "https://opposite.city/clef/"
   }
  ]
 }
