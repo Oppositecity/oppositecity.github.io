@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>crypsis</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪲</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #000000;
+    --cover:  #FFFFFF;   /* what anyone can read */
+    --secret: #B8FFCE;   /* what is hidden */
+    --key:    #FFF08A;   /* what unlocks it */
+    --fault:  #FF9E8C;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--ground); color: var(--cover); }
+  body {
+    font-family: "Courier Prime", "Courier New", Courier, monospace;
+    font-size: 18px; line-height: 1.55;
+    padding: max(28px, env(safe-area-inset-top)) 22px max(64px, env(safe-area-inset-bottom));
+  }
+  main { max-width: 64ch; margin: 0 auto; }
+  h1 { font-size: 44px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; line-height: 1; }
+  .lede { margin: 0 0 40px; }
+  .lede b { color: var(--secret); font-weight: 400; }
+  .lede i { color: var(--cover); font-style: normal; }
+  .lede u { color: var(--key); text-decoration: none; }
+
+  nav { display: flex; gap: 22px; margin-bottom: 34px; font-size: 22px; }
+  button, .as-button {
+    font: inherit; color: var(--cover); background: none; border: 0; padding: 2px 4px; margin: 0 -4px;
+    cursor: pointer; border-radius: 0;
+  }
+  button:hover, .as-button:hover { background: var(--cover); color: var(--ground); }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, .as-button:focus-within { outline: 2px solid var(--key); outline-offset: 2px; }
+  button[aria-pressed="true"]::before { content: "["; }
+  button[aria-pressed="true"]::after { content: "]"; }
+  button[aria-pressed="false"] { padding-left: 11px; padding-right: 11px; }
+  button:disabled { cursor: default; opacity: .55; }
+  button:disabled:hover { background: none; color: var(--cover); }
+
+  section[hidden] { display: none; }
+  .field { margin: 0 0 30px; }
+  .field > label, .field > .name { display: block; margin-bottom: 8px; }
+  .secret-c { color: var(--secret); }
+  .key-c { color: var(--key); }
+  .cover-c { color: var(--cover); }
+  .hint { display: block; margin-top: 8px; }
+
+  textarea, input[type=text] {
+    width: 100%; font: inherit; font-size: 17px; line-height: 1.5;
+    background: var(--ground); padding: 12px 14px; border-radius: 0; resize: vertical;
+    border: 1px solid currentColor;
+  }
+  textarea.secret-c, input.secret-c { color: var(--secret); }
+  textarea.key-c, input.key-c { color: var(--key); }
+  textarea.cover-c { color: var(--cover); }
+  textarea::placeholder, input::placeholder { color: currentColor; opacity: .72; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 6px 22px; align-items: baseline; }
+  .file-pick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+
+  .go { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  #status, #rstatus { margin: 22px 0 0; min-height: 1.55em; }
+  .fault { color: var(--fault); }
+
+  .live { white-space: pre-wrap; word-break: break-word; margin: 18px 0 0; font-size: 20px; }
+
+  .result { margin-top: 44px; }
+  .cover-out { font-size: 22px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin: 0 0 18px; }
+  .secret-out { font-size: 22px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin: 0 0 18px; color: var(--secret); }
+  .card { color: var(--key); word-break: break-all; font-size: 14px; line-height: 1.45; margin: 10px 0 16px; }
+  .note { margin: 14px 0 0; }
+
+  .seam { display: flex; flex-wrap: wrap; gap: 14px 4px; margin: 24px 0 0; }
+  .pair { display: inline-flex; flex-direction: column; min-width: 1.4ch; }
+  .pair .c { color: var(--cover); white-space: pre; }
+  .pair .r { color: var(--cover); font-size: 11px; line-height: 1.2; }
+  .pair .s { color: var(--secret); white-space: pre; font-size: 15px; }
+
+  .file-out img, .file-out audio, .file-out video { max-width: 100%; display: block; margin: 12px 0; image-rendering: pixelated; }
+  a { color: inherit; text-underline-offset: 3px; }
+  footer { margin-top: 90px; font-size: 15px; line-height: 1.6; }
+  footer p { margin: 0 0 12px; }
+  @media (max-width: 520px) {
+    body { font-size: 17px; }
+    h1 { font-size: 38px; }
+    .cover-out, .secret-out, .live { font-size: 19px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>crypsis</h1>
+  <p class="lede">Hide <b>any text or file</b> inside <i>a different, ordinary-looking text</i>. Only someone holding <u>the key</u> can get it back.</p>
+
+  <nav aria-label="mode">
+    <button id="tab-hide" aria-pressed="true">hide</button>
+    <button id="tab-reveal" aria-pressed="false">reveal</button>
+  </nav>
+
+  <!-- ───────── hide ───────── -->
+  <section id="hide">
+    <div class="field">
+      <label for="secret" class="secret-c">the secret</label>
+      <textarea id="secret" class="secret-c" rows="5" placeholder="Write or paste what you want to hide."></textarea>
+      <div class="row hint">
+        <label class="as-button file-pick secret-c">or choose a file<input id="file" type="file"></label>
+        <span id="fileinfo" class="secret-c"></span>
+        <button id="fileclear" hidden>clear file</button>
+      </div>
+    </div>
+
+    <div class="field" id="modefield">
+      <span class="name">carry it as</span>
+      <div class="row">
+        <button id="m-w" aria-pressed="true">language</button>
+        <button id="m-b" aria-pressed="false">exact bytes</button>
+      </div>
+      <span class="hint" id="modehint"></span>
+    </div>
+
+    <div class="field" id="ctxfield">
+      <label for="ctx">what kind of text the secret is <span>(optional)</span></label>
+      <input id="ctx" type="text" class="secret-c" placeholder="a chess game in PGN, a love letter, Python code">
+      <span class="hint">A true description here makes the cover read better. It becomes part of the key.</span>
+    </div>
+
+    <div class="field">
+      <label for="key" class="key-c">the key</label>
+      <textarea id="key" class="key-c" rows="3" placeholder="The opening of the cover. It will read as if it continues from here: a recipe, a review, a weather report, a prayer."></textarea>
+      <div class="row hint">
+        <button id="salt" class="key-c">add salt</button>
+        <span class="key-c">Salt puts a random number in the key so nobody can guess it from the cover.</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="name">engine</span>
+      <div class="row" id="engines"></div>
+      <span class="hint" id="enginehint"></span>
+    </div>
+
+    <button id="go-hide" class="go">hide it</button>
+    <button id="stop-hide" hidden>stop</button>
+    <p id="status"></p>
+    <div id="live" class="live" aria-live="off"></div>
+
+    <div id="hide-result" class="result" hidden>
+      <div class="cover-out" id="cover-out"></div>
+      <div class="row">
+        <button id="copy-cover">copy the cover</button>
+        <button id="copy-card" class="key-c">copy the key card</button>
+        <button id="seam-toggle" aria-pressed="false">show the seam</button>
+      </div>
+      <p class="card" id="card"></p>
+      <p class="note" id="hide-note"></p>
+      <div class="seam" id="seam" hidden></div>
+    </div>
+  </section>
+
+  <!-- ───────── reveal ───────── -->
+  <section id="reveal" hidden>
+    <div class="field">
+      <label for="cover-in">the cover</label>
+      <textarea id="cover-in" class="cover-c" rows="7" placeholder="Paste the ordinary-looking text exactly as you received it."></textarea>
+    </div>
+    <div class="field">
+      <label for="card-in" class="key-c">the key card</label>
+      <textarea id="card-in" class="key-c" rows="3" placeholder="crypsis:…"></textarea>
+    </div>
+    <button id="go-reveal" class="go">reveal it</button>
+    <button id="stop-reveal" hidden>stop</button>
+    <p id="rstatus"></p>
+    <div id="rlive" class="live secret-c" aria-live="off"></div>
+    <div id="reveal-result" class="result" hidden>
+      <div id="secret-out" class="secret-out"></div>
+      <div id="file-out" class="file-out"></div>
+      <div class="row"><button id="copy-secret" class="secret-c" hidden>copy the secret</button></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>How it works: a language model reads the secret and notes, word by word, how expected each piece was — first choice, fourth choice, ninetieth. Then it starts writing from the key and at every step takes the choice with that same rank. The cover and the secret share nothing but that list of ranks, and the key is what turns one back into the other.</p>
+    <p>Everything runs on this device. The engine downloads once and nothing you type leaves the page. Hide and reveal in the same kind of browser — different hardware can round numbers differently.</p>
+    <p>After Norelli and Bronstein, <a href="https://arxiv.org/abs/2510.20075" target="_blank" rel="noopener">LLMs can hide text in other text of the same length</a>. Their paper does the language mode; exact bytes is added here so it can carry files.</p>
+  </footer>
+</main>
+
+<script type="module">
+const ENGINES = [
+  { id: 'onnx-community/Qwen2.5-0.5B-Instruct', name: 'qwen 0.5b', hint: 'Most convincing covers. The heaviest download, and the slowest.' },
+  { id: 'HuggingFaceTB/SmolLM2-360M-Instruct', name: 'smol 360m', hint: 'Middle weight.' },
+  { id: 'HuggingFaceTB/SmolLM2-135M-Instruct', name: 'smol 135m', hint: 'Fastest and lightest. Covers wander more.' },
+];
+const DEFAULT_CONTEXT = 'Here is a text:\n\n';
+const $ = (id) => document.getElementById(id);
+
+// ───── state ─────
+let engine = ENGINES[0].id;
+let mode = 'w';
+let file = null; // { name, mime, bytes }
+let worker = null, loadedFor = null, meanBits = 4.2, busy = false;
+let lastHide = null;
+
+// ───── tabs ─────
+function tab(which) {
+  $('tab-hide').setAttribute('aria-pressed', which === 'hide');
+  $('tab-reveal').setAttribute('aria-pressed', which === 'reveal');
+  $('hide').hidden = which !== 'hide';
+  $('reveal').hidden = which !== 'reveal';
+}
+$('tab-hide').onclick = () => tab('hide');
+$('tab-reveal').onclick = () => tab('reveal');
+
+// ───── engines ─────
+for (const e of ENGINES) {
+  const b = document.createElement('button');
+  b.textContent = e.name;
+  b.setAttribute('aria-pressed', e.id === engine);
+  b.onclick = () => { engine = e.id; for (const x of $('engines').children) x.setAttribute('aria-pressed', x === b); $('enginehint').textContent = e.hint; };
+  $('engines').append(b);
+}
+$('enginehint').textContent = ENGINES[0].hint;
+
+// ───── mode ─────
+function setMode(m) {
+  mode = m;
+  $('m-w').setAttribute('aria-pressed', m === 'w');
+  $('m-b').setAttribute('aria-pressed', m === 'b');
+  $('ctxfield').hidden = m !== 'w';
+  $('modehint').textContent = m === 'w'
+    ? 'Best for prose, poems, messages, code. The cover comes out the same length as the secret.'
+    : 'Works for anything, including hashes, gibberish and files. The cover runs longer than the secret.';
+}
+$('m-w').onclick = () => { if (!file) setMode('w'); };
+$('m-b').onclick = () => setMode('b');
+setMode('w');
+
+// ───── file ─────
+function fmtBytes(n) { return n < 1024 ? n + ' bytes' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
+$('file').onchange = async (ev) => {
+  const f = ev.target.files[0]; if (!f) return;
+  file = { name: f.name, mime: f.type || 'application/octet-stream', bytes: new Uint8Array(await f.arrayBuffer()) };
+  const est = Math.ceil(file.bytes.length * 8 / meanBits);
+  $('fileinfo').textContent = `${f.name}, ${fmtBytes(f.size)} — a cover of roughly ${est.toLocaleString()} pieces before compression`;
+  $('fileclear').hidden = false;
+  $('secret').disabled = true;
+  $('m-w').disabled = true;
+  setMode('b');
+};
+$('fileclear').onclick = () => {
+  file = null; $('file').value = ''; $('fileinfo').textContent = ''; $('fileclear').hidden = true;
+  $('secret').disabled = false; $('m-w').disabled = false;
+};
+
+// ───── salt ─────
+$('salt').onclick = () => {
+  const n = crypto.getRandomValues(new Uint32Array(2));
+  const salt = `[${n[0]}${String(n[1]).slice(0, 4)}] `;
+  const k = $('key').value.replace(/^\[\d+\]\s*/, '');
+  $('key').value = salt + k;
+};
+
+// ───── key card ─────
+const b64u = {
+  enc(s) { const b = new TextEncoder().encode(s); let t = ''; for (const x of b) t += String.fromCharCode(x); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  dec(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; const t = atob(s); return new TextDecoder().decode(Uint8Array.from(t, c => c.charCodeAt(0))); },
+};
+function makeCard(o) { return 'crypsis:' + b64u.enc(JSON.stringify(o)); }
+function readCard(s) {
+  s = s.trim();
+  if (!s.startsWith('crypsis:')) throw new Error('card');
+  const o = JSON.parse(b64u.dec(s.slice(8)));
+  if (o.v !== 1) throw new Error('card');
+  return o;
+}
+
+// ───── worker ─────
+function ensureWorker(modelId, dtype, onStatus) {
+  if (worker && loadedFor === modelId + '|' + (dtype || '')) return Promise.resolve();
+  if (worker) worker.terminate();
+  worker = new Worker(new URL('./engine.js', import.meta.url), { type: 'module' });
+  loadedFor = null;
+  return new Promise((res, rej) => {
+    worker.onmessage = (ev) => {
+      const m = ev.data;
+      if (m.type === 'loading') onStatus(`Fetching the engine: ${fmtBytes(m.loaded)} of ${fmtBytes(m.total)}. Only the first time.`);
+      else if (m.type === 'loaded') { loadedFor = modelId + '|' + (dtype || ''); worker.dtype = m.dtype; meanBits = m.meanBits; res(); }
+      else if (m.type === 'error') { worker.terminate(); worker = null; rej(new Error('load: ' + m.message)); }
+    };
+    worker.onerror = (e) => { rej(new Error('load: ' + (e.message || 'the engine could not start'))); };
+    onStatus('Starting the engine…');
+    worker.postMessage({ type: 'load', modelId, dtype });
+  });
+}
+
+function run(msg, onProgress) {
+  return new Promise((res, rej) => {
+    worker.onmessage = (ev) => {
+      const m = ev.data;
+      if (m.type === 'progress') onProgress(m);
+      else if (m.type === 'error') rej(new Error(m.message));
+      else res(m);
+    };
+    worker.postMessage(msg);
+  });
+}
+
+function explain(err) {
+  const m = String(err.message || err);
+  if (m.startsWith('load:')) return 'The engine could not load. Check the connection and try again; a smaller engine may fit this device better.';
+  if (m === 'unlikely') return 'Part of the secret is too improbable for this engine to carry as language. Switch to exact bytes, or try a larger engine.';
+  if (m === 'altered') return 'This cover does not fit this key card. It may have been edited after hiding, or the card belongs to another cover.';
+  if (m === 'card') return 'That key card is not readable. It should start with crypsis: and be pasted whole.';
+  if (m === 'cancelled') return 'Stopped.';
+  if (/mismatch|flags|truncated|short|huffman|rank out/.test(m)) return 'Nothing is hidden in this cover under this key card.';
+  if (/too large/.test(m)) return 'That file is too large to carry.';
+  return 'Something failed: ' + m;
+}
+
+function rate(start, i) { const s = (performance.now() - start) / 1000; return s > 0.5 ? (i / s).toFixed(1) : '…'; }
+
+// ───── hide ─────
+$('go-hide').onclick = async () => {
+  if (busy) return;
+  const key = $('key').value;
+  const secretText = $('secret').value;
+  if (!file && !secretText) { $('status').innerHTML = '<span class="fault">Write a secret first, or choose a file.</span>'; return; }
+  if (!key.trim()) { $('status').innerHTML = '<span class="fault">Write a key first. It is how the cover begins.</span>'; return; }
+  busy = true; $('go-hide').disabled = true; $('stop-hide').hidden = false;
+  $('hide-result').hidden = true; $('live').textContent = ''; $('status').textContent = '';
+  const status = (t) => { $('status').textContent = t; };
+  const ctxText = $('ctx').value.trim() ? $('ctx').value.trim() + '\n\n' : DEFAULT_CONTEXT;
+  try {
+    await ensureWorker(engine, null, status);
+    const msg = { type: 'hide', mode, keyText: key, contextText: ctxText, reverse: true };
+    if (mode === 'w') msg.secretText = secretText;
+    else if (file) Object.assign(msg, { secretBytes: file.bytes, name: file.name, mime: file.mime, isFile: true });
+    else Object.assign(msg, { secretBytes: new TextEncoder().encode(secretText), isFile: false });
+    let start = performance.now(), phase = '';
+    const out = await run(msg, (p) => {
+      if (p.phase !== phase) { phase = p.phase; start = performance.now(); if (phase === 'writing') $('live').textContent = ''; }
+      if (phase === 'reading') status(`Reading the secret: ${p.i} of ${p.n} pieces.`);
+      else { status(`Writing the cover: ${p.i} of ${p.n} pieces, ${rate(start, p.i)} a second.`); $('live').textContent += p.piece; }
+    });
+    const card = makeCard({ v: 1, m: engine, q: worker.dtype, t: mode, r: true, k: key, c: ctxText });
+    lastHide = { ...out, card };
+    $('live').textContent = '';
+    $('cover-out').textContent = out.cover;
+    $('card').textContent = card;
+    $('hide-note').innerHTML = out.canonical
+      ? `${out.tokens.toLocaleString()} pieces. Send the cover openly. Send the key card some other way.`
+      : '<span class="fault">This cover may not survive being copied. Add salt to the key and hide it again.</span>';
+    renderSeam(out.seam);
+    $('seam').hidden = true; $('seam-toggle').setAttribute('aria-pressed', 'false');
+    $('hide-result').hidden = false;
+    status('');
+  } catch (e) {
+    status(''); $('status').innerHTML = `<span class="fault">${explain(e)}</span>`;
+    if (String(e.message) === 'cancelled') $('live').textContent = '';
+  } finally {
+    busy = false; $('go-hide').disabled = false; $('stop-hide').hidden = true;
+  }
+};
+$('stop-hide').onclick = () => worker && worker.postMessage({ type: 'cancel' });
+
+const vis = (s) => s.replace(/ /g, '·').replace(/\n/g, '↵').replace(/\t/g, '→');
+function renderSeam(seam) {
+  const box = $('seam'); box.textContent = '';
+  const frag = document.createDocumentFragment();
+  for (const p of seam) {
+    const d = document.createElement('span'); d.className = 'pair';
+    const c = document.createElement('span'); c.className = 'c'; c.textContent = vis(p.cover);
+    const r = document.createElement('span'); r.className = 'r'; r.textContent = p.rank + 1;
+    const s = document.createElement('span'); s.className = 's'; s.textContent = vis(p.carries);
+    d.append(c, r, s); frag.append(d);
+  }
+  box.append(frag);
+}
+$('seam-toggle').onclick = () => {
+  const on = $('seam').hidden;
+  $('seam').hidden = !on;
+  $('seam-toggle').setAttribute('aria-pressed', on);
+};
+
+async function copy(text, btn) {
+  try { await navigator.clipboard.writeText(text); }
+  catch { const t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); }
+  const was = btn.textContent; btn.textContent = 'copied'; setTimeout(() => btn.textContent = was, 1400);
+}
+$('copy-cover').onclick = (e) => lastHide && copy(lastHide.cover, e.currentTarget);
+$('copy-card').onclick = (e) => lastHide && copy(lastHide.card, e.currentTarget);
+
+// ───── reveal ─────
+let revealedText = null;
+$('go-reveal').onclick = async () => {
+  if (busy) return;
+  const status = (t) => { $('rstatus').textContent = t; };
+  $('reveal-result').hidden = true; $('rlive').textContent = ''; $('file-out').textContent = ''; $('secret-out').textContent = '';
+  $('copy-secret').hidden = true;
+  let card;
+  try { card = readCard($('card-in').value); } catch { $('rstatus').innerHTML = `<span class="fault">${explain(new Error('card'))}</span>`; return; }
+  const coverText = $('cover-in').value.replace(/\r\n?/g, '\n').trim();
+  if (!coverText) { $('rstatus').innerHTML = '<span class="fault">Paste the cover first.</span>'; return; }
+  busy = true; $('go-reveal').disabled = true; $('stop-reveal').hidden = false;
+  try {
+    await ensureWorker(card.m, card.q, status);
+    let start = performance.now(), phase = '';
+    const out = await run({ type: 'reveal', mode: card.t, keyText: card.k, contextText: card.c, reverse: card.r, coverText }, (p) => {
+      if (p.phase !== phase) { phase = p.phase; start = performance.now(); }
+      if (phase === 'reading') status(`Reading the cover: ${p.i} of ${p.n} pieces, ${rate(start, p.i)} a second.`);
+      else { status(`Writing the secret: ${p.i} of ${p.n} pieces.`); $('rlive').textContent += p.piece; }
+    });
+    $('rlive').textContent = '';
+    if (out.kind === 'text') {
+      revealedText = out.text;
+      $('secret-out').textContent = out.text;
+      $('copy-secret').hidden = false;
+    } else {
+      const blob = new Blob([out.data], { type: out.mime || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = out.name || 'secret';
+      a.className = 'secret-c'; a.textContent = `save ${out.name || 'the file'} (${fmtBytes(out.data.length)})`;
+      $('file-out').append(a);
+      let media = null;
+      if (/^image\//.test(out.mime)) { media = document.createElement('img'); media.alt = out.name; }
+      else if (/^audio\//.test(out.mime)) { media = document.createElement('audio'); media.controls = true; }
+      else if (/^video\//.test(out.mime)) { media = document.createElement('video'); media.controls = true; }
+      if (media) { media.src = url; $('file-out').append(media); }
+    }
+    $('reveal-result').hidden = false;
+    status('');
+  } catch (e) {
+    status(''); $('rstatus').innerHTML = `<span class="fault">${explain(e)}</span>`; $('rlive').textContent = '';
+  } finally {
+    busy = false; $('go-reveal').disabled = false; $('stop-reveal').hidden = true;
+  }
+};
+$('stop-reveal').onclick = () => worker && worker.postMessage({ type: 'cancel' });
+$('copy-secret').onclick = (e) => revealedText !== null && copy(revealedText, e.currentTarget);
+
+// a card in the URL hash opens straight into reveal
+if (location.hash.startsWith('#crypsis:')) { $('card-in').value = decodeURIComponent(location.hash.slice(1)); tab('reveal'); }
+</script>
+</body>
+</html>
