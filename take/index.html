@@ -12,867 +12,236 @@
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;height:100%;background:#000;color:#fff;
     overflow:hidden;overscroll-behavior:none}
-  body{font-family:"Courier Prime","Courier New",Courier,monospace;
-    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
-
-  #cv{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;
-    display:block;image-rendering:pixelated;touch-action:manipulation;z-index:1}
-
-  .over{position:fixed;z-index:3;text-shadow:0 0 9px #000,0 0 3px #000;pointer-events:none}
-  #clock{left:16px;top:calc(12px + env(safe-area-inset-top));letter-spacing:.22em}
-  #readout{right:16px;top:calc(12px + env(safe-area-inset-top));font-size:13px;letter-spacing:.16em}
-  #hint{left:0;right:0;bottom:calc(20px + env(safe-area-inset-bottom));text-align:center;
-    font-size:13px;letter-spacing:.24em;transition:opacity 1.2s}
-
-  .panel{position:fixed;inset:0;z-index:6;background:#000;overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-    padding:calc(22px + env(safe-area-inset-top)) 18px calc(44px + env(safe-area-inset-bottom))}
-  #hud{background:rgba(0,0,0,.94)}
-
-  h1{font-size:15px;font-weight:400;margin:0;letter-spacing:.6em}
-  .sub{margin:2px 0 22px}
-  .row{margin:0 0 13px}
-  .lbl{display:block;margin:0 0 4px}
-  .opts{display:flex;flex-wrap:wrap;gap:6px}
-  button,select{font:inherit;color:#fff;background:#000;border:0;padding:4px 9px;margin:0;
-    cursor:pointer;appearance:none;-webkit-appearance:none;border-radius:0}
-  .opt[aria-pressed="true"]{background:#fff;color:#000}
-  .big{width:100%;text-align:left;padding:12px;background:#fff;color:#000;
-    font-size:16px;letter-spacing:.1em}
-  .big[disabled]{background:#2c2c2c;color:#8f8f8f;cursor:default}
-  .ghost{padding:10px 12px;background:#000;color:#fff;font-size:16px;
-    box-shadow:inset 0 0 0 2px #fff;width:100%;text-align:left;letter-spacing:.1em}
-  select{box-shadow:inset 0 0 0 2px #fff;padding:8px 10px;width:100%}
-  label.ghost{display:block}
-  .meter{display:flex;gap:3px;height:10px;margin:14px 0 16px}
-  .meter i{flex:1;background:#242424}
-  .meter i.on{background:#fff}
-  .note{margin:8px 0 0}
-  video{width:100%;display:block;background:#000;margin:14px 0 10px}
-  .hide{display:none}
-  .split{display:flex;gap:10px}
-  .split>*{flex:1}
-  #err{position:fixed;z-index:9;left:0;right:0;bottom:0;margin:0;
-    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
-    background:#fff;color:#000}
+  body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:15px}
+  #cv{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;
+    image-rendering:pixelated;touch-action:none;z-index:1}
+  #gate{position:fixed;inset:0;z-index:4;background:#000;display:flex;
+    align-items:center;justify-content:center}
+  #go{font:inherit;font-size:16px;letter-spacing:.5em;color:#fff;background:#000;
+    border:0;padding:18px 22px;cursor:pointer}
+  #note{position:fixed;z-index:3;left:0;right:0;
+    bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;
+    font-size:13px;letter-spacing:.24em;color:#fff;
+    text-shadow:0 0 8px #000,0 0 3px #000;pointer-events:none;transition:opacity 2s}
 </style>
 </head>
 <body>
 
 <canvas id="cv"></canvas>
-<div class="over" id="clock"></div>
-<div class="over" id="readout"></div>
-<div class="over" id="hint">tap for controls</div>
-
-<div class="panel" id="gate">
-  <h1 id="gateTitle">FALL</h1>
-  <p class="sub" id="gateSub">sound in, sediment out. nothing is filmed.</p>
-  <button class="big hide" id="playTake">play this take</button>
-  <p class="note hide" id="takeNote"></p>
-  <button class="big" id="connect">connect audio input</button>
-  <p class="note">plug the interface in first, then tap. keep it plugged the whole time.</p>
-  <div style="height:18px"></div>
-  <button class="ghost" id="demo">run on a built-in test signal</button>
-  <p class="note">no hardware needed &mdash; broadband crackle with occasional tones, same engine, same recorder.</p>
-  <div style="height:18px"></div>
-  <label class="ghost" for="fileIn">render from an audio file</label>
-  <input type="file" id="fileIn" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff,.flac,.ogg" style="display:none">
-  <p class="note">record the jam on anything that has a line input, drop the file in here, and the video comes out with that exact audio as its track. no interface, no phone in the signal path.</p>
-</div>
-
-<div class="panel hide" id="hud">
-  <button class="big" id="close">back to the fall</button>
-  <div class="meter" id="meter"></div>
-  <p class="note" id="diag">no input yet</p>
-
-  <button class="big" id="rec">record</button>
-  <p class="note" id="status"></p>
-
-  <div id="out" class="hide">
-    <video id="vid" controls playsinline></video>
-    <div class="split">
-      <button class="ghost" id="share">share</button>
-      <button class="ghost" id="save">save</button>
-    </div>
-    <p class="note" id="outinfo"></p>
-  </div>
-
-  <div class="row" style="margin-top:22px">
-    <button class="ghost" id="roll">roll a new one</button>
-  </div>
-
-  <div class="row"><span class="lbl">grain</span><div class="opts" id="cellOpts"></div></div>
-  <div class="row"><span class="lbl">source</span><div class="opts" id="emitOpts"></div></div>
-  <div class="row"><span class="lbl">matter</span><div class="opts" id="matOpts"></div></div>
-  <div class="row"><span class="lbl">colour</span><div class="opts" id="palOpts"></div></div>
-  <div class="row"><span class="lbl">marks</span><div class="opts" id="markOpts"></div></div>
-  <div class="row"><span class="lbl">landing</span><div class="opts" id="setOpts"></div></div>
-  <div class="row"><span class="lbl">drain</span><div class="opts" id="drainOpts"></div></div>
-  <div class="row"><span class="lbl">gravity</span><div class="opts" id="gravOpts"></div></div>
-  <div class="row"><span class="lbl">sensitivity</span><div class="opts" id="sensOpts"></div></div>
-  <div class="row"><span class="lbl">mirror</span><div class="opts" id="mirOpts"></div></div>
-  <div class="row"><span class="lbl">length</span><div class="opts" id="lenOpts"></div></div>
-
-  <div class="row" id="inputRow">
-    <span class="lbl">input</span>
-    <select id="device"></select>
-  </div>
-  <div class="row hide" id="fileRow">
-    <label class="ghost" for="fileIn2">load another file</label>
-    <input type="file" id="fileIn2" accept="audio/*,.wav,.mp3,.m4a,.aif,.aiff,.flac,.ogg" style="display:none">
-  </div>
-</div>
-
-<p id="err" class="hide"></p>
+<div id="note"></div>
+<div id="gate"><button id="go">TAKE</button></div>
 
 <script>
 "use strict";
 /* =====================================================================
-   FALL — audio in, video out. one file, no shaders.
+   A field, not a picture of anything.
 
-   A grain automaton. Everything the microphone hears is emitted as
-   falling matter at the top of the frame and settles into a pile.
-   The colour of each grain records which band spawned it, so the
-   drift that builds up over a take is a literal sediment record of
-   the jam: bass strata, dust from the highs, ash from the transients.
-   Detected pitches fall as rigid letters and crumble on landing.
+   Two substances diffuse through a coarse grid and eat each other
+   (Gray-Scott). Left alone, the feed and kill rates wander, so the
+   field keeps changing its mind: spots, then worms, then a slow boil.
+   Sound tilts those same two rates rather than drawing anything, so a
+   take bends the weather instead of being illustrated by it.
 
-   Gravity can also point at the middle of the frame instead of down,
-   in which case the take accretes into a core rather than a drift.
+   Everything is drawn in four inks. The continuous field is forced
+   into them by an ordered Bayer threshold, so gradients arrive as
+   dither texture instead of as blur.
  ===================================================================== */
 
 const $ = s => document.querySelector(s);
-const fail = m => {
-  const e = $("#err");
-  e.textContent = m;
-  e.classList.remove("hide");
-};
+const cv = $("#cv"), ctx = cv.getContext("2d", { alpha:false });
 
-/* ---------- config ---------------------------------------------------- */
+/* ---------- ink: four steps, dark to light ------------------------------- */
 
-const CELLS   = { fine:4, medium:6, coarse:9, slab:14 };
-const EMITS   = ["rain","columns","point","edges","corners"];
-const MATTER  = ["sand","dust","ash","slurry","mixed"];
-const MARKS   = { off:0, notes:1, forms:2 };
-const SETTLE  = ["hold","crumble"];
-const DRAINS  = ["sink","hole","slots","edges","none"];
-const GRAVITY = ["down","centre"];
-const SENS    = { auto:-1, "\u00d70.5":0.5, "\u00d71":1, "\u00d72":2, "\u00d74":4 };
-const MIRROR  = { off:0, "2":2, "4":4 };
-const LENGTHS = { "15s":15, "30s":30, "60s":60, "3m":180 };
+const INKS = [
+  ["#04070c","#123a4f","#2f8fa6","#d8f4ff"],   // deep water
+  ["#080306","#3c1040","#a52d7a","#ffd9f2"],   // bloom
+  ["#02060a","#123f2a","#3fa05c","#eaffd6"],   // chlorophyll
+  ["#05050a","#2a2550","#7b6ad6","#efeaff"],   // dusk
+  ["#060403","#123b45","#57b0a4","#e8fff6"]    // shallows
+];
+let inkA = 0, inkB = 1, inkMix = 0;
 
-/* five bright inks over black. index 0 is always the void. */
-const PALETTES = {
-  bone   : ["#000000","#ffffff","#c9c9c9","#8e8e8e","#5a5a5a","#ff4d2e"],
-  chlor  : ["#000000","#eafff6","#3ff0b4","#12a377","#0b5f52","#ffe94a"],
-  signal : ["#000000","#ffffff","#4dd2ff","#2a6cff","#123ba8","#ff2fb4"],
-  rust   : ["#000000","#fff0e0","#ff8b3d","#c23b12","#5e1a08","#7be0ff"],
-  violet : ["#000000","#f5eaff","#c07bff","#7a2ff0","#33128a","#8dff5a"]
-};
+const rgb = h => [parseInt(h.substr(1,2),16), parseInt(h.substr(3,2),16), parseInt(h.substr(5,2),16)];
+const lerp = (a,b,t) => a + (b-a)*t;
 
-const S = {
-  cell:"medium", emit:"rain", matter:"mixed", palette:"bone",
-  marks:"notes", settle:"hold", drain:"hole", sens:"auto", gravity:"down",
-  mirror:0, length:30,
-  flow:1.0, wind:0.5, limit:0.42, erode:0.004
-};
+/* the 8x8 ordered matrix. this is the whole look: no smoothing anywhere. */
+const BAYER = (() => {
+  const m = [
+    [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
+    [12,44, 4,36,14,46, 6,38],[60,28,52,20,62,30,54,22],
+    [ 3,35,11,43, 1,33, 9,41],[51,19,59,27,49,17,57,25],
+    [15,47, 7,39,13,45, 5,37],[63,31,55,23,61,29,53,21]];
+  const f = new Float32Array(64);
+  for(let y=0;y<8;y++) for(let x=0;x<8;x++) f[y*8+x] = (m[y][x] + 0.5)/64;
+  return f;
+})();
 
-/* ---------- seeded randomness ------------------------------------------ */
+/* ---------- the field ---------------------------------------------------- */
 
-function mulberry32(a){
-  return function(){
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-let RND = Math.random, RSEED = 0;
-const pick = a => a[Math.floor(RND()*a.length)];
-const seedTag = n => (n >>> 0).toString(36).padStart(6,"0").slice(-6);
+const PX = 5;                       // cell size on screen
+let W=0, H=0, u, v, u2, v2, img, gridCv, gridCtx;
 
-/* ---------- audio ------------------------------------------------------- */
+/* feed and kill wander through the region where the system stays alive.
+   those two numbers are the entire mood of the thing.                   */
+let F = 0.030, K = 0.0605, dF = 0, dK = 0, wander = Math.random()*100;
+const DU = 0.20, DV = 0.10;
 
-let ac, analyser, srcNode, micStream, freq, prevFreq, timeBuf;
-const A = { bass:0, mid:0, high:0, rms:0, flux:0, fluxAvg:0.02,
-            shock:0, onset:false, centroid:0.3, tilt:0,
-            raw:0, peak:0.02, gain:1 };
-let noteName = "", noteHz = 0, noteAge = 999, pitchTick = 0;
-
-async function openInput(deviceId){
-  if(micStream) micStream.getTracks().forEach(t=>t.stop());
-  micStream = await navigator.mediaDevices.getUserMedia({
-    audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false,
-            channelCount:2, deviceId: deviceId ? {exact:deviceId} : undefined },
-    video:false
-  });
-  makeAnalyser();
-  if(srcNode) srcNode.disconnect();
-  srcNode = ac.createMediaStreamSource(micStream);
-  srcNode.connect(analyser);       // deliberately NOT connected to the speakers
-}
-
-function makeAnalyser(){
-  if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)();
-  if(ac.state === "suspended") ac.resume();
-  if(analyser) return;
-  analyser = ac.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0.5;
-  freq     = new Uint8Array(analyser.frequencyBinCount);
-  prevFreq = new Uint8Array(analyser.frequencyBinCount);
-  timeBuf  = new Float32Array(analyser.fftSize);
-}
-
-function bandAvg(lo,hi){
-  let s=0,n=0;
-  for(let i=lo;i<hi && i<freq.length;i++){ s+=freq[i]; n++; }
-  return n ? (s/n)/255 : 0;
-}
-
-const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-
-function detectPitch(){
-  analyser.getFloatTimeDomainData(timeBuf);
-  const n = timeBuf.length;
-  let rms = 0;
-  for(let i=0;i<n;i++) rms += timeBuf[i]*timeBuf[i];
-  rms = Math.sqrt(rms/n);
-  if(rms < 0.010) return null;
-  const sr = ac.sampleRate;
-  const minLag = Math.max(2, Math.floor(sr/1400));
-  const maxLag = Math.min(n>>1, Math.floor(sr/55));
-  let best = -1, bestC = 0;
-  for(let lag=minLag; lag<maxLag; lag++){
-    let s=0,e1=0,e2=0;
-    for(let i=0;i<n-lag;i+=3){
-      const x=timeBuf[i], y=timeBuf[i+lag];
-      s += x*y; e1 += x*x; e2 += y*y;
-    }
-    const c = s/Math.sqrt(e1*e2 + 1e-12);
-    if(c > bestC){ bestC = c; best = lag; }
-  }
-  // strict on purpose: broadband hash must yield nothing.
-  if(best < 0 || bestC < 0.90) return null;
-  return sr/best;
-}
-
-function readAudio(){
-  if(!analyser) return;
-  prevFreq.set(freq);
-  analyser.getByteFrequencyData(freq);
-  const hz = (ac.sampleRate/2)/freq.length;
-  const b = f => Math.round(f/hz);
-  let bass = bandAvg(b(25),  b(170));
-  let mid  = bandAvg(b(280), b(2200));
-  let high = bandAvg(b(2600),b(9000));
-  /* line level from an unknown interface can arrive at any volume, so the
-     input is normalised before anything downstream sees it. */
-  A.raw  = Math.max(bass, mid, high);
-  A.peak = Math.max(A.raw, A.peak*0.9993);
-  A.gain = (S.sens === "auto")
-    ? (A.peak > 0.015 ? Math.min(8, 0.55/A.peak) : 1)
-    : SENS[S.sens];
-  bass = Math.min(1, bass*A.gain);
-  mid  = Math.min(1, mid *A.gain);
-  high = Math.min(1, high*A.gain);
-  let flux=0, wsum=0, msum=0;
-  for(let i=0;i<freq.length;i++){
-    const d = freq[i]-prevFreq[i]; if(d>0) flux += d;
-    wsum += freq[i]*i; msum += freq[i];
-  }
-  flux /= (freq.length*90);
-  const cen = msum > 1 ? (wsum/msum)/freq.length : 0.3;
-  A.bass = Math.max(bass, A.bass*0.88);
-  A.mid  = Math.max(mid,  A.mid *0.86);
-  A.high = Math.max(high, A.high*0.84);
-  A.rms  = A.rms*0.85 + ((bass+mid+high)/3)*0.15;
-  A.flux = flux;
-  A.fluxAvg = A.fluxAvg*0.975 + flux*0.025;
-  A.onset = flux > A.fluxAvg*1.95 + 0.025;   // relative, so steady noise isn't one long onset
-  A.shock = Math.max(A.onset ? 1 : 0, A.shock*0.86);
-  A.centroid = A.centroid*0.9 + cen*0.1;
-  A.tilt = A.tilt*0.94 + (A.centroid-0.30)*0.06;
-
-  noteAge++;
-  if((pitchTick++ % 5) === 0){
-    const p = detectPitch();
-    if(p && p > 55 && p < 1400){
-      const midi = Math.round(69 + 12*Math.log2(p/440));
-      const nm = NOTE_NAMES[((midi%12)+12)%12] + (Math.floor(midi/12)-1);
-      if(nm !== noteName || noteAge > 55){
-        noteName = nm; noteHz = p; noteAge = 0; dropLetter(nm, p);
-      }
-    }
-  }
-}
-
-/* ---------- the grid ----------------------------------------------------- */
-
-/* mat: 0 void, 1 sand, 2 dust, 3 ash, 4 slurry
-   ink: palette index 1..5
-   age: ash burn-down / strata tint                                        */
-const SAND=1, DUST=2, ASH=3, SLURRY=4, PACKED=5;
-
-let GW=0, GH=0, mat, ink, age, px, gridCv, gridCtx, imgData, inward;
-const cv = $("#cv"), ctx = cv.getContext("2d");
-let outW=0, outH=0;
-
-/* the recording is exactly the shape of the screen. H.264 needs even sides. */
-function viewSize(){
+function build(){
   const vw = Math.max(1, window.innerWidth), vh = Math.max(1, window.innerHeight);
-  const LONG = 1280;
-  let w, h;
-  if(vh >= vw){ h = LONG; w = Math.round(LONG*vw/vh); }
-  else        { w = LONG; h = Math.round(LONG*vh/vw); }
-  w = Math.max(320, w - (w % 2));
-  h = Math.max(320, h - (h % 2));
-  return [w,h];
-}
-
-function buildGrid(){
-  const [w,h] = viewSize();
-  outW=w; outH=h; cv.width=w; cv.height=h;
-  px = CELLS[S.cell];
-  GW = Math.max(24, Math.round(w/px));
-  GH = Math.max(24, Math.round(h/px));
-  mat = new Uint8Array(GW*GH);
-  ink = new Uint8Array(GW*GH);
-  age = new Uint8Array(GW*GH);
+  cv.width  = Math.max(PX*8, Math.floor(vw/PX)*PX);
+  cv.height = Math.max(PX*8, Math.floor(vh/PX)*PX);
+  W = cv.width/PX; H = cv.height/PX;
+  u = new Float32Array(W*H).fill(1);
+  v = new Float32Array(W*H);
+  u2 = new Float32Array(W*H);
+  v2 = new Float32Array(W*H);
   gridCv = document.createElement("canvas");
-  gridCv.width = GW; gridCv.height = GH;
-  gridCtx = gridCv.getContext("2d");
-  imgData = gridCtx.createImageData(GW,GH);
-  const cx = (GW-1)/2, cy = (GH-1)/2;
-  inward = new Int32Array(GW*GH);
-  const d = new Float32Array(GW*GH);
-  for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){
-    const i = y*GW+x;
-    inward[i] = i;
-    d[i] = Math.hypot(x-cx, y-cy);
-  }
-  inward = Int32Array.from(Array.from(inward).sort((a,b)=>d[a]-d[b]));
-  falling = [];
+  gridCv.width = W; gridCv.height = H;
+  gridCtx = gridCv.getContext("2d", { alpha:false });
+  img = gridCtx.createImageData(W,H);
+  for(let i=0;i<14;i++) seed(Math.random()*W, Math.random()*H, 3 + Math.random()*6);
   ctx.imageSmoothingEnabled = false;
 }
 
-const idx = (x,y) => y*GW + x;
-const solid = i => mat[i] !== 0;
-
-/* ---------- emission ------------------------------------------------------ */
-
-function emitRim(m, inkIdx){
-  const t = RND()*4;
-  let x, y;
-  if(t < 1){ x = RND()*GW; y = 0; }
-  else if(t < 2){ x = RND()*GW; y = GH-1; }
-  else if(t < 3){ x = 0; y = RND()*GH; }
-  else { x = GW-1; y = RND()*GH; }
-  x = Math.max(0, Math.min(GW-1, Math.round(x)));
-  y = Math.max(0, Math.min(GH-1, Math.round(y)));
-  const i = idx(x,y);
-  if(!solid(i)){ mat[i]=m; ink[i]=inkIdx; age[i]= m===ASH ? 255 : Math.floor(RND()*255); }
-}
-
-function emitAt(x, m, inkIdx){
-  if(S.gravity === "centre") return emitRim(m, inkIdx);
-  x = Math.max(0, Math.min(GW-1, Math.round(x)));
-  for(let y=0;y<3;y++){
-    const i = idx(x,y);
-    if(!solid(i)){ mat[i]=m; ink[i]=inkIdx; age[i]= m===ASH ? 255 : Math.floor(RND()*255); return; }
-  }
-}
-
-function matterFor(band){
-  switch(S.matter){
-    case "sand":   return SAND;
-    case "dust":   return DUST;
-    case "ash":    return ASH;
-    case "slurry": return SLURRY;
-    default:       return band===0 ? SAND : band===1 ? DUST : ASH;
-  }
-}
-
-function emitBand(energy, band, inkIdx){
-  const n = Math.floor(energy * energy * 26 * S.flow);
-  if(n <= 0) return;
-  const m = matterFor(band);
-  for(let k=0;k<n;k++){
-    let x;
-    switch(S.emit){
-      case "columns": {
-        const lanes = 7;
-        const lane = Math.floor(RND()*lanes);
-        x = (lane+0.5)*(GW/lanes) + (RND()-0.5)*GW*0.03; break;
+function seed(cx, cy, r){
+  const x0 = Math.max(0, (cx-r)|0), x1 = Math.min(W, (cx+r)|0);
+  const y0 = Math.max(0, (cy-r)|0), y1 = Math.min(H, (cy+r)|0);
+  for(let y=y0; y<y1; y++)
+    for(let x=x0; x<x1; x++)
+      if(Math.hypot(x-cx, y-cy) < r){
+        const i = y*W+x;
+        v[i] = 0.5 + Math.random()*0.25;
+        u[i] = 0.25;
       }
-      case "point":   x = GW*0.5 + (RND()-0.5)*GW*0.10; break;
-      case "edges":   x = RND()<0.5 ? RND()*GW*0.16 : GW-1-RND()*GW*0.16; break;
-      case "corners": x = (RND()<0.5?0:GW-1) + (RND()-0.5)*GW*0.05; break;
-      default:        x = RND()*GW;
+}
+
+/* one Gray-Scott pass, wrapped at the edges so the field has no border */
+function step(){
+  const f = F, k = K;
+  for(let y=0;y<H;y++){
+    const yn = ((y-1+H)%H)*W, ys = ((y+1)%H)*W, yc = y*W;
+    for(let x=0;x<W;x++){
+      const xw = (x-1+W)%W, xe = (x+1)%W, i = yc+x;
+      const uu = u[i], vv = v[i];
+      const lu = (u[yc+xw] + u[yc+xe] + u[yn+x] + u[ys+x]
+                + 0.5*(u[yn+xw] + u[yn+xe] + u[ys+xw] + u[ys+xe])) / 6 - uu;
+      const lv = (v[yc+xw] + v[yc+xe] + v[yn+x] + v[ys+x]
+                + 0.5*(v[yn+xw] + v[yn+xe] + v[ys+xw] + v[ys+xe])) / 6 - vv;
+      const r = uu*vv*vv;
+      const nu = uu + DU*lu - r + f*(1-uu);
+      const nv = vv + DV*lv + r - (f+k)*vv;
+      u2[i] = nu < 0 ? 0 : nu > 1 ? 1 : nu;
+      v2[i] = nv < 0 ? 0 : nv > 1 ? 1 : nv;
     }
-    emitAt(x, m, inkIdx);
+  }
+  u.set(u2); v.set(v2);
+}
+
+/* ---------- drawing ------------------------------------------------------ */
+
+const pal = new Uint8Array(12);
+function mixInks(){
+  const a = INKS[inkA], b = INKS[inkB];
+  for(let i=0;i<4;i++){
+    const ca = rgb(a[i]), cb = rgb(b[i]);
+    pal[i*3]   = lerp(ca[0], cb[0], inkMix);
+    pal[i*3+1] = lerp(ca[1], cb[1], inkMix);
+    pal[i*3+2] = lerp(ca[2], cb[2], inkMix);
   }
 }
 
-/* ---------- rigid falling marks -------------------------------------------- */
-
-let falling = [];
-const FORMS = ["aerial","eye","moth","hand","bolt","tower","wave"];
-let formClock = 0;
-
-function raster(drawFn, wCells, hCells){
-  const c = document.createElement("canvas");
-  c.width = Math.max(2,Math.ceil(wCells)); c.height = Math.max(2,Math.ceil(hCells));
-  const x = c.getContext("2d");
-  x.fillStyle="#fff"; x.strokeStyle="#fff";
-  drawFn(x, c.width, c.height);
-  const d = x.getImageData(0,0,c.width,c.height).data;
-  const cells = [];
-  for(let yy=0;yy<c.height;yy++)
-    for(let xx=0;xx<c.width;xx++)
-      if(d[(yy*c.width+xx)*4+3] > 120) cells.push([xx,yy]);
-  return { cells, w:c.width, h:c.height };
-}
-
-function rasterText(txt, hCells){
-  const f = '700 ' + hCells + 'px "Courier Prime","Courier New",monospace';
-  const probe = document.createElement("canvas").getContext("2d");
-  probe.font = f;
-  const w = Math.ceil(probe.measureText(txt).width) + 2;
-  return raster((x)=>{
-    x.font = f; x.textBaseline = "top"; x.fillStyle = "#fff";
-    x.fillText(txt, 1, 0);
-  }, w, Math.ceil(hCells*1.22));
-}
-
-function rasterForm(id, r){
-  return raster((c,w,h)=>{
-    c.translate(w/2,h/2);
-    const s = Math.min(w,h)/2 - 1;
-    c.lineWidth = Math.max(1, s*0.13);
-    c.beginPath();
-    switch(id){
-      case "aerial":
-        c.moveTo(0,s); c.lineTo(0,-s*0.55);
-        for(let i=0;i<4;i++){ const y=-s*0.55+i*s*0.36;
-          c.moveTo(-s*0.62+i*s*0.11, y); c.lineTo(s*0.62-i*s*0.11, y); }
-        c.stroke(); break;
-      case "eye":
-        c.moveTo(-s,0); c.quadraticCurveTo(0,-s*0.8, s,0);
-        c.quadraticCurveTo(0, s*0.8, -s,0); c.stroke();
-        c.beginPath(); c.arc(0,0,s*0.3,0,6.2832); c.fill(); break;
-      case "moth":
-        c.moveTo(0,0); c.quadraticCurveTo(-s,-s*0.95,-s*0.36,s*0.36);
-        c.quadraticCurveTo(-s*0.2,s*0.1,0,0);
-        c.quadraticCurveTo( s,-s*0.95, s*0.36,s*0.36);
-        c.quadraticCurveTo( s*0.2,s*0.1,0,0); c.fill();
-        c.beginPath(); c.moveTo(0,-s*0.1); c.lineTo(0,s*0.6); c.stroke(); break;
-      case "hand":
-        c.moveTo(-s*0.46,s); c.lineTo(-s*0.46,-s*0.16); c.lineTo(-s*0.16,-s*0.86);
-        c.lineTo(-s*0.05,-s*0.92); c.lineTo(s*0.05,-s*0.6); c.lineTo(s*0.2,-s*0.96);
-        c.lineTo(s*0.33,-s*0.56); c.lineTo(s*0.46,-s*0.1); c.lineTo(s*0.46,s);
-        c.closePath(); c.stroke(); break;
-      case "bolt":
-        c.moveTo(s*0.1,-s); c.lineTo(-s*0.46,s*0.12); c.lineTo(0,s*0.1);
-        c.lineTo(-s*0.15,s); c.lineTo(s*0.5,-s*0.15); c.lineTo(s*0.05,-s*0.12);
-        c.closePath(); c.fill(); break;
-      case "tower":
-        c.moveTo(-s*0.6,s); c.lineTo(0,-s); c.lineTo(s*0.6,s); c.stroke();
-        c.beginPath();
-        c.moveTo(-s*0.45,s*0.45); c.lineTo(s*0.45,s*0.45);
-        c.moveTo(-s*0.30,0);      c.lineTo(s*0.30,0);
-        c.moveTo(-s*0.45,s*0.45); c.lineTo(s*0.16,-s*0.45);
-        c.moveTo( s*0.45,s*0.45); c.lineTo(-s*0.16,-s*0.45);
-        c.stroke(); break;
-      default:
-        c.moveTo(-s,0);
-        for(let i=-s;i<=s;i+=1) c.lineTo(i, Math.sin(i/s*7.5)*s*0.44*(1-Math.abs(i)/s));
-        c.stroke(); break;
-    }
-  }, r*2, r*2);
-}
-
-function launch(shape, inkIdx){
-  if(!shape.cells.length) return;
-  falling.push({
-    cells: shape.cells, w: shape.w, h: shape.h,
-    x: Math.floor(RND()*(GW - shape.w - 2)) + 1,
-    y: -shape.h, sub: 0,
-    speed: 0.34 + RND()*0.30,
-    ink: inkIdx
-  });
-  if(falling.length > 7) falling.shift();
-}
-
-function dropLetter(name, hz){
-  if(MARKS[S.marks] < 1) return;
-  const h = Math.max(7, Math.round(GH*0.11));
-  launch(rasterText(name.replace(/[0-9]/g,""), h), 1);
-}
-
-function dropForm(){
-  if(MARKS[S.marks] < 2) return;
-  const r = Math.max(6, Math.round(GH*0.075));
-  launch(rasterForm(FORMS[Math.floor(RND()*FORMS.length)], r), 2);
-}
-
-function stepFalling(){
-  for(let f=falling.length-1; f>=0; f--){
-    const o = falling[f];
-    o.sub += o.speed*(1 + A.rms*1.4);
-    let move = Math.floor(o.sub);
-    if(move < 1) continue;
-    o.sub -= move;
-    let sx2 = 0, sy2 = 1;
-    if(S.gravity === "centre"){
-      const ox = (GW-o.w)/2 - o.x, oy = (GH-o.h)/2 - o.y;
-      const l = Math.hypot(ox,oy) || 1;
-      sx2 = Math.round(ox/l); sy2 = Math.round(oy/l);
-      if(!sx2 && !sy2) { falling.splice(f,1); continue; }
-    }
-    while(move-- > 0){
-      let blocked = false;
-      for(const [cx,cy] of o.cells){
-        const gx = o.x+cx+sx2, gy = o.y+cy+sy2;
-        if(gy >= GH || gy < 0 || gx < 0 || gx >= GW){ blocked = true; break; }
-        if(solid(idx(gx,gy))){ blocked = true; break; }
-      }
-      if(blocked){
-        const lands = S.settle === "hold" ? PACKED : SAND;
-        for(const [cx,cy] of o.cells){
-          const gx = o.x+cx, gy = o.y+cy;
-          if(gy < 0 || gy >= GH || gx < 0 || gx >= GW) continue;
-          const i = idx(gx,gy);
-          if(!solid(i)){ mat[i] = lands; ink[i] = o.ink; age[i] = 255; }
-        }
-        falling.splice(f,1); blocked = true; break;
-      }
-      o.x += sx2; o.y += sy2;
+function draw(){
+  const d = img.data;
+  for(let y=0;y<H;y++){
+    const row = (y&7)*8;
+    for(let x=0;x<W;x++){
+      const i = y*W+x;
+      let t = v[i]*2.6;                 // v runs roughly 0 .. 0.4
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const s = t*3, lo = s|0;
+      const c = (s - lo) > BAYER[row + (x&7)] ? (lo > 2 ? 3 : lo+1) : lo;
+      const o = i*4, p = c*3;
+      d[o] = pal[p]; d[o+1] = pal[p+1]; d[o+2] = pal[p+2]; d[o+3] = 255;
     }
   }
-}
-
-/* ---------- the automaton -------------------------------------------------- */
-
-let frameN = 0;
-
-function stepCentre(){
-  const cx = (GW-1)/2, cy = (GH-1)/2;
-  const swirl = (A.tilt*1.6 + (A.onset ? (RND()-0.5)*1.4 : 0)) * S.wind;
-  for(let k=0;k<inward.length;k++){
-    const i = inward[k];
-    const m = mat[i];
-    if(m === 0) continue;
-    const x = i % GW, y = (i / GW) | 0;
-    if(m === PACKED){
-      if(A.onset && RND() < S.erode*(1 + A.rms*3)){ mat[i] = SAND; age[i] = 180; }
-      continue;
-    }
-    if(m === ASH){
-      if(age[i] > 0) age[i] -= 2;
-      else { mat[i]=0; ink[i]=0; continue; }
-    }
-    if(m === DUST && ((x*7 + y*3 + frameN) & 1)) continue;
-    let ddx = cx - x, ddy = cy - y;
-    const len = Math.hypot(ddx, ddy);
-    if(len < 0.9) continue;                       // already at the core
-    ddx /= len; ddy /= len;
-    // swirl turns the pull into a spiral: the pile winds instead of stacking
-    const sx = -ddy*swirl, sy = ddx*swirl;
-    const tries = [
-      [Math.round(ddx+sx), Math.round(ddy+sy)],
-      [Math.round(ddx), Math.round(ddy)],
-      [Math.round(ddx) || (RND()<0.5?1:-1), 0],
-      [0, Math.round(ddy) || (RND()<0.5?1:-1)]
-    ];
-    for(const [tx,ty] of tries){
-      if(!tx && !ty) continue;
-      const nx = x+tx, ny = y+ty;
-      if(nx<0||nx>=GW||ny<0||ny>=GH) continue;
-      const j = ny*GW+nx;
-      if(!solid(j)){
-        mat[j]=m; ink[j]=ink[i]; age[j]=age[i];
-        mat[i]=0; ink[i]=0; break;
-      }
-    }
-  }
-  frameN++;
-}
-
-function stepGrid(){
-  if(S.gravity === "centre") return stepCentre();
-  const wind = (A.tilt*2.2 + (A.onset ? (RND()-0.5)*1.2 : 0)) * S.wind;
-  for(let y=GH-2; y>=0; y--){
-    const flip = ((y + frameN) & 1) === 0;
-    for(let n=0; n<GW; n++){
-      const x = flip ? n : GW-1-n;
-      const i = idx(x,y);
-      const m = mat[i];
-      if(m === 0) continue;
-
-      if(m === PACKED){        // holds its shape; transients weather it away
-        if(A.onset && RND() < S.erode*(1 + A.rms*3)){ mat[i] = SAND; age[i] = 180; }
-        continue;
-      }
-      if(m === ASH){                                  // burns down where it rests
-        if(age[i] > 0) age[i] -= 2;
-        else { mat[i]=0; ink[i]=0; continue; }
-      }
-      if(m === DUST && ((x*7 + y*3 + frameN) & 1)) continue;   // dust falls at half rate
-
-      const below = idx(x,y+1);
-      if(!solid(below)){
-        mat[below]=m; ink[below]=ink[i]; age[below]=age[i];
-        mat[i]=0; ink[i]=0; continue;
-      }
-      // diagonal repose, biased by wind (no allocation in this loop)
-      const first = (wind + (RND()-0.5)*2) > 0 ? 1 : -1;
-      let moved = false;
-      for(let s2=0; s2<2; s2++){
-        const nx = x + (s2 === 0 ? first : -first);
-        if(nx < 0 || nx >= GW) continue;
-        const dg = idx(nx, y+1);
-        if(!solid(dg)){
-          mat[dg]=m; ink[dg]=ink[i]; age[dg]=age[i];
-          mat[i]=0; ink[i]=0; moved = true; break;
-        }
-      }
-      if(moved) continue;
-      if(m === SLURRY){                                // spreads flat
-        for(let s2=0; s2<2; s2++){
-          const nx = x + (s2 === 0 ? first : -first);
-          if(nx<0||nx>=GW) continue;
-          const lat = idx(nx,y);
-          if(!solid(lat)){
-            mat[lat]=m; ink[lat]=ink[i]; age[lat]=age[i];
-            mat[i]=0; ink[i]=0; break;
-          }
-        }
-      }
-    }
-  }
-  frameN++;
-}
-
-/* openings in the floor. matter funnels toward them and leaves the frame. */
-function drainOpen(x){
-  switch(S.drain){
-    case "hole": {
-      const half = Math.max(1, Math.round(GW*(0.045 + A.bass*0.055)));
-      return Math.abs(x - GW*0.5) < half;
-    }
-    case "slots": {
-      const n = 4, w = Math.max(1, Math.round(GW*0.035));
-      for(let k=0;k<n;k++) if(Math.abs(x - (k+0.5)*GW/n) < w) return true;
-      return false;
-    }
-    case "edges": {
-      const w = Math.max(1, Math.round(GW*0.075));
-      return x < w || x >= GW-w;
-    }
-    default: return false;               // sink / none have no floor opening
-  }
-}
-
-function sink(){
-  mat.copyWithin(GW, 0, GW*(GH-1));
-  ink.copyWithin(GW, 0, GW*(GH-1));
-  age.copyWithin(GW, 0, GW*(GH-1));
-  mat.fill(0,0,GW); ink.fill(0,0,GW);
-  for(const o of falling) o.y++;
-}
-
-function drainCentre(){
-  if(S.drain === "none") return;
-  const cx = Math.round((GW-1)/2), cy = Math.round((GH-1)/2);
-  const r = Math.max(1, Math.round(Math.min(GW,GH)*(0.02 + A.bass*0.05)));
-  const rate = 0.35 + A.rms*0.8;
-  for(let y=cy-r; y<=cy+r; y++){
-    if(y<0||y>=GH) continue;
-    for(let x=cx-r; x<=cx+r; x++){
-      if(x<0||x>=GW) continue;
-      const i = idx(x,y);
-      if(mat[i] && RND() < rate){ mat[i]=0; ink[i]=0; }
-    }
-  }
-}
-
-function drain(){
-  if(S.gravity === "centre") return drainCentre();
-  const floor = idx(0, GH-1);
-  if(S.drain !== "sink" && S.drain !== "none"){
-    const rate = 0.45 + A.rms*0.7;
-    for(let x=0; x<GW; x++){
-      const i = floor + x;
-      if(mat[i] && drainOpen(x) && RND() < rate){ mat[i]=0; ink[i]=0; }
-    }
-  }
-  let filled = 0;
-  const scan = idx(0, Math.floor(GH*0.55));
-  for(let i=scan; i<GW*GH; i+=3) if(mat[i]) filled++;
-  const frac = filled / ((GW*GH - scan)/3);
-  // "sink" scrolls at its own threshold; the others only ever as an anti-choke valve
-  const trip = S.drain === "sink" ? S.limit : 0.82;
-  if(frac >= trip) sink();
-}
-
-/* ---------- render ---------------------------------------------------------- */
-
-let pal = null, palName = null;
-function palette(){
-  if(palName !== S.palette){
-    palName = S.palette;
-    pal = PALETTES[S.palette].map(h=>[
-      parseInt(h.substr(1,2),16), parseInt(h.substr(3,2),16), parseInt(h.substr(5,2),16)
-    ]);
-  }
-  return pal;
-}
-
-function render(){
-  const p = palette(), d = imgData.data;
-  d.fill(0);
-  for(let i=0;i<GW*GH;i++){
-    const m = mat[i];
-    const o = i*4;
-    if(m === 0){ d[o+3] = 255; continue; }
-    const c = p[Math.min(p.length-1, ink[i] || 1)];
-    let k = 1;
-    if(m === ASH)   k = 0.35 + (age[i]/255)*0.65;
-    if(m === PACKED)k = 1.0;
-    if(m === DUST)  k = 0.80;
-    if(m === SLURRY)k = 0.68;
-    d[o]   = c[0]*k;
-    d[o+1] = c[1]*k;
-    d[o+2] = c[2]*k;
-    d[o+3] = 255;
-  }
-  // rigid marks ride above the pile
-  const hi = p[1];
-  for(const o of falling){
-    for(const [cx,cy] of o.cells){
-      const gx = o.x+cx, gy = o.y+cy;
-      if(gx<0||gx>=GW||gy<0||gy>=GH) continue;
-      const q = (gy*GW+gx)*4;
-      const c = p[Math.min(p.length-1, o.ink)] || hi;
-      d[q]=c[0]; d[q+1]=c[1]; d[q+2]=c[2]; d[q+3]=255;
-    }
-  }
-  gridCtx.putImageData(imgData,0,0);
-
+  gridCtx.putImageData(img,0,0);
   ctx.imageSmoothingEnabled = false;
-  const seg = MIRROR[String(S.mirror)] ?? S.mirror;
-  if(!seg){
-    ctx.drawImage(gridCv, 0, 0, outW, outH);
-  } else if(seg === 2){
-    const hw = outW/2;
-    ctx.drawImage(gridCv, 0, 0, hw, outH);
-    ctx.save(); ctx.translate(outW,0); ctx.scale(-1,1);
-    ctx.drawImage(gridCv, 0, 0, hw, outH); ctx.restore();
-  } else {
-    const hw = outW/2, hh = outH/2;
-    ctx.drawImage(gridCv, 0, 0, hw, hh);
-    ctx.save(); ctx.translate(outW,0); ctx.scale(-1,1);
-    ctx.drawImage(gridCv, 0, 0, hw, hh); ctx.restore();
-    ctx.save(); ctx.translate(0,outH); ctx.scale(1,-1);
-    ctx.drawImage(gridCv, 0, 0, hw, hh); ctx.restore();
-    ctx.save(); ctx.translate(outW,outH); ctx.scale(-1,-1);
-    ctx.drawImage(gridCv, 0, 0, hw, hh); ctx.restore();
+  ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
+}
+
+/* ---------- sound, if there is any --------------------------------------- */
+
+let ac, analyser, freq, src, playing = false;
+const A = { bass:0, mid:0, high:0, level:0 };
+
+function listen(){
+  if(!analyser) return;
+  analyser.getByteFrequencyData(freq);
+  const n = freq.length;
+  const band = (a,b) => { let s=0; for(let i=a;i<b;i++) s+=freq[i]; return s/(Math.max(1,b-a)*255); };
+  A.bass = A.bass*0.85 + band(1, n*0.03|0)*0.15;
+  A.mid  = A.mid *0.85 + band(n*0.03|0, n*0.20|0)*0.15;
+  A.high = A.high*0.85 + band(n*0.20|0, n*0.55|0)*0.15;
+  A.level = (A.bass + A.mid + A.high)/3;
+}
+
+/* ---------- the wander ---------------------------------------------------
+   with no sound the parameters drift on their own, slowly, so the field
+   never settles. sound leans on the same two numbers.                    */
+
+function evolve(){
+  wander += 0.0016;
+  const baseF = 0.0300 + 0.0075*Math.sin(wander) + 0.0035*Math.sin(wander*0.37 + 1.7);
+  const baseK = 0.0600 + 0.0045*Math.sin(wander*0.61 + 0.4) + 0.0020*Math.sin(wander*1.9);
+  dF += ((A.bass - A.high)*0.0030 - dF)*0.05;
+  dK += ((A.high - A.mid)*0.0025 - dK)*0.05;
+  F = baseF + dF;
+  K = baseK + dK;
+
+  inkMix += 0.0014 + A.level*0.0020;
+  if(inkMix >= 1){
+    inkMix = 0;
+    inkA = inkB;
+    inkB = (inkB + 1 + (Math.random()*2|0)) % INKS.length;
+    if(inkB === inkA) inkB = (inkB + 1) % INKS.length;
   }
+  mixInks();
+
+  // a struck string arrives as a disturbance, not as a drawn mark
+  if(A.level > 0.10 && Math.random() < A.level*0.6)
+    seed(Math.random()*W, Math.random()*H, 2 + A.level*8);
 }
 
-/* ---------- loop -------------------------------------------------------------- */
+/* ---------- touch is a hand in the water --------------------------------- */
 
-const meterCells = [];
-function buildMeter(){
-  const m = $("#meter");
-  for(let i=0;i<24;i++){ const s=document.createElement("i"); m.appendChild(s); meterCells.push(s); }
+function pointer(e){
+  const r = cv.getBoundingClientRect();
+  const x = (e.clientX - r.left)/PX, y = (e.clientY - r.top)/PX;
+  if(x>=0 && y>=0 && x<W && y<H) seed(x, y, 3.5);
+}
+cv.addEventListener("pointerdown", pointer);
+cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointer(e); });
+
+/* ---------- loop ---------------------------------------------------------- */
+
+function frame(){
+  listen();
+  evolve();
+  const passes = 6 + Math.round(A.level*6);
+  for(let i=0;i<passes;i++) step();
+  draw();
+  requestAnimationFrame(frame);
 }
 
-let running = false, lastOnset = false, lastMark = 0, formTick = 0;
-
-function loop(){
-  if(!running) return;
-  readAudio();
-  emitBand(A.bass, 0, 3);
-  emitBand(A.mid,  1, 2);
-  emitBand(A.high, 2, 1);
-  const now = performance.now();
-  if(A.onset && !lastOnset && now - lastMark > 220){
-    lastMark = now;
-    for(let k=0;k<40*S.flow;k++) emitAt(RND()*GW, ASH, 5);
-    if(++formTick % 9 === 0) dropForm();
-  }
-  lastOnset = A.onset;
-  stepFalling();
-  stepGrid();
-  drain();
-  render();
-  const n = Math.round(Math.min(1, A.rms*1.9)*meterCells.length);
-  for(let i=0;i<meterCells.length;i++) meterCells[i].classList.toggle("on", i<n);
-  if((frameN & 15) === 0) writeDiag();
-  $("#readout").textContent = (noteAge < 90 && noteName)
-    ? noteName + "  " + noteHz.toFixed(1) + " hz"
-    : "no pitch \u2014 broadband";
-  requestAnimationFrame(loop);
-}
-
-function writeDiag(){
-  const el = $("#diag");
-  if(!micStream){ el.textContent = "no input yet"; return; }
-  if(mode === "file"){
-    el.textContent = fileName.slice(0,24) + " \u00b7 " +
-      (fileBuf ? fileBuf.duration.toFixed(1)+"s \u00b7 "+fileBuf.numberOfChannels+" ch \u00b7 " : "") +
-      "raw " + A.raw.toFixed(3) + " \u00b7 gain \u00d7" + A.gain.toFixed(1);
-    return;
-  }
-  const tr = micStream.getAudioTracks()[0];
-  const st = (tr && tr.getSettings) ? tr.getSettings() : {};
-  const label = (tr && tr.label) ? tr.label : "stream";
-  el.textContent =
-    label.slice(0,26) + " \u00b7 " +
-    (st.sampleRate || (ac && ac.sampleRate) || "?") + " hz \u00b7 " +
-    (st.channelCount || "?") + " ch \u00b7 raw " + A.raw.toFixed(3) +
-    " \u00b7 gain \u00d7" + A.gain.toFixed(1);
-}
-
-/* ---------- roll ---------------------------------------------------------------- */
-
-function roll(seed){
-  RSEED = (seed === undefined) ? (Math.random()*4294967295) >>> 0 : (seed >>> 0);
-  RND = mulberry32(RSEED);
-  S.cell    = pick(["fine","medium","medium","coarse","slab"]);
-  S.emit    = pick(EMITS);
-  S.matter  = pick(["mixed","mixed","sand","dust","ash","slurry"]);
-  S.palette = pick(Object.keys(PALETTES));
-  S.marks   = pick(["notes","notes","forms","off"]);
-  S.settle  = pick(["hold","hold","crumble"]);
-  S.drain   = pick(["hole","hole","slots","edges","sink","none"]);
-  S.gravity = pick(["down","down","centre"]);
-  S.mirror  = pick([0,0,0,2,4]);
-  S.flow    = 0.5 + RND()*1.3;
-  S.wind    = RND()*1.5;
-  S.limit   = 0.28 + RND()*0.34;
-  S.erode   = RND() < 0.4 ? 0 : 0.002 + RND()*0.008;
-  if(!takeFromHash()){ try{ history.replaceState(null,"","#"+seedTag(RSEED)); }catch(e){} }
-  buildGrid();
-  syncUI();
-}
-/* ---------- a take from the repo -----------------------------------------
-   #<did>/<cid> names an audio blob in an atproto repo. The PDS holding it is
-   resolved from the DID document, the blob is fetched, and the seed is derived
-   from the cid — so a given take always falls the same way.                */
+/* ---------- a take from the repo ------------------------------------------
+   #<did>/<cid> or #<did>/<cid>/<seconds>. the audio blob is fetched from
+   whichever PDS holds that repo; the seconds, when present, trim the
+   silence that a fixed-size streaming upload has to pad itself with.    */
 
 function takeFromHash(){
   const h = (location.hash||"").replace(/^#/,"").trim();
-  const m = h.match(/^(did:[a-z0-9:%._-]+)\/([a-z0-9]+)$/i);
-  return m ? { did: m[1], cid: m[2] } : null;
-}
-
-function seedFromCid(cid){
-  let n = 2166136261 >>> 0;
-  for(let i=0;i<cid.length;i++){ n ^= cid.charCodeAt(i); n = Math.imul(n, 16777619) >>> 0; }
-  return n >>> 0;
+  const m = h.match(/^(did:[a-z0-9:%._-]+)\/([a-z0-9]+)(?:\/(\d+))?$/i);
+  return m ? { did:m[1], cid:m[2], secs: m[3] ? parseInt(m[3],10) : 0 } : null;
 }
 
 async function pdsFor(did){
@@ -880,365 +249,62 @@ async function pdsFor(did){
   if(!r.ok) throw new Error("could not resolve " + did);
   const doc = await r.json();
   const svc = (doc.service||[]).find(s => String(s.id).endsWith("atproto_pds"));
-  if(!svc) throw new Error("no pds in did document");
+  if(!svc) throw new Error("no pds in that did document");
   return svc.serviceEndpoint.replace(/\/$/,"");
 }
 
 async function playTake(t){
-  $("#takeNote").textContent = "fetching \u2026";
   const pds = await pdsFor(t.did);
-  const url = pds + "/xrpc/com.atproto.sync.getBlob?did=" +
-              encodeURIComponent(t.did) + "&cid=" + encodeURIComponent(t.cid);
-  const r = await fetch(url);
+  const r = await fetch(pds + "/xrpc/com.atproto.sync.getBlob?did=" +
+    encodeURIComponent(t.did) + "&cid=" + encodeURIComponent(t.cid));
   if(!r.ok) throw new Error("take not found (" + r.status + ")");
-  const bytes = await r.arrayBuffer();
-  await loadAudioBytes(bytes, t.cid, false);
-  if(!running){
-    RSEED_FORCE = seedFromCid(t.cid);
-    begin();
-  } else {
-    filePlay(false);
-  }
-  $("#inputRow").classList.add("hide");
-  $("#fileRow").classList.add("hide");
+  const buf = await ac.decodeAudioData(await r.arrayBuffer());
+  src = ac.createBufferSource();
+  src.buffer = buf;
+  src.connect(analyser);
+  src.connect(ac.destination);
+  const dur = t.secs > 0 ? Math.min(t.secs, buf.duration) : buf.duration;
+  src.start(0, 0, dur);
+  playing = true;
+  src.onended = () => { playing = false; say(""); };
+  say(fmt(dur));
+  setTimeout(() => say(""), 4000);
 }
 
-let RSEED_FORCE = undefined;
-
-function seedFromHash(){
-  const h = (location.hash||"").replace(/^#/,"").trim();
-  if(!/^[0-9a-z]{1,7}$/.test(h)) return undefined;
-  const n = parseInt(h,36);
-  return Number.isFinite(n) ? n >>> 0 : undefined;
+const fmt = s => Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2,"0");
+function say(s){
+  const n = $("#note");
+  n.textContent = s;
+  n.style.opacity = s ? "1" : "0";
 }
 
-/* ---------- ui -------------------------------------------------------------------- */
+/* ---------- boot ----------------------------------------------------------- */
 
-function optGroup(host, values, set){
-  const el = $(host); el.innerHTML = "";
-  values.forEach(val=>{
-    const b = document.createElement("button");
-    b.className="opt"; b.type="button";
-    b.textContent = String(val.label ?? val);
-    b.dataset.v = String(val.value ?? val);
-    b.onclick = () => { set(val.value ?? val); syncUI(); };
-    el.appendChild(b);
-  });
-}
-function syncUI(){
-  [["#cellOpts",S.cell],["#emitOpts",S.emit],["#matOpts",S.matter],
-   ["#palOpts",S.palette],["#markOpts",S.marks],["#setOpts",S.settle],
-   ["#drainOpts",S.drain],["#gravOpts",S.gravity],["#sensOpts",S.sens],["#mirOpts",S.mirror],
-   ["#lenOpts",S.length]].forEach(([sel,val])=>{
-    const v = String(val);
-    $(sel).querySelectorAll(".opt").forEach(b=>
-      b.setAttribute("aria-pressed", b.dataset.v === v ? "true" : "false"));
-  });
-  $("#rec").textContent = "record " + S.length + "s";
-  $("#roll").textContent = "roll a new one \u00b7 " + seedTag(RSEED);
-}
-function buildUI(){
-  optGroup("#cellOpts", Object.keys(CELLS), v=>{ S.cell=v; buildGrid(); });
-  optGroup("#emitOpts", EMITS, v=>S.emit=v);
-  optGroup("#matOpts", MATTER, v=>S.matter=v);
-  optGroup("#palOpts", Object.keys(PALETTES), v=>S.palette=v);
-  optGroup("#markOpts", Object.keys(MARKS), v=>S.marks=v);
-  optGroup("#setOpts", SETTLE, v=>S.settle=v);
-  optGroup("#drainOpts", DRAINS, v=>S.drain=v);
-  optGroup("#gravOpts", GRAVITY, v=>{ S.gravity=v; buildGrid(); });
-  optGroup("#sensOpts", Object.keys(SENS), v=>{ S.sens=v; A.peak=0.02; });
-  optGroup("#mirOpts",
-    [{label:"off",value:0},{label:"2",value:2},{label:"4",value:4}], v=>S.mirror=v);
-  optGroup("#lenOpts", Object.entries(LENGTHS).map(([label,value])=>({label,value})),
-    v=>S.length=v);
-  $("#roll").onclick = () => roll();
-  $("#close").onclick = hideHud;
-  cv.addEventListener("pointerup", showHud);
-  buildMeter();
-  syncUI();
-}
-
-/* ---------- hud ---------------------------------------------------------- */
-
-let hinted = false;
-function showHud(){
-  $("#hud").classList.remove("hide");
-  if(!hinted){ hinted = true; $("#hint").style.opacity = "0"; }
-}
-function hideHud(){ $("#hud").classList.add("hide"); }
-
-/* ---------- recording -------------------------------------------------------------- */
-
-function pickMime(){
-  const c = ['video/mp4;codecs="avc1.42E01E,mp4a.40.2"','video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-             'video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  for(const m of c) if(window.MediaRecorder && MediaRecorder.isTypeSupported(m)) return m;
-  return "";
-}
-
-let recorder=null, chunks=[], lastBlob=null, lastName="", wakeLock=null;
-
-async function record(){
-  if(recorder) return;
-  const mime = pickMime();
-  if(!mime){ fail("this browser cannot record video."); return; }
-  if(!cv.captureStream){ fail("this browser cannot capture the canvas."); return; }
-  let vStream;
-  try{ vStream = cv.captureStream(30); }
-  catch(e){ fail("canvas capture failed: " + (e.message||e)); return; }
-  const stream = new MediaStream([...vStream.getVideoTracks(), ...micStream.getAudioTracks()]);
-  try{ wakeLock = await navigator.wakeLock.request("screen"); }catch(e){}
-  chunks = [];
-  recorder = new MediaRecorder(stream, {
-    mimeType: mime,
-    videoBitsPerSecond: Math.min(Math.round(outW*outH*30*0.10), 9000000),
-    audioBitsPerSecond: 160000
-  });
-  recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
-  recorder.onstop = finish;
-  if(mode === "file" && fileBuf){
-    S.length = Math.max(1, Math.min(600, Math.ceil(fileBuf.duration)));
-    filePlay(false);                 // restart from zero, in sync with the take
-  }
-  recorder.start(1000);
-  hideHud();
-  $("#out").classList.add("hide");
-  $("#rec").disabled = true;
-  $("#rec").textContent = "recording";
-  const end = performance.now() + S.length*1000;
-  (function tick(){
-    if(!recorder) return;
-    const left = Math.max(0, Math.ceil((end-performance.now())/1000));
-    $("#clock").textContent = String(left).padStart(2,"0");
-    if(left <= 0){ recorder.stop(); return; }
-    setTimeout(tick, 200);
-  })();
-}
-
-function finish(){
-  const mime = recorder.mimeType || "video/mp4";
-  recorder = null;
-  if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock=null; }
-  const ext = mime.includes("mp4") ? "mp4" : "webm";
-  lastBlob = new Blob(chunks, {type: mime.split(";")[0]});
-  lastName = "fall-" + seedTag(RSEED) + "-" + Date.now().toString(36) + "." + ext;
-  $("#clock").textContent = "";
-  $("#rec").disabled = false;
-  syncUI();
-  $("#vid").src = URL.createObjectURL(lastBlob);
-  if(mode === "file" && fileBuf) filePlay(true);
-  showHud();
-  $("#out").classList.remove("hide");
-  $("#outinfo").textContent = lastName + " \u00b7 " + (lastBlob.size/1048576).toFixed(1) +
-    " mb \u00b7 " + outW + "\u00d7" + outH +
-    (ext==="webm" ? " \u00b7 webm — bluesky wants mp4" : "");
-  $("#out").scrollIntoView({behavior:"smooth",block:"start"});
-}
-
-async function shareOut(){
-  if(!lastBlob) return;
-  const file = new File([lastBlob], lastName, {type:lastBlob.type});
-  if(navigator.canShare && navigator.canShare({files:[file]})){
-    try{ await navigator.share({files:[file]}); }catch(e){}
-  } else saveOut();
-}
-function saveOut(){
-  if(!lastBlob) return;
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(lastBlob);
-  a.download = lastName; a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 30000);
-}
-
-/* ---------- rendering from a file ----------------------------------------
-   The phone never has to be in the signal path. Track the jam on whatever
-   already has a line input, hand the file to this page, and the recorder
-   captures the canvas alongside the file's own audio — so the posted video
-   carries the real recording, not a room mic.                             */
-
-let mode = "live", fileBuf = null, fileSrc = null, fileDest = null, fileName = "";
-
-async function loadAudioFile(file){
-  $("#diag").textContent = "decoding " + file.name + " \u2026";
-  return loadAudioBytes(await file.arrayBuffer(), file.name, true);
-}
-
-async function loadAudioBytes(bytes, name, loop){
-  makeAnalyser();
-  fail("");
-  $("#err").classList.add("hide");
-  fileBuf = await new Promise((res,rej)=>{
-    const r = ac.decodeAudioData(bytes, res, rej);
-    if(r && r.then) r.then(res, rej);
-  });
-  fileName = name;
-  mode = "file";
-  if(!fileDest){
-    fileDest = ac.createMediaStreamDestination();
-    micStream = fileDest.stream;
-  }
-  filePlay(!!loop);
-}
-
-function filePlay(loop){
-  if(fileSrc){ try{ fileSrc.stop(); }catch(e){} try{ fileSrc.disconnect(); }catch(e){} }
-  fileSrc = ac.createBufferSource();
-  fileSrc.buffer = fileBuf;
-  fileSrc.loop = !!loop;
-  fileSrc.connect(analyser);
-  fileSrc.connect(fileDest);
-  fileSrc.connect(ac.destination);   // a file can't feed back, so you can hear it
-  fileSrc.start();
-}
-
-/* ---------- built-in test signal ------------------------------------------------------ */
-
-function startTestSignal(){
-  makeAnalyser();
-  const dest = ac.createMediaStreamDestination();
-  const master = ac.createGain(); master.gain.value = 0.5;
-  master.connect(analyser); master.connect(dest);
-
-  const nb = ac.createBuffer(1, Math.floor(ac.sampleRate*2), ac.sampleRate);
-  const nd = nb.getChannelData(0);
-  for(let i=0;i<nd.length;i++) nd[i] = (Math.random()*2-1)*0.30*((Math.random()<0.004)?6:1);
-  const noise = ac.createBufferSource(); noise.buffer = nb; noise.loop = true;
-  const nf = ac.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=900; nf.Q.value=0.8;
-  const ng = ac.createGain(); ng.gain.value = 0.35;
-  noise.connect(nf); nf.connect(ng); ng.connect(master); noise.start();
-  const sweep = ac.createOscillator(); sweep.frequency.value = 0.07;
-  const sg = ac.createGain(); sg.gain.value = 1400;
-  sweep.connect(sg); sg.connect(nf.frequency); sweep.start();
-
-  const bass = ac.createOscillator(); bass.type="sine"; bass.frequency.value=48;
-  const bg = ac.createGain(); bg.gain.value=0.0001;
-  bass.connect(bg); bg.connect(master); bass.start();
-
-  let tone = null, stepN = 0;
-  setInterval(()=>{
-    if(!ac || ac.state !== "running") return;
-    const t = ac.currentTime;
-    if(stepN % 3 === 0){
-      bg.gain.cancelScheduledValues(t);
-      bg.gain.setValueAtTime(0.9, t);
-      bg.gain.exponentialRampToValueAtTime(0.0001, t+0.30);
-    }
-    if(stepN % 26 === 0 && !tone){
-      const midi = 45 + Math.floor(Math.random()*26);
-      const o = ac.createOscillator(); o.type = Math.random()<0.5 ? "sine":"triangle";
-      o.frequency.value = 440*Math.pow(2,(midi-69)/12);
-      const g = ac.createGain(); g.gain.value = 0.0001;
-      o.connect(g); g.connect(master); o.start(t);
-      g.gain.exponentialRampToValueAtTime(0.55, t+0.12);
-      g.gain.setValueAtTime(0.55, t+1.9);
-      g.gain.exponentialRampToValueAtTime(0.0001, t+2.6);
-      o.stop(t+2.8);
-      tone = o; setTimeout(()=>{ tone = null; }, 3000);
-    }
-    stepN++;
-  }, 250);
-
-  micStream = dest.stream;
-}
-
-/* ---------- boot -------------------------------------------------------------------------- */
-
-async function listDevices(){
-  const sel = $("#device");
-  const ins = (await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="audioinput");
-  sel.innerHTML = "";
-  ins.forEach((d,i)=>{
-    const o = document.createElement("option");
-    o.value = d.deviceId; o.textContent = d.label || ("input "+(i+1));
-    sel.appendChild(o);
-  });
-  if(!ins.length){ const o=document.createElement("option"); o.textContent="system default"; sel.appendChild(o); }
-  sel.onchange = () => openInput(sel.value).catch(e=>fail(String(e.message||e)));
-}
-
-function goFullscreen(){
-  const el = document.documentElement;
-  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
-  if(fn) fn.call(el).catch(()=>{});
-  // iPhone Safari has no element fullscreen; add to home screen for a true
-  // fullscreen shell. the fixed layout already fills everything below the chrome.
-}
-
-let rebuildTimer = null;
-function onViewportChange(){
-  if(recorder) return;                      // never resize mid-take
-  clearTimeout(rebuildTimer);
-  rebuildTimer = setTimeout(()=>{
-    const [w,h] = viewSize();
-    if(w !== outW || h !== outH) buildGrid();
-  }, 260);
-}
-
-function begin(){
-  $("#gate").classList.add("hide");
-  goFullscreen();
-  buildUI();
-  roll(RSEED_FORCE !== undefined ? RSEED_FORCE : seedFromHash());
-  window.addEventListener("resize", onViewportChange);
-  window.addEventListener("orientationchange", onViewportChange);
-  setTimeout(()=>{ if(!hinted) $("#hint").style.opacity = "0"; }, 6000);
-  running = true;
-  loop();
-  if(!pickMime()) fail("no video recorder here — preview works, recording will not.");
-}
-
-$("#connect").onclick = async () => {
-  try{
-    $("#connect").disabled = true;
-    await openInput(null);
-    await listDevices();
-    begin();
-  }catch(e){
-    $("#connect").disabled = false;
-    fail(String(e.message||e));
-  }
-};
-async function onFile(ev){
-  const f = ev.target.files && ev.target.files[0];
-  ev.target.value = "";
-  if(!f) return;
-  try{
-    await loadAudioFile(f);
-    if(!running) begin();
-    $("#inputRow").classList.add("hide");
-    $("#fileRow").classList.remove("hide");
-  }catch(e){ fail("could not decode that file: " + (e && e.message ? e.message : e)); }
-}
-document.addEventListener("change", ev => {
-  if(ev.target && (ev.target.id === "fileIn" || ev.target.id === "fileIn2")) onFile(ev);
-});
-
-(function takeBoot(){
+async function begin(){
+  const g = $("#gate"); if(g) g.remove();
+  ac = new (window.AudioContext||window.webkitAudioContext)();
+  analyser = ac.createAnalyser();
+  analyser.fftSize = 1024;
+  analyser.smoothingTimeConstant = 0.6;
+  freq = new Uint8Array(analyser.frequencyBinCount);
+  build();
+  mixInks();
+  requestAnimationFrame(frame);
   const t = takeFromHash();
   if(!t) return;
-  $("#gateTitle").textContent = "TAKE";
-  $("#gateSub").textContent = "a jam, played as sediment. nothing is filmed.";
-  $("#connect").classList.add("hide");
-  $("#demo").classList.add("hide");
-  document.querySelectorAll("#gate .note").forEach(n => n.classList.add("hide"));
-  const lbl = document.querySelector('#gate label.ghost'); if(lbl) lbl.classList.add("hide");
-  $("#playTake").classList.remove("hide");
-  $("#takeNote").classList.remove("hide");
-  $("#takeNote").textContent = t.cid.slice(0,12) + "\u2026";
-  $("#playTake").onclick = async () => {
-    $("#playTake").disabled = true;
-    try{ await playTake(t); }
-    catch(e){ $("#playTake").disabled = false; fail(String(e.message||e)); }
-  };
-})();
+  say("fetching");
+  try{ await playTake(t); }
+  catch(e){ say(String(e.message||e)); }
+}
 
-$("#demo").onclick = () => {
-  try{ startTestSignal(); begin(); $("#inputRow").classList.add("hide"); }
-  catch(e){ fail(String(e.message||e)); }
-};
-$("#rec").onclick = record;
-$("#share").onclick = shareOut;
-$("#save").onclick = saveOut;
+$("#go").textContent = takeFromHash() ? "PLAY" : "TAKE";
+$("#go").onclick = begin;
+
+let rebuild = null;
+addEventListener("resize", () => {
+  clearTimeout(rebuild);
+  rebuild = setTimeout(build, 300);
+});
 </script>
 </body>
 </html>
