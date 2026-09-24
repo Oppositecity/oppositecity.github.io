@@ -190,15 +190,15 @@ function listen(){
    never settles. sound leans on the same two numbers.                    */
 
 function evolve(){
-  wander += 0.0016;
+  wander += 0.00045;
   const baseF = 0.0300 + 0.0075*Math.sin(wander) + 0.0035*Math.sin(wander*0.37 + 1.7);
   const baseK = 0.0600 + 0.0045*Math.sin(wander*0.61 + 0.4) + 0.0020*Math.sin(wander*1.9);
-  dF += ((A.bass - A.high)*0.0030 - dF)*0.05;
-  dK += ((A.high - A.mid)*0.0025 - dK)*0.05;
+  dF += ((A.bass - A.high)*0.0022 - dF)*0.012;   // sound leans slowly, never jumps
+  dK += ((A.high - A.mid)*0.0018 - dK)*0.012;
   F = baseF + dF;
   K = baseK + dK;
 
-  inkMix += 0.0014 + A.level*0.0020;
+  inkMix += 0.00035 + A.level*0.0006;
   if(inkMix >= 1){
     inkMix = 0;
     inkA = inkB;
@@ -208,8 +208,8 @@ function evolve(){
   mixInks();
 
   // a struck string arrives as a disturbance, not as a drawn mark
-  if(A.level > 0.10 && Math.random() < A.level*0.6)
-    seed(Math.random()*W, Math.random()*H, 2 + A.level*8);
+  if(A.level > 0.16 && Math.random() < A.level*0.10)
+    seed(Math.random()*W, Math.random()*H, 2 + A.level*4);
 }
 
 /* ---------- touch is a hand in the water --------------------------------- */
@@ -227,7 +227,7 @@ cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointe
 function frame(){
   listen();
   evolve();
-  const passes = 6 + Math.round(A.level*6);
+  const passes = 2 + Math.round(A.level*2);   // slow on purpose: the field should breathe
   for(let i=0;i<passes;i++) step();
   draw();
   requestAnimationFrame(frame);
