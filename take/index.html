@@ -292,7 +292,7 @@ const ADPCM_STEP = new Int32Array([
   2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,
   8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,
   27086,29794,32767]);
-const ADPCM_INDEX = new Int32Array([0,0,0,0,2,4,6,8]);
+const ADPCM_INDEX = new Int32Array([-1,-1,-1,-1,2,4,6,8]);
 
 function decodeADPCM(bytes){
   const b = new Uint8Array(bytes);
