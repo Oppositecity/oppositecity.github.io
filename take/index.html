@@ -257,8 +257,8 @@ function frame(){
 
 /* ---------- a take from the repo ------------------------------------------
    #<did>/<cid> or #<did>/<cid>/<seconds>. the audio blob is fetched from
-   whichever PDS holds that repo; the seconds, when present, trim the
-   silence that a fixed-size streaming upload has to pad itself with.    */
+   whichever PDS holds that repo; the seconds, when present, are the take's
+   real length.                                                           */
 
 function takeFromHash(){
   const h = (location.hash||"").replace(/^#/,"").trim();
@@ -275,12 +275,59 @@ async function pdsFor(did){
   return svc.serviceEndpoint.replace(/\/$/,"");
 }
 
+/* the recorder streams IMA ADPCM with a four-byte marker of its own: four
+   bits a sample, so it can upload in real time over a slow link. anything
+   without the marker is an older plain WAV take and is decoded normally. */
+
+const ADPCM_STEP = new Int32Array([
+  7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,
+  80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,
+  494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,
+  2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,
+  8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,
+  27086,29794,32767]);
+const ADPCM_INDEX = new Int32Array([0,0,0,0,2,4,6,8]);
+
+function decodeADPCM(bytes){
+  const b = new Uint8Array(bytes);
+  if(b[0]!==79 || b[1]!==67 || b[2]!==65 || b[3]!==49) return null;   // "OCA1"
+  const rate = new DataView(bytes).getUint32(4, true);
+  const n = (b.length - 12) * 2;
+  const out = new Float32Array(n);
+  let pred = 0, index = 0;
+  for(let i=0;i<n;i++){
+    const byte = b[12 + (i>>1)];
+    const code = (i & 1) ? (byte >> 4) : (byte & 15);
+    const step = ADPCM_STEP[index];
+    let q = step >> 3;
+    if(code & 4) q += step;
+    if(code & 2) q += step >> 1;
+    if(code & 1) q += step >> 2;
+    pred += (code & 8) ? -q : q;
+    if(pred > 32767) pred = 32767;
+    if(pred < -32768) pred = -32768;
+    index += ADPCM_INDEX[code & 7];
+    if(index < 0) index = 0;
+    if(index > 88) index = 88;
+    out[i] = pred / 32768;
+  }
+  return { rate, pcm: out };
+}
+
 async function playTake(t){
   const pds = await pdsFor(t.did);
   const r = await fetch(pds + "/xrpc/com.atproto.sync.getBlob?did=" +
     encodeURIComponent(t.did) + "&cid=" + encodeURIComponent(t.cid));
   if(!r.ok) throw new Error("take not found (" + r.status + ")");
-  const buf = await ac.decodeAudioData(await r.arrayBuffer());
+  const bytes = await r.arrayBuffer();
+  const coded = decodeADPCM(bytes);
+  let buf;
+  if(coded){
+    buf = ac.createBuffer(1, coded.pcm.length, coded.rate);
+    buf.getChannelData(0).set(coded.pcm);
+  } else {
+    buf = await ac.decodeAudioData(bytes);
+  }
   src = ac.createBufferSource();
   src.buffer = buf;
   src.connect(analyser);
