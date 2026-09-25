@@ -39,8 +39,11 @@
    Two substances diffuse through a coarse grid and eat each other
    (Gray-Scott). Left alone, the feed and kill rates wander, so the
    field keeps changing its mind: spots, then worms, then a slow boil.
-   Sound tilts those same two rates rather than drawing anything, so a
-   take bends the weather instead of being illustrated by it.
+
+   Played a take, it starts from nothing. Every attack in the audio
+   drops one dot, placed by how bright that sound was, and everything
+   on screen grows out of those dots. The playing seeds the field; the
+   chemistry does the rest.
 
    Everything is drawn in four inks. The continuous field is forced
    into them by an ordered Bayer threshold, so gradients arrive as
@@ -83,7 +86,7 @@ let W=0, H=0, u, v, u2, v2, img, gridCv, gridCtx;
 
 /* feed and kill wander through the region where the system stays alive.
    those two numbers are the entire mood of the thing.                   */
-let F = 0.030, K = 0.0605, dF = 0, dK = 0, wander = Math.random()*100;
+let F = 0.030, K = 0.0605, dF = 0, dK = 0, wander = Math.random()*100, quiet = 0;
 const DU = 0.20, DV = 0.10;
 
 function build(){
@@ -99,7 +102,10 @@ function build(){
   gridCv.width = W; gridCv.height = H;
   gridCtx = gridCv.getContext("2d", { alpha:false });
   img = gridCtx.createImageData(W,H);
-  for(let i=0;i<14;i++) seed(Math.random()*W, Math.random()*H, 3 + Math.random()*6);
+  if(!takeFromHash()){
+    // with no take to listen to, the field starts already inhabited
+    for(let i=0;i<14;i++) seed(Math.random()*W, Math.random()*H, 3 + Math.random()*6);
+  }
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -172,7 +178,7 @@ function draw(){
 /* ---------- sound, if there is any --------------------------------------- */
 
 let ac, analyser, freq, src, playing = false;
-const A = { bass:0, mid:0, high:0, level:0 };
+const A = { bass:0, mid:0, high:0, level:0, rise:0, bright:0.3 };
 
 function listen(){
   if(!analyser) return;
@@ -182,7 +188,12 @@ function listen(){
   A.bass = A.bass*0.85 + band(1, n*0.03|0)*0.15;
   A.mid  = A.mid *0.85 + band(n*0.03|0, n*0.20|0)*0.15;
   A.high = A.high*0.85 + band(n*0.20|0, n*0.55|0)*0.15;
-  A.level = (A.bass + A.mid + A.high)/3;
+  const lvl = (A.bass + A.mid + A.high)/3;
+  A.rise = lvl - A.level;                      // an attack, not a level
+  A.level = lvl;
+  let ws = 0, wm = 0;
+  for(let i=1;i<n;i++){ ws += freq[i]*i; wm += freq[i]; }
+  A.bright = wm > 1 ? (ws/wm)/n : 0.3;         // where the energy sits
 }
 
 /* ---------- the wander ---------------------------------------------------
@@ -207,9 +218,20 @@ function evolve(){
   }
   mixInks();
 
-  // a struck string arrives as a disturbance, not as a drawn mark
-  if(A.level > 0.16 && Math.random() < A.level*0.10)
-    seed(Math.random()*W, Math.random()*H, 2 + A.level*4);
+  // every attack drops a single dot, placed by its brightness; everything
+  // visible grows out of those dots and out of nothing else
+  if(A.rise > 0.012 && A.level > 0.05){
+    const y = H*(0.88 - Math.min(0.76, A.bright*1.9));
+    const x = W*(0.5 + 0.42*Math.sin(wander*7.3 + A.bright*11));
+    seed(x + (Math.random()-0.5)*W*0.10,
+         y + (Math.random()-0.5)*H*0.08,
+         2 + Math.min(5, A.level*14));
+    quiet = 0;
+  } else if(playing && ++quiet > 900){
+    // a long silence would leave a dead frame; one dot keeps it alive
+    seed(Math.random()*W, Math.random()*H, 3);
+    quiet = 0;
+  }
 }
 
 /* ---------- touch is a hand in the water --------------------------------- */
