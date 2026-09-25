@@ -87,6 +87,10 @@ let W=0, H=0, u, v, u2, v2, img, gridCv, gridCtx;
 /* feed and kill wander through the region where the system stays alive.
    those two numbers are the entire mood of the thing.                   */
 let F = 0.030, K = 0.0605, dF = 0, dK = 0, wander = Math.random()*100, quiet = 0;
+/* how hard an attack has to be is judged against this take's own recent
+   attacks, not against a fixed number. quiet fingerpicking and hard
+   strumming then both land about the same number of dots.              */
+let riseAvg = 0.01, sinceDot = 0;
 const DU = 0.20, DV = 0.10;
 
 function build(){
@@ -220,17 +224,19 @@ function evolve(){
 
   // every attack drops a single dot, placed by its brightness; everything
   // visible grows out of those dots and out of nothing else
-  if(A.rise > 0.012 && A.level > 0.05){
-    const y = H*(0.88 - Math.min(0.76, A.bright*1.9));
-    const x = W*(0.5 + 0.42*Math.sin(wander*7.3 + A.bright*11));
-    seed(x + (Math.random()-0.5)*W*0.10,
-         y + (Math.random()-0.5)*H*0.08,
-         2 + Math.min(5, A.level*14));
-    quiet = 0;
-  } else if(playing && ++quiet > 900){
-    // a long silence would leave a dead frame; one dot keeps it alive
-    seed(Math.random()*W, Math.random()*H, 3);
-    quiet = 0;
+  if(A.rise > 0) riseAvg = riseAvg*0.995 + A.rise*0.005;
+  sinceDot++;
+  const loud = Math.max(0.0025, riseAvg*1.5);     // relative, with a floor
+  const hit = A.rise > loud && A.level > 0.015 && sinceDot > 7;   // ~8 dots a second, ceiling
+  const starved = playing && sinceDot > 150;      // ~2.5 s with nothing: floor
+  if(hit || starved){
+    const b = hit ? A.bright : 0.3 + Math.random()*0.4;
+    const y = H*(0.88 - Math.min(0.76, b*1.9));
+    const x = W*(0.5 + 0.42*Math.sin(wander*7.3 + b*11));
+    seed(x + (Math.random()-0.5)*W*0.12,
+         y + (Math.random()-0.5)*H*0.09,
+         2.5 + Math.min(4, A.level*10));
+    sinceDot = 0;
   }
 }
 
