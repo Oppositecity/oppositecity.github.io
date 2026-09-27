@@ -37,17 +37,21 @@
    A field, not a picture of anything.
 
    Two substances diffuse through a coarse grid and eat each other
-   (Gray-Scott). Left alone, the feed and kill rates wander, so the
-   field keeps changing its mind: spots, then worms, then a slow boil.
+   (Gray-Scott). The field is full from the first frame and is always
+   carried along: every row slides sideways and every column slides
+   up or down at its own speed, so the whole screen shears like water
+   under wind. The slide is exact, whole cells, so nothing blurs.
 
-   Played a take, it starts from nothing. Every attack in the audio
-   drops one dot, placed by how bright that sound was, and everything
-   on screen grows out of those dots. The playing seeds the field; the
-   chemistry does the rest.
+   Feed and kill travel along a path that has been checked to stay
+   alive, from waves through labyrinth to coral and back.
 
-   Everything is drawn in four inks. The continuous field is forced
-   into them by an ordered Bayer threshold, so gradients arrive as
-   dither texture instead of as blur.
+   The take drives it. Loudness (judged against the take's own peaks)
+   speeds the flow and lifts the inks. Each attack, found by spectral
+   flux against its own recent history, drops a ring that tears a hole
+   and grows back as a wave.
+
+   Four inks, forced by an 8x8 Bayer threshold. Under the chemistry a
+   slow interference pattern keeps the empty water from going black.
  ===================================================================== */
 
 const $ = s => document.querySelector(s);
@@ -63,11 +67,9 @@ const INKS = [
   ["#060403","#123b45","#57b0a4","#e8fff6"]    // shallows
 ];
 let inkA = 0, inkB = 1, inkMix = 0;
-
 const rgb = h => [parseInt(h.substr(1,2),16), parseInt(h.substr(3,2),16), parseInt(h.substr(5,2),16)];
 const lerp = (a,b,t) => a + (b-a)*t;
 
-/* the 8x8 ordered matrix. this is the whole look: no smoothing anywhere. */
 const BAYER = (() => {
   const m = [
     [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
@@ -81,70 +83,107 @@ const BAYER = (() => {
 
 /* ---------- the field ---------------------------------------------------- */
 
-const PX = 5;                       // cell size on screen
-let W=0, H=0, u, v, u2, v2, img, gridCv, gridCtx;
+const PX = 4;
+let W=0, H=0, u, v, u2, v2, img, gridCv, gridCtx, rowAcc, colAcc, tmp;
 
-/* feed and kill wander through the region where the system stays alive.
-   those two numbers are the entire mood of the thing.                   */
-let F = 0.030, K = 0.0605, dF = 0, dK = 0, wander = Math.random()*100, quiet = 0;
-/* how hard an attack has to be is judged against this take's own recent
-   attacks, not against a fixed number. quiet fingerpicking and hard
-   strumming then both land about the same number of dots.              */
-let riseAvg = 0.01, sinceDot = 0;
-const DU = 0.20, DV = 0.10;
+/* feed/kill points that all stay alive with these coefficients (simulated:
+   47-83% coverage everywhere along the path). the field travels between them. */
+const PATH = [[0.022,0.051],[0.029,0.057],[0.039,0.058],[0.046,0.063],[0.0545,0.062],[0.062,0.0609]];
+function fk(t){
+  t = Math.max(0, Math.min(PATH.length-1.001, t));
+  const i = t|0, f = t-i, a = PATH[i], b = PATH[i+1];
+  return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f];
+}
+let F = 0.029, K = 0.057, wander = Math.random()*100, T = 0;
+const MAXFLOW = 0.26;              // cells per frame; faster than ~0.3 tears the chemistry apart
 
 function build(){
-  const vw = Math.max(1, window.innerWidth), vh = Math.max(1, window.innerHeight);
+  const vw = Math.max(1, innerWidth), vh = Math.max(1, innerHeight);
   cv.width  = Math.max(PX*8, Math.floor(vw/PX)*PX);
   cv.height = Math.max(PX*8, Math.floor(vh/PX)*PX);
   W = cv.width/PX; H = cv.height/PX;
-  u = new Float32Array(W*H).fill(1);
-  v = new Float32Array(W*H);
-  u2 = new Float32Array(W*H);
-  v2 = new Float32Array(W*H);
+  u = new Float32Array(W*H).fill(1); v = new Float32Array(W*H);
+  u2 = new Float32Array(W*H); v2 = new Float32Array(W*H);
+  rowAcc = new Float32Array(H); colAcc = new Float32Array(W);
+  tmp = new Float32Array(Math.max(W,H));
   gridCv = document.createElement("canvas");
   gridCv.width = W; gridCv.height = H;
   gridCtx = gridCv.getContext("2d", { alpha:false });
   img = gridCtx.createImageData(W,H);
-  if(!takeFromHash()){
-    // with no take to listen to, the field starts already inhabited
-    for(let i=0;i<14;i++) seed(Math.random()*W, Math.random()*H, 3 + Math.random()*6);
-  }
+  populate(W*H/260);               // full from the first frame, take or no take
   ctx.imageSmoothingEnabled = false;
 }
 
-function seed(cx, cy, r){
-  const x0 = Math.max(0, (cx-r)|0), x1 = Math.min(W, (cx+r)|0);
-  const y0 = Math.max(0, (cy-r)|0), y1 = Math.min(H, (cy+r)|0);
-  for(let y=y0; y<y1; y++)
-    for(let x=x0; x<x1; x++)
-      if(Math.hypot(x-cx, y-cy) < r){
-        const i = y*W+x;
-        v[i] = 0.5 + Math.random()*0.25;
-        u[i] = 0.25;
-      }
+function populate(n){
+  for(let i=0;i<n;i++) blob(Math.random()*W, Math.random()*H, 2 + Math.random()*3);
 }
 
-/* one Gray-Scott pass, wrapped at the edges so the field has no border */
+function blob(cx, cy, r){
+  for(let y=Math.floor(cy-r); y<=cy+r; y++)
+    for(let x=Math.floor(cx-r); x<=cx+r; x++){
+      if(Math.hypot(x-cx, y-cy) >= r) continue;
+      const i = ((y%H+H)%H)*W + ((x%W+W)%W);
+      v[i] = 0.5 + Math.random()*0.2; u[i] = 0.25;
+    }
+}
+
+/* an attack: clear a disk, and seed its rim. the hole refills as a wave. */
+function ring(cx, cy, r){
+  const R = r + 1.6;
+  for(let y=Math.floor(cy-R); y<=cy+R; y++)
+    for(let x=Math.floor(cx-R); x<=cx+R; x++){
+      const d = Math.hypot(x-cx, y-cy);
+      if(d > R) continue;
+      const i = ((y%H+H)%H)*W + ((x%W+W)%W);
+      if(d < r - 1.4){ v[i] = 0; u[i] = 1; }
+      else { v[i] = 0.55; u[i] = 0.25; }
+    }
+}
+
 function step(){
   const f = F, k = K;
   for(let y=0;y<H;y++){
     const yn = ((y-1+H)%H)*W, ys = ((y+1)%H)*W, yc = y*W;
     for(let x=0;x<W;x++){
-      const xw = (x-1+W)%W, xe = (x+1)%W, i = yc+x;
+      const xw = x ? x-1 : W-1, xe = x < W-1 ? x+1 : 0, i = yc+x;
       const uu = u[i], vv = v[i];
-      const lu = (u[yc+xw] + u[yc+xe] + u[yn+x] + u[ys+x]
-                + 0.5*(u[yn+xw] + u[yn+xe] + u[ys+xw] + u[ys+xe])) / 6 - uu;
-      const lv = (v[yc+xw] + v[yc+xe] + v[yn+x] + v[ys+x]
-                + 0.5*(v[yn+xw] + v[yn+xe] + v[ys+xw] + v[ys+xe])) / 6 - vv;
+      const lu = 0.2*(u[yc+xw]+u[yc+xe]+u[yn+x]+u[ys+x])
+               + 0.05*(u[yn+xw]+u[yn+xe]+u[ys+xw]+u[ys+xe]) - uu;
+      const lv = 0.2*(v[yc+xw]+v[yc+xe]+v[yn+x]+v[ys+x])
+               + 0.05*(v[yn+xw]+v[yn+xe]+v[ys+xw]+v[ys+xe]) - vv;
       const r = uu*vv*vv;
-      const nu = uu + DU*lu - r + f*(1-uu);
-      const nv = vv + DV*lv + r - (f+k)*vv;
+      const nu = uu + lu - r + f*(1-uu);
+      const nv = vv + 0.5*lv + r - (f+k)*vv;
       u2[i] = nu < 0 ? 0 : nu > 1 ? 1 : nu;
       v2[i] = nv < 0 ? 0 : nv > 1 ? 1 : nv;
     }
   }
-  u.set(u2); v.set(v2);
+  let s = u; u = u2; u2 = s; s = v; v = v2; v2 = s;
+}
+
+/* ---------- the flow: rows and columns slide by whole cells ------------- */
+
+function rotRow(a, y, k){             // k = +1 or -1
+  const o = y*W;
+  if(k > 0){ const last = a[o+W-1]; a.copyWithin(o+1, o, o+W-1); a[o] = last; }
+  else     { const first = a[o]; a.copyWithin(o, o+1, o+W); a[o+W-1] = first; }
+}
+function rotCol(a, x, k){
+  for(let y=0;y<H;y++) tmp[y] = a[y*W+x];
+  for(let y=0;y<H;y++) a[((y+k+H)%H)*W+x] = tmp[y];
+}
+function flow(speed){
+  const p = T*0.004;
+  for(let y=0;y<H;y++){
+    rowAcc[y] += speed*(Math.sin(y*0.061 + p) + 0.45*Math.sin(y*0.173 - p*1.7));
+    while(rowAcc[y] >= 1){ rotRow(u,y,1); rotRow(v,y,1); rowAcc[y] -= 1; }
+    while(rowAcc[y] <= -1){ rotRow(u,y,-1); rotRow(v,y,-1); rowAcc[y] += 1; }
+  }
+  for(let x=0;x<W;x++){
+    colAcc[x] += 0.7*speed*(Math.sin(x*0.083 - p*0.8) + 0.45*Math.sin(x*0.21 + p*1.3));
+    while(colAcc[x] >= 1){ rotCol(u,x,1); rotCol(v,x,1); colAcc[x] -= 1; }
+    while(colAcc[x] <= -1){ rotCol(u,x,-1); rotCol(v,x,-1); colAcc[x] += 1; }
+  }
 }
 
 /* ---------- drawing ------------------------------------------------------ */
@@ -154,24 +193,25 @@ function mixInks(){
   const a = INKS[inkA], b = INKS[inkB];
   for(let i=0;i<4;i++){
     const ca = rgb(a[i]), cb = rgb(b[i]);
-    pal[i*3]   = lerp(ca[0], cb[0], inkMix);
-    pal[i*3+1] = lerp(ca[1], cb[1], inkMix);
-    pal[i*3+2] = lerp(ca[2], cb[2], inkMix);
+    for(let c=0;c<3;c++) pal[i*3+c] = lerp(ca[c], cb[c], inkMix);
   }
 }
 
 function draw(){
-  const d = img.data;
+  const d = img.data, p = T*0.01;
+  const lift = 0.22*A.level + flash;          // the take brightens everything a little
   for(let y=0;y<H;y++){
-    const row = (y&7)*8;
+    const row = (y&7)*8, sy = Math.sin(y*0.045 - p*0.7);
     for(let x=0;x<W;x++){
       const i = y*W+x;
-      let t = v[i]*2.6;                 // v runs roughly 0 .. 0.4
+      // the water under the chemistry: never flat, never black
+      const under = 0.2 + 0.1*Math.sin(x*0.052 + p)*sy;
+      let t = v[i]*2.3 + under + lift;
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       const s = t*3, lo = s|0;
       const c = (s - lo) > BAYER[row + (x&7)] ? (lo > 2 ? 3 : lo+1) : lo;
-      const o = i*4, p = c*3;
-      d[o] = pal[p]; d[o+1] = pal[p+1]; d[o+2] = pal[p+2]; d[o+3] = 255;
+      const o = i*4, q = c*3;
+      d[o] = pal[q]; d[o+1] = pal[q+1]; d[o+2] = pal[q+2]; d[o+3] = 255;
     }
   }
   gridCtx.putImageData(img,0,0);
@@ -179,64 +219,78 @@ function draw(){
   ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
 }
 
-/* ---------- sound, if there is any --------------------------------------- */
+/* ---------- listening -----------------------------------------------------
+   loudness is judged against this take's own peaks, and attacks against
+   this take's own recent flux, so a quiet fingerpicked take reads as fully
+   as a hard strummed one.                                                 */
 
-let ac, analyser, freq, src, playing = false;
-const A = { bass:0, mid:0, high:0, level:0, rise:0, bright:0.3 };
+let ac, analyser, tbuf, fbuf, prev, src, playing = false;
+const A = { level:0, bright:0.3 };
+let hold = 0.02, fluxHist = [], lastHit = 0, flash = 0, kick = 0;
 
-function listen(){
-  if(!analyser) return;
-  analyser.getByteFrequencyData(freq);
-  const n = freq.length;
-  const band = (a,b) => { let s=0; for(let i=a;i<b;i++) s+=freq[i]; return s/(Math.max(1,b-a)*255); };
-  A.bass = A.bass*0.85 + band(1, n*0.03|0)*0.15;
-  A.mid  = A.mid *0.85 + band(n*0.03|0, n*0.20|0)*0.15;
-  A.high = A.high*0.85 + band(n*0.20|0, n*0.55|0)*0.15;
-  const lvl = (A.bass + A.mid + A.high)/3;
-  A.rise = lvl - A.level;                      // an attack, not a level
-  A.level = lvl;
-  let ws = 0, wm = 0;
-  for(let i=1;i<n;i++){ ws += freq[i]*i; wm += freq[i]; }
-  A.bright = wm > 1 ? (ws/wm)/n : 0.3;         // where the energy sits
+function listen(now){
+  if(!analyser || !playing){ A.level *= 0.95; return; }
+  analyser.getFloatTimeDomainData(tbuf);
+  let e = 0;
+  for(let i=0;i<tbuf.length;i++) e += tbuf[i]*tbuf[i];
+  const rms = Math.sqrt(e/tbuf.length);
+  hold = Math.max(rms, hold*0.9993, 0.003);
+  A.level = A.level*0.75 + Math.min(1, rms/hold)*0.25;
+
+  analyser.getFloatFrequencyData(fbuf);
+  let flux = 0, sum = 0, ws = 0;
+  for(let i=2;i<fbuf.length;i++){
+    const m = Math.pow(10, fbuf[i]/20);
+    const dm = m - prev[i];
+    if(dm > 0) flux += dm;
+    prev[i] = m; sum += m; ws += m*i;
+  }
+  if(sum > 0) A.bright = A.bright*0.8 + (ws/sum/fbuf.length)*0.2;
+  flux = flux/(sum + 1e-9);                     // scale-free: loud and soft alike
+
+  fluxHist.push(flux); if(fluxHist.length > 80) fluxHist.shift();
+  let mean = 0; for(const f of fluxHist) mean += f; mean /= fluxHist.length;
+  let sd = 0; for(const f of fluxHist) sd += (f-mean)*(f-mean); sd = Math.sqrt(sd/fluxHist.length);
+
+  const audible = rms > 0.0015 && rms > hold*0.06;
+  if(audible && fluxHist.length > 10 && flux > mean + 1.1*sd && flux > mean*1.2 && now - lastHit > 85){
+    lastHit = now;
+    hit(Math.min(3, (flux-mean)/(sd+1e-9)));
+  }
 }
 
-/* ---------- the wander ---------------------------------------------------
-   with no sound the parameters drift on their own, slowly, so the field
-   never settles. sound leans on the same two numbers.                    */
+function hit(strength){
+  const b = A.bright;
+  const y = H*(0.9 - Math.min(0.8, b*2.2)) + (Math.random()-0.5)*H*0.12;   // bright sounds sit high
+  const x = W*(0.5 + 0.44*Math.sin(wander*9.1 + b*13)) + (Math.random()-0.5)*W*0.15;
+  ring(x, y, 3 + strength*2.4 + A.level*5);
+  flash = Math.min(0.28, flash + 0.05 + strength*0.04);
+  kick = Math.min(0.12, kick + 0.03*strength);
+}
 
-function evolve(){
-  wander += 0.00045;
-  const baseF = 0.0300 + 0.0075*Math.sin(wander) + 0.0035*Math.sin(wander*0.37 + 1.7);
-  const baseK = 0.0600 + 0.0045*Math.sin(wander*0.61 + 0.4) + 0.0020*Math.sin(wander*1.9);
-  dF += ((A.bass - A.high)*0.0022 - dF)*0.012;   // sound leans slowly, never jumps
-  dK += ((A.high - A.mid)*0.0018 - dK)*0.012;
-  F = baseF + dF;
-  K = baseK + dK;
+/* ---------- the wander ---------------------------------------------------- */
 
-  inkMix += 0.00035 + A.level*0.0006;
+let lastAlive = 0;
+function evolve(now){
+  wander += 0.0005;
+  // travel the living path; bright playing leans toward coral, dark toward waves
+  const t = 2.5 + 2.2*Math.sin(wander) + 0.6*Math.sin(wander*2.3 + 1.1) + (A.bright - 0.3)*1.5;
+  [F, K] = fk(t);
+
+  inkMix += 0.0004 + A.level*0.0012;
   if(inkMix >= 1){
-    inkMix = 0;
-    inkA = inkB;
+    inkMix = 0; inkA = inkB;
     inkB = (inkB + 1 + (Math.random()*2|0)) % INKS.length;
     if(inkB === inkA) inkB = (inkB + 1) % INKS.length;
   }
   mixInks();
+  flash *= 0.9; kick *= 0.96;
 
-  // every attack drops a single dot, placed by its brightness; everything
-  // visible grows out of those dots and out of nothing else
-  if(A.rise > 0) riseAvg = riseAvg*0.995 + A.rise*0.005;
-  sinceDot++;
-  const loud = Math.max(0.0025, riseAvg*1.5);     // relative, with a floor
-  const hit = A.rise > loud && A.level > 0.015 && sinceDot > 7;   // ~8 dots a second, ceiling
-  const starved = playing && sinceDot > 150;      // ~2.5 s with nothing: floor
-  if(hit || starved){
-    const b = hit ? A.bright : 0.3 + Math.random()*0.4;
-    const y = H*(0.88 - Math.min(0.76, b*1.9));
-    const x = W*(0.5 + 0.42*Math.sin(wander*7.3 + b*11));
-    seed(x + (Math.random()-0.5)*W*0.12,
-         y + (Math.random()-0.5)*H*0.09,
-         2.5 + Math.min(4, A.level*10));
-    sinceDot = 0;
+  // if the field ever thins out, put life back in
+  if(now - lastAlive > 1000){
+    lastAlive = now;
+    let n = 0; for(let i=0;i<v.length;i+=7) if(v[i] > 0.15) n++;
+    if(n/(v.length/7) < 0.15) populate(W*H/500);
   }
 }
 
@@ -245,26 +299,25 @@ function evolve(){
 function pointer(e){
   const r = cv.getBoundingClientRect();
   const x = (e.clientX - r.left)/PX, y = (e.clientY - r.top)/PX;
-  if(x>=0 && y>=0 && x<W && y<H) seed(x, y, 3.5);
+  if(x>=0 && y>=0 && x<W && y<H) ring(x, y, 4);
 }
 cv.addEventListener("pointerdown", pointer);
 cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointer(e); });
 
 /* ---------- loop ---------------------------------------------------------- */
 
-function frame(){
-  listen();
-  evolve();
-  const passes = 2 + Math.round(A.level*2);   // slow on purpose: the field should breathe
-  for(let i=0;i<passes;i++) step();
+function frame(now){
+  T++;
+  listen(now);
+  evolve(now);
+  flow(Math.min(MAXFLOW, 0.07 + 0.14*A.level + kick));
+  for(let i=0;i<3;i++) step();
   draw();
   requestAnimationFrame(frame);
 }
 
 /* ---------- a take from the repo ------------------------------------------
-   #<did>/<cid> or #<did>/<cid>/<seconds>. the audio blob is fetched from
-   whichever PDS holds that repo; the seconds, when present, are the take's
-   real length.                                                           */
+   #<did>/<cid> or #<did>/<cid>/<seconds>                                   */
 
 function takeFromHash(){
   const h = (location.hash||"").replace(/^#/,"").trim();
@@ -281,9 +334,8 @@ async function pdsFor(did){
   return svc.serviceEndpoint.replace(/\/$/,"");
 }
 
-/* the recorder streams IMA ADPCM with a four-byte marker of its own: four
-   bits a sample, so it can upload in real time over a slow link. anything
-   without the marker is an older plain WAV take and is decoded normally. */
+/* the recorder streams IMA ADPCM behind a four-byte marker "OCA1".
+   anything without it is an older plain WAV take.                        */
 
 const ADPCM_STEP = new Int32Array([
   7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,
@@ -296,7 +348,7 @@ const ADPCM_INDEX = new Int32Array([-1,-1,-1,-1,2,4,6,8]);
 
 function decodeADPCM(bytes){
   const b = new Uint8Array(bytes);
-  if(b[0]!==79 || b[1]!==67 || b[2]!==65 || b[3]!==49) return null;   // "OCA1"
+  if(b[0]!==79 || b[1]!==67 || b[2]!==65 || b[3]!==49) return null;
   const rate = new DataView(bytes).getUint32(4, true);
   const n = (b.length - 12) * 2;
   const out = new Float32Array(n);
@@ -360,8 +412,11 @@ async function begin(){
   ac = new (window.AudioContext||window.webkitAudioContext)();
   analyser = ac.createAnalyser();
   analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0.6;
-  freq = new Uint8Array(analyser.frequencyBinCount);
+  analyser.smoothingTimeConstant = 0;          // raw frames: flux needs the edges
+  analyser.minDecibels = -110; analyser.maxDecibels = -10;
+  tbuf = new Float32Array(analyser.fftSize);
+  fbuf = new Float32Array(analyser.frequencyBinCount);
+  prev = new Float32Array(analyser.frequencyBinCount);
   build();
   mixInks();
   requestAnimationFrame(frame);
