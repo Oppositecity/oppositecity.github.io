@@ -34,41 +34,54 @@
 <script>
 "use strict";
 /* =====================================================================
-   A field, not a picture of anything.
+   A lamp, not a picture of anything.
 
-   Two substances diffuse through a coarse grid and eat each other
-   (Gray-Scott). The field is full from the first frame and is always
-   carried along: every row slides sideways and every column slides
-   up or down at its own speed, so the whole screen shears like water
-   under wind. The slide is exact, whole cells, so nothing blurs.
+   Bodies of wax sit in a dark liquid. The bottom of the lamp heats
+   them, so they swell and rise; the top cools them, so they sink.
+   Each body keeps its own temperature, so they fall out of step,
+   pass each other, touch, merge, and stretch until they tear in two.
 
-   Feed and kill travel along a path that has been checked to stay
-   alive, from waves through labyrinth to coral and back.
+   Every body carries its own four-step dye. Where two meet, the pixels
+   dither between their dyes by how much each one owns that spot, so
+   colours marble by texture, never blend into mud. Every couple of
+   minutes the lamp changes mood, and each body takes a new dye from it
+   as it passes through the heated base.
 
-   The take drives it. Loudness (judged against the take's own peaks)
-   speeds the flow and lifts the inks. Each attack, found by spectral
-   flux against its own recent history, drops a ring that tears a hole
-   and grows back as a wave.
-
-   Four inks, forced by an 8x8 Bayer threshold. Under the chemistry a
-   slow interference pattern keeps the empty water from going black.
+   The take is heat. Loudness (judged against its own peaks) warms
+   the base; bright playing leans the liquid's tint; attacks build a
+   slow pressure that now and then pinches off a new bud from the
+   bottom or tears a big body in two. Nothing flashes.
  ===================================================================== */
 
 const $ = s => document.querySelector(s);
 const cv = $("#cv"), ctx = cv.getContext("2d", { alpha:false });
 
-/* ---------- ink: four steps, dark to light ------------------------------- */
-
-const INKS = [
-  ["#04070c","#123a4f","#2f8fa6","#d8f4ff"],   // deep water
-  ["#080306","#3c1040","#a52d7a","#ffd9f2"],   // bloom
-  ["#02060a","#123f2a","#3fa05c","#eaffd6"],   // chlorophyll
-  ["#05050a","#2a2550","#7b6ad6","#efeaff"],   // dusk
-  ["#060403","#123b45","#57b0a4","#e8fff6"]    // shallows
+/* ---------- dye ----------------------------------------------------------
+   every body carries one dye: four steps, halo, body, glow, core. the lamp
+   has a mood, four dyes out of these; a body passing through the heated
+   base picks up a new dye from the current mood, so colour changes travel
+   through the lamp one body at a time and never mix into mud.            */
+const DYES = [
+  ["#1a0833","#5b1f99","#9a3dff","#cf8cff"],   // violet
+  ["#04231f","#0e6e66","#1fbfb0","#6ff5e6"],   // teal
+  ["#2b0619","#8a1850","#e0337f","#ff8cc0"],   // magenta
+  ["#122004","#4a7a0e","#9ad61c","#d8ff66"],   // acid
+  ["#06103a","#1c3aa6","#3d74ff","#8fb3ff"],   // cobalt
+  ["#2e1004","#8f3a12","#ff6a1f","#ffab70"],   // ember
+  ["#062b1a","#178a55","#2fe096","#8cffcb"],   // mint
+  ["#2a0833","#7a1f8f","#d03dff","#ec9cff"],   // orchid
+  ["#2a2404","#8a7512","#f0d020","#fff08a"],   // sulphur
+  ["#042430","#16708f","#33c4f2","#9ce6ff"],   // ice
+  ["#2e060d","#9c1f33","#ff4a5e","#ff9eab"],   // coral
+  ["#2e1804","#99520f","#ff9a1f","#ffc98a"],   // tangerine
+  ["#300428","#99187f","#ff2fd6","#ff94ec"],   // fuchsia
+  ["#042e0e","#138a33","#33e05c","#94ffab"]    // chlorophyll
 ];
-let inkA = 0, inkB = 1, inkMix = 0;
+// the liquid, three steps, one per mood family of tints
+const LIQUIDS = [["#020207","#07071a","#10102e"],["#050208","#12061a","#200b2c"],
+                 ["#020605","#061a14","#0b2c22"],["#060302","#1a0f06","#2c1a0b"]];
+
 const rgb = h => [parseInt(h.substr(1,2),16), parseInt(h.substr(3,2),16), parseInt(h.substr(5,2),16)];
-const lerp = (a,b,t) => a + (b-a)*t;
 
 const BAYER = (() => {
   const m = [
@@ -81,136 +94,188 @@ const BAYER = (() => {
   return f;
 })();
 
-/* ---------- the field ---------------------------------------------------- */
+const pal = new Uint8Array((DYES.length*4 + LIQUIDS.length*3)*3);
+(function(){
+  let o = 0;
+  for(const d of DYES) for(const h of d){ const c = rgb(h); pal[o++]=c[0]; pal[o++]=c[1]; pal[o++]=c[2]; }
+  for(const l of LIQUIDS) for(const h of l){ const c = rgb(h); pal[o++]=c[0]; pal[o++]=c[1]; pal[o++]=c[2]; }
+})();
+const LQ = DYES.length*4;
+let mood = pickMood(), liqA = 0, liqB = 0, liqMix = 1, lastMood = 0, tint = 0;
+function pickMood(){
+  const m = []; while(m.length < 4){ const k = Math.random()*DYES.length|0; if(!m.includes(k)) m.push(k); }
+  return m;
+}
+function mixInks(){}                              // the palette is fixed; bodies carry the change
+
+/* ---------- the lamp -------------------------------------------------------- */
 
 const PX = 4;
-let W=0, H=0, u, v, u2, v2, img, gridCv, gridCtx, rowAcc, colAcc, tmp;
+let W=0, H=0, img, gridCv, gridCtx, T = 0;
+let blobs = [];
 
-/* feed/kill points that all stay alive with these coefficients (simulated:
-   47-83% coverage everywhere along the path). the field travels between them. */
-const PATH = [[0.022,0.051],[0.029,0.057],[0.039,0.058],[0.046,0.063],[0.0545,0.062],[0.062,0.0609]];
-function fk(t){
-  t = Math.max(0, Math.min(PATH.length-1.001, t));
-  const i = t|0, f = t-i, a = PATH[i], b = PATH[i+1];
-  return [a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f];
+function makeBlob(x, y, r, slot){
+  return { x, y, r, vx:0, vy:0,
+           temp: Math.random(),             // out of step from the start
+           dye: slot ?? mood[Math.random()*4|0], was: -1, dyeMix: 1,
+           ph: Math.random()*1000,          // its own slow wobble
+           lag: 0.6 + Math.random()*0.8 };  // how fast it takes on heat
 }
-let F = 0.029, K = 0.057, wander = Math.random()*100, T = 0;
-const MAXFLOW = 0.26;              // cells per frame; faster than ~0.3 tears the chemistry apart
 
 function build(){
   const vw = Math.max(1, innerWidth), vh = Math.max(1, innerHeight);
   cv.width  = Math.max(PX*8, Math.floor(vw/PX)*PX);
   cv.height = Math.max(PX*8, Math.floor(vh/PX)*PX);
   W = cv.width/PX; H = cv.height/PX;
-  u = new Float32Array(W*H).fill(1); v = new Float32Array(W*H);
-  u2 = new Float32Array(W*H); v2 = new Float32Array(W*H);
-  rowAcc = new Float32Array(H); colAcc = new Float32Array(W);
-  tmp = new Float32Array(Math.max(W,H));
   gridCv = document.createElement("canvas");
   gridCv.width = W; gridCv.height = H;
   gridCtx = gridCv.getContext("2d", { alpha:false });
   img = gridCtx.createImageData(W,H);
-  populate(W*H/260);               // full from the first frame, take or no take
+  blobs = [];
+  const n = 10 + (Math.random()*3|0);
+  for(let i=0;i<n;i++)
+    blobs.push(makeBlob(W*(0.12+0.76*Math.random()), H*(i+0.5)/n,
+                        Math.min(W,H)*(0.1+0.09*Math.random()), mood[i % 4]));
   ctx.imageSmoothingEnabled = false;
 }
 
-function populate(n){
-  for(let i=0;i<n;i++) blob(Math.random()*W, Math.random()*H, 2 + Math.random()*3);
-}
+const MIN_BLOBS = 8, MAX_BLOBS = 16;
+let heat = 0, pressure = 0, lastTear = 0;
 
-function blob(cx, cy, r){
-  for(let y=Math.floor(cy-r); y<=cy+r; y++)
-    for(let x=Math.floor(cx-r); x<=cx+r; x++){
-      if(Math.hypot(x-cx, y-cy) >= r) continue;
-      const i = ((y%H+H)%H)*W + ((x%W+W)%W);
-      v[i] = 0.5 + Math.random()*0.2; u[i] = 0.25;
+function physics(){
+  const rMin = Math.min(W,H)*0.07, rMax = Math.min(W,H)*0.27;
+  const warm = 1 + heat*0.8;                          // the take warms the base
+  for(const b of blobs){
+    b.ph += 0.004;
+    // heat only at the base, cooling only near the top, insulated between:
+    // so a body carries its temperature the whole way and the lamp cycles
+    const h = b.y/H;
+    if(h > 0.78){
+      b.temp += (1 - b.temp)*0.0035*b.lag*warm;
+      // the base re-dyes: a body not wearing the current mood takes one of it
+      if(h > 0.85 && b.dyeMix >= 1 && !mood.includes(b.dye) && Math.random() < 0.01){
+        b.was = b.dye; b.dye = mood[Math.random()*4|0]; b.dyeMix = 0;
+      }
     }
-}
-
-/* an attack: clear a disk, and seed its rim. the hole refills as a wave. */
-function ring(cx, cy, r){
-  const R = r + 1.6;
-  for(let y=Math.floor(cy-R); y<=cy+R; y++)
-    for(let x=Math.floor(cx-R); x<=cx+R; x++){
-      const d = Math.hypot(x-cx, y-cy);
-      if(d > R) continue;
-      const i = ((y%H+H)%H)*W + ((x%W+W)%W);
-      if(d < r - 1.4){ v[i] = 0; u[i] = 1; }
-      else { v[i] = 0.55; u[i] = 0.25; }
+    else if(h < 0.3) b.temp -= b.temp*0.0028*b.lag;
+    else b.temp += (0.5 - b.temp)*0.00015;
+    if(b.dyeMix < 1) b.dyeMix = Math.min(1, b.dyeMix + 0.0025);
+    // hot rises, cold sinks. drag keeps it slow
+    b.vy += (0.5 - b.temp)*0.0028 - b.vy*0.02;
+    b.vx += Math.sin(b.ph*0.7 + b.y*0.03)*0.0012 - b.vx*0.02;
+    b.x += b.vx; b.y += b.vy;
+    // glass walls: soft
+    const m = b.r*0.6;
+    if(b.x < m){ b.x = m; b.vx = Math.abs(b.vx)*0.3; }
+    if(b.x > W-m){ b.x = W-m; b.vx = -Math.abs(b.vx)*0.3; }
+    if(b.y < m){ b.y = m; b.vy = Math.abs(b.vy)*0.2; b.temp *= 0.97; }
+    if(b.y > H-m*0.4){ b.y = H-m*0.4; b.vy = -Math.abs(b.vy)*0.2; b.temp = Math.min(1, b.temp + 0.01); }
+    // a hot body swells a little, a cold one draws in
+    if(!b.base) b.base = b.r;
+    b.r += (b.base*(0.85 + 0.3*b.temp) - b.r)*0.002;
+  }
+  // bodies that overlap deeply become one
+  for(let i=0;i<blobs.length;i++) for(let j=i+1;j<blobs.length;j++){
+    const a = blobs[i], b = blobs[j];
+    const d = Math.hypot(a.x-b.x, a.y-b.y);
+    if(d < 0.22*(a.r+b.r) && blobs.length > MIN_BLOBS && T - lastTear > 600 &&
+       Math.hypot(a.base||a.r, b.base||b.r) < rMax){
+      const big = a.r >= b.r ? a : b, small = big === a ? b : a;
+      const A2 = big.r*big.r, B2 = small.r*small.r;
+      big.x = (big.x*A2 + small.x*B2)/(A2+B2); big.y = (big.y*A2 + small.y*B2)/(A2+B2);
+      big.vx = (big.vx*A2 + small.vx*B2)/(A2+B2); big.vy = (big.vy*A2 + small.vy*B2)/(A2+B2);
+      big.r = big.base = Math.sqrt(A2+B2);
+      blobs.splice(blobs.indexOf(small), 1); lastTear = T;
+      return;                                   // one event per frame is plenty
     }
-}
-
-function step(){
-  const f = F, k = K;
-  for(let y=0;y<H;y++){
-    const yn = ((y-1+H)%H)*W, ys = ((y+1)%H)*W, yc = y*W;
-    for(let x=0;x<W;x++){
-      const xw = x ? x-1 : W-1, xe = x < W-1 ? x+1 : 0, i = yc+x;
-      const uu = u[i], vv = v[i];
-      const lu = 0.2*(u[yc+xw]+u[yc+xe]+u[yn+x]+u[ys+x])
-               + 0.05*(u[yn+xw]+u[yn+xe]+u[ys+xw]+u[ys+xe]) - uu;
-      const lv = 0.2*(v[yc+xw]+v[yc+xe]+v[yn+x]+v[ys+x])
-               + 0.05*(v[yn+xw]+v[yn+xe]+v[ys+xw]+v[ys+xe]) - vv;
-      const r = uu*vv*vv;
-      const nu = uu + lu - r + f*(1-uu);
-      const nv = vv + 0.5*lv + r - (f+k)*vv;
-      u2[i] = nu < 0 ? 0 : nu > 1 ? 1 : nu;
-      v2[i] = nv < 0 ? 0 : nv > 1 ? 1 : nv;
+  }
+  // a body too big, or stretched by moving fast, tears in two
+  if(T - lastTear > 900) for(const b of blobs){
+    const stretched = Math.abs(b.vy) > 0.075 && b.r > rMax*0.7;
+    if(blobs.length < MAX_BLOBS && (b.r > rMax*1.05 || stretched)){
+      tear(b); lastTear = T; return;
     }
   }
-  let s = u; u = u2; u2 = s; s = v; v = v2; v2 = s;
+  if(blobs.length < MIN_BLOBS) bud();
 }
 
-/* ---------- the flow: rows and columns slide by whole cells ------------- */
-
-function rotRow(a, y, k){             // k = +1 or -1
-  const o = y*W;
-  if(k > 0){ const last = a[o+W-1]; a.copyWithin(o+1, o, o+W-1); a[o] = last; }
-  else     { const first = a[o]; a.copyWithin(o, o+1, o+W); a[o+W-1] = first; }
-}
-function rotCol(a, x, k){
-  for(let y=0;y<H;y++) tmp[y] = a[y*W+x];
-  for(let y=0;y<H;y++) a[((y+k+H)%H)*W+x] = tmp[y];
-}
-function flow(speed){
-  const p = T*0.004;
-  for(let y=0;y<H;y++){
-    rowAcc[y] += speed*(Math.sin(y*0.061 + p) + 0.45*Math.sin(y*0.173 - p*1.7));
-    while(rowAcc[y] >= 1){ rotRow(u,y,1); rotRow(v,y,1); rowAcc[y] -= 1; }
-    while(rowAcc[y] <= -1){ rotRow(u,y,-1); rotRow(v,y,-1); rowAcc[y] += 1; }
-  }
-  for(let x=0;x<W;x++){
-    colAcc[x] += 0.7*speed*(Math.sin(x*0.083 - p*0.8) + 0.45*Math.sin(x*0.21 + p*1.3));
-    while(colAcc[x] >= 1){ rotCol(u,x,1); rotCol(v,x,1); colAcc[x] -= 1; }
-    while(colAcc[x] <= -1){ rotCol(u,x,-1); rotCol(v,x,-1); colAcc[x] += 1; }
-  }
+function tear(b){
+  const r = b.r/Math.SQRT2;
+  const c = makeBlob(b.x, b.y + r*0.6, r, b.dye);   // a torn-off piece keeps its dye
+  c.temp = b.temp*0.9; c.vy = b.vy*0.5 + 0.02; c.base = r;
+  b.r = b.base = r; b.y -= r*0.6; b.vy -= 0.02;
+  blobs.push(c);
 }
 
-/* ---------- drawing ------------------------------------------------------ */
-
-const pal = new Uint8Array(12);
-function mixInks(){
-  const a = INKS[inkA], b = INKS[inkB];
-  for(let i=0;i<4;i++){
-    const ca = rgb(a[i]), cb = rgb(b[i]);
-    for(let c=0;c<3;c++) pal[i*3+c] = lerp(ca[c], cb[c], inkMix);
-  }
+function bud(){
+  const r = Math.min(W,H)*(0.09 + 0.06*Math.random());
+  const b = makeBlob(W*(0.2 + 0.6*Math.random()), H - r*0.5, r);
+  b.temp = 0.85; b.base = r;
+  blobs.push(b);
 }
+
+/* ---------- drawing ---------------------------------------------------------
+   for each cell: how much every body owns it (metaball field), which body
+   owns it most and which second. field strength picks the step of the ink;
+   the ratio between first and second picks, by dither, whose ink it is.    */
 
 function draw(){
-  const d = img.data, p = T*0.01;
-  const lift = 0.22*A.level + flash;          // the take brightens everything a little
+  const d = img.data, n = blobs.length, p = T*0.0008;
+  // a compact kernel: each body's pull ends at REACH times its radius, so
+  // bodies stay apart until they really touch. scaled to 1 at the body's edge.
+  const REACH = 1.8, EDGE = Math.pow(1 - 1/(REACH*REACH), 3);
+  const bx = new Float32Array(n), by = new Float32Array(n), r2 = new Float32Array(n), sq = new Float32Array(n);
+  for(let k=0;k<n;k++){
+    const b = blobs[k];
+    bx[k] = b.x; by[k] = b.y; r2[k] = 1/(b.r*b.r*REACH*REACH);
+    sq[k] = 1/(1 + Math.min(0.6, Math.abs(b.vy)*6));   // moving bodies stretch tall
+  }
+  const nx = new Float32Array(W);
+  for(let x=0;x<W;x++){ nx[x] = Math.sin(x*0.21 + p*6); }
   for(let y=0;y<H;y++){
-    const row = (y&7)*8, sy = Math.sin(y*0.045 - p*0.7);
+    const ny = 0.3*Math.sin(y*0.17 - p*4), wob = 2.6*Math.sin(p*2.3 + y*0.071);
+    const row = (y&7)*8, row2 = ((y+3)&7)*8, row3 = ((y+6)&7)*8;
+    const wy = y + 2.2*Math.sin(p*3 + y*0.05), base = y/H;
     for(let x=0;x<W;x++){
-      const i = y*W+x;
-      // the water under the chemistry: never flat, never black
-      const under = 0.2 + 0.1*Math.sin(x*0.052 + p)*sy;
-      let t = v[i]*2.3 + under + lift;
-      t = t < 0 ? 0 : t > 1 ? 1 : t;
-      const s = t*3, lo = s|0;
-      const c = (s - lo) > BAYER[row + (x&7)] ? (lo > 2 ? 3 : lo+1) : lo;
-      const o = i*4, q = c*3;
+      const wx = x + wob;                       // the glass wobbles the view
+      let f = 0, m1 = 0, m2 = 0, k1 = 0, k2 = 0;
+      for(let k=0;k<n;k++){
+        const dx = wx - bx[k], dy = (wy - by[k])*sq[k];
+        const e = 1 - (dx*dx + dy*dy)*r2[k];
+        if(e <= 0) continue;
+        const c = e*e*e/EDGE;
+        f += c;
+        if(c > m1){ m2 = m1; k2 = k1; m1 = c; k1 = k; }
+        else if(c > m2){ m2 = c; k2 = k; }
+      }
+      const th = BAYER[row + (x&7)], th2 = BAYER[row2 + ((x+5)&7)], th3 = BAYER[row3 + ((x+2)&7)];
+      // whose dye: sharpened share between the two nearest owners, by dither
+      // the border wanders, so dyes marble into each other instead of meeting on a line
+      const a2 = m1*m1, b2 = m2*m2;
+      // only where two dyes are really contested; a lone body stays clean
+      const share = a2/(a2 + b2 + 1e-12);
+      const contest = share < 0.97 ? 1 - share : 0;
+      const owner = blobs[m2 <= 0 || th < share + nx[x]*ny*Math.min(1, contest*4) ? k1 : k2];
+      const dye = th3 < owner.dyeMix || owner.was < 0 ? owner.dye : owner.was;
+      let q;
+      if(f < 1){
+        // the liquid, lit from the base, with the nearest wax's halo bleeding in
+        if(f > 0.35 && (f - 0.35)/0.65 > th2) q = (dye*4)*3;
+        else {
+          const lq = (th3 < liqMix ? liqB : liqA)*3 + LQ;
+          const t = (0.1 + base*base*0.9 + f*0.8 + tint)*2;
+          const lo = t|0, st = (t - lo) > th ? lo + 1 : lo;
+          q = (lq + (st > 2 ? 2 : st))*3;
+        }
+      } else {
+        // the wax: body, glow, core. the core only where it is thickest
+        let t = (f - 1)/2.2;
+        t = t > 1 ? 1 : t;
+        const s = 1 + t*2, lo = s|0;
+        const st = (s - lo) > th2 ? (lo > 2 ? 3 : lo+1) : lo;
+        q = (dye*4 + st)*3;
+      }
+      const o = (y*W + x)*4;
       d[o] = pal[q]; d[o+1] = pal[q+1]; d[o+2] = pal[q+2]; d[o+3] = 255;
     }
   }
@@ -219,23 +284,22 @@ function draw(){
   ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
 }
 
-/* ---------- listening -----------------------------------------------------
-   loudness is judged against this take's own peaks, and attacks against
-   this take's own recent flux, so a quiet fingerpicked take reads as fully
-   as a hard strummed one.                                                 */
+/* ---------- listening -------------------------------------------------------
+   loudness against the take's own peaks, attacks against its own recent
+   flux. both are felt as heat and pressure, not seen as beats.             */
 
 let ac, analyser, tbuf, fbuf, prev, src, playing = false;
 const A = { level:0, bright:0.3 };
-let hold = 0.02, fluxHist = [], lastHit = 0, flash = 0, kick = 0;
+let hold = 0.02, fluxHist = [], lastHit = 0, lastEvent = 0;
 
 function listen(now){
-  if(!analyser || !playing){ A.level *= 0.95; return; }
+  if(!analyser || !playing){ A.level *= 0.98; return; }
   analyser.getFloatTimeDomainData(tbuf);
   let e = 0;
   for(let i=0;i<tbuf.length;i++) e += tbuf[i]*tbuf[i];
   const rms = Math.sqrt(e/tbuf.length);
   hold = Math.max(rms, hold*0.9993, 0.003);
-  A.level = A.level*0.75 + Math.min(1, rms/hold)*0.25;
+  A.level = A.level*0.97 + Math.min(1, rms/hold)*0.03;     // heavily smoothed: heat, not pulse
 
   analyser.getFloatFrequencyData(fbuf);
   let flux = 0, sum = 0, ws = 0;
@@ -245,61 +309,50 @@ function listen(now){
     if(dm > 0) flux += dm;
     prev[i] = m; sum += m; ws += m*i;
   }
-  if(sum > 0) A.bright = A.bright*0.8 + (ws/sum/fbuf.length)*0.2;
-  flux = flux/(sum + 1e-9);                     // scale-free: loud and soft alike
-
+  if(sum > 0) A.bright = A.bright*0.99 + (ws/sum/fbuf.length)*0.01;
+  flux = flux/(sum + 1e-9);
   fluxHist.push(flux); if(fluxHist.length > 80) fluxHist.shift();
   let mean = 0; for(const f of fluxHist) mean += f; mean /= fluxHist.length;
   let sd = 0; for(const f of fluxHist) sd += (f-mean)*(f-mean); sd = Math.sqrt(sd/fluxHist.length);
-
   const audible = rms > 0.0015 && rms > hold*0.06;
   if(audible && fluxHist.length > 10 && flux > mean + 1.1*sd && flux > mean*1.2 && now - lastHit > 85){
     lastHit = now;
-    hit(Math.min(3, (flux-mean)/(sd+1e-9)));
+    pressure += Math.min(3, (flux-mean)/(sd+1e-9));
   }
 }
 
-function hit(strength){
-  const b = A.bright;
-  const y = H*(0.9 - Math.min(0.8, b*2.2)) + (Math.random()-0.5)*H*0.12;   // bright sounds sit high
-  const x = W*(0.5 + 0.44*Math.sin(wander*9.1 + b*13)) + (Math.random()-0.5)*W*0.15;
-  ring(x, y, 3 + strength*2.4 + A.level*5);
-  flash = Math.min(0.28, flash + 0.05 + strength*0.04);
-  kick = Math.min(0.12, kick + 0.03*strength);
-}
+/* ---------- the slow part ------------------------------------------------- */
 
-/* ---------- the wander ---------------------------------------------------- */
-
-let lastAlive = 0;
 function evolve(now){
-  wander += 0.0005;
-  // travel the living path; bright playing leans toward coral, dark toward waves
-  const t = 2.5 + 2.2*Math.sin(wander) + 0.6*Math.sin(wander*2.3 + 1.1) + (A.bright - 0.3)*1.5;
-  [F, K] = fk(t);
-
-  inkMix += 0.0004 + A.level*0.0012;
-  if(inkMix >= 1){
-    inkMix = 0; inkA = inkB;
-    inkB = (inkB + 1 + (Math.random()*2|0)) % INKS.length;
-    if(inkB === inkA) inkB = (inkB + 1) % INKS.length;
+  heat = heat*0.995 + A.level*0.005;
+  tint = tint*0.995 + (A.bright - 0.3)*0.15*0.005;
+  // a new mood every two minutes or so; heat brings it sooner
+  if(now - lastMood > 120000 - heat*50000){
+    lastMood = now; mood = pickMood();
+    liqA = liqB; liqB = Math.random()*LIQUIDS.length|0; liqMix = 0;
   }
-  mixInks();
-  flash *= 0.9; kick *= 0.96;
-
-  // if the field ever thins out, put life back in
-  if(now - lastAlive > 1000){
-    lastAlive = now;
-    let n = 0; for(let i=0;i<v.length;i+=7) if(v[i] > 0.15) n++;
-    if(n/(v.length/7) < 0.15) populate(W*H/500);
+  if(liqMix < 1) liqMix = Math.min(1, liqMix + 0.0004);
+  // pressure from attacks is spent rarely: a bud, or a tear
+  pressure *= 0.999;
+  if(pressure > 20 && now - lastEvent > 12000){
+    lastEvent = now; pressure = 0;
+    if(blobs.length < MAX_BLOBS && Math.random() < 0.6) bud();
+    else if(blobs.length < MAX_BLOBS){
+      let big = blobs[0]; for(const b of blobs) if(b.r > big.r) big = b;
+      tear(big);
+    }
   }
 }
 
-/* ---------- touch is a hand in the water --------------------------------- */
+/* ---------- touch warms the wax under the finger ---------------------------- */
 
 function pointer(e){
   const r = cv.getBoundingClientRect();
   const x = (e.clientX - r.left)/PX, y = (e.clientY - r.top)/PX;
-  if(x>=0 && y>=0 && x<W && y<H) ring(x, y, 4);
+  for(const b of blobs){
+    const d = Math.hypot(b.x-x, b.y-y);
+    if(d < b.r*1.5){ b.temp = Math.max(0, b.temp - 0.15); b.vx += (b.x-x)/(d+1)*0.05; }
+  }
 }
 cv.addEventListener("pointerdown", pointer);
 cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointer(e); });
@@ -310,8 +363,7 @@ function frame(now){
   T++;
   listen(now);
   evolve(now);
-  flow(Math.min(MAXFLOW, 0.07 + 0.14*A.level + kick));
-  for(let i=0;i<3;i++) step();
+  physics();
   draw();
   requestAnimationFrame(frame);
 }
