@@ -34,24 +34,24 @@
 <script>
 "use strict";
 /* =====================================================================
-   A lamp, not a picture of anything.
+   A lamp, not a picture of anything, with the glass taken away.
 
-   Bodies of wax sit in a dark liquid. The bottom of the lamp heats
-   them, so they swell and rise; the top cools them, so they sink.
-   Each body keeps its own temperature, so they fall out of step,
-   pass each other, touch, merge, and stretch until they tear in two.
+   Hidden bodies of wax still heat at the base, rise, cool and sink,
+   pass each other, merge and tear, but none of them is drawn. Each
+   one is only a centre of colour. Every pixel on the screen belongs
+   to the bodies nearest it, in proportion to how near they are, and
+   where two colours meet they marble into each other by dither over
+   a wide soft border. So the whole screen is colour, and it slowly
+   reshapes as the heat moves the centres around.
 
-   Every body carries its own four-step dye. Where two meet, the pixels
-   dither between their dyes by how much each one owns that spot, so
-   colours marble by texture, never blend into mud. Every couple of
-   minutes the lamp changes mood: four new dyes, mixed at random, never
-   the same twice. Each body takes one as it passes through the heated
-   base, and the liquid takes a new tint.
+   Dyes are mixed at random. Every couple of minutes the lamp changes
+   mood: six new dyes, never the same twice, taken up by each body
+   as it passes through the heated base.
 
    The take is heat. Loudness (judged against its own peaks) warms
-   the base; bright playing leans the liquid's tint; attacks build a
-   slow pressure that now and then pinches off a new bud from the
-   bottom or tears a big body in two. Nothing flashes.
+   the base and lifts the light; attacks build a slow pressure that
+   now and then buds a new body or tears a big one in two, which
+   splits a region of colour. Nothing flashes.
  ===================================================================== */
 
 const $ = s => document.querySelector(s);
@@ -62,9 +62,8 @@ const cv = $("#cv"), ctx = cv.getContext("2d", { alpha:false });
    dark, body, glow, core, from one hue that drifts a little as it
    brightens, so a dye has its own undertone. they live in a pool of
    slots; a slot is reused once no body or mood is wearing it.          */
-const POOL = 40, LIQ = 2;
-const pal = new Uint8Array((POOL*4 + LIQ*3)*3);
-const LQ = POOL*4;
+const POOL = 40;
+const pal = new Uint8Array(POOL*4*3);
 
 function hsl(h, s, l){
   h = ((h % 1) + 1) % 1;
@@ -83,7 +82,7 @@ function mixDye(){
   for(let t=0;t<POOL*2 && slot<0;t++){ const c = Math.random()*POOL|0; if(!inUse(c)) slot = c; }
   if(slot < 0) slot = Math.random()*POOL|0;
   // step away from the last hue so a mood never collapses into one colour
-  const h = lastHue + 0.18 + Math.random()*0.64; lastHue = h;
+  const h = lastHue + 0.12 + Math.random()*0.5; lastHue = h;
   const sat = 0.85 + Math.random()*0.15;
   const drift = (Math.random() - 0.5)*0.12;          // the undertone
   const L = [0.12, 0.4, 0.56, 0.74];
@@ -93,14 +92,6 @@ function mixDye(){
   }
   return slot;
 }
-function mixLiquid(i){
-  const h = 0.5 + Math.random()*0.45, sat = 0.3 + Math.random()*0.3, L = [0.02, 0.055, 0.095];   // cool tints: blues, violets, deep greens
-  for(let k=0;k<3;k++){
-    const c = hsl(h, sat, L[k]), o = (LQ + i*3 + k)*3;
-    pal[o] = c[0]; pal[o+1] = c[1]; pal[o+2] = c[2];
-  }
-}
-
 const BAYER = (() => {
   const m = [
     [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
@@ -112,12 +103,12 @@ const BAYER = (() => {
   return f;
 })();
 
+const MOOD = 6;                                    // dyes in a mood
 let blobs = [], mood = [];
 mood = pickMood();
-let liqA = 0, liqB = 0, liqMix = 1, lastMood = 0, tint = 0;
-mixLiquid(0);
+let lastMood = 0;
 function pickMood(){
-  const m = []; for(let i=0;i<4;i++){ const d = mixDye(); m.push(d); mood = mood.concat(d); }
+  const m = []; for(let i=0;i<MOOD;i++){ const d = mixDye(); m.push(d); mood = mood.concat(d); }
   return m;
 }
 function mixInks(){}                              // dyes are written as they are mixed
@@ -130,7 +121,7 @@ let W=0, H=0, img, gridCv, gridCtx, T = 0;
 function makeBlob(x, y, r, slot){
   return { x, y, r, vx:0, vy:0,
            temp: Math.random(),             // out of step from the start
-           dye: slot ?? mood[Math.random()*4|0], was: -1, dyeMix: 1,
+           dye: slot ?? mood[Math.random()*MOOD|0], was: -1, dyeMix: 1,
            ph: Math.random()*1000,          // its own slow wobble
            lag: 0.6 + Math.random()*0.8 };  // how fast it takes on heat
 }
@@ -145,14 +136,14 @@ function build(){
   gridCtx = gridCv.getContext("2d", { alpha:false });
   img = gridCtx.createImageData(W,H);
   blobs = [];
-  const n = 10 + (Math.random()*3|0);
+  const n = 11 + (Math.random()*3|0);
   for(let i=0;i<n;i++)
     blobs.push(makeBlob(W*(0.12+0.76*Math.random()), H*(i+0.5)/n,
-                        Math.min(W,H)*(0.1+0.09*Math.random()), mood[i % 4]));
+                        Math.min(W,H)*(0.1+0.09*Math.random()), mood[i % MOOD]));
   ctx.imageSmoothingEnabled = false;
 }
 
-const MIN_BLOBS = 8, MAX_BLOBS = 16;
+const MIN_BLOBS = 9, MAX_BLOBS = 16;
 let heat = 0, pressure = 0, lastTear = 0;
 
 function physics(){
@@ -167,7 +158,7 @@ function physics(){
       b.temp += (1 - b.temp)*0.0035*b.lag*warm;
       // the base re-dyes: a body not wearing the current mood takes one of it
       if(h > 0.85 && b.dyeMix >= 1 && !mood.includes(b.dye) && Math.random() < 0.01){
-        b.was = b.dye; b.dye = mood[Math.random()*4|0]; b.dyeMix = 0;
+        b.was = b.dye; b.dye = mood[Math.random()*MOOD|0]; b.dyeMix = 0;
       }
     }
     else if(h < 0.3) b.temp -= b.temp*0.0028*b.lag;
@@ -228,67 +219,49 @@ function bud(){
 }
 
 /* ---------- drawing ---------------------------------------------------------
-   for each cell: how much every body owns it (metaball field), which body
-   owns it most and which second. field strength picks the step of the ink;
-   the ratio between first and second picks, by dither, whose ink it is.    */
+   every body pulls on every pixel by the inverse square of its distance.
+   the strongest two decide the colour: their share of the pull picks,
+   by dither, whose dye a pixel wears, so borders are wide and soft. a slow
+   interference pattern, not the bodies, decides how light each pixel is,
+   so no body reads as a shape.                                            */
 
 function draw(){
-  const d = img.data, n = blobs.length, p = T*0.0008;
-  // a compact kernel: each body's pull ends at REACH times its radius, so
-  // bodies stay apart until they really touch. scaled to 1 at the body's edge.
-  const REACH = 1.8, EDGE = Math.pow(1 - 1/(REACH*REACH), 3);
-  const bx = new Float32Array(n), by = new Float32Array(n), r2 = new Float32Array(n), sq = new Float32Array(n);
-  for(let k=0;k<n;k++){
-    const b = blobs[k];
-    bx[k] = b.x; by[k] = b.y; r2[k] = 1/(b.r*b.r*REACH*REACH);
-    sq[k] = 1/(1 + Math.min(0.6, Math.abs(b.vy)*6));   // moving bodies stretch tall
+  const d = img.data, n = blobs.length, p = T*0.0008, lift = heat*0.2;
+  const bx = new Float32Array(n), by = new Float32Array(n), r2 = new Float32Array(n);
+  for(let k=0;k<n;k++){ const b = blobs[k]; bx[k] = b.x; by[k] = b.y; r2[k] = b.r*b.r; }
+  const nx = new Float32Array(W), lx = new Float32Array(W), lx2 = new Float32Array(W);
+  for(let x=0;x<W;x++){
+    nx[x] = Math.sin(x*0.19 + p*6);
+    lx[x] = Math.sin(x*0.041 + p*2.1);
+    lx2[x] = Math.sin(x*0.093 - p*3.3);
   }
-  const nx = new Float32Array(W);
-  for(let x=0;x<W;x++){ nx[x] = Math.sin(x*0.21 + p*6); }
   for(let y=0;y<H;y++){
-    const ny = 0.3*Math.sin(y*0.17 - p*4), wob = 2.6*Math.sin(p*2.3 + y*0.071);
+    const ny = Math.sin(y*0.15 - p*4);
+    const ly = Math.sin(y*0.033 - p*1.7), ly2 = Math.sin(y*0.071 + p*2.6);
     const row = (y&7)*8, row2 = ((y+3)&7)*8, row3 = ((y+6)&7)*8;
-    const wy = y + 2.2*Math.sin(p*3 + y*0.05), base = y/H;
+    const wob = 2.6*Math.sin(p*2.3 + y*0.071), wy = y + 2.2*Math.sin(p*3 + y*0.05);
     for(let x=0;x<W;x++){
-      const wx = x + wob;                       // the glass wobbles the view
-      let f = 0, m1 = 0, m2 = 0, k1 = 0, k2 = 0;
+      const wx = x + wob;
+      let m1 = 0, m2 = 0, k1 = 0, k2 = 0;
       for(let k=0;k<n;k++){
-        const dx = wx - bx[k], dy = (wy - by[k])*sq[k];
-        const e = 1 - (dx*dx + dy*dy)*r2[k];
-        if(e <= 0) continue;
-        const c = e*e*e/EDGE;
-        f += c;
+        const dx = wx - bx[k], dy = wy - by[k];
+        const c = r2[k]/(dx*dx + dy*dy + 4);
         if(c > m1){ m2 = m1; k2 = k1; m1 = c; k1 = k; }
         else if(c > m2){ m2 = c; k2 = k; }
       }
       const th = BAYER[row + (x&7)], th2 = BAYER[row2 + ((x+5)&7)], th3 = BAYER[row3 + ((x+2)&7)];
-      // whose dye: sharpened share between the two nearest owners, by dither
-      // the border wanders, so dyes marble into each other instead of meeting on a line
-      const a2 = m1*m1, b2 = m2*m2;
-      // only where two dyes are really contested; a lone body stays clean
-      const share = a2/(a2 + b2 + 1e-12);
-      const contest = share < 0.97 ? 1 - share : 0;
-      const owner = blobs[m2 <= 0 || th < share + nx[x]*ny*Math.min(1, contest*4) ? k1 : k2];
+      // whose colour: a wide border, wandering so the dyes marble
+      const share = m1/(m1 + m2);                    // 0.5 on the border, toward 1 inside
+      const inner = (share - 0.5)*2;                  // 0 on the border, 1 deep inside
+      const pick = 0.5 + inner*0.85 + 0.45*nx[x]*ny;  // a wide, wandering border band
+      const owner = blobs[th < pick ? k1 : k2];
       const dye = th3 < owner.dyeMix || owner.was < 0 ? owner.dye : owner.was;
-      let q;
-      if(f < 1){
-        // the liquid, lit from the base, with the nearest wax's halo bleeding in
-        if(f > 0.35 && (f - 0.35)/0.65 > th2) q = (dye*4)*3;
-        else {
-          const lq = (th3 < liqMix ? liqB : liqA)*3 + LQ;
-          const t = (0.1 + base*base*0.9 + f*0.8 + tint)*2;
-          const lo = t|0, st = (t - lo) > th ? lo + 1 : lo;
-          q = (lq + (st > 2 ? 2 : st))*3;
-        }
-      } else {
-        // the wax: body, glow, core. the core only where it is thickest
-        let t = (f - 1)/2.2;
-        t = t > 1 ? 1 : t;
-        const s = 1 + t*2, lo = s|0;
-        const st = (s - lo) > th2 ? (lo > 2 ? 3 : lo+1) : lo;
-        q = (dye*4 + st)*3;
-      }
-      const o = (y*W + x)*4;
+      // how light: the interference pattern, a little dimmer along borders
+      let lit = 0.46 + 0.28*lx[x]*ly + 0.16*lx2[x]*ly2 + 0.08*inner + lift;
+      let s = lit*3;
+      s = s < 0 ? 0 : s > 3 ? 3 : s;
+      const lo = s|0, st = (s - lo) > th2 ? (lo > 2 ? 3 : lo + 1) : lo;
+      const q = (dye*4 + st)*3, o = (y*W + x)*4;
       d[o] = pal[q]; d[o+1] = pal[q+1]; d[o+2] = pal[q+2]; d[o+3] = 255;
     }
   }
@@ -338,13 +311,10 @@ function listen(now){
 
 function evolve(now){
   heat = heat*0.995 + A.level*0.005;
-  tint = tint*0.995 + (A.bright - 0.3)*0.15*0.005;
   // a new mood every two minutes or so; heat brings it sooner
   if(now - lastMood > 120000 - heat*50000){
     lastMood = now; mood = pickMood();
-    liqA = liqB; liqB = 1 - liqB; mixLiquid(liqB); liqMix = 0;
   }
-  if(liqMix < 1) liqMix = Math.min(1, liqMix + 0.0004);
   // pressure from attacks is spent rarely: a bud, or a tear
   pressure *= 0.999;
   if(pressure > 20 && now - lastEvent > 12000){
@@ -357,7 +327,7 @@ function evolve(now){
   }
 }
 
-/* ---------- touch warms the wax under the finger ---------------------------- */
+/* ---------- touch cools the wax under the finger ---------------------------- */
 
 function pointer(e){
   const r = cv.getBoundingClientRect();
