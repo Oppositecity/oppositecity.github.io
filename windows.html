@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>OPPOSITE CITY</title>
+<!-- PREVIEW: remove this line when windows.html is promoted to index.html -->
+<meta name="robots" content="noindex" />
+<meta name="description" content="Opposite City — an artistic agency, idea firm, and widget farm." />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="OPPOSITE CITY" />
+<meta property="og:url" content="https://opposite.city/" />
+<meta property="og:title" content="OPPOSITE CITY" />
+<meta property="og:description" content="An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift." />
+<meta property="og:image" content="https://opposite.city/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://opposite.city/og.png" />
+<script>document.documentElement.className="js";</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --desk:#3a3a3a; --face:#c0c0c0; --hi:#fff; --lo:#808080; --shadow:#000;
+    --pad:8px; --gap:6px; --mast-cap:92px; --bar:44px;
+    --tilew:380px;     /* narrowest a tiled window gets on a desk */
+    --phoneh:68svh;    /* window height in phone mode */
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{height:100%;}
+  body{min-height:100%; background:var(--desk); color:#000;
+       font-family:'Courier Prime','Courier New',Courier,monospace; font-size:14px;
+       -webkit-font-smoothing:none; padding-bottom:calc(var(--bar) + 12px);}
+  .out{border:2px solid; border-color:var(--hi) var(--shadow) var(--shadow) var(--hi);
+       box-shadow:inset 1px 1px 0 var(--face), inset -1px -1px 0 var(--lo);}
+  .in {border:2px solid; border-color:var(--lo) var(--hi) var(--hi) var(--lo);}
+
+  #head{padding:10px var(--pad) 8px; color:#fff;}
+  #head h1{font-weight:700; line-height:1; white-space:nowrap;
+           font-size:min(calc((100vw - var(--pad) * 2 - 2px) / 7.8), var(--mast-cap));}
+
+  /* ---- desk: windows positioned absolutely, desk grows to hold them ---- */
+  #desk{position:relative; margin:0 var(--pad);}
+  .win{position:absolute; display:flex; flex-direction:column; background:var(--face);
+       min-width:200px; min-height:140px;}
+  .win.min,.win.gone{display:none;}
+  .tbar{display:flex; align-items:center; gap:4px; padding:3px 3px 3px 6px; color:#fff;
+        font-weight:700; font-size:12px; flex:0 0 auto; cursor:grab; touch-action:none;
+        user-select:none; -webkit-user-select:none;}
+  .tbar{background:var(--deep);}            /* unfocused: dark title, white text stays white */
+  .win.focus .tbar{background:var(--bar);}
+  .tbar .tt{flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; letter-spacing:.5px;}
+  .wb{flex:0 0 auto; width:22px; height:20px; background:var(--face); color:#000;
+      font-family:inherit; font-size:12px; font-weight:700; line-height:1; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; text-decoration:none;}
+  .wb:active{border-color:var(--lo) var(--hi) var(--hi) var(--lo); box-shadow:none;}
+  .body{position:relative; flex:1; min-height:0; background:#000; overflow:hidden;}
+  .body iframe{position:absolute; inset:0; width:100%; height:100%; border:0; background:#000;}
+  .grip{position:absolute; right:0; bottom:0; width:18px; height:18px; cursor:nwse-resize;
+        touch-action:none; z-index:2;
+        background:linear-gradient(135deg,transparent 50%,var(--lo) 50%,var(--lo) 58%,transparent 58%,transparent 70%,var(--lo) 70%,var(--lo) 78%,transparent 78%);}
+  body.busy iframe{pointer-events:none;}   /* iframes swallow pointer moves mid-drag */
+  body.busy{user-select:none; -webkit-user-select:none;}
+
+  /* asleep: a frozen frame (when one could be taken) and a wake strip */
+  .sleep{position:absolute; inset:0; cursor:pointer; display:flex; flex-direction:column;
+         justify-content:flex-end; background-size:cover; background-position:center;}
+  .sleep .strip{background:#000; color:#fff; padding:8px 10px; font-size:13px; line-height:1.35;}
+  .sleep .strip b{display:block; font-size:14px;}
+  .win.live .sleep{display:none;}
+
+  /* ---- phone: same DOM, windows simply stack. nothing is reparented,
+     because moving an iframe in the DOM reloads it. ---- */
+  body.phone #desk{height:auto !important; display:flex; flex-direction:column; gap:var(--gap);}
+  body.phone .win{position:relative; left:auto !important; top:auto !important;
+                  width:auto !important; height:var(--phoneh) !important; z-index:auto !important;}
+  body.phone .win.min{display:flex;}
+  body.phone .grip, body.phone .wb.mn, body.phone .wb.mx, body.phone .deskonly{display:none;}
+  body.phone .tbar{cursor:default;}
+
+  /* ---- taskbar ---- */
+  #taskbar{position:fixed; left:0; right:0; bottom:0; height:var(--bar); background:var(--face);
+           display:flex; align-items:center; gap:4px; z-index:100000;
+           padding:4px calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) 4px;}
+  .tb{height:32px; padding:0 10px; background:var(--face); color:#000; font-family:inherit;
+      font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; flex:0 0 auto;}
+  .tb:active,.tb[aria-pressed="true"]{border-color:var(--lo) var(--hi) var(--hi) var(--lo); box-shadow:none;}
+  #q{height:32px; width:170px; padding:0 8px; font-family:inherit; font-size:13px;
+     background:#fff; color:#000; flex:0 1 auto; min-width:90px;}
+  #q::placeholder{color:#444; opacity:1;}
+  #tray{flex:1; display:flex; gap:4px; overflow-x:auto; min-width:0; scrollbar-width:none;}
+  #tray .tb{max-width:150px; overflow:hidden; text-overflow:ellipsis; color:#fff;}
+  #awake{font-size:11px; padding:0 6px; white-space:nowrap;}
+  #clock{font-size:11px; padding:0 8px; height:32px; display:flex; align-items:center; background:#fff;}
+  body.phone #q{flex:1;}
+  body.phone #clock{display:none;}
+
+  #msg{color:#fff; padding:0 var(--pad) 20px; font-size:14px;}
+  html.js #fallback{display:none;}
+  #fallback{padding:0 var(--pad) 40px; color:#fff; font-size:15px; line-height:1.6;}
+  #fallback a{color:#fff;} #fallback ul{list-style:none;} #fallback li{margin:0 0 14px;}
+  :focus-visible{outline:2px dotted #fff; outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<div id="head"><h1>OPPOSITE CITY</h1></div>
+<div id="desk"></div>
+<p id="msg" style="display:none"></p>
+
+<div id="fallback">
+  <p>An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift.</p>
+  <ul>
+    <li><a href="https://opposite.city/titivillus/">TITIVILLUS</a></li>
+    <li><a href="https://opposite.city/signgularity/">SIGNGULARITY</a></li>
+    <li><a href="https://opposite.city/split/">SPLIT</a></li>
+    <li><a href="https://opposite.city/sortition-congress/">Sortition Congress</a></li>
+    <li><a href="https://opposite.city/circlefornia/">CIRCLEFORNIA</a></li>
+    <li><a href="https://opposite.city/somesets/">SOMESET GENERATOR</a></li>
+    <li><a href="https://opposite.city/bz/">BZ</a></li>
+    <li><a href="https://opposite.city/polyrhythm/">POLYRHYTHMIC TIME CLOCK</a></li>
+    <li><a href="https://opposite.city/kelp/">KELP</a></li>
+    <li><a href="https://opposite.city/semantic-voyage/fly.html">SEMANTIC VOYAGE</a></li>
+    <li><a href="https://opposite.city/room/">ROOM</a></li>
+    <li><a href="https://opposite.city/wind/">YOU ARE THE WIND</a></li>
+    <li><a href="https://opposite.city/ambiguity/">AMBIGUATOR</a></li>
+    <li><a href="https://opposite.city/syllababbler/">SYLLABABBLER</a></li>
+    <li><a href="https://opposite.city/ephemeris/">EPHEMERIS</a></li>
+    <li><a href="https://opposite.city/poemstream/">POEMSTREAM</a></li>
+    <li><a href="https://opposite.city/shellac/">SHELLAC</a></li>
+    <li><a href="https://opposite.city/aureole/">AUREOLE</a></li>
+    <li><a href="https://opposite.city/dof/">DEGREES OF FREEDOM</a></li>
+    <li><a href="https://opposite.city/pentimento/">PENTIMENTO</a></li>
+    <li><a href="https://opposite.city/apophasis/">APOPHASIS</a></li>
+    <li><a href="https://opposite.city/idiophone/">IDIOPHONE</a></li>
+    <li><a href="https://opposite.city/agentic-entropy/">AGENTIC ENTROPY</a></li>
+  </ul>
+</div>
+
+<div id="taskbar" class="out">
+  <button class="tb out deskonly" id="bTile" title="Arrange every window in a grid">Tile</button>
+  <button class="tb out deskonly" id="bCasc" title="Stack every window in a cascade">Cascade</button>
+  <input id="q" class="in" placeholder="search" autocomplete="off" aria-label="Search surfaces" />
+  <div id="tray"></div>
+  <button class="tb out" id="bSnd" title="Which windows may make sound">Sound: focused</button>
+  <span id="awake" title="Windows running now, of the most allowed at once"></span>
+  <div id="clock" class="in"></div>
+</div>
+
+<script>
+/* ============================================================
+   OPPOSITE CITY — windowed hub
+   Every surface runs in its own window. A window is LIVE (iframe
+   loaded) or ASLEEP (no iframe, a frozen frame if one could be
+   taken). At most BUDGET windows are live; waking one past the
+   budget puts the least-recently-used one to sleep, preferring
+   windows that are scrolled out of view.
+   ============================================================ */
+
+const $=id=>document.getElementById(id);
+const esc=t=>String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* pieces that are heavy enough (big downloads, GPU, mic) that they
+   only ever wake on a click, never by scrolling into view */
+const HEAVY = {
+  pentimento:'downloads a 500 MB language model',
+  apophasis:'downloads a 500 MB language model',
+  'semantic-voyage':'loads 20,000 word vectors',
+  wind:'3D, uses the GPU',
+  signgularity:'3D, uses the GPU',
+  titivillus:'measures 26,000 glyphs on start',
+  idiophone:'uses the microphone',
+  'agentic-entropy':'large chart'
+};
+
+const PHONE_Q = matchMedia('(max-width: 759px)');
+let phone = PHONE_Q.matches;
+const budget = ()=> phone ? 2 : 5;
+
+let REG=null, W=[], zTop=10, focused=null, tiled=true, soundAll=false;
+const desk=$('desk');
+
+/* one hue per surface, fresh every load — the original mechanic */
+function hue(){ const h=Math.floor(Math.random()*360), s=38+Math.random()*30;
+  return {bar:`hsl(${h} ${Math.min(70,s+18)}% 26%)`, deep:`hsl(${h} ${Math.min(70,s+10)}% 12%)`}; }
+
+/* ---------------- window construction ---------------- */
+function make(s){
+  const c=hue();
+  const el=document.createElement('section');
+  el.className='win out'; el.id='w-'+s.slug;
+  el.setAttribute('aria-label', s.name);
+  const why=HEAVY[s.slug];
+  el.innerHTML=`
+    <div class="tbar" style="--bar:${c.bar};--deep:${c.deep}">
+      <span class="tt">${esc(s.name)}</span>
+      <button class="wb out mn" title="Minimize" aria-label="Minimize">_</button>
+      <button class="wb out mx" title="Maximize" aria-label="Maximize">□</button>
+      <a class="wb out" href="${esc(s.url)}" target="_blank" rel="noopener" title="Open in its own tab" aria-label="Open in its own tab">↗</a>
+    </div>
+    <div class="body">
+      <div class="sleep" style="background-color:${c.deep}" role="button" tabindex="0" aria-label="Wake ${esc(s.name)}">
+        <div class="strip"><b>${esc(s.name)}</b>Asleep. Tap or click to wake${why?` — ${esc(why)}.`:'.'}</div>
+      </div>
+    </div>
+    <div class="grip" aria-hidden="true"></div>`;
+  const w={s, el, c, live:false, ifr:null, ctxs:[], paused:new Set(), lastUse:0,
+           x:0,y:0,w:400,h:300, min:false, max:null, visible:false};
+  el.querySelector('.sleep').addEventListener('click',()=>{ wake(w,true); focus(w); });
+  el.querySelector('.sleep').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault(); wake(w,true); focus(w);} });
+  el.addEventListener('pointerdown',()=>focus(w),true);
+  el.querySelector('.mn').onclick=e=>{e.stopPropagation(); minimize(w);};
+  el.querySelector('.mx').onclick=e=>{e.stopPropagation(); maximize(w);};
+  el.querySelector('.tbar').addEventListener('dblclick',e=>{ if(!phone && !e.target.closest('.wb')) maximize(w); });
+  drag(w); resize(w);
+  desk.appendChild(el);
+  return w;
+}
+
+/* ---------------- live / asleep ---------------- */
+function liveOnes(){ return W.filter(w=>w.live); }
+
+function wake(w, byHand){
+  if(w.live) return true;
+  const L=liveOnes();
+  if(L.length>=budget()){
+    // offscreen windows go to sleep first, then the least recently used.
+    // scrolling alone never evicts a window you can see.
+    const cands=L.filter(x=>x!==focused).sort((a,b)=>(a.visible-b.visible)||(a.lastUse-b.lastUse));
+    const victim=cands[0];
+    if(!victim || (!byHand && victim.visible)) return false;
+    sleep(victim);
+  }
+  const f=document.createElement('iframe');
+  f.src=w.s.url; f.title=w.s.name;
+  f.allow='autoplay; camera; microphone; fullscreen; accelerometer; gyroscope; clipboard-write; xr-spatial-tracking';
+  f.addEventListener('load',()=>hook(w));
+  w.el.querySelector('.body').appendChild(f);
+  w.ifr=f; w.live=true; w.lastUse=Date.now(); w.ctxs=[]; w.paused=new Set();
+  w.el.classList.add('live');
+  count(); return true;
+}
+
+function sleep(w){
+  if(!w.live) return;
+  const shot=snapshot(w);
+  if(shot) w.el.querySelector('.sleep').style.backgroundImage=`url(${shot})`;
+  try{ w.ctxs.forEach(c=>c.close&&c.close()); }catch(e){}
+  w.ifr.remove();
+  w.ifr=null; w.live=false; w.ctxs=[];
+  w.el.classList.remove('live');
+  count();
+}
+
+/* same origin, so the biggest canvas in the piece can be photographed
+   before it goes dark. WebGL canvases may come back blank; that is fine. */
+function snapshot(w){
+  try{
+    const d=w.ifr.contentDocument; if(!d) return null;
+    const cs=[...d.querySelectorAll('canvas')].filter(c=>c.width*c.height>0)
+      .sort((a,b)=>b.width*b.height-a.width*a.height);
+    if(!cs.length) return null;
+    const src=cs[0], k=Math.min(1,480/src.width);
+    const t=document.createElement('canvas'); t.width=Math.round(src.width*k); t.height=Math.round(src.height*k);
+    t.getContext('2d').drawImage(src,0,0,t.width,t.height);
+    return t.toDataURL('image/jpeg',.7);
+  }catch(e){ return null; }
+}
+
+/* ---------------- reaching into the piece ----------------
+   Every surface is on this origin, so the hub can (a) hear clicks
+   inside an iframe, to bring its window forward, and (b) keep a list
+   of the AudioContexts a piece makes, to silence unfocused windows. */
+function hook(w){
+  if(!w.ifr) return;
+  let cw; try{ cw=w.ifr.contentWindow; cw.document; }catch(e){ return; }
+  cw.addEventListener('pointerdown',()=>focus(w),true);
+  ['AudioContext','webkitAudioContext'].forEach(k=>{
+    const A=cw[k]; if(!A||A.__oc) return;
+    function P(...a){ const ctx=new A(...a); w.ctxs.push(ctx); queueMicrotask(()=>sound(w)); return ctx; }
+    P.prototype=A.prototype; P.__oc=true;
+    try{ cw[k]=P; }catch(e){}
+  });
+  sound(w);
+}
+
+function audible(w){ return soundAll || w===focused; }
+function sound(w){
+  if(!w.live) return;
+  const on=audible(w);
+  w.ctxs.forEach(c=>{ try{ on ? (c.state==='suspended' && c.resume()) : (c.state==='running' && c.suspend()); }catch(e){} });
+  try{
+    const media=w.ifr.contentDocument.querySelectorAll('audio,video');
+    media.forEach(m=>{
+      if(!on && !m.paused){ m.pause(); w.paused.add(m); }
+      else if(on && w.paused.has(m)){ m.play().catch(()=>{}); w.paused.delete(m); }
+    });
+  }catch(e){}
+}
+function soundAllWindows(){ W.forEach(sound); }
+
+/* ---------------- focus ---------------- */
+function focus(w){
+  if(focused===w){ w.lastUse=Date.now(); return; }
+  if(focused) focused.el.classList.remove('focus');
+  focused=w; w.lastUse=Date.now();
+  w.el.classList.add('focus');
+  if(!phone) w.el.style.zIndex=++zTop;
+  soundAllWindows(); tray();
+}
+// clicking into an iframe blurs the page; catch that as a focus too
+addEventListener('blur',()=>setTimeout(()=>{
+  const a=document.activeElement;
+  if(a && a.tagName==='IFRAME'){ const w=W.find(x=>x.ifr===a); if(w) focus(w); }
+},0));
+
+/* ---------------- geometry ---------------- */
+function place(w){
+  const s=w.el.style;
+  s.left=w.x+'px'; s.top=w.y+'px'; s.width=w.w+'px'; s.height=w.h+'px';
+}
+function deskHeight(){
+  if(phone){ desk.style.height=''; return; }
+  const b=W.filter(w=>!w.min && !w.el.classList.contains('gone')).reduce((m,w)=>Math.max(m,w.y+w.h),0);
+  desk.style.height=Math.max(b+12, innerHeight-desk.offsetTop-60)+'px';
+}
+function deskW(){ return desk.clientWidth; }
+
+function shown(){ return W.filter(w=>!w.el.classList.contains('gone')); }
+
+function tile(){
+  const list=shown().filter(w=>!w.min), gap=6, DW=deskW();
+  const minW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tilew'))||380;
+  const cols=Math.max(1,Math.floor((DW+gap)/(minW+gap)));
+  const ww=Math.floor((DW-(cols-1)*gap)/cols), hh=Math.round(ww*.68);
+  list.forEach((w,i)=>{ w.max=null; w.x=(i%cols)*(ww+gap); w.y=Math.floor(i/cols)*(hh+gap); w.w=ww; w.h=hh; place(w); });
+  tiled=true; deskHeight(); save(); visibility();
+}
+function cascade(){
+  const list=shown().filter(w=>!w.min), DW=deskW(), step=30;
+  const ww=Math.min(620,DW-40), hh=Math.min(440, innerHeight-200);
+  const per=Math.max(4,Math.floor((innerHeight-hh-120)/step));
+  list.forEach((w,i)=>{
+    const col=Math.floor(i/per), k=i%per;
+    w.max=null; w.w=ww; w.h=hh;
+    w.x=Math.min(DW-ww, k*step + col*(step*3)); w.y=k*step + col*step;
+    place(w); w.el.style.zIndex=++zTop;
+  });
+  tiled=false; deskHeight(); save(); visibility();
+}
+
+function maximize(w){
+  if(phone) return;
+  if(w.max){ Object.assign(w,w.max); w.max=null; }
+  else{
+    w.max={x:w.x,y:w.y,w:w.w,h:w.h};
+    w.x=0; w.w=deskW();
+    w.y=Math.max(0, scrollY-desk.offsetTop+4);
+    w.h=innerHeight - parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bar')) - 12
+        - Math.max(0, desk.offsetTop-scrollY);
+  }
+  place(w); focus(w); tiled=false; deskHeight(); save();
+}
+function minimize(w){
+  w.min=true; w.el.classList.add('min');
+  if(focused===w){ w.el.classList.remove('focus'); focused=null; soundAllWindows(); }
+  tray(); deskHeight(); save();
+}
+function restore(w){
+  w.min=false; w.el.classList.remove('min'); focus(w);
+  tray(); deskHeight(); save();
+}
+
+/* ---------------- drag + resize (pointer events, mouse and touch) ---------------- */
+function drag(w){
+  const bar=w.el.querySelector('.tbar');
+  bar.addEventListener('pointerdown',e=>{
+    if(phone || e.button>0 || e.target.closest('.wb')) return;
+    e.preventDefault(); focus(w);
+    if(w.max){ w.max=null; }
+    const ox=e.clientX-w.x, oy=e.clientY-w.y;
+    bar.setPointerCapture(e.pointerId); document.body.classList.add('busy');
+    const mv=ev=>{
+      w.x=Math.max(-w.w+80, Math.min(deskW()-80, ev.clientX-ox));
+      w.y=Math.max(0, ev.clientY-oy);
+      place(w);
+    };
+    const up=()=>{ bar.removeEventListener('pointermove',mv); bar.removeEventListener('pointerup',up);
+      bar.removeEventListener('pointercancel',up); document.body.classList.remove('busy');
+      tiled=false; deskHeight(); save(); visibility(); };
+    bar.addEventListener('pointermove',mv); bar.addEventListener('pointerup',up); bar.addEventListener('pointercancel',up);
+  });
+}
+function resize(w){
+  const g=w.el.querySelector('.grip');
+  g.addEventListener('pointerdown',e=>{
+    if(phone) return;
+    e.preventDefault(); e.stopPropagation(); focus(w); w.max=null;
+    const sx=e.clientX, sy=e.clientY, sw=w.w, sh=w.h;
+    g.setPointerCapture(e.pointerId); document.body.classList.add('busy');
+    const mv=ev=>{ w.w=Math.max(200, sw+ev.clientX-sx); w.h=Math.max(140, sh+ev.clientY-sy); place(w); };
+    const up=()=>{ g.removeEventListener('pointermove',mv); g.removeEventListener('pointerup',up);
+      g.removeEventListener('pointercancel',up); document.body.classList.remove('busy');
+      tiled=false; deskHeight(); save(); visibility(); };
+    g.addEventListener('pointermove',mv); g.addEventListener('pointerup',up); g.addEventListener('pointercancel',up);
+  });
+}
+
+/* ---------------- what's on screen: auto-wake the light pieces ---------------- */
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{ const w=W.find(x=>x.el===e.target); if(w) w.visible=e.intersectionRatio>=.5; });
+  visibility();
+},{threshold:[0,.5,1]});
+function visibility(){
+  W.filter(w=>w.visible && !w.live && !w.min && !HEAVY[w.s.slug] && !w.el.classList.contains('gone'))
+   .forEach(w=>wake(w,false));
+}
+
+/* ---------------- taskbar ---------------- */
+function tray(){
+  const t=$('tray'); t.innerHTML='';
+  if(phone) return;
+  W.filter(w=>w.min && !w.el.classList.contains('gone')).forEach(w=>{
+    const b=document.createElement('button');
+    b.className='tb out'; b.textContent=w.s.name; b.style.background=w.c.bar;
+    b.title='Restore '+w.s.name; b.onclick=()=>restore(w);
+    t.appendChild(b);
+  });
+}
+function count(){ $('awake').textContent=`${liveOnes().length}/${budget()} awake`; }
+
+$('bTile').onclick=tile;
+$('bCasc').onclick=cascade;
+$('bSnd').onclick=()=>{
+  soundAll=!soundAll;
+  $('bSnd').textContent=soundAll?'Sound: all':'Sound: focused';
+  $('bSnd').setAttribute('aria-pressed',soundAll);
+  soundAllWindows();
+};
+$('q').oninput=()=>{
+  const q=$('q').value.trim().toLowerCase();
+  W.forEach(w=>{
+    const s=w.s, hay=(s.name+' '+s.slug+' '+(s.blurb||'')+' '+(s.tags||[]).join(' ')).toLowerCase();
+    w.el.classList.toggle('gone', !!q && !hay.includes(q));
+  });
+  const n=shown().length;
+  $('msg').textContent=n?'':'Nothing matches that search.'; $('msg').style.display=n?'none':'';
+  if(tiled && !phone) tile(); else deskHeight();
+  tray();
+};
+
+function tick(){ $('clock').textContent=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }
+
+/* ---------------- layout memory (this browser only) ---------------- */
+const KEY='oc-windows-v1';
+function save(){
+  if(phone) return;
+  try{ localStorage.setItem(KEY, JSON.stringify({tiled, at:deskW(),
+    w:Object.fromEntries(W.map(w=>[w.s.slug,{x:w.x,y:w.y,w:w.w,h:w.h,min:w.min}]))})); }catch(e){}
+}
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(!d || d.tiled || Math.abs(d.at-deskW())>40) return false;   // a different screen gets a fresh tile
+    let hit=0;
+    W.forEach(w=>{ const p=d.w[w.s.slug]; if(p){ Object.assign(w,p); hit++; if(w.min) w.el.classList.add('min'); } });
+    if(!hit) return false;
+    // anything new since last visit lands below the saved arrangement
+    let y=W.reduce((m,w)=>d.w[w.s.slug]?Math.max(m,w.y+w.h):m,0)+6;
+    W.filter(w=>!d.w[w.s.slug]).forEach(w=>{ w.x=0; w.y=y; w.w=420; w.h=300; y+=306; });
+    W.forEach(place); tiled=false; deskHeight(); tray();
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ---------------- mode switch ---------------- */
+function mode(){
+  phone=PHONE_Q.matches;
+  document.body.classList.toggle('phone',phone);
+  if(!phone){ if(!load()) tile(); }
+  else deskHeight();
+  // shrink to the new budget, sleeping offscreen windows first
+  let L=liveOnes().filter(w=>w!==focused).sort((a,b)=>(a.visible-b.visible)||(a.lastUse-b.lastUse));
+  while(liveOnes().length>budget() && L.length) sleep(L.shift());
+  tray(); count(); visibility();
+}
+PHONE_Q.addEventListener('change',mode);
+let rz; addEventListener('resize',()=>{ clearTimeout(rz); rz=setTimeout(()=>{ if(!phone && tiled) tile(); },200); });
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  try{
+    const r=await fetch('/surfaces.json',{cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    REG=await r.json();
+  }catch(e){
+    $('msg').textContent='The surface list did not load. Reload the page, or use the links below.';
+    $('msg').style.display=''; document.documentElement.className=''; return;
+  }
+  W=REG.surfaces.filter(s=>/^https?:\/\//i.test((s.url||'').trim())).map(make);
+  mode();
+  W.forEach(w=>io.observe(w.el));
+  tick(); setInterval(tick,30000);
+}
+boot();
+</script>
+</body>
+</html>
