@@ -34,64 +34,29 @@
 <script>
 "use strict";
 /* =====================================================================
-   A lamp, not a picture of anything, with the glass taken away.
+   A fire, in one bit.
 
-   Hidden bodies of wax still heat at the base, rise, cool and sink,
-   pass each other, merge and tear, but none of them is drawn. Each
-   one is only a centre of colour. Every pixel on the screen belongs
-   to the bodies nearest it, in proportion to how near they are, and
-   where two colours meet they marble into each other by dither over
-   a wide soft border. So the whole screen is colour, and it slowly
-   reshapes as the heat moves the centres around.
+   Hidden bodies of wax heat at the base, rise, cool and sink, pass each
+   other, merge and tear. None is drawn. Every pixel belongs to the
+   bodies nearest it, and wears that body's temperature: hot is white,
+   cold is black, and the two marble into each other by ordered dither.
+   Nothing on the screen is grey and nothing is colour; a pixel is lit
+   or it is not. Light is brightest at the base and gutters toward the
+   top, and the shimmer in it climbs.
 
-   Dyes are mixed at random. Every couple of minutes the lamp changes
-   mood: six new dyes, never the same twice, taken up by each body
-   as it passes through the heated base.
+   The take is heard before it is played. The whole file is analysed
+   first, so a peak is a peak of THAT signal, judged against its own
+   surroundings, not a lucky spike of the moment: guitar, noise, a
+   drone, anything the browser can decode gets the same treatment.
+   Each attack throws one spark up from the base, left for low and
+   right for high. Loudness is only heat. Nothing flashes.
 
-   The take is heat. Loudness (judged against its own peaks) warms
-   the base and lifts the light; attacks build a slow pressure that
-   now and then buds a new body or tears a big one in two, which
-   splits a region of colour. Nothing flashes.
+   Drop any audio file on the page to hear it by this fire.
  ===================================================================== */
 
 const $ = s => document.querySelector(s);
 const cv = $("#cv"), ctx = cv.getContext("2d", { alpha:false });
 
-/* ---------- dye ----------------------------------------------------------
-   dyes are mixed at random, not picked from a list. each is four steps,
-   dark, body, glow, core, from one hue that drifts a little as it
-   brightens, so a dye has its own undertone. they live in a pool of
-   slots; a slot is reused once no body or mood is wearing it.          */
-const POOL = 40;
-const pal = new Uint8Array(POOL*4*3);
-
-function hsl(h, s, l){
-  h = ((h % 1) + 1) % 1;
-  const k = n => (n + h*12) % 12, a = s*Math.min(l, 1-l);
-  const f = n => l - a*Math.max(-1, Math.min(k(n)-3, 9-k(n), 1));
-  return [f(0)*255|0, f(8)*255|0, f(4)*255|0];
-}
-function inUse(slot){
-  if(mood.includes(slot)) return true;
-  for(const b of blobs) if(b.dye === slot || b.was === slot) return true;
-  return false;
-}
-let lastHue = Math.random();
-function mixDye(){
-  let slot = -1;
-  for(let t=0;t<POOL*2 && slot<0;t++){ const c = Math.random()*POOL|0; if(!inUse(c)) slot = c; }
-  if(slot < 0) slot = Math.random()*POOL|0;
-  // step away from the last hue so a mood never collapses into one colour
-  const h = lastHue + 0.12 + Math.random()*0.5; lastHue = h;
-  const sat = 0.85 + Math.random()*0.15;
-  const drift = (Math.random() - 0.5)*0.12;          // the undertone
-  const L = [0.12, 0.4, 0.56, 0.74];
-  for(let k=0;k<4;k++){
-    const c = hsl(h + drift*k, k === 3 ? sat*0.9 : sat, L[k]), o = (slot*4 + k)*3;
-    pal[o] = c[0]; pal[o+1] = c[1]; pal[o+2] = c[2];
-  }
-  return slot;
-}
 const BAYER = (() => {
   const m = [
     [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
@@ -103,25 +68,15 @@ const BAYER = (() => {
   return f;
 })();
 
-const MOOD = 6;                                    // dyes in a mood
-let blobs = [], mood = [];
-mood = pickMood();
-let lastMood = 0;
-function pickMood(){
-  const m = []; for(let i=0;i<MOOD;i++){ const d = mixDye(); m.push(d); mood = mood.concat(d); }
-  return m;
-}
-function mixInks(){}                              // dyes are written as they are mixed
-
-/* ---------- the lamp -------------------------------------------------------- */
+/* ---------- the wax ---------------------------------------------------- */
 
 const PX = 4;
 let W=0, H=0, img, gridCv, gridCtx, T = 0;
+let blobs = [], sparks = [];
 
-function makeBlob(x, y, r, slot){
+function makeBlob(x, y, r){
   return { x, y, r, vx:0, vy:0,
            temp: Math.random(),             // out of step from the start
-           dye: slot ?? mood[Math.random()*MOOD|0], was: -1, dyeMix: 1,
            ph: Math.random()*1000,          // its own slow wobble
            lag: 0.6 + Math.random()*0.8 };  // how fast it takes on heat
 }
@@ -135,16 +90,16 @@ function build(){
   gridCv.width = W; gridCv.height = H;
   gridCtx = gridCv.getContext("2d", { alpha:false });
   img = gridCtx.createImageData(W,H);
-  blobs = [];
+  blobs = []; sparks = [];
   const n = 11 + (Math.random()*3|0);
   for(let i=0;i<n;i++)
     blobs.push(makeBlob(W*(0.12+0.76*Math.random()), H*(i+0.5)/n,
-                        Math.min(W,H)*(0.1+0.09*Math.random()), mood[i % MOOD]));
+                        Math.min(W,H)*(0.1+0.09*Math.random())));
   ctx.imageSmoothingEnabled = false;
 }
 
 const MIN_BLOBS = 9, MAX_BLOBS = 16;
-let heat = 0, pressure = 0, lastTear = 0;
+let heat = 0, pressure = 0, lastTear = 0, lastEvent = 0;
 
 function physics(){
   const rMin = Math.min(W,H)*0.07, rMax = Math.min(W,H)*0.27;
@@ -154,16 +109,9 @@ function physics(){
     // heat only at the base, cooling only near the top, insulated between:
     // so a body carries its temperature the whole way and the lamp cycles
     const h = b.y/H;
-    if(h > 0.78){
-      b.temp += (1 - b.temp)*0.0035*b.lag*warm;
-      // the base re-dyes: a body not wearing the current mood takes one of it
-      if(h > 0.85 && b.dyeMix >= 1 && !mood.includes(b.dye) && Math.random() < 0.01){
-        b.was = b.dye; b.dye = mood[Math.random()*MOOD|0]; b.dyeMix = 0;
-      }
-    }
+    if(h > 0.78) b.temp += (1 - b.temp)*0.0035*b.lag*warm;
     else if(h < 0.3) b.temp -= b.temp*0.0028*b.lag;
     else b.temp += (0.5 - b.temp)*0.00015;
-    if(b.dyeMix < 1) b.dyeMix = Math.min(1, b.dyeMix + 0.0025);
     // hot rises, cold sinks. drag keeps it slow
     b.vy += (0.5 - b.temp)*0.0028 - b.vy*0.02;
     b.vx += Math.sin(b.ph*0.7 + b.y*0.03)*0.0012 - b.vx*0.02;
@@ -188,6 +136,7 @@ function physics(){
       const A2 = big.r*big.r, B2 = small.r*small.r;
       big.x = (big.x*A2 + small.x*B2)/(A2+B2); big.y = (big.y*A2 + small.y*B2)/(A2+B2);
       big.vx = (big.vx*A2 + small.vx*B2)/(A2+B2); big.vy = (big.vy*A2 + small.vy*B2)/(A2+B2);
+      big.temp = (big.temp*A2 + small.temp*B2)/(A2+B2);
       big.r = big.base = Math.sqrt(A2+B2);
       blobs.splice(blobs.indexOf(small), 1); lastTear = T;
       return;                                   // one event per frame is plenty
@@ -205,7 +154,7 @@ function physics(){
 
 function tear(b){
   const r = b.r/Math.SQRT2;
-  const c = makeBlob(b.x, b.y + r*0.6, r, b.dye);   // a torn-off piece keeps its dye
+  const c = makeBlob(b.x, b.y + r*0.6, r);
   c.temp = b.temp*0.9; c.vy = b.vy*0.5 + 0.02; c.base = r;
   b.r = b.base = r; b.y -= r*0.6; b.vy -= 0.02;
   blobs.push(c);
@@ -218,17 +167,45 @@ function bud(){
   blobs.push(b);
 }
 
+/* ---------- sparks ----------------------------------------------------------
+   one per attack in the take. x says where the attack sat in the take's
+   own range of pitch, strength says how hard it was struck: harder, more
+   sparks, faster and longer lived. they flicker out rather than fade,
+   because a pixel is lit or it is not.                                      */
+
+function spark(x, str){
+  const n = 1 + (str*5|0);
+  for(let i=0;i<n && sparks.length < 400;i++){
+    sparks.push({
+      x: x + (Math.random()-0.5)*3, y: H - 1,
+      vx: (Math.random()-0.5)*0.12,
+      vy: -(0.35 + 0.7*str*(0.6 + 0.4*Math.random())),
+      age: 0, life: 90 + (str*220*(0.6 + 0.4*Math.random()))|0,
+      ph: Math.random()*6.28 });
+  }
+}
+
+function moveSparks(){
+  for(let i=sparks.length-1;i>=0;i--){
+    const s = sparks[i];
+    s.age++;
+    s.x += s.vx + Math.sin(s.ph + s.age*0.07)*0.11;
+    s.y += s.vy; s.vy *= 0.9985;
+    if(s.age > s.life || s.y < -2) sparks.splice(i,1);
+  }
+}
+
 /* ---------- drawing ---------------------------------------------------------
    every body pulls on every pixel by the inverse square of its distance.
-   the strongest two decide the colour: their share of the pull picks,
-   by dither, whose dye a pixel wears, so borders are wide and soft. a slow
-   interference pattern, not the bodies, decides how light each pixel is,
-   so no body reads as a shape.                                            */
+   the strongest two decide whose temperature a pixel wears: their share
+   of the pull picks, by dither, so borders are wide and soft. a slow
+   interference pattern climbs through it, so no body reads as a shape.
+   then one more dither turns the temperature into lit or not lit.          */
 
 function draw(){
   const d = img.data, n = blobs.length, p = T*0.0008, lift = heat*0.2;
-  const bx = new Float32Array(n), by = new Float32Array(n), r2 = new Float32Array(n);
-  for(let k=0;k<n;k++){ const b = blobs[k]; bx[k] = b.x; by[k] = b.y; r2[k] = b.r*b.r; }
+  const bx = new Float32Array(n), by = new Float32Array(n), r2 = new Float32Array(n), bt = new Float32Array(n);
+  for(let k=0;k<n;k++){ const b = blobs[k]; bx[k] = b.x; by[k] = b.y; r2[k] = b.r*b.r; bt[k] = b.temp; }
   const nx = new Float32Array(W), lx = new Float32Array(W), lx2 = new Float32Array(W);
   for(let x=0;x<W;x++){
     nx[x] = Math.sin(x*0.19 + p*6);
@@ -237,9 +214,11 @@ function draw(){
   }
   for(let y=0;y<H;y++){
     const ny = Math.sin(y*0.15 - p*4);
-    const ly = Math.sin(y*0.033 - p*1.7), ly2 = Math.sin(y*0.071 + p*2.6);
-    const row = (y&7)*8, row2 = ((y+3)&7)*8, row3 = ((y+6)&7)*8;
+    // the + sign in these is what makes the pattern climb
+    const ly = Math.sin(y*0.033 + p*1.7), ly2 = Math.sin(y*0.071 + p*2.6);
+    const row = (y&7)*8, row2 = ((y+3)&7)*8;
     const wob = 2.6*Math.sin(p*2.3 + y*0.071), wy = y + 2.2*Math.sin(p*3 + y*0.05);
+    const grad = 0.16*(y/H - 0.5);                  // firelight: more at the base
     for(let x=0;x<W;x++){
       const wx = x + wob;
       let m1 = 0, m2 = 0, k1 = 0, k2 = 0;
@@ -249,76 +228,215 @@ function draw(){
         if(c > m1){ m2 = m1; k2 = k1; m1 = c; k1 = k; }
         else if(c > m2){ m2 = c; k2 = k; }
       }
-      const th = BAYER[row + (x&7)], th2 = BAYER[row2 + ((x+5)&7)], th3 = BAYER[row3 + ((x+2)&7)];
-      // whose colour: a wide border, wandering so the dyes marble
-      const share = m1/(m1 + m2);                    // 0.5 on the border, toward 1 inside
-      const inner = (share - 0.5)*2;                  // 0 on the border, 1 deep inside
-      const pick = 0.5 + inner*0.85 + 0.45*nx[x]*ny;  // a wide, wandering border band
-      const owner = blobs[th < pick ? k1 : k2];
-      const dye = th3 < owner.dyeMix || owner.was < 0 ? owner.dye : owner.was;
-      // how light: the interference pattern, a little dimmer along borders
-      let lit = 0.46 + 0.28*lx[x]*ly + 0.16*lx2[x]*ly2 + 0.08*inner + lift;
-      let s = lit*3;
-      s = s < 0 ? 0 : s > 3 ? 3 : s;
-      const lo = s|0, st = (s - lo) > th2 ? (lo > 2 ? 3 : lo + 1) : lo;
-      const q = (dye*4 + st)*3, o = (y*W + x)*4;
-      d[o] = pal[q]; d[o+1] = pal[q+1]; d[o+2] = pal[q+2]; d[o+3] = 255;
+      const th = BAYER[row + (x&7)], th2 = BAYER[row2 + ((x+5)&7)];
+      const inner = (m1/(m1 + m2) - 0.5)*2;           // 0 on a border, 1 deep inside
+      const pick = 0.5 + inner*0.85 + 0.45*nx[x]*ny; // a wide, wandering border band
+      const t = bt[th < pick ? k1 : k2];
+      const shimmer = 0.06*Math.sin(x*0.31 + y*0.23 + p*40);
+      const lit = 0.16 + 0.68*t + 0.20*lx[x]*ly + 0.10*lx2[x]*ly2 + grad + shimmer + lift;
+      const v = lit > th2 ? 255 : 0;
+      const o = (y*W + x)*4;
+      d[o] = v; d[o+1] = v; d[o+2] = v; d[o+3] = 255;
     }
+  }
+  // sparks: one lit cell, with the four cells around it put out so it reads
+  // against white as well as black
+  const put = (x,y,v) => {
+    if(x < 0 || y < 0 || x >= W || y >= H) return;
+    const o = (y*W + x)*4; d[o] = v; d[o+1] = v; d[o+2] = v;
+  };
+  for(const s of sparks){
+    if(s.age > s.life*0.7 && Math.random() < 0.5) continue;      // guttering
+    const x = s.x|0, y = s.y|0;
+    put(x-1,y,0); put(x+1,y,0); put(x,y-1,0); put(x,y+1,0); put(x,y,255);
   }
   gridCtx.putImageData(img,0,0);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
 }
 
-/* ---------- listening -------------------------------------------------------
-   loudness against the take's own peaks, attacks against its own recent
-   flux. both are felt as heat and pressure, not seen as beats.             */
+/* ---------- listening, before playing ---------------------------------------
+   an onset is a rise in the log-spectrum, summed over log-spaced bands, so
+   a quiet pluck and a loud one are the same size of event. a rise counts
+   as a peak only if it is the largest within a few frames, stands well
+   above the median of its own neighbourhood (measured in robust deviations,
+   so steady noise sets its own bar), clears a floor taken from the whole
+   take, and sits above a noise gate. peaks are kept at least SPACING apart.
+   the numbers are all here so they can be tuned by ear.                     */
 
-let ac, analyser, tbuf, fbuf, prev, src, playing = false;
-const A = { level:0, bright:0.3 };
-let hold = 0.02, fluxHist = [], lastHit = 0, lastEvent = 0;
+const AN = { N:1024, LO:60, HI:8000, BANDS:28,
+             K:6.0,        // robust deviations above the local median
+             REL:2.0,      // and at least this multiple of that median
+             MIN:6.0,      // and an absolute rise, in nepers summed over bands:
+                           // a real attack is 20-70, a flutter in a drone is under 1
+             QUIET:0.01,   // log floor, as a fraction of the take's loudest band
+             LOCAL:3,      // frames either side that a peak must beat
+             WIN:1.2,      // seconds either side for the local median
+             SPACING:0.08, // seconds between peaks, at the closest
+             FLOOR:0.2,    // of the take's 95th-percentile onset
+             GATE:0.03 };  // of the take's 95th-percentile loudness
 
-function listen(now){
-  if(!analyser || !playing){ A.level *= 0.98; return; }
-  analyser.getFloatTimeDomainData(tbuf);
-  let e = 0;
-  for(let i=0;i<tbuf.length;i++) e += tbuf[i]*tbuf[i];
-  const rms = Math.sqrt(e/tbuf.length);
-  hold = Math.max(rms, hold*0.9993, 0.003);
-  A.level = A.level*0.97 + Math.min(1, rms/hold)*0.03;     // heavily smoothed: heat, not pulse
+function makeFFT(n){
+  const levels = Math.round(Math.log2(n));
+  const rev = new Uint16Array(n);
+  for(let i=0;i<n;i++){ let r=0, x=i; for(let b=0;b<levels;b++){ r=(r<<1)|(x&1); x>>=1; } rev[i]=r; }
+  const cs = new Float32Array(n/2), sn = new Float32Array(n/2);
+  for(let i=0;i<n/2;i++){ cs[i]=Math.cos(2*Math.PI*i/n); sn[i]=-Math.sin(2*Math.PI*i/n); }
+  return (re, im) => {
+    for(let i=0;i<n;i++){ const j=rev[i]; if(j>i){
+      let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; } }
+    for(let size=2; size<=n; size<<=1){
+      const half=size>>1, step=n/size;
+      for(let i=0;i<n;i+=size) for(let j=i,k=0;j<i+half;j++,k+=step){
+        const l=j+half;
+        const tr=re[l]*cs[k]-im[l]*sn[k], ti=re[l]*sn[k]+im[l]*cs[k];
+        re[l]=re[j]-tr; im[l]=im[j]-ti; re[j]+=tr; im[j]+=ti;
+      }
+    }
+  };
+}
 
-  analyser.getFloatFrequencyData(fbuf);
-  let flux = 0, sum = 0, ws = 0;
-  for(let i=2;i<fbuf.length;i++){
-    const m = Math.pow(10, fbuf[i]/20);
-    const dm = m - prev[i];
-    if(dm > 0) flux += dm;
-    prev[i] = m; sum += m; ws += m*i;
+function pct(a, q){
+  const c = Float32Array.from(a).sort();
+  return c.length ? c[Math.min(c.length-1, Math.floor(q*c.length))] : 0;
+}
+
+async function analyse(pcm, rate, yieldFn){
+  const N = AN.N, hop = Math.max(256, Math.round(rate*0.016/64)*64);
+  const nF = Math.max(0, Math.floor((pcm.length - N)/hop));
+  const fft = makeFFT(N), re = new Float32Array(N), im = new Float32Array(N);
+  const mag = new Float32Array(N/2 + 1);
+  const win = new Float32Array(N);
+  for(let i=0;i<N;i++) win[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));
+  const hz = rate/N, hi = Math.min(AN.HI, rate/2*0.95);
+  const edges = [];
+  for(let b=0;b<=AN.BANDS;b++){
+    let e = Math.round(AN.LO*Math.pow(hi/AN.LO, b/AN.BANDS)/hz);
+    if(b > 0 && e <= edges[b-1]) e = edges[b-1] + 1;
+    edges.push(e);
   }
-  if(sum > 0) A.bright = A.bright*0.99 + (ws/sum/fbuf.length)*0.01;
-  flux = flux/(sum + 1e-9);
-  fluxHist.push(flux); if(fluxHist.length > 80) fluxHist.shift();
-  let mean = 0; for(const f of fluxHist) mean += f; mean /= fluxHist.length;
-  let sd = 0; for(const f of fluxHist) sd += (f-mean)*(f-mean); sd = Math.sqrt(sd/fluxHist.length);
-  const audible = rms > 0.0015 && rms > hold*0.06;
-  if(audible && fluxHist.length > 10 && flux > mean + 1.1*sd && flux > mean*1.2 && now - lastHit > 85){
-    lastHit = now;
-    pressure += Math.min(3, (flux-mean)/(sd+1e-9));
+  const spec = start => {
+    for(let i=0;i<N;i++){ const v = start+i < pcm.length ? pcm[start+i] : 0; re[i]=v*win[i]; im[i]=0; }
+    fft(re, im);
+    for(let i=0;i<=N/2;i++) mag[i] = Math.hypot(re[i], im[i])/N;
+  };
+  const B = AN.BANDS, bm = new Float32Array(nF*B), rms = new Float32Array(nF);
+  for(let t=0;t<nF;t++){
+    const s0 = t*hop;
+    let e = 0; for(let i=0;i<N;i++){ const v = pcm[s0+i]; e += v*v; }
+    rms[t] = Math.sqrt(e/N);
+    spec(s0);
+    for(let b=0;b<B;b++){
+      let m = 0; for(let i=edges[b];i<edges[b+1];i++) m += mag[i]*mag[i];
+      bm[t*B + b] = Math.sqrt(m);
+    }
+    if(yieldFn && (t % 400) === 399) await yieldFn();
+  }
+  // log-compress above a floor taken from this take, so the hiss under a
+  // quiet passage can't swing the log wildly; then the rise in each band is
+  // measured against the loudest of it and its neighbours a frame earlier,
+  // so vibrato and a drifting partial are not mistaken for attacks
+  const eps = Math.max(1e-7, AN.QUIET*pct(bm, 0.99));
+  const o = new Float32Array(nF), prev = new Float32Array(B).fill(Math.log(eps));
+  const cur = new Float32Array(B);
+  for(let t=0;t<nF;t++){
+    let flux = 0;
+    for(let b=0;b<B;b++) cur[b] = Math.log(eps + bm[t*B + b]);
+    for(let b=0;b<B;b++){
+      let ref = prev[b];
+      if(b > 0 && prev[b-1] > ref) ref = prev[b-1];
+      if(b < B-1 && prev[b+1] > ref) ref = prev[b+1];
+      const dl = cur[b] - ref; if(t > 0 && dl > 0) flux += dl;
+    }
+    o[t] = flux;
+    prev.set(cur);
+  }
+  const p95r = pct(rms, 0.95), p95o = pct(o, 0.95);
+  const gate = Math.max(0.0015, AN.GATE*p95r), floor = AN.FLOOR*p95o;
+  const w = Math.max(8, Math.round(AN.WIN*rate/hop));
+  const tmp = new Float32Array(2*w + 1), dev = new Float32Array(2*w + 1);
+  const found = [];
+  for(let t=AN.LOCAL; t<nF-AN.LOCAL; t++){
+    const v = o[t];
+    if(v <= floor || v < AN.MIN || rms[Math.min(nF-1, t+1)] < gate) continue;
+    let top = true;
+    for(let j=1;j<=AN.LOCAL && top;j++) if(o[t-j] >= v || o[t+j] > v) top = false;
+    if(!top) continue;
+    const a = Math.max(0, t-w), b = Math.min(nF, t+w+1), len = b - a;
+    const ts = tmp.subarray(0, len); ts.set(o.subarray(a, b)); ts.sort();
+    const med = ts[len>>1];
+    const ds = dev.subarray(0, len);
+    for(let i=0;i<len;i++) ds[i] = Math.abs(ts[i] - med);
+    ds.sort();
+    const sigma = 1.4826*ds[len>>1];
+    const z = (v - med)/(sigma + 1e-4);
+    if(z < AN.K || v < AN.REL*med) continue;
+    found.push({ f:t, z, v });
+  }
+  // keep peaks apart; between two that are too close, the larger stays
+  const gap = AN.SPACING*rate/hop, kept = [];
+  for(const c of found){
+    const last = kept[kept.length-1];
+    if(last && c.f - last.f < gap){ if(c.z > last.z) kept[kept.length-1] = c; }
+    else kept.push(c);
+  }
+  // where in the take's own pitch range each one sat: the spectral centroid
+  // just after the attack, placed between the 5th and 95th percentile
+  const ev = kept.map(c => {
+    spec(Math.min(c.f + 1, nF - 1)*hop);
+    let sw = 0, s = 0;
+    for(let i=Math.floor(AN.LO/hz); i<=Math.floor(hi/hz); i++){ sw += mag[i]; s += mag[i]*i*hz; }
+    return { t:(c.f*hop + N*0.5)/rate, v:c.v, s:Math.max(0.15, Math.min(1, c.z/10)),
+             lc:Math.log2((sw > 0 ? s/sw : 1000) + 1) };
+  });
+  if(ev.length){
+    const lcs = ev.map(e => e.lc);
+    let lo = pct(lcs, 0.05), up = pct(lcs, 0.95);
+    if(up - lo < 1.5){ const m = (up+lo)/2; lo = m - 0.75; up = m + 0.75; }
+    for(const e of ev) e.pos = Math.max(0.04, Math.min(0.96, (e.lc - lo)/(up - lo)));
+  }
+  // loudness against the take's own loud, lightly smoothed
+  const lv = new Float32Array(nF); let sm = 0;
+  for(let t=0;t<nF;t++){ sm += (Math.min(1, rms[t]/(p95r + 1e-9)) - sm)*0.12; lv[t] = sm; }
+  return { rate, hop, events:ev, lv, dur:pcm.length/rate };
+}
+
+/* ---------- playing, with the analysis in hand ----------------------------- */
+
+let ac, src, playing = false, TL = null, ei = 0, t0 = 0, job = 0;
+const A = { level:0 };
+
+function attack(e){
+  const sx = e.pos*W;
+  spark(sx, e.s);
+  pressure += e.s*3;
+  // the attack warms whatever wax is nearest the base where it sounded
+  let near = null, nd = 1e9;
+  for(const b of blobs){ const d = Math.hypot(b.x - sx, b.y - H); if(d < nd){ nd = d; near = b; } }
+  if(near) near.temp = Math.min(1, near.temp + 0.04*e.s);
+}
+
+function listen(){
+  if(!playing || !TL){ A.level *= 0.98; return; }
+  const lat = ac.outputLatency || ac.baseLatency || 0;
+  const el = ac.currentTime - t0 - lat;
+  if(el < 0) return;
+  const fi = Math.min(TL.lv.length - 1, Math.max(0, (el*TL.rate/TL.hop)|0));
+  A.level = A.level*0.97 + (TL.lv[fi] || 0)*0.03;       // heavily smoothed: heat, not pulse
+  while(ei < TL.events.length && TL.events[ei].t <= el + 0.02){
+    const e = TL.events[ei++];
+    if(e.t > el - 0.3) attack(e);                        // a backgrounded tab skips, not bursts
   }
 }
 
 /* ---------- the slow part ------------------------------------------------- */
 
-function evolve(now){
+function evolve(){
   heat = heat*0.995 + A.level*0.005;
-  // a new mood every two minutes or so; heat brings it sooner
-  if(now - lastMood > 120000 - heat*50000){
-    lastMood = now; mood = pickMood();
-  }
   // pressure from attacks is spent rarely: a bud, or a tear
   pressure *= 0.999;
-  if(pressure > 20 && now - lastEvent > 12000){
-    lastEvent = now; pressure = 0;
+  if(pressure > 20 && T - lastEvent > 720){
+    lastEvent = T; pressure = 0;
     if(blobs.length < MAX_BLOBS && Math.random() < 0.6) bud();
     else if(blobs.length < MAX_BLOBS){
       let big = blobs[0]; for(const b of blobs) if(b.r > big.r) big = b;
@@ -342,11 +460,12 @@ cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointe
 
 /* ---------- loop ---------------------------------------------------------- */
 
-function frame(now){
+function frame(){
   T++;
-  listen(now);
-  evolve(now);
+  listen();
+  evolve();
   physics();
+  moveSparks();
   draw();
   requestAnimationFrame(frame);
 }
@@ -370,7 +489,7 @@ async function pdsFor(did){
 }
 
 /* the recorder streams IMA ADPCM behind a four-byte marker "OCA1".
-   anything without it is an older plain WAV take.                        */
+   anything without it is decoded by the browser, whatever it is.        */
 
 const ADPCM_STEP = new Int32Array([
   7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,
@@ -407,30 +526,57 @@ function decodeADPCM(bytes){
   return { rate, pcm: out };
 }
 
+async function decodeBytes(bytes){
+  const coded = decodeADPCM(bytes);
+  if(coded){
+    const buf = ac.createBuffer(1, coded.pcm.length, coded.rate);
+    buf.getChannelData(0).set(coded.pcm);
+    return buf;
+  }
+  return await ac.decodeAudioData(bytes);
+}
+
+function mono(buf){
+  const a = buf.getChannelData(0);
+  if(buf.numberOfChannels < 2) return a;
+  const b = buf.getChannelData(1), m = new Float32Array(a.length);
+  for(let i=0;i<m.length;i++) m[i] = (a[i] + b[i])*0.5;
+  return m;
+}
+
+function stopCurrent(){
+  if(src){ try{ src.onended = null; src.stop(); }catch(e){} src = null; }
+  playing = false; TL = null; ei = 0;
+}
+
+async function playBuffer(buf, secs){
+  stopCurrent();
+  const mine = ++job;
+  say("listening");
+  const dur = secs > 0 ? Math.min(secs, buf.duration) : buf.duration;
+  const cut = Math.min(buf.length, Math.round(dur*buf.sampleRate));
+  const tl = await analyse(mono(buf).subarray(0, cut), buf.sampleRate,
+                           () => new Promise(r => setTimeout(r, 0)));
+  if(mine !== job) return;                       // another file arrived meanwhile
+  TL = tl; ei = 0;
+  src = ac.createBufferSource();
+  src.buffer = buf;
+  src.connect(ac.destination);
+  if(ac.state === "suspended") await ac.resume();
+  t0 = ac.currentTime + 0.05;
+  src.start(t0, 0, dur);
+  playing = true;
+  src.onended = () => { playing = false; say(""); };
+  say(fmt(dur));
+  setTimeout(() => say(""), 4000);
+}
+
 async function playTake(t){
   const pds = await pdsFor(t.did);
   const r = await fetch(pds + "/xrpc/com.atproto.sync.getBlob?did=" +
     encodeURIComponent(t.did) + "&cid=" + encodeURIComponent(t.cid));
   if(!r.ok) throw new Error("take not found (" + r.status + ")");
-  const bytes = await r.arrayBuffer();
-  const coded = decodeADPCM(bytes);
-  let buf;
-  if(coded){
-    buf = ac.createBuffer(1, coded.pcm.length, coded.rate);
-    buf.getChannelData(0).set(coded.pcm);
-  } else {
-    buf = await ac.decodeAudioData(bytes);
-  }
-  src = ac.createBufferSource();
-  src.buffer = buf;
-  src.connect(analyser);
-  src.connect(ac.destination);
-  const dur = t.secs > 0 ? Math.min(t.secs, buf.duration) : buf.duration;
-  src.start(0, 0, dur);
-  playing = true;
-  src.onended = () => { playing = false; say(""); };
-  say(fmt(dur));
-  setTimeout(() => say(""), 4000);
+  await playBuffer(await decodeBytes(await r.arrayBuffer()), t.secs);
 }
 
 const fmt = s => Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2,"0");
@@ -442,19 +588,18 @@ function say(s){
 
 /* ---------- boot ----------------------------------------------------------- */
 
-async function begin(){
+let started = false;
+function start(){
+  if(started) return;
+  started = true;
   const g = $("#gate"); if(g) g.remove();
   ac = new (window.AudioContext||window.webkitAudioContext)();
-  analyser = ac.createAnalyser();
-  analyser.fftSize = 1024;
-  analyser.smoothingTimeConstant = 0;          // raw frames: flux needs the edges
-  analyser.minDecibels = -110; analyser.maxDecibels = -10;
-  tbuf = new Float32Array(analyser.fftSize);
-  fbuf = new Float32Array(analyser.frequencyBinCount);
-  prev = new Float32Array(analyser.frequencyBinCount);
   build();
-  mixInks();
   requestAnimationFrame(frame);
+}
+
+async function begin(){
+  start();
   const t = takeFromHash();
   if(!t) return;
   say("fetching");
@@ -465,10 +610,22 @@ async function begin(){
 $("#go").textContent = takeFromHash() ? "PLAY" : "TAKE";
 $("#go").onclick = begin;
 
+/* any audio file dropped on the page is heard by the same fire */
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", async e => {
+  e.preventDefault();
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(!f) return;
+  start();
+  say("reading");
+  try{ await playBuffer(await decodeBytes(await f.arrayBuffer()), 0); }
+  catch(err){ say("could not decode that"); }
+});
+
 let rebuild = null;
 addEventListener("resize", () => {
   clearTimeout(rebuild);
-  rebuild = setTimeout(build, 300);
+  rebuild = setTimeout(() => { if(started) build(); }, 300);
 });
 </script>
 </body>
