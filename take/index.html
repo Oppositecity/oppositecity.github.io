@@ -19,8 +19,13 @@
     align-items:center;justify-content:center}
   #go{font:inherit;font-size:16px;letter-spacing:.5em;color:#fff;background:#000;
     border:0;padding:18px 22px;cursor:pointer}
+  #ctl{position:fixed;z-index:3;left:50%;transform:translateX(-50%);
+    bottom:calc(6px + env(safe-area-inset-bottom));font:inherit;font-size:14px;
+    letter-spacing:.3em;color:#fff;background:none;border:0;padding:14px 22px;
+    cursor:pointer;text-shadow:0 0 8px #000,0 0 3px #000;opacity:0;
+    visibility:hidden;transition:opacity .6s}
   #note{position:fixed;z-index:3;left:0;right:0;
-    bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;
+    bottom:calc(64px + env(safe-area-inset-bottom));text-align:center;
     font-size:13px;letter-spacing:.24em;color:#fff;
     text-shadow:0 0 8px #000,0 0 3px #000;pointer-events:none;transition:opacity 2s}
 </style>
@@ -29,6 +34,7 @@
 
 <canvas id="cv"></canvas>
 <div id="note"></div>
+<button id="ctl"></button>
 <div id="gate"><button id="go">TAKE</button></div>
 
 <script>
@@ -63,6 +69,13 @@
 
    A pixel is lit or it is not. Drop any audio file on the page to hear
    it by this field. Drag a finger to excite the medium yourself.
+
+   It is a document more than a player. The only controls are words, not
+   icons: pause, play, and again when the take has ended. They show when
+   you touch the screen and fade when you stop (space does the same). Again
+   starts from a clean field, so every hearing is a fresh reading of the
+   same take. There is no scrubbing and no speed control on purpose: the
+   take is the record, and it is heard once through, at its own speed.
  ==================================================================== */
 
 const $ = s => document.querySelector(s);
@@ -320,6 +333,8 @@ async function analyse(pcm, rate, yieldFn){
 /* ---------- playing, with the analysis in hand ----------------------------- */
 
 let ac, src, playing = false, TL = null, ei = 0, t0 = 0, job = 0, ever = false, lastPos = 0.5;
+let paused = false, ended = false, last = null, ctlTimer = 0;
+const ctl = $("#ctl");
 const A = { level:0 };
 
 function attack(e){
@@ -350,6 +365,7 @@ function listen(){
 /* ---------- touch excites the medium ---------------------------------------- */
 
 function pointer(e){
+  if(paused) return;
   const r = cv.getBoundingClientRect();
   const x = (e.clientX - r.left)/PX, y = (e.clientY - r.top)/PX;
   for(let j=-2;j<=2;j++) for(let i=-2;i<=2;i++){
@@ -363,6 +379,7 @@ cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointe
 /* ---------- loop ---------------------------------------------------------- */
 
 function frame(){
+  if(paused){ requestAnimationFrame(frame); return; }   // a paused take holds its picture
   T++;
   // with no take, the field keeps itself alive: when it thins out, a new spiral is struck
   if(!ever && T % 180 === 0){
@@ -457,25 +474,61 @@ function stopCurrent(){
 
 async function playBuffer(buf, secs){
   stopCurrent();
+  paused = false; ended = false;
   const mine = ++job;
+  setCtl("");
   say("listening");
   const dur = secs > 0 ? Math.min(secs, buf.duration) : buf.duration;
   const cut = Math.min(buf.length, Math.round(dur*buf.sampleRate));
   const tl = await analyse(mono(buf).subarray(0, cut), buf.sampleRate,
                            () => new Promise(r => setTimeout(r, 0)));
   if(mine !== job) return;                       // another file arrived meanwhile
-  TL = tl; ei = 0; ever = true; lastPos = 0.5;
+  last = { buf, dur, tl };
+  await startPlayback(false);
+}
+
+async function startPlayback(fresh){
+  stopCurrent();
+  if(fresh){ U.fill(0); V.fill(0); M.fill(0); A.level = 0; impulse = 0; }
+  TL = last.tl; ei = 0; ever = true; lastPos = 0.5; paused = false; ended = false;
   src = ac.createBufferSource();
-  src.buffer = buf;
+  src.buffer = last.buf;
   src.connect(ac.destination);
   if(ac.state === "suspended") await ac.resume();
   t0 = ac.currentTime + 0.05;
-  src.start(t0, 0, dur);
+  src.start(t0, 0, last.dur);
   playing = true;
-  src.onended = () => { playing = false; say(""); };
-  say(fmt(dur));
+  src.onended = () => { playing = false; ended = true; say(""); setCtl("again", true); };
+  say(fmt(last.dur));
   setTimeout(() => say(""), 4000);
+  setCtl("pause");
 }
+
+/* ---------- the only controls: pause, play, again --------------------------- */
+
+function setCtl(t, stay){
+  ctl.textContent = t;
+  ctl.dataset.stay = stay ? "1" : "";
+  ctl.style.visibility = t ? "visible" : "hidden";
+  showCtl();
+}
+function showCtl(){
+  if(!ctl.textContent) return;
+  ctl.style.opacity = "1";
+  clearTimeout(ctlTimer);
+  if(!ctl.dataset.stay) ctlTimer = setTimeout(() => { ctl.style.opacity = "0"; }, 3000);
+}
+async function toggle(){
+  if(!last) return;
+  if(ended){ await startPlayback(true); return; }
+  if(!playing) return;
+  if(!paused){ paused = true; await ac.suspend(); setCtl("play", true); }
+  else { paused = false; await ac.resume(); setCtl("pause"); }
+}
+ctl.onclick = toggle;
+addEventListener("keydown", e => { if(e.code === "Space"){ e.preventDefault(); toggle(); } });
+addEventListener("pointerdown", showCtl);
+addEventListener("pointermove", showCtl);
 
 async function playTake(t){
   const pds = await pdsFor(t.did);
