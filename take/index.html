@@ -63,6 +63,14 @@
                     ground is where the music has been, and it is darkest
                     where the take never went.
 
+     the smoke      what is still ringing. along the bottom edge the take's
+                    sustained energy, bass at left and treble at right, is
+                    breathed into a second, coarser and slower field that
+                    rises and thins. a note that rings keeps its smoke; a
+                    click leaves none. wherever smoke and spirals overlap
+                    the dither is inverted, so bass and treble sounding at
+                    once read as negative space in the reaction.
+
    The take is heard before it is played: the whole file is analysed
    first, so a peak is a peak of THAT signal, judged against its own
    surroundings. guitar, noise, a drone: anything the browser can decode.
@@ -100,6 +108,8 @@ const BAYER = (() => {
 const BZ = { a:0.75, b:0.108, eps:0.02, D:1, dx:1.0, dt:0.04 };
 let PX = 4, W=0, H=0, img, gridCv, gridCtx, T = 0;
 let U, V, U2, V2, M, acc = 0, impulse = 0;
+let S, S2, Wc = 0, Hc = 0, ringIdx = -1, sus = 0;
+const SMOKE = { gain:0.18, rise:0.2, depth:1.0 };   // injected per frame, cells risen per frame, and how far it inverts
 const MEM = { gain:0.003, half:25 };   // how fast passing waves leave ash, and its half-life in seconds
 
 function build(){
@@ -115,6 +125,8 @@ function build(){
   for(let i=3;i<img.data.length;i+=4) img.data[i] = 255;
   U = new Float32Array(W*H); V = new Float32Array(W*H);
   U2 = new Float32Array(W*H); V2 = new Float32Array(W*H); M = new Float32Array(W*H);
+  Wc = (W+1)>>1; Hc = (H+1)>>1;
+  S = new Float32Array(Wc*Hc); S2 = new Float32Array(Wc*Hc);
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -162,12 +174,44 @@ function medium(){
   fieldStep(n);
   const keep = Math.pow(0.5, 1/(60*MEM.half));       // the ash settles back, slowly
   for(let i=0;i<M.length;i++) M[i] *= keep;
+  smoke();
+}
+
+/* what is ringing is breathed in along the bottom edge, one column of the
+   screen per stretch of pitch, then carried up, spread a little, and let go.
+   how fast it lets go is how much of the take is ringing right now.        */
+function smoke(){
+  if(playing && TL && TL.rg && ringIdx >= 0){
+    const nb = TL.nb, base = ringIdx*nb;
+    for(let x=0;x<Wc;x++){
+      const f = x/(Wc-1)*(nb-1), b0 = f|0, b1 = b0+1 < nb ? b0+1 : nb-1, fr = f - b0;
+      const v = (TL.rg[base+b0]*(1-fr) + TL.rg[base+b1]*fr)*SMOKE.gain;
+      S[(Hc-1)*Wc + x] += v; S[(Hc-2)*Wc + x] += v*0.5;
+    }
+  }
+  const r = SMOKE.rise, dec = playing ? 0.99 + 0.0095*Math.min(1, sus*2) : 0.97;
+  for(let y=0;y<Hc;y++){
+    const o = y*Wc, below = y < Hc-1 ? o + Wc : -1;
+    for(let x=0;x<Wc;x++){
+      const a = S[o+x];
+      S2[o+x] = a*(1-r) + (below >= 0 ? S[below+x] : 0)*r;
+    }
+  }
+  for(let y=0;y<Hc;y++){
+    const o = y*Wc;
+    for(let x=0;x<Wc;x++){
+      const l = S2[o + (x > 0 ? x-1 : 0)], c = S2[o+x], rr = S2[o + (x < Wc-1 ? x+1 : x)];
+      let v = (0.1*l + 0.8*c + 0.1*rr)*dec;
+      S[o+x] = v > 1 ? 1 : v;
+    }
+  }
 }
 
 /* ---------- drawing ---------------------------------------------------------
    front, tail and ash are one brightness, front + 0.55 tail + 0.3 ash, and
-   ordered dither turns it into lit or not lit. black is where nothing has
-   passed.                                                                   */
+   ordered dither turns it into lit or not lit. the smoke is dithered
+   separately, twice as coarse, and flips whatever it covers. black is where
+   nothing has passed and nothing rings.                                    */
 
 function draw(){
   const d = img.data;
@@ -175,7 +219,10 @@ function draw(){
     const row = (y&7)*8;
     for(let x=0;x<W;x++){
       const i = y*W + x, o = i*4;
-      const v = (U[i] + 0.55*V[i] + 0.3*M[i]) > BAYER[row + (x&7)] ? 255 : 0;
+      const fine = (U[i] + 0.55*V[i] + 0.3*M[i]) > BAYER[row + (x&7)];
+      const ci = (y>>1)*Wc + (x>>1);
+      const coarse = S[ci]*SMOKE.depth > BAYER[((y>>1)&7)*8 + ((x>>1)&7)];
+      const v = fine !== coarse ? 255 : 0;
       d[o] = v; d[o+1] = v; d[o+2] = v;
     }
   }
@@ -327,7 +374,26 @@ async function analyse(pcm, rate, yieldFn){
   // loudness against the take's own loud, lightly smoothed
   const lv = new Float32Array(nF); let sm = 0;
   for(let t=0;t<nF;t++){ sm += (Math.min(1, rms[t]/(p95r + 1e-9)) - sm)*0.12; lv[t] = sm; }
-  return { rate, hop, events:ev, lv, dur:pcm.length/rate };
+  // what is still ringing: in each band, the energy that was already there
+  // about 100 ms earlier. a click has none; a held string has nearly all of
+  // it. each band against its own loud, so treble shows as well as bass.
+  const SUSF = 6, rg = new Float32Array(nF*B), sl = new Float32Array(nF);
+  const gref = pct(bm, 0.99);
+  for(let b=0;b<B;b++){
+    const col = new Float32Array(nF);
+    for(let t=0;t<nF;t++) col[t] = bm[t*B + b];
+    const ref = Math.max(pct(col, 0.98), 0.1*gref) + 1e-9;
+    for(let t=0;t<nF;t++){
+      const m = t >= SUSF ? Math.min(col[t], col[t-SUSF]) : 0;
+      rg[t*B + b] = Math.min(1, Math.sqrt(m/ref));
+    }
+  }
+  let sv = 0;
+  for(let t=0;t<nF;t++){
+    let a = 0; for(let b=0;b<B;b++) a += rg[t*B + b];
+    sv += (a/B - sv)*0.05; sl[t] = sv;
+  }
+  return { rate, hop, events:ev, lv, rg, sl, nb:B, dur:pcm.length/rate };
 }
 
 /* ---------- playing, with the analysis in hand ----------------------------- */
@@ -349,6 +415,7 @@ function listen(){
     // no take yet: a quiet ambient field. a take that has ended: let it go out
     const target = ever ? -0.5 : 0.6;
     A.level += (target - A.level)*0.01;
+    sus *= 0.95;
     return;
   }
   const lat = ac.outputLatency || ac.baseLatency || 0;
@@ -356,6 +423,7 @@ function listen(){
   if(el < 0) return;
   const fi = Math.min(TL.lv.length - 1, Math.max(0, (el*TL.rate/TL.hop)|0));
   A.level = A.level*0.97 + (TL.lv[fi] || 0)*0.03;       // heavily smoothed: climate, not pulse
+  ringIdx = fi; sus = sus*0.9 + ((TL.sl && TL.sl[fi]) || 0)*0.1;
   while(ei < TL.events.length && TL.events[ei].t <= el + 0.02){
     const e = TL.events[ei++];
     if(e.t > el - 0.3) attack(e);                        // a backgrounded tab skips, not bursts
@@ -489,8 +557,8 @@ async function playBuffer(buf, secs){
 
 async function startPlayback(fresh){
   stopCurrent();
-  if(fresh){ U.fill(0); V.fill(0); M.fill(0); A.level = 0; impulse = 0; }
-  TL = last.tl; ei = 0; ever = true; lastPos = 0.5; paused = false; ended = false;
+  if(fresh){ U.fill(0); V.fill(0); M.fill(0); S.fill(0); A.level = 0; impulse = 0; sus = 0; }
+  TL = last.tl; ei = 0; ringIdx = -1; ever = true; lastPos = 0.5; paused = false; ended = false;
   src = ac.createBufferSource();
   src.buffer = last.buf;
   src.connect(ac.destination);
