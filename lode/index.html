@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lode</title>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#000;--fg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#000;--fg:#fff}}
+:root[data-theme="dark"]{--bg:#000;--fg:#fff}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:'Courier Prime','Courier New',monospace;font-size:16px;overflow:hidden}
+#app{position:relative;height:100%;display:flex;flex-direction:column}
+#c{flex:1;min-height:0;width:100%;display:block;touch-action:none}
+#read{position:absolute;top:12px;left:14px;white-space:pre;pointer-events:none;text-shadow:0 0 4px #000,0 0 2px #000}
+#bar{display:flex;flex-wrap:wrap;gap:2px 16px;align-items:center;padding:6px 14px 14px}
+button,label.b{font:inherit;color:var(--fg);background:none;border:0;padding:6px 0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:1px solid var(--fg);outline-offset:3px}
+#scrub{flex:1 1 100%;accent-color:#fff;margin:4px 0}
+#addr{font:inherit;color:#fff;background:#000;border:1px solid #fff;padding:5px 7px;width:15em}
+#file{position:absolute;width:1px;height:1px;opacity:0}
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="c"></canvas>
+<div id="read"></div>
+<div id="bar">
+<input id="scrub" type="range" min="0" max="1000" step="1" value="0" aria-label="position in recording">
+<button data-v="through">[through]</button>
+<button data-v="trail">[trail]</button>
+<button data-v="ribbon">[ribbon]</button>
+<button id="bPlay">[pause]</button>
+<button id="bSpd">[speed 1x]</button>
+<button id="bCol">[color: polarity]</button>
+<button id="bTr">[trails: off]</button>
+<label class="b" for="file">[load phyphox file]</label>
+<button id="bLive">[live: phyphox]</button>
+<button id="bSens">[live: chrome sensor]</button>
+<span id="liveRow" hidden><input id="addr" value="http://localhost:8080" aria-label="phyphox remote address" spellcheck="false"> <button id="bGo">[connect]</button></span><input id="file" type="file" accept=".xlsx,.xls,.csv">
+</div>
+</div>
+<script>
+
+const C=document.getElementById('c'),X=C.getContext('2d'),RD=document.getElementById('read'),SC=document.getElementById('scrub');
+const dpr=Math.min(2,window.devicePixelRatio||1);let W=0,H=0;
+function size(){W=C.clientWidth;H=C.clientHeight;C.width=W*dpr;C.height=H*dpr;X.setTransform(dpr,0,0,dpr,0,0)}
+new ResizeObserver(size).observe(C);
+let note='';
+let live=null;
+document.getElementById('bLive').onclick=()=>{const r=document.getElementById('liveRow');r.hidden=!r.hidden};
+document.getElementById('bGo').onclick=()=>startPhyphox(document.getElementById('addr').value.trim().replace(/\/$/,''));
+function reset(l){T=[];VX=[];VY=[];VZ=[];N=0;label=l;sm=null;tp=0}
+async function startPhyphox(a){if(live&&live.stop)live.stop();note='reaching '+a+' …';let cfg;
+try{cfg=await (await fetch(a+'/config',{cache:'no-store'})).json()}catch(e){
+ let reach=false;try{await fetch(a+'/config',{mode:'no-cors',cache:'no-store'});reach=true}catch(_){}
+ note=reach?'phyphox answered, but the browser blocked reading it (cross-origin). Tell Claude: "reachable, blocked".':'no answer from '+a+'. Is remote access on, the experiment running, and the address right? Tell Claude: "unreachable".';return}
+const names=(cfg.buffers||[]).map(b=>typeof b==='string'?b:b.name);
+const pick=re=>names.find(n=>re.test(n));
+const tb=pick(/time|_t$|T$/)||pick(/^t/i),bx=pick(/x/i),by=pick(/y/i),bz=pick(/z/i);
+if(!tb||!bx||!by||!bz){note='connected, but could not match buffers: '+names.join(', ');return}
+try{await fetch(a+'/control?cmd=start',{cache:'no-store'})}catch(_){}
+reset('live phyphox ['+[tb,bx,by,bz].join(' ')+']');unit='µT';let lastT=null,stop=false,busy=false;
+live={stop:()=>{stop=true}};
+const poll=async()=>{if(stop)return;if(!busy){busy=true;try{
+ const th=lastT===null?'full':lastT;const q=tb+'='+th+'&'+[bx,by,bz].map(b=>b+'='+th+'|'+tb).join('&');
+ const j=await (await fetch(a+'/get?'+q,{cache:'no-store'})).json();const g=n=>(j.buffer[n]&&j.buffer[n].buffer)||[];
+ const t=g(tb),x=g(bx),y=g(by),z=g(bz),m=Math.min(t.length,x.length,y.length,z.length);
+ for(let i=0;i<m;i++){if(t[i]==null||(lastT!==null&&t[i]<=lastT))continue;T.push(t[i]);VX.push(x[i]);VY.push(y[i]);VZ.push(z[i])}
+ if(T.length>12000){const d=T.length-12000;T.splice(0,d);VX.splice(0,d);VY.splice(0,d);VZ.splice(0,d)}
+ N=T.length;if(N){lastT=T[N-1];if(N%50<5){const s=[];for(let i=Math.max(0,N-300);i<N;i++)s.push(Math.hypot(VX[i],VY[i],VZ[i]));s.sort((a,b)=>a-b);ref=s[s.length>>1]||45}}
+ note=j.status&&j.status.measuring===false?'phyphox is connected but not recording — press play in phyphox':'';
+}catch(e){note='lost contact with phyphox'}busy=false}setTimeout(poll,80)};poll()}
+document.getElementById('bSens').onclick=()=>{if(live&&live.stop)live.stop();if(typeof Magnetometer==='undefined'){note='this browser does not expose the magnetometer';return}
+try{const m=new Magnetometer({frequency:60}),t0=performance.now();reset('live chrome sensor');m.addEventListener('reading',()=>{T.push((performance.now()-t0)/1000);VX.push(m.x);VY.push(m.y);VZ.push(m.z);N=T.length;if(N>12000){T.shift();VX.shift();VY.shift();VZ.shift();N--}if(N===60){const s=[];for(let i=0;i<N;i++)s.push(Math.hypot(VX[i],VY[i],VZ[i]));s.sort((a,b)=>a-b);ref=s[30]}});
+m.addEventListener('error',e=>{note='sensor error: '+e.error.name});m.start();live={stop:()=>m.stop()}}catch(e){note='sensor failed: '+e.message}};
+
+let view='through',pal='polarity',trails=false,playing=true,spd=1,tp=0,idx=0,yaw=0.45,pitch=0.35,drag=null,clock=0,sm=null,last=performance.now();
+let T=[],VX=[],VY=[],VZ=[],N=0,ref=45,unit='µT',label='';
+function load(t,x,y,z,u,l){T=t;VX=x;VY=y;VZ=z;N=t.length;unit=u;label=l;const m=[];for(let i=0;i<N;i+=Math.max(1,(N/400)|0))m.push(Math.hypot(x[i],y[i],z[i]));m.sort((a,b)=>a-b);ref=m[(m.length/2)|0]||1;tp=T[0];sm=null}
+
+const rnd=Math.random,OFF=[];for(let i=0;i<260;i++){const r=Math.sqrt(rnd())*1.7,a=rnd()*6.283;OFF.push([r*Math.cos(a),r*Math.sin(a),rnd()*6.28])}
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v});
+document.getElementById('bPlay').onclick=e=>{playing=!playing;e.target.textContent=playing?'[pause]':'[play]';last=performance.now()};
+document.getElementById('bSpd').onclick=e=>{spd={1:0.25,0.25:0.5,0.5:2,2:4,4:1}[spd];e.target.textContent='[speed '+spd+'x]'};
+document.getElementById('bCol').onclick=e=>{pal=pal==='polarity'?'acid':'polarity';e.target.textContent='[color: '+pal+']'};
+document.getElementById('bTr').onclick=e=>{trails=!trails;e.target.textContent='[trails: '+(trails?'on':'off')+']'};
+SC.oninput=()=>{tp=T[0]+(T[N-1]-T[0])*SC.value/1000;sm=null};
+document.getElementById('file').onchange=async e=>{if(live&&live.stop)live.stop();live=null;const f=e.target.files[0];if(!f)return;try{const wb=XLSX.read(await f.arrayBuffer());
+let sh=wb.SheetNames.find(s=>/raw/i.test(s))||wb.SheetNames[0];const rows=XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1});const hd=rows[0].map(h=>String(h));
+const ti=hd.findIndex(h=>/time/i.test(h)),fx=hd.findIndex(h=>/\bx\b/i.test(h)),fy=hd.findIndex(h=>/\by\b/i.test(h)),fz=hd.findIndex(h=>/\bz\b/i.test(h));
+if(ti<0||fx<0||fy<0||fz<0)throw new Error('No time, x, y and z columns found');const um=(hd[fx].match(/\(([^)]+)\)/)||[])[1]||'';
+const R=rows.slice(1).filter(r=>r.length>3&&isFinite(+r[ti])&&isFinite(+r[fx]));const g=k=>Float32Array.from(R,r=>+r[k]);
+load(Array.from(g(ti)),Array.from(g(fx)),Array.from(g(fy)),Array.from(g(fz)),um,f.name.replace(/\.[^.]+$/,''));note=''}catch(err){note=err.message+'. Export from phyphox as Excel or CSV.'}};
+C.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw,pitch};C.setPointerCapture(e.pointerId)});
+C.addEventListener('pointermove',e=>{if(!drag)return;yaw=drag.yaw+(e.clientX-drag.x)*0.008;pitch=Math.max(-1.55,Math.min(1.55,drag.pitch+(e.clientY-drag.y)*0.008))});
+C.addEventListener('pointerup',()=>{drag=null});C.addEventListener('dblclick',()=>{yaw=0;pitch=0});
+function P(x,y,z){const c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);const x1=x*c+z*s,z1=-x*s+z*c;const y2=y*cp-z1*sp,z2=y*sp+z1*cp;const f=4.5/(4.5-z2),sc=Math.min(W,H)*0.26;return[W/2+x1*sc*f,H/2-y2*sc*f,z2]}
+function hue(a){return((a%360)+360)%360}
+function bins(){return new Array(48).fill(null)}
+function addSeg(B,k,a,b){const p=B[k]||(B[k]=new Path2D());p.moveTo(a[0],a[1]);p.lineTo(b[0],b[1])}
+function stroke(B,w,al){B.forEach((p,k)=>{if(p){const back=k>=24;X.lineWidth=back?w*0.6:w;X.strokeStyle='hsla('+((k%24)*15+7)+',100%,'+(back?'52%,'+al*0.45:'64%,'+al)+')';X.stroke(p)}})}
+function find(t){let lo=0,hi=N-1;while(lo<hi){const m=(lo+hi+1)>>1;if(T[m]<=t)lo=m;else hi=m-1}return lo}
+function phone(){const c=[[-.36,-.74],[.36,-.74],[.36,.74],[-.36,.74]].map(q=>P(q[0],q[1],0));X.globalCompositeOperation='source-over';X.strokeStyle='#fff';X.lineWidth=1.5;X.beginPath();c.forEach((q,i)=>i?X.lineTo(q[0],q[1]):X.moveTo(q[0],q[1]));X.closePath();X.stroke();const top=P(0,.62,0);X.fillStyle='#fff';X.beginPath();X.arc(top[0],top[1],2.5,0,7);X.fill();X.globalCompositeOperation='lighter'}
+function axes(){const o=P(0,0,0);X.font='15px "Courier Prime","Courier New",monospace';[['x',[.5,0,0]],['y',[0,.5,0]],['z',[0,0,.5]]].forEach(([n,a])=>{const p=P(...a);X.strokeStyle='rgba(255,255,255,0.7)';X.lineWidth=1;X.beginPath();X.moveTo(o[0],o[1]);X.lineTo(p[0],p[1]);X.stroke();X.fillStyle='#fff';X.fillText(n,p[0]+4,p[1]-4)})}
+function draw(now){const dt=Math.min(0.1,(now-last)/1000);last=now;clock+=dt;
+if(!N){X.fillStyle='#000';X.fillRect(0,0,W,H);RD.textContent='lode\n\nload a phyphox export, or go live:\nphyphox → magnetometer → ⋮ → allow remote access\nthen [live: phyphox] → [connect]'+(note?'\n\n'+note:'');requestAnimationFrame(draw);return}
+if(live){tp=T[N-1];SC.value=1000}else if(playing){tp+=dt*spd;if(tp>T[N-1]){tp=T[0];sm=null}SC.value=Math.round((tp-T[0])/(T[N-1]-T[0])*1000)}
+idx=find(tp);const v=[VX[idx],VY[idx],VZ[idx]];sm=sm?sm.map((a,i)=>a*0.7+v[i]*0.3):v.slice();
+X.globalCompositeOperation='source-over';X.fillStyle=trails?'rgba(0,0,0,0.14)':'#000';X.fillRect(0,0,W,H);X.globalCompositeOperation='lighter';
+const mag=Math.hypot(...sm),rel=mag/ref;
+if(view==='through'){const d=sm.map(a=>a/mag);let u=Math.abs(d[0])<0.9?[1,0,0]:[0,1,0];const dot=u[0]*d[0]+u[1]*d[1]+u[2]*d[2];u=u.map((a,i)=>a-dot*d[i]);const un=Math.hypot(...u);u=u.map(a=>a/un);const w=[d[1]*u[2]-d[2]*u[1],d[2]*u[0]-d[0]*u[2],d[0]*u[1]-d[1]*u[0]];
+const n=Math.max(12,Math.min(OFF.length,Math.round(70*rel*rel))),B=bins(),L=2.6,steps=44;
+for(let j=0;j<n;j++){const o=OFF[j];let prev=null;for(let k=0;k<=steps;k++){const s=-L+2*L*k/steps;const bend=0.05*Math.sin(s*1.3+o[2]+clock*0.6);
+const p=[0,1,2].map(i=>d[i]*s+u[i]*(o[0]+bend)+w[i]*(o[1]+bend));const q=P(...p);
+if(prev){const fr=k/steps,flow=Math.sin(s*3-clock*4*spd+o[2]);const h=pal==='polarity'?hue(205-175*fr+10*flow):hue(o[2]*57+s*40-clock*90);if(flow>-0.3||pal==='acid'){const kk=((h/15)|0)+(q[2]<0?24:0);addSeg(B,kk,prev,q)}}prev=q}}
+stroke(B,1.3,0.9);phone()}
+else if(view==='trail'){axes();const B=bins(),span=Math.min(idx,1600);let prev=null;
+for(let i=idx-span;i<=idx;i++){if(i<0)continue;const q=P(VX[i]/ref,VY[i]/ref,VZ[i]/ref);if(prev){const age=(idx-i)/Math.max(1,span),m=Math.hypot(VX[i],VY[i],VZ[i])/ref;
+const h=pal==='polarity'?hue(205-175*Math.min(1,Math.max(0,(m-0.9)*5))):hue(i*0.8-clock*60);const kk=((h/15)|0)+(age>0.5?24:0);addSeg(B,kk,prev,q)}prev=q}
+stroke(B,1.5,0.95);const o=P(0,0,0),hd=P(sm[0]/ref,sm[1]/ref,sm[2]/ref);X.strokeStyle='#fff';X.lineWidth=1;X.beginPath();X.moveTo(o[0],o[1]);X.lineTo(hd[0],hd[1]);X.stroke();X.fillStyle='#fff';X.beginPath();X.arc(hd[0],hd[1],3.5,0,7);X.fill()}
+else{const B=bins(),span=Math.min(idx,420);for(let j=0;j<=span;j++){const i=idx-span+j;if(i<0)continue;const a=-1.9+3.8*j/Math.max(1,span);const base=[a,0,0],tip=[a+VX[i]/ref*0.5,VY[i]/ref*0.9,VZ[i]/ref*0.9];
+const p0=P(...base),p1=P(...tip);const m=Math.hypot(VX[i],VY[i],VZ[i])/ref;const h=pal==='polarity'?hue(205-175*Math.min(1,Math.max(0,(m-0.9)*5))):hue(j*2-clock*80);addSeg(B,((h/15)|0)+(p1[2]<0?24:0),p0,p1)}stroke(B,1.1,0.85)}
+const f=a=>(a>=0?' ':'')+a.toFixed(1);RD.textContent=label+'\nt '+T[idx].toFixed(2)+' s\nx '+f(VX[idx])+'\ny '+f(VY[idx])+'\nz '+f(VZ[idx])+'\n|B| '+Math.hypot(VX[idx],VY[idx],VZ[idx]).toFixed(1)+' '+unit+(note?'\n'+note:'');
+requestAnimationFrame(draw)}
+size();requestAnimationFrame(draw);
+</script>
+</body>
+</html>
