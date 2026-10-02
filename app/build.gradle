@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+
+def run = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+
+android {
+    namespace 'city.opposite.lode'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'city.opposite.lode'
+        minSdk 26
+        targetSdk 34
+        versionCode run
+        versionName "0.1.${run}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('lode.keystore')
+            storePassword 'oppositecity'
+            keyAlias 'lode'
+            keyPassword 'oppositecity'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

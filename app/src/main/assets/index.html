@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lode</title>
+<style>
+@font-face{font-family:'Courier Prime';src:url('CourierPrime-Regular.ttf') format('truetype')}
+:root{--bg:#000;--fg:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{height:100%}
+body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:'Courier Prime','Courier New',monospace;font-size:16px;overflow:hidden;-webkit-user-select:none;user-select:none}
+#app{position:relative;height:100%;display:flex;flex-direction:column}
+#c{flex:1;min-height:0;width:100%;display:block;touch-action:none}
+#read{position:absolute;top:14px;left:14px;right:14px;white-space:pre-wrap;pointer-events:none;text-shadow:0 0 4px #000,0 0 2px #000;line-height:1.35}
+#bar{display:flex;flex-wrap:wrap;gap:2px 16px;align-items:center;padding:6px 14px 16px}
+button{font:inherit;color:var(--fg);background:none;border:0;padding:7px 0;cursor:pointer}
+button:focus-visible{outline:1px solid var(--fg);outline-offset:3px}
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="c"></canvas>
+<div id="read"></div>
+<div id="bar">
+<button data-v="through">[through]</button>
+<button data-v="trail">[trail]</button>
+<button data-v="ribbon">[ribbon]</button>
+<button id="bFrame">[frame: phone]</button>
+<button id="bField">[field: calibrated]</button>
+<button id="bCol">[color: polarity]</button>
+<button id="bTr">[trails: off]</button>
+<button id="bFreeze">[freeze]</button>
+<button id="bShare">[share]</button>
+</div>
+</div>
+<script>
+const C=document.getElementById('c'),X=C.getContext('2d'),RD=document.getElementById('read');
+const dpr=Math.min(2,window.devicePixelRatio||1);let W=0,H=0;
+function size(){W=C.clientWidth;H=C.clientHeight;C.width=W*dpr;C.height=H*dpr;X.setTransform(dpr,0,0,dpr,0,0)}
+new ResizeObserver(size).observe(C);
+const NB=window.LodeNative||null;const MAX=6000,S=[];
+let view='through',pal='polarity',trails=false,frame='phone',field='cal',frozen=false,yaw=0.45,pitch=0.35,drag=null,clock=0,sm=null,last=performance.now(),ref=45,rate=0,stamps=[];
+let info=['','',false,false];if(NB){try{info=NB.sensor().split('|');info[2]=info[2]==='true';info[3]=info[3]==='true'}catch(e){}}
+const rnd=Math.random,OFF=[];for(let i=0;i<260;i++){const r=Math.sqrt(rnd())*1.7,a=rnd()*6.283;OFF.push([r*Math.cos(a),r*Math.sin(a),rnd()*6.28])}
+function qrot(v,q){const x=q[0],y=q[1],z=q[2],w=q[3];const tx=2*(y*v[2]-z*v[1]),ty=2*(z*v[0]-x*v[2]),tz=2*(x*v[1]-y*v[0]);return[v[0]+w*tx+(y*tz-z*ty),v[1]+w*ty+(z*tx-x*tz),v[2]+w*tz+(x*ty-y*tx)]}
+function disp(s){let v=field==='raw'&&info[2]?[s[4],s[5],s[6]]:[s[1],s[2],s[3]];if(frame==='room'&&info[3])v=qrot(v,[s[10],s[11],s[12],s[13]]);return v}
+function ingest(){if(!NB||frozen)return;const str=NB.drain();if(!str)return;const now=performance.now();
+for(const rec of str.split(';')){if(!rec)continue;const a=rec.split(',').map(Number);if(a.length<14)continue;S.push(a);stamps.push(now)}
+if(S.length>MAX)S.splice(0,S.length-MAX);while(stamps.length&&now-stamps[0]>1000)stamps.shift();rate=stamps.length}
+function recalRef(){const n=S.length;if(!n)return;const m=[];for(let i=Math.max(0,n-400);i<n;i+=4)m.push(Math.hypot(...disp(S[i])));m.sort((a,b)=>a-b);ref=m[m.length>>1]||45}
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v});
+document.getElementById('bFrame').onclick=e=>{frame=frame==='phone'?'room':'phone';e.target.textContent='[frame: '+frame+']';sm=null;recalRef()};
+document.getElementById('bField').onclick=e=>{field=field==='cal'?'raw':'cal';e.target.textContent='[field: '+(field==='cal'?'calibrated':'raw')+']';sm=null;recalRef()};
+document.getElementById('bCol').onclick=e=>{pal=pal==='polarity'?'acid':'polarity';e.target.textContent='[color: '+pal+']'};
+document.getElementById('bTr').onclick=e=>{trails=!trails;e.target.textContent='[trails: '+(trails?'on':'off')+']'};
+document.getElementById('bFreeze').onclick=e=>{frozen=!frozen;if(!frozen&&NB)NB.drain();e.target.textContent=frozen?'[resume]':'[freeze]'};
+document.getElementById('bShare').onclick=()=>{if(NB)NB.shareApp()};
+C.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,yaw,pitch};C.setPointerCapture(e.pointerId)});
+C.addEventListener('pointermove',e=>{if(!drag)return;yaw=drag.yaw+(e.clientX-drag.x)*0.008;pitch=Math.max(-1.55,Math.min(1.55,drag.pitch+(e.clientY-drag.y)*0.008))});
+C.addEventListener('pointerup',()=>{drag=null});C.addEventListener('dblclick',()=>{yaw=0;pitch=0});
+function P(x,y,z){const c=Math.cos(yaw),s=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);const x1=x*c+z*s,z1=-x*s+z*c;const y2=y*cp-z1*sp,z2=y*sp+z1*cp;const f=4.5/(4.5-z2),sc=Math.min(W,H)*0.26;return[W/2+x1*sc*f,H/2-y2*sc*f,z2]}
+function hue(a){return((a%360)+360)%360}
+function bins(){return new Array(48).fill(null)}
+function addSeg(B,k,a,b){const p=B[k]||(B[k]=new Path2D());p.moveTo(a[0],a[1]);p.lineTo(b[0],b[1])}
+function stroke(B,w,al){B.forEach((p,k)=>{if(p){const back=k>=24;X.lineWidth=back?w*0.6:w;X.strokeStyle='hsla('+((k%24)*15+7)+',100%,'+(back?'52%,'+al*0.45:'64%,'+al)+')';X.stroke(p)}})}
+function phone(q){let c=[[-.36,-.74,0],[.36,-.74,0],[.36,.74,0],[-.36,.74,0],[0,.62,0]];if(q)c=c.map(v=>qrot(v,q));c=c.map(v=>P(...v));
+X.globalCompositeOperation='source-over';X.strokeStyle='#fff';X.lineWidth=1.5;X.beginPath();for(let i=0;i<4;i++)i?X.lineTo(c[i][0],c[i][1]):X.moveTo(c[i][0],c[i][1]);X.closePath();X.stroke();X.fillStyle='#fff';X.beginPath();X.arc(c[4][0],c[4][1],2.5,0,7);X.fill();X.globalCompositeOperation='lighter'}
+function axes(){const o=P(0,0,0);X.font='15px "Courier Prime","Courier New",monospace';[['x',[.5,0,0]],['y',[0,.5,0]],['z',[0,0,.5]]].forEach(([n,a])=>{const p=P(...a);X.strokeStyle='rgba(255,255,255,0.7)';X.lineWidth=1;X.beginPath();X.moveTo(o[0],o[1]);X.lineTo(p[0],p[1]);X.stroke();X.fillStyle='#fff';X.fillText(n,p[0]+4,p[1]-4)})}
+const ACC=['unreliable — wave the phone in a figure 8','low — wave the phone in a figure 8','medium','high'];
+let frames=0;
+function draw(now){const dt=Math.min(0.1,(now-last)/1000);last=now;clock+=dt;ingest();if(++frames%30===0)recalRef();
+X.globalCompositeOperation='source-over';X.fillStyle=trails?'rgba(0,0,0,0.14)':'#000';X.fillRect(0,0,W,H);
+const n=S.length;
+if(!n){RD.textContent=NB?'lode\n\nwaiting for the magnetometer…':'lode\n\nthis page is the face of the lode android app.\nopen it inside the app to see the field.';requestAnimationFrame(draw);return}
+X.globalCompositeOperation='lighter';
+const cur=S[n-1],v=disp(cur);sm=sm?sm.map((a,i)=>a*0.7+v[i]*0.3):v.slice();const mag=Math.hypot(...sm),rel=mag/ref;
+if(view==='through'){const d=sm.map(a=>a/mag);let u=Math.abs(d[0])<0.9?[1,0,0]:[0,1,0];const dot=u[0]*d[0]+u[1]*d[1]+u[2]*d[2];u=u.map((a,i)=>a-dot*d[i]);const un=Math.hypot(...u);u=u.map(a=>a/un);const w=[d[1]*u[2]-d[2]*u[1],d[2]*u[0]-d[0]*u[2],d[0]*u[1]-d[1]*u[0]];
+const cnt=Math.max(12,Math.min(OFF.length,Math.round(70*rel*rel))),B=bins(),L=2.6,steps=44;
+for(let j=0;j<cnt;j++){const o=OFF[j];let prev=null;for(let k=0;k<=steps;k++){const s=-L+2*L*k/steps;const bend=0.05*Math.sin(s*1.3+o[2]+clock*0.6);
+const p=[0,1,2].map(i=>d[i]*s+u[i]*(o[0]+bend)+w[i]*(o[1]+bend));const q=P(...p);
+if(prev){const fr=k/steps,flow=Math.sin(s*3-clock*4+o[2]);const h=pal==='polarity'?hue(205-175*fr+10*flow):hue(o[2]*57+s*40-clock*90);if(flow>-0.3||pal==='acid'){addSeg(B,((h/15)|0)+(q[2]<0?24:0),prev,q)}}prev=q}}
+stroke(B,1.3,0.9);phone(frame==='room'&&info[3]?[cur[10],cur[11],cur[12],cur[13]]:null)}
+else if(view==='trail'){axes();const B=bins(),span=Math.min(n-1,2400);let prev=null;
+for(let i=n-1-span;i<n;i++){const t=disp(S[i]),q=P(t[0]/ref,t[1]/ref,t[2]/ref);if(prev){const age=(n-1-i)/Math.max(1,span),m=Math.hypot(...t)/ref;
+const h=pal==='polarity'?hue(205-175*Math.min(1,Math.max(0,(m-0.9)*5))):hue(i*0.5-clock*60);addSeg(B,((h/15)|0)+(age>0.5?24:0),prev,q)}prev=q}
+stroke(B,1.5,0.95);const o=P(0,0,0),hd=P(sm[0]/ref,sm[1]/ref,sm[2]/ref);X.strokeStyle='#fff';X.lineWidth=1;X.beginPath();X.moveTo(o[0],o[1]);X.lineTo(hd[0],hd[1]);X.stroke();X.fillStyle='#fff';X.beginPath();X.arc(hd[0],hd[1],3.5,0,7);X.fill()}
+else{const B=bins(),span=Math.min(n-1,600);for(let j=0;j<=span;j++){const i=n-1-span+j;const t=disp(S[i]);const a=-1.9+3.8*j/Math.max(1,span);
+const p0=P(a,0,0),p1=P(a+t[0]/ref*0.5,t[1]/ref*0.9,t[2]/ref*0.9);const m=Math.hypot(...t)/ref;const h=pal==='polarity'?hue(205-175*Math.min(1,Math.max(0,(m-0.9)*5))):hue(j*2-clock*80);addSeg(B,((h/15)|0)+(p1[2]<0?24:0),p0,p1)}stroke(B,1.1,0.85)}
+const f=a=>(a>=0?' ':'')+a.toFixed(1),acc=NB?NB.accuracy():-1;
+RD.textContent=(info[0]||'magnetometer')+'  '+(frozen?'frozen':rate+' Hz')+'\nx '+f(v[0])+'\ny '+f(v[1])+'\nz '+f(v[2])+'\n|B| '+Math.hypot(...v).toFixed(1)+' µT'+
+(field==='raw'&&info[2]?'\nphone\'s own field '+Math.hypot(cur[7],cur[8],cur[9]).toFixed(1)+' µT':'')+(acc>=0&&acc<2?'\ncalibration '+ACC[acc]:'')+(frame==='room'&&!info[3]?'\nno orientation sensor':'');
+requestAnimationFrame(draw)}
+size();requestAnimationFrame(draw);
+</script>
+</body>
+</html>
