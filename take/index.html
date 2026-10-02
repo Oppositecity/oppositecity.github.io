@@ -34,25 +34,32 @@
 <script>
 "use strict";
 /* =====================================================================
-   A fire, in one bit.
+   A reaction, in one bit.
 
-   Hidden bodies of wax heat at the base, rise, cool and sink, pass each
-   other, merge and tear. None is drawn. Every pixel belongs to the
-   bodies nearest it, and wears that body's temperature: hot is white,
-   cold is black, and the two marble into each other by ordered dither.
-   Nothing on the screen is grey and nothing is colour; a pixel is lit
-   or it is not. Light is brightest at the base and gutters toward the
-   top, and the shimmer in it climbs.
+   The screen is an excitable medium, the same family as the
+   Belousov-Zhabotinsky reaction: at rest it is black; a point that is
+   excited sends out a wavefront (white) and leaves a recovering tail
+   behind it (stippled), and waves that meet annihilate. Struck the right
+   way, a wave curls into a spiral that keeps turning by itself.
 
-   The take is heard before it is played. The whole file is analysed
+   Nothing moves unless the take moves it.
+     an attack      one spiral. where it sits left to right is where the
+                    attack sat in the take's own pitch range; how high
+                    on the screen is how soft (low on the screen is hard);
+                    its size is how hard it was struck; it turns clockwise
+                    if the pitch rose from the attack before, anticlockwise
+                    if it fell.
+     loudness       how excitable the medium is, and how fast it reacts.
+                    loud, the waves live and multiply; quiet, they thin
+                    and die back; when the take ends the field goes out.
+
+   The take is heard before it is played: the whole file is analysed
    first, so a peak is a peak of THAT signal, judged against its own
-   surroundings, not a lucky spike of the moment: guitar, noise, a
-   drone, anything the browser can decode gets the same treatment.
-   Each attack throws one spark up from the base, left for low and
-   right for high. Loudness is only heat. Nothing flashes.
+   surroundings. guitar, noise, a drone: anything the browser can decode.
 
-   Drop any audio file on the page to hear it by this fire.
- ===================================================================== */
+   A pixel is lit or it is not. Drop any audio file on the page to hear
+   it by this field. Drag a finger to excite the medium yourself.
+ ==================================================================== */
 
 const $ = s => document.querySelector(s);
 const cv = $("#cv"), ctx = cv.getContext("2d", { alpha:false });
@@ -68,21 +75,18 @@ const BAYER = (() => {
   return f;
 })();
 
-/* ---------- the wax ---------------------------------------------------- */
+/* ---------- the medium ------------------------------------------------------
+   Barkley's two-variable model. u is the wavefront, v the recovery that
+   trails it. b is how hard the medium is to excite: below about 0.11 waves
+   live, above it they fail. the take moves b.                              */
 
-const PX = 4;
-let W=0, H=0, img, gridCv, gridCtx, T = 0;
-let blobs = [], sparks = [];
-
-function makeBlob(x, y, r){
-  return { x, y, r, vx:0, vy:0,
-           temp: Math.random(),             // out of step from the start
-           ph: Math.random()*1000,          // its own slow wobble
-           lag: 0.6 + Math.random()*0.8 };  // how fast it takes on heat
-}
+const BZ = { a:0.75, b:0.108, eps:0.02, D:1, dx:1.0, dt:0.04 };
+let PX = 4, W=0, H=0, img, gridCv, gridCtx, T = 0;
+let U, V, U2, V2, acc = 0, impulse = 0;
 
 function build(){
   const vw = Math.max(1, innerWidth), vh = Math.max(1, innerHeight);
+  PX = Math.max(4, Math.ceil(Math.max(vw, vh)/240));      // keep the field a size a phone can run
   cv.width  = Math.max(PX*8, Math.floor(vw/PX)*PX);
   cv.height = Math.max(PX*8, Math.floor(vh/PX)*PX);
   W = cv.width/PX; H = cv.height/PX;
@@ -90,165 +94,67 @@ function build(){
   gridCv.width = W; gridCv.height = H;
   gridCtx = gridCv.getContext("2d", { alpha:false });
   img = gridCtx.createImageData(W,H);
-  blobs = []; sparks = [];
-  const n = 11 + (Math.random()*3|0);
-  for(let i=0;i<n;i++)
-    blobs.push(makeBlob(W*(0.12+0.76*Math.random()), H*(i+0.5)/n,
-                        Math.min(W,H)*(0.1+0.09*Math.random())));
+  for(let i=3;i<img.data.length;i+=4) img.data[i] = 255;
+  U = new Float32Array(W*H); V = new Float32Array(W*H);
+  U2 = new Float32Array(W*H); V2 = new Float32Array(W*H);
   ctx.imageSmoothingEnabled = false;
 }
 
-const MIN_BLOBS = 9, MAX_BLOBS = 16;
-let heat = 0, pressure = 0, lastTear = 0, lastEvent = 0;
-
-function physics(){
-  const rMin = Math.min(W,H)*0.07, rMax = Math.min(W,H)*0.27;
-  const warm = 1 + heat*0.8;                          // the take warms the base
-  for(const b of blobs){
-    b.ph += 0.004;
-    // heat only at the base, cooling only near the top, insulated between:
-    // so a body carries its temperature the whole way and the lamp cycles
-    const h = b.y/H;
-    if(h > 0.78) b.temp += (1 - b.temp)*0.0035*b.lag*warm;
-    else if(h < 0.3) b.temp -= b.temp*0.0028*b.lag;
-    else b.temp += (0.5 - b.temp)*0.00015;
-    // hot rises, cold sinks. drag keeps it slow
-    b.vy += (0.5 - b.temp)*0.0028 - b.vy*0.02;
-    b.vx += Math.sin(b.ph*0.7 + b.y*0.03)*0.0012 - b.vx*0.02;
-    b.x += b.vx; b.y += b.vy;
-    // glass walls: soft
-    const m = b.r*0.6;
-    if(b.x < m){ b.x = m; b.vx = Math.abs(b.vx)*0.3; }
-    if(b.x > W-m){ b.x = W-m; b.vx = -Math.abs(b.vx)*0.3; }
-    if(b.y < m){ b.y = m; b.vy = Math.abs(b.vy)*0.2; b.temp *= 0.97; }
-    if(b.y > H-m*0.4){ b.y = H-m*0.4; b.vy = -Math.abs(b.vy)*0.2; b.temp = Math.min(1, b.temp + 0.01); }
-    // a hot body swells a little, a cold one draws in
-    if(!b.base) b.base = b.r;
-    b.r += (b.base*(0.85 + 0.3*b.temp) - b.r)*0.002;
-  }
-  // bodies that overlap deeply become one
-  for(let i=0;i<blobs.length;i++) for(let j=i+1;j<blobs.length;j++){
-    const a = blobs[i], b = blobs[j];
-    const d = Math.hypot(a.x-b.x, a.y-b.y);
-    if(d < 0.22*(a.r+b.r) && blobs.length > MIN_BLOBS && T - lastTear > 600 &&
-       Math.hypot(a.base||a.r, b.base||b.r) < rMax){
-      const big = a.r >= b.r ? a : b, small = big === a ? b : a;
-      const A2 = big.r*big.r, B2 = small.r*small.r;
-      big.x = (big.x*A2 + small.x*B2)/(A2+B2); big.y = (big.y*A2 + small.y*B2)/(A2+B2);
-      big.vx = (big.vx*A2 + small.vx*B2)/(A2+B2); big.vy = (big.vy*A2 + small.vy*B2)/(A2+B2);
-      big.temp = (big.temp*A2 + small.temp*B2)/(A2+B2);
-      big.r = big.base = Math.sqrt(A2+B2);
-      blobs.splice(blobs.indexOf(small), 1); lastTear = T;
-      return;                                   // one event per frame is plenty
+function fieldStep(n){
+  const {a,b,eps,D,dx,dt} = BZ, k = D*dt/(dx*dx), ie = dt/eps;
+  for(let s=0;s<n;s++){
+    for(let y=0;y<H;y++){
+      const ym = y > 0 ? y-1 : 0, yp = y < H-1 ? y+1 : H-1;
+      for(let x=0;x<W;x++){
+        const xm = x > 0 ? x-1 : 0, xp = x < W-1 ? x+1 : W-1, i = y*W + x;
+        const u = U[i], v = V[i];
+        const lap = U[y*W + xm] + U[y*W + xp] + U[ym*W + x] + U[yp*W + x] - 4*u;
+        const nu = u + ie*u*(1-u)*(u - (v+b)/a) + k*lap;
+        U2[i] = nu < 0 ? 0 : nu > 1 ? 1 : nu;
+        V2[i] = v + dt*(u - v);
+      }
     }
-  }
-  // a body too big, or stretched by moving fast, tears in two
-  if(T - lastTear > 900) for(const b of blobs){
-    const stretched = Math.abs(b.vy) > 0.075 && b.r > rMax*0.7;
-    if(blobs.length < MAX_BLOBS && (b.r > rMax*1.05 || stretched)){
-      tear(b); lastTear = T; return;
-    }
-  }
-  if(blobs.length < MIN_BLOBS) bud();
-}
-
-function tear(b){
-  const r = b.r/Math.SQRT2;
-  const c = makeBlob(b.x, b.y + r*0.6, r);
-  c.temp = b.temp*0.9; c.vy = b.vy*0.5 + 0.02; c.base = r;
-  b.r = b.base = r; b.y -= r*0.6; b.vy -= 0.02;
-  blobs.push(c);
-}
-
-function bud(){
-  const r = Math.min(W,H)*(0.09 + 0.06*Math.random());
-  const b = makeBlob(W*(0.2 + 0.6*Math.random()), H - r*0.5, r);
-  b.temp = 0.85; b.base = r;
-  blobs.push(b);
-}
-
-/* ---------- sparks ----------------------------------------------------------
-   one per attack in the take. x says where the attack sat in the take's
-   own range of pitch, strength says how hard it was struck: harder, more
-   sparks, faster and longer lived. they flicker out rather than fade,
-   because a pixel is lit or it is not.                                      */
-
-function spark(x, str){
-  const n = 1 + (str*5|0);
-  for(let i=0;i<n && sparks.length < 400;i++){
-    sparks.push({
-      x: x + (Math.random()-0.5)*3, y: H - 1,
-      vx: (Math.random()-0.5)*0.12,
-      vy: -(0.35 + 0.7*str*(0.6 + 0.4*Math.random())),
-      age: 0, life: 90 + (str*220*(0.6 + 0.4*Math.random()))|0,
-      ph: Math.random()*6.28 });
+    let t = U; U = U2; U2 = t; t = V; V = V2; V2 = t;
   }
 }
 
-function moveSparks(){
-  for(let i=sparks.length-1;i>=0;i--){
-    const s = sparks[i];
-    s.age++;
-    s.x += s.vx + Math.sin(s.ph + s.age*0.07)*0.11;
-    s.y += s.vy; s.vy *= 0.9985;
-    if(s.age > s.life || s.y < -2) sparks.splice(i,1);
+/* a cross-field start: the near half of a disc is excited and its lower half
+   held refractory, which leaves one free end of wavefront at the centre. the
+   wave can only curl one way: dir +1 clockwise, -1 anticlockwise.            */
+function stamp(cx, cy, r, dir){
+  const r2 = r*r;
+  for(let y=Math.max(0,Math.floor(cy-r)); y<=Math.min(H-1,Math.ceil(cy+r)); y++)
+  for(let x=Math.max(0,Math.floor(cx-r)); x<=Math.min(W-1,Math.ceil(cx+r)); x++){
+    const dx = (x-cx)*dir, dy = y-cy;
+    if(dx*dx + dy*dy > r2) continue;
+    const i = y*W + x;
+    if(dx <= 0) U[i] = 1;
+    if(dy > 0) V[i] = 0.8;
   }
+}
+
+function medium(){
+  impulse *= 0.96;
+  // loud: easy to excite and quick. quiet: marginal. finished: waves fail.
+  BZ.b = 0.108 - 0.03*Math.max(-0.5, A.level) - 0.03*impulse;
+  acc += 1 + 1.4*Math.max(0, A.level);
+  const n = acc|0; acc -= n;
+  fieldStep(n);
 }
 
 /* ---------- drawing ---------------------------------------------------------
-   every body pulls on every pixel by the inverse square of its distance.
-   the strongest two decide whose temperature a pixel wears: their share
-   of the pull picks, by dither, so borders are wide and soft. a slow
-   interference pattern climbs through it, so no body reads as a shape.
-   then one more dither turns the temperature into lit or not lit.          */
+   front and tail are one brightness, front + 0.55 tail, and ordered dither
+   turns it into lit or not lit. black is the medium at rest.                */
 
 function draw(){
-  const d = img.data, n = blobs.length, p = T*0.0008, lift = heat*0.2;
-  const bx = new Float32Array(n), by = new Float32Array(n), r2 = new Float32Array(n), bt = new Float32Array(n);
-  for(let k=0;k<n;k++){ const b = blobs[k]; bx[k] = b.x; by[k] = b.y; r2[k] = b.r*b.r; bt[k] = b.temp; }
-  const nx = new Float32Array(W), lx = new Float32Array(W), lx2 = new Float32Array(W);
-  for(let x=0;x<W;x++){
-    nx[x] = Math.sin(x*0.19 + p*6);
-    lx[x] = Math.sin(x*0.041 + p*2.1);
-    lx2[x] = Math.sin(x*0.093 - p*3.3);
-  }
+  const d = img.data;
   for(let y=0;y<H;y++){
-    const ny = Math.sin(y*0.15 - p*4);
-    // the + sign in these is what makes the pattern climb
-    const ly = Math.sin(y*0.033 + p*1.7), ly2 = Math.sin(y*0.071 + p*2.6);
-    const row = (y&7)*8, row2 = ((y+3)&7)*8;
-    const wob = 2.6*Math.sin(p*2.3 + y*0.071), wy = y + 2.2*Math.sin(p*3 + y*0.05);
-    const grad = 0.16*(y/H - 0.5);                  // firelight: more at the base
+    const row = (y&7)*8;
     for(let x=0;x<W;x++){
-      const wx = x + wob;
-      let m1 = 0, m2 = 0, k1 = 0, k2 = 0;
-      for(let k=0;k<n;k++){
-        const dx = wx - bx[k], dy = wy - by[k];
-        const c = r2[k]/(dx*dx + dy*dy + 4);
-        if(c > m1){ m2 = m1; k2 = k1; m1 = c; k1 = k; }
-        else if(c > m2){ m2 = c; k2 = k; }
-      }
-      const th = BAYER[row + (x&7)], th2 = BAYER[row2 + ((x+5)&7)];
-      const inner = (m1/(m1 + m2) - 0.5)*2;           // 0 on a border, 1 deep inside
-      const pick = 0.5 + inner*0.85 + 0.45*nx[x]*ny; // a wide, wandering border band
-      const t = bt[th < pick ? k1 : k2];
-      const shimmer = 0.06*Math.sin(x*0.31 + y*0.23 + p*40);
-      const lit = 0.16 + 0.68*t + 0.20*lx[x]*ly + 0.10*lx2[x]*ly2 + grad + shimmer + lift;
-      const v = lit > th2 ? 255 : 0;
-      const o = (y*W + x)*4;
-      d[o] = v; d[o+1] = v; d[o+2] = v; d[o+3] = 255;
+      const i = y*W + x, o = i*4;
+      const v = (U[i] + 0.55*V[i]) > BAYER[row + (x&7)] ? 255 : 0;
+      d[o] = v; d[o+1] = v; d[o+2] = v;
     }
-  }
-  // sparks: one lit cell, with the four cells around it put out so it reads
-  // against white as well as black
-  const put = (x,y,v) => {
-    if(x < 0 || y < 0 || x >= W || y >= H) return;
-    const o = (y*W + x)*4; d[o] = v; d[o+1] = v; d[o+2] = v;
-  };
-  for(const s of sparks){
-    if(s.age > s.life*0.7 && Math.random() < 0.5) continue;      // guttering
-    const x = s.x|0, y = s.y|0;
-    put(x-1,y,0); put(x+1,y,0); put(x,y-1,0); put(x,y+1,0); put(x,y,255);
   }
   gridCtx.putImageData(img,0,0);
   ctx.imageSmoothingEnabled = false;
@@ -403,56 +309,42 @@ async function analyse(pcm, rate, yieldFn){
 
 /* ---------- playing, with the analysis in hand ----------------------------- */
 
-let ac, src, playing = false, TL = null, ei = 0, t0 = 0, job = 0;
+let ac, src, playing = false, TL = null, ei = 0, t0 = 0, job = 0, ever = false, lastPos = 0.5;
 const A = { level:0 };
 
 function attack(e){
-  const sx = e.pos*W;
-  spark(sx, e.s);
-  pressure += e.s*3;
-  // the attack warms whatever wax is nearest the base where it sounded
-  let near = null, nd = 1e9;
-  for(const b of blobs){ const d = Math.hypot(b.x - sx, b.y - H); if(d < nd){ nd = d; near = b; } }
-  if(near) near.temp = Math.min(1, near.temp + 0.04*e.s);
+  // one spiral. direction is the direction the pitch went since the last one.
+  const dir = e.pos >= lastPos ? 1 : -1; lastPos = e.pos;
+  stamp(e.pos*W, H*(0.15 + 0.7*(1 - e.s)), 4 + 8*e.s, dir);
+  impulse = Math.min(1, impulse + 0.6*e.s);          // a strike makes the medium easy for a moment
 }
 
 function listen(){
-  if(!playing || !TL){ A.level *= 0.98; return; }
+  if(!playing || !TL){
+    // no take yet: a quiet ambient field. a take that has ended: let it go out
+    const target = ever ? -0.5 : 0.6;
+    A.level += (target - A.level)*0.01;
+    return;
+  }
   const lat = ac.outputLatency || ac.baseLatency || 0;
   const el = ac.currentTime - t0 - lat;
   if(el < 0) return;
   const fi = Math.min(TL.lv.length - 1, Math.max(0, (el*TL.rate/TL.hop)|0));
-  A.level = A.level*0.97 + (TL.lv[fi] || 0)*0.03;       // heavily smoothed: heat, not pulse
+  A.level = A.level*0.97 + (TL.lv[fi] || 0)*0.03;       // heavily smoothed: climate, not pulse
   while(ei < TL.events.length && TL.events[ei].t <= el + 0.02){
     const e = TL.events[ei++];
     if(e.t > el - 0.3) attack(e);                        // a backgrounded tab skips, not bursts
   }
 }
 
-/* ---------- the slow part ------------------------------------------------- */
-
-function evolve(){
-  heat = heat*0.995 + A.level*0.005;
-  // pressure from attacks is spent rarely: a bud, or a tear
-  pressure *= 0.999;
-  if(pressure > 20 && T - lastEvent > 720){
-    lastEvent = T; pressure = 0;
-    if(blobs.length < MAX_BLOBS && Math.random() < 0.6) bud();
-    else if(blobs.length < MAX_BLOBS){
-      let big = blobs[0]; for(const b of blobs) if(b.r > big.r) big = b;
-      tear(big);
-    }
-  }
-}
-
-/* ---------- touch cools the wax under the finger ---------------------------- */
+/* ---------- touch excites the medium ---------------------------------------- */
 
 function pointer(e){
   const r = cv.getBoundingClientRect();
   const x = (e.clientX - r.left)/PX, y = (e.clientY - r.top)/PX;
-  for(const b of blobs){
-    const d = Math.hypot(b.x-x, b.y-y);
-    if(d < b.r*1.5){ b.temp = Math.max(0, b.temp - 0.15); b.vx += (b.x-x)/(d+1)*0.05; }
+  for(let j=-2;j<=2;j++) for(let i=-2;i<=2;i++){
+    const px = (x+i)|0, py = (y+j)|0;
+    if(px >= 0 && py >= 0 && px < W && py < H && i*i + j*j <= 5) U[py*W + px] = 1;
   }
 }
 cv.addEventListener("pointerdown", pointer);
@@ -462,10 +354,14 @@ cv.addEventListener("pointermove", e => { if(e.buttons || e.pressure > 0) pointe
 
 function frame(){
   T++;
+  // with no take, the field keeps itself alive: when it thins out, a new spiral is struck
+  if(!ever && T % 180 === 0){
+    let c = 0; for(let i=0;i<V.length;i++) if(V[i] > 0.15) c++;
+    if(c < 0.05*V.length)
+      stamp(W*(0.2 + 0.6*Math.random()), H*(0.2 + 0.6*Math.random()), 9, Math.random() < 0.5 ? 1 : -1);
+  }
   listen();
-  evolve();
-  physics();
-  moveSparks();
+  medium();
   draw();
   requestAnimationFrame(frame);
 }
@@ -558,7 +454,7 @@ async function playBuffer(buf, secs){
   const tl = await analyse(mono(buf).subarray(0, cut), buf.sampleRate,
                            () => new Promise(r => setTimeout(r, 0)));
   if(mine !== job) return;                       // another file arrived meanwhile
-  TL = tl; ei = 0;
+  TL = tl; ei = 0; ever = true; lastPos = 0.5;
   src = ac.createBufferSource();
   src.buffer = buf;
   src.connect(ac.destination);
@@ -595,6 +491,8 @@ function start(){
   const g = $("#gate"); if(g) g.remove();
   ac = new (window.AudioContext||window.webkitAudioContext)();
   build();
+  if(!takeFromHash()) for(let i=0;i<3;i++)
+    stamp(W*(0.2 + 0.6*Math.random()), H*(0.2 + 0.6*Math.random()), 8, Math.random() < 0.5 ? 1 : -1);
   requestAnimationFrame(frame);
 }
 
