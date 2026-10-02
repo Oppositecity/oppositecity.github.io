@@ -52,6 +52,10 @@
      loudness       how excitable the medium is, and how fast it reacts.
                     loud, the waves live and multiply; quiet, they thin
                     and die back; when the take ends the field goes out.
+     the ground     every front that passes leaves a little ash, which
+                    settles back over about half a minute. so the stippled
+                    ground is where the music has been, and it is darkest
+                    where the take never went.
 
    The take is heard before it is played: the whole file is analysed
    first, so a peak is a peak of THAT signal, judged against its own
@@ -82,7 +86,8 @@ const BAYER = (() => {
 
 const BZ = { a:0.75, b:0.108, eps:0.02, D:1, dx:1.0, dt:0.04 };
 let PX = 4, W=0, H=0, img, gridCv, gridCtx, T = 0;
-let U, V, U2, V2, acc = 0, impulse = 0;
+let U, V, U2, V2, M, acc = 0, impulse = 0;
+const MEM = { gain:0.003, half:25 };   // how fast passing waves leave ash, and its half-life in seconds
 
 function build(){
   const vw = Math.max(1, innerWidth), vh = Math.max(1, innerHeight);
@@ -96,7 +101,7 @@ function build(){
   img = gridCtx.createImageData(W,H);
   for(let i=3;i<img.data.length;i+=4) img.data[i] = 255;
   U = new Float32Array(W*H); V = new Float32Array(W*H);
-  U2 = new Float32Array(W*H); V2 = new Float32Array(W*H);
+  U2 = new Float32Array(W*H); V2 = new Float32Array(W*H); M = new Float32Array(W*H);
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -110,8 +115,10 @@ function fieldStep(n){
         const u = U[i], v = V[i];
         const lap = U[y*W + xm] + U[y*W + xp] + U[ym*W + x] + U[yp*W + x] - 4*u;
         const nu = u + ie*u*(1-u)*(u - (v+b)/a) + k*lap;
-        U2[i] = nu < 0 ? 0 : nu > 1 ? 1 : nu;
+        const un = nu < 0 ? 0 : nu > 1 ? 1 : nu;
+        U2[i] = un;
         V2[i] = v + dt*(u - v);
+        M[i] += (1 - M[i])*MEM.gain*un;                 // a front passing leaves ash
       }
     }
     let t = U; U = U2; U2 = t; t = V; V = V2; V2 = t;
@@ -140,11 +147,14 @@ function medium(){
   acc += 1 + 1.4*Math.max(0, A.level);
   const n = acc|0; acc -= n;
   fieldStep(n);
+  const keep = Math.pow(0.5, 1/(60*MEM.half));       // the ash settles back, slowly
+  for(let i=0;i<M.length;i++) M[i] *= keep;
 }
 
 /* ---------- drawing ---------------------------------------------------------
-   front and tail are one brightness, front + 0.55 tail, and ordered dither
-   turns it into lit or not lit. black is the medium at rest.                */
+   front, tail and ash are one brightness, front + 0.55 tail + 0.3 ash, and
+   ordered dither turns it into lit or not lit. black is where nothing has
+   passed.                                                                   */
 
 function draw(){
   const d = img.data;
@@ -152,7 +162,7 @@ function draw(){
     const row = (y&7)*8;
     for(let x=0;x<W;x++){
       const i = y*W + x, o = i*4;
-      const v = (U[i] + 0.55*V[i]) > BAYER[row + (x&7)] ? 255 : 0;
+      const v = (U[i] + 0.55*V[i] + 0.3*M[i]) > BAYER[row + (x&7)] ? 255 : 0;
       d[o] = v; d[o+1] = v; d[o+2] = v;
     }
   }
