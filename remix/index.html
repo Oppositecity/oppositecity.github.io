@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<title>remix</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;padding:0;height:100%;background:#000;color:#fff;overflow:hidden;overscroll-behavior:none}
+  body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:15px}
+  #app{position:fixed;inset:0;display:flex;flex-direction:column;height:100dvh}
+  #pic{flex:1;min-height:0;position:relative}
+  #cv{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;touch-action:none}
+  #hud{position:absolute;left:10px;top:8px;right:10px;pointer-events:none;font-size:13px;letter-spacing:.14em;
+    line-height:1.5;text-shadow:0 0 6px #000,0 0 3px #000,0 0 2px #000;white-space:pre}
+  #note{position:absolute;left:10px;right:10px;bottom:8px;font-size:13px;letter-spacing:.14em;
+    text-shadow:0 0 6px #000,0 0 3px #000,0 0 2px #000;text-align:center;pointer-events:none}
+  #note a{color:#fff;pointer-events:auto;text-decoration:underline}
+  #panel{padding:4px 6px calc(6px + env(safe-area-inset-bottom));background:#000}
+  .wr{display:flex;flex-wrap:wrap;align-items:center}
+  .w{font:inherit;font-size:14px;letter-spacing:.14em;color:#fff;background:#000;border:0;padding:9px 10px;cursor:pointer}
+  .w.on{background:#fff;color:#000}
+  .row{display:flex;align-items:center;gap:10px;height:30px;padding:0 4px}
+  .l{width:78px;letter-spacing:.1em}
+  .v{width:74px;text-align:right}
+  .bar{flex:1;height:20px;position:relative;touch-action:none;cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='white'/%3E%3C/svg%3E");
+    background-size:4px 4px;image-rendering:pixelated}
+  .fill{position:absolute;top:0;bottom:0;background:#fff}
+  #gate{position:fixed;inset:0;z-index:9;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+  #go{font:inherit;font-size:16px;letter-spacing:.5em;color:#fff;background:#000;border:0;padding:18px 22px;cursor:pointer}
+  #gsub{font-size:12px;letter-spacing:.3em;text-align:center;padding:0 20px;line-height:1.8}
+  #cat{position:absolute;inset:0;background:#000;z-index:5;display:none;flex-direction:column;overflow:hidden}
+  #cat.open{display:flex}
+  #cathead{padding:12px 10px 4px;font-size:13px;letter-spacing:.2em;line-height:1.7}
+  #catlist{flex:1;overflow-y:auto;padding:0 4px;-webkit-overflow-scrolling:touch}
+  .item{display:block;width:100%;text-align:left;font:inherit;font-size:14px;color:#fff;background:#000;border:0;
+    padding:10px 10px;cursor:pointer;line-height:1.45}
+  .item .d{letter-spacing:.14em}
+  .item.cur{background:#fff;color:#000}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="pic">
+    <canvas id="cv"></canvas>
+    <div id="hud"></div>
+    <div id="note"></div>
+    <div id="cat">
+      <div id="cathead"></div>
+      <div class="wr" id="catwords"></div>
+      <div id="catlist"></div>
+    </div>
+  </div>
+  <div id="panel">
+    <div class="wr" id="w1"></div>
+    <div class="wr" id="w2"></div>
+    <div id="sl"></div>
+    <div class="wr" id="w3"></div>
+  </div>
+</div>
+<div id="gate"><button id="go">REMIX</button><div id="gsub">THE RAIN IS WATCHING BASEBALL<br>field recordings, in your hands</div></div>
+<input type="file" id="file" accept="audio/*,video/*" style="display:none">
+
+<script>
+"use strict";
+/* =====================================================================
+   REMIX. A take is a picture: time runs left to right, pitch runs bottom
+   to top (bass below, treble above), and lit means loud. Under it, a
+   granular sampler reads the take.
+
+     a grain       a short window cut from the take and played back.
+                   on screen it is a box that inverts the picture where
+                   it is reading. left to right is the stretch of take
+                   it covers; how high it sits is how far it was
+                   transposed (up an octave, up a seventh of the screen);
+                   the box thickens toward the way it is travelling, so
+                   a grain running backwards leans the other way.
+     the head      one column of dither, where the take is being read.
+     outside loop  half the pixels go out.
+     ticks (chop)  along the top edge, one for every attack the take
+                   was found to contain, taller when struck harder.
+
+   Nothing here is decoration: if a mark is lit it is telling you where
+   something is, how fast, or which way.
+
+   The link is the remix. Every setting lives in the address after the
+   take's own id, so whatever you leave on screen is what whoever opens
+   that link gets. The audio itself is never copied: it is fetched from
+   the band's own repo.
+ ==================================================================== */
+
+const $ = s => document.querySelector(s);
+const el = (t, c, txt) => { const e = document.createElement(t); if(c) e.className = c; if(txt != null) e.textContent = txt; return e; };
+const cv = $("#cv"), ctx = cv.getContext("2d", { alpha:false });
+
+const BAYER = (() => {
+  const m = [
+    [ 0,32, 8,40, 2,34,10,42],[48,16,56,24,50,18,58,26],
+    [12,44, 4,36,14,46, 6,38],[60,28,52,20,62,30,54,22],
+    [ 3,35,11,43, 1,33, 9,41],[51,19,59,27,49,17,57,25],
+    [15,47, 7,39,13,45, 5,37],[63,31,55,23,61,29,53,21]];
+  const f = new Float32Array(64);
+  for(let y=0;y<8;y++) for(let x=0;x<8;x++) f[y*8+x] = (m[y][x] + 0.5)/64;
+  return f;
+})();
+
+const AN = { N:1024, LO:60, HI:8000, BANDS:28,
+             K:6.0,        // robust deviations above the local median
+             REL:2.0,      // and at least this multiple of that median
+             MIN:6.0,      // and an absolute rise, in nepers summed over bands:
+                           // a real attack is 20-70, a flutter in a drone is under 1
+             QUIET:0.01,   // log floor, as a fraction of the take's loudest band
+             LOCAL:3,      // frames either side that a peak must beat
+             WIN:1.2,      // seconds either side for the local median
+             SPACING:0.08, // seconds between peaks, at the closest
+             FLOOR:0.2,    // of the take's 95th-percentile onset
+             GATE:0.03 };  // of the take's 95th-percentile loudness
+
+function makeFFT(n){
+  const levels = Math.round(Math.log2(n));
+  const rev = new Uint16Array(n);
+  for(let i=0;i<n;i++){ let r=0, x=i; for(let b=0;b<levels;b++){ r=(r<<1)|(x&1); x>>=1; } rev[i]=r; }
+  const cs = new Float32Array(n/2), sn = new Float32Array(n/2);
+  for(let i=0;i<n/2;i++){ cs[i]=Math.cos(2*Math.PI*i/n); sn[i]=-Math.sin(2*Math.PI*i/n); }
+  return (re, im) => {
+    for(let i=0;i<n;i++){ const j=rev[i]; if(j>i){
+      let t=re[i]; re[i]=re[j]; re[j]=t; t=im[i]; im[i]=im[j]; im[j]=t; } }
+    for(let size=2; size<=n; size<<=1){
+      const half=size>>1, step=n/size;
+      for(let i=0;i<n;i+=size) for(let j=i,k=0;j<i+half;j++,k+=step){
+        const l=j+half;
+        const tr=re[l]*cs[k]-im[l]*sn[k], ti=re[l]*sn[k]+im[l]*cs[k];
+        re[l]=re[j]-tr; im[l]=im[j]-ti; re[j]+=tr; im[j]+=ti;
+      }
+    }
+  };
+}
+
+function pct(a, q){
+  const c = Float32Array.from(a).sort();
+  return c.length ? c[Math.min(c.length-1, Math.floor(q*c.length))] : 0;
+}
+
+async function analyse(pcm, rate, yieldFn){
+  const N = AN.N, hop = Math.max(256, Math.round(rate*0.016/64)*64);
+  const nF = Math.max(0, Math.floor((pcm.length - N)/hop));
+  const fft = makeFFT(N), re = new Float32Array(N), im = new Float32Array(N);
+  const mag = new Float32Array(N/2 + 1);
+  const win = new Float32Array(N);
+  for(let i=0;i<N;i++) win[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/(N-1));
+  const hz = rate/N, hi = Math.min(AN.HI, rate/2*0.95);
+  const edges = [];
+  for(let b=0;b<=AN.BANDS;b++){
+    let e = Math.round(AN.LO*Math.pow(hi/AN.LO, b/AN.BANDS)/hz);
+    if(b > 0 && e <= edges[b-1]) e = edges[b-1] + 1;
+    edges.push(e);
+  }
+  const spec = start => {
+    for(let i=0;i<N;i++){ const v = start+i < pcm.length ? pcm[start+i] : 0; re[i]=v*win[i]; im[i]=0; }
+    fft(re, im);
+    for(let i=0;i<=N/2;i++) mag[i] = Math.hypot(re[i], im[i])/N;
+  };
+  const B = AN.BANDS, bm = new Float32Array(nF*B), rms = new Float32Array(nF);
+  for(let t=0;t<nF;t++){
+    const s0 = t*hop;
+    let e = 0; for(let i=0;i<N;i++){ const v = pcm[s0+i]; e += v*v; }
+    rms[t] = Math.sqrt(e/N);
+    spec(s0);
+    for(let b=0;b<B;b++){
+      let m = 0; for(let i=edges[b];i<edges[b+1];i++) m += mag[i]*mag[i];
+      bm[t*B + b] = Math.sqrt(m);
+    }
+    if(yieldFn && (t % 400) === 399) await yieldFn();
+  }
+  // log-compress above a floor taken from this take, so the hiss under a
+  // quiet passage can't swing the log wildly; then the rise in each band is
+  // measured against the loudest of it and its neighbours a frame earlier,
+  // so vibrato and a drifting partial are not mistaken for attacks
+  const eps = Math.max(1e-7, AN.QUIET*pct(bm, 0.99));
+  const o = new Float32Array(nF), prev = new Float32Array(B).fill(Math.log(eps));
+  const cur = new Float32Array(B);
+  for(let t=0;t<nF;t++){
+    let flux = 0;
+    for(let b=0;b<B;b++) cur[b] = Math.log(eps + bm[t*B + b]);
+    for(let b=0;b<B;b++){
+      let ref = prev[b];
+      if(b > 0 && prev[b-1] > ref) ref = prev[b-1];
+      if(b < B-1 && prev[b+1] > ref) ref = prev[b+1];
+      const dl = cur[b] - ref; if(t > 0 && dl > 0) flux += dl;
+    }
+    o[t] = flux;
+    prev.set(cur);
+  }
+  const p95r = pct(rms, 0.95), p95o = pct(o, 0.95);
+  const gate = Math.max(0.0015, AN.GATE*p95r), floor = AN.FLOOR*p95o;
+  const w = Math.max(8, Math.round(AN.WIN*rate/hop));
+  const tmp = new Float32Array(2*w + 1), dev = new Float32Array(2*w + 1);
+  const found = [];
+  for(let t=AN.LOCAL; t<nF-AN.LOCAL; t++){
+    const v = o[t];
+    if(v <= floor || v < AN.MIN || rms[Math.min(nF-1, t+1)] < gate) continue;
+    let top = true;
+    for(let j=1;j<=AN.LOCAL && top;j++) if(o[t-j] >= v || o[t+j] > v) top = false;
+    if(!top) continue;
+    const a = Math.max(0, t-w), b = Math.min(nF, t+w+1), len = b - a;
+    const ts = tmp.subarray(0, len); ts.set(o.subarray(a, b)); ts.sort();
+    const med = ts[len>>1];
+    const ds = dev.subarray(0, len);
+    for(let i=0;i<len;i++) ds[i] = Math.abs(ts[i] - med);
+    ds.sort();
+    const sigma = 1.4826*ds[len>>1];
+    const z = (v - med)/(sigma + 1e-4);
+    if(z < AN.K || v < AN.REL*med) continue;
+    found.push({ f:t, z, v });
+  }
+  // keep peaks apart; between two that are too close, the larger stays
+  const gap = AN.SPACING*rate/hop, kept = [];
+  for(const c of found){
+    const last = kept[kept.length-1];
+    if(last && c.f - last.f < gap){ if(c.z > last.z) kept[kept.length-1] = c; }
+    else kept.push(c);
+  }
+  // where in the take's own pitch range each one sat: the spectral centroid
+  // just after the attack, placed between the 5th and 95th percentile
+  const ev = kept.map(c => {
+    spec(Math.min(c.f + 1, nF - 1)*hop);
+    let sw = 0, s = 0;
+    for(let i=Math.floor(AN.LO/hz); i<=Math.floor(hi/hz); i++){ sw += mag[i]; s += mag[i]*i*hz; }
+    return { t:(c.f*hop + N*0.5)/rate, v:c.v, s:Math.max(0.15, Math.min(1, c.z/10)),
+             lc:Math.log2((sw > 0 ? s/sw : 1000) + 1) };
+  });
+  if(ev.length){
+    const lcs = ev.map(e => e.lc);
+    let lo = pct(lcs, 0.05), up = pct(lcs, 0.95);
+    if(up - lo < 1.5){ const m = (up+lo)/2; lo = m - 0.75; up = m + 0.75; }
+    for(const e of ev) e.pos = Math.max(0.04, Math.min(0.96, (e.lc - lo)/(up - lo)));
+  }
+  // loudness against the take's own loud, lightly smoothed
+  const lv = new Float32Array(nF); let sm = 0;
+  for(let t=0;t<nF;t++){ sm += (Math.min(1, rms[t]/(p95r + 1e-9)) - sm)*0.12; lv[t] = sm; }
+  // what is still ringing: in each band, the energy that was already there
+  // about 100 ms earlier. a click has none; a held string has nearly all of
+  // it. each band against its own loud, so treble shows as well as bass.
+  const SUSF = 6, rg = new Float32Array(nF*B), sl = new Float32Array(nF);
+  const gref = pct(bm, 0.99);
+  for(let b=0;b<B;b++){
+    const col = new Float32Array(nF);
+    for(let t=0;t<nF;t++) col[t] = bm[t*B + b];
+    const ref = Math.max(pct(col, 0.98), 0.1*gref) + 1e-9;
+    for(let t=0;t<nF;t++){
+      const m = t >= SUSF ? Math.min(col[t], col[t-SUSF]) : 0;
+      rg[t*B + b] = Math.min(1, Math.sqrt(m/ref));
+    }
+  }
+  let sv = 0;
+  for(let t=0;t<nF;t++){
+    let a = 0; for(let b=0;b<B;b++) a += rg[t*B + b];
+    sv += (a/B - sv)*0.05; sl[t] = sv;
+  }
+  return { rate, hop, events:ev, lv, rg, sl, bm, nb:B, dur:pcm.length/rate };
+}
+
+
+
+/* the recorder streams IMA ADPCM behind a four-byte marker "OCA1".
+   anything without it is decoded by the browser, whatever it is.        */
+
+const ADPCM_STEP = new Int32Array([
+  7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,
+  80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,
+  494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,
+  2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,
+  8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,
+  27086,29794,32767]);
+const ADPCM_INDEX = new Int32Array([-1,-1,-1,-1,2,4,6,8]);
+
+function decodeADPCM(bytes){
+  const b = new Uint8Array(bytes);
+  if(b[0]!==79 || b[1]!==67 || b[2]!==65 || b[3]!==49) return null;
+  const rate = new DataView(bytes).getUint32(4, true);
+  const n = (b.length - 12) * 2;
+  const out = new Float32Array(n);
+  let pred = 0, index = 0;
+  for(let i=0;i<n;i++){
+    const byte = b[12 + (i>>1)];
+    const code = (i & 1) ? (byte >> 4) : (byte & 15);
+    const step = ADPCM_STEP[index];
+    let q = step >> 3;
+    if(code & 4) q += step;
+    if(code & 2) q += step >> 1;
+    if(code & 1) q += step >> 2;
+    pred += (code & 8) ? -q : q;
+    if(pred > 32767) pred = 32767;
+    if(pred < -32768) pred = -32768;
+    index += ADPCM_INDEX[code & 7];
+    if(index < 0) index = 0;
+    if(index > 88) index = 88;
+    out[i] = pred / 32768;
+  }
+  return { rate, pcm: out };
+}
+
+async function decodeBytes(bytes){
+  const coded = decodeADPCM(bytes);
+  if(coded){
+    const buf = ac.createBuffer(1, coded.pcm.length, coded.rate);
+    buf.getChannelData(0).set(coded.pcm);
+    return buf;
+  }
+  return await ac.decodeAudioData(bytes);
+}
+
+function mono(buf){
+  const a = buf.getChannelData(0);
+  if(buf.numberOfChannels < 2) return a;
+  const b = buf.getChannelData(1), m = new Float32Array(a.length);
+  for(let i=0;i<m.length;i++) m[i] = (a[i] + b[i])*0.5;
+  return m;
+}
+
+
+
+function mono(buf){
+  const a = buf.getChannelData(0);
+  if(buf.numberOfChannels < 2) return a;
+  const b = buf.getChannelData(1), m = new Float32Array(a.length);
+  for(let i=0;i<m.length;i++) m[i] = (a[i] + b[i])*0.5;
+  return m;
+}
+function reverseBuf(b){
+  const r = ac.createBuffer(b.numberOfChannels, b.length, b.sampleRate);
+  for(let c=0;c<b.numberOfChannels;c++){
+    const s = b.getChannelData(c), d = r.getChannelData(c), n = b.length;
+    for(let i=0;i<n;i++) d[i] = s[n-1-i];
+  }
+  return r;
+}
+
+/* ---------- the settings ---------------------------------------------------- */
+
+const P = { sp:1, pt:0, rv:0, lk:1,           // tape: speed (negative = backwards), pitch, flip chance, pitch follows speed
+            gs:0.16, dn:14, sc:0.05, sw:0.3,  // grain: size, density, scatter, spread
+            md:0, cs:4, cl:1, co:0,           // engine (0 grains, 1 slices); slices: steps/s, length, order
+            gp:1, th:0, tm:0,                 // slices: rests kept (x1 = as played), thinning, timing (0 grid, 1 the take's own spacing)
+            ec:0, rm:0, lv:0.9 };             // space: echo, room, level
+const DEF = Object.assign({}, P);
+
+const pc = v => Math.round(v*100) + "%";
+const DEFS = [
+  { k:"sp", tab:"tape",  label:"speed",   lo:-4,   hi:4,   c:"speed", fmt:v => "×" + v.toFixed(2).replace("-","−") },
+  { k:"pt", tab:"tape",  label:"pitch",   lo:-24,  hi:24,  c:"lin", step:1, fmt:v => (v>0?"+":v<0?"−":"") + Math.abs(v) + " st" },
+  { k:"rv", tab:"tape",  label:"flip",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"gs", tab:"grain", label:"size",    lo:.02,  hi:.8,  c:"log", fmt:v => Math.round(v*1000) + "ms" },
+  { k:"dn", tab:"grain", label:"density", lo:1,    hi:80,  c:"log", fmt:v => v.toFixed(v<10?1:0) + "/s" },
+  { k:"sc", tab:"grain", label:"scatter", lo:0,    hi:1.5, c:"sq",  fmt:v => v.toFixed(2) + "s" },
+  { k:"sw", tab:"grain", label:"spread",  lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"cs", tab:"chop",  label:"steps",   lo:.5,   hi:16,  c:"log", fmt:v => v.toFixed(1) + "/s" },
+  { k:"cl", tab:"chop",  label:"length",  lo:.1,   hi:2,   c:"log", fmt:v => "×" + v.toFixed(2) },
+  { k:"gp", tab:"chop",  label:"gap",     lo:0,    hi:2,   c:"lin", fmt:v => "×" + v.toFixed(2) },
+  { k:"th", tab:"chop",  label:"thin",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"ec", tab:"space", label:"echo",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"rm", tab:"space", label:"room",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"lv", tab:"space", label:"level",   lo:0,    hi:1.2, c:"lin", fmt:pc }
+];
+const ORDERS = ["in sequence","shuffled","backwards","drunk","stuck"];
+
+function fromF(d, f){
+  let v;
+  if(d.c === "lin") v = d.lo + f*(d.hi - d.lo);
+  else if(d.c === "log") v = d.lo*Math.pow(d.hi/d.lo, f);
+  else if(d.c === "sq") v = d.lo + (d.hi - d.lo)*f*f;
+  else {
+    const x = f*2 - 1, a = Math.abs(x);
+    v = Math.sign(x)*4*(Math.pow(4, a) - 1)/3;
+    for(const s of [0, .25, .5, 1, 2, 3, 4]) if(Math.abs(Math.abs(v) - s) < 0.035*Math.max(1, s)){ v = Math.sign(v)*s; break; }
+  }
+  if(d.step) v = Math.round(v/d.step)*d.step;
+  return v;
+}
+function toF(d, v){
+  if(d.c === "lin") return (v - d.lo)/(d.hi - d.lo);
+  if(d.c === "log") return Math.log(v/d.lo)/Math.log(d.hi/d.lo);
+  if(d.c === "sq") return Math.sqrt(Math.max(0, (v - d.lo)/(d.hi - d.lo)));
+  const a = Math.log(1 + 3*Math.abs(v)/4)/Math.log(4);
+  return (Math.sign(v)*a + 1)/2;
+}
+
+/* ---------- audio ------------------------------------------------------------ */
+
+let ac = null, bus, dry, echoSend, dly, dlp, fbg, roomSend, conv, master, comp, recDest;
+let buf = null, revBuf = null, TL = null, base = null;
+let pos = 0, playing = false, holding = false, loopOn = true, reg = { a:0, b:1 };
+let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
+const grains = [];
+let shownPos = 0, take = null, takeLabel = "", job = 0, started = false;
+
+const CUR_H = new Float32Array(128), CUR_T = new Float32Array(128);
+for(let i=0;i<128;i++){
+  const u = i/127;
+  CUR_H[i] = Math.pow(Math.sin(Math.PI*u), 2);
+  CUR_T[i] = Math.min(1, u/0.08, (1-u)/0.08);
+}
+
+function buildGraph(){
+  ac = new (window.AudioContext||window.webkitAudioContext)();
+  bus = ac.createGain();
+  dry = ac.createGain();
+  echoSend = ac.createGain(); dly = ac.createDelay(1.5); dly.delayTime.value = 0.375;
+  dlp = ac.createBiquadFilter(); dlp.type = "lowpass"; dlp.frequency.value = 2800;
+  fbg = ac.createGain();
+  roomSend = ac.createGain(); conv = ac.createConvolver();
+  master = ac.createGain(); comp = ac.createDynamicsCompressor();
+  recDest = ac.createMediaStreamDestination();
+  const n = Math.floor(ac.sampleRate*2.4), ir = ac.createBuffer(2, n, ac.sampleRate);
+  for(let c=0;c<2;c++){ const d = ir.getChannelData(c); for(let i=0;i<n;i++) d[i] = (Math.random()*2-1)*Math.pow(1 - i/n, 3); }
+  conv.buffer = ir;
+  bus.connect(dry); dry.connect(master);
+  bus.connect(echoSend); echoSend.connect(dly); dly.connect(dlp); dlp.connect(fbg); fbg.connect(dly); dlp.connect(master);
+  bus.connect(roomSend); roomSend.connect(conv); conv.connect(master);
+  master.connect(comp); comp.connect(ac.destination); comp.connect(recDest);
+  sync();
+}
+
+function sync(){
+  if(!ac) return;
+  const t = ac.currentTime;
+  echoSend.gain.setTargetAtTime(P.ec*0.9, t, 0.03);
+  fbg.gain.setTargetAtTime(0.25 + 0.55*P.ec, t, 0.03);
+  roomSend.gain.setTargetAtTime(P.rm*0.8, t, 0.03);
+  master.gain.setTargetAtTime(P.lv, t, 0.03);
+  const g = P.md ? 0.9 : 1/Math.pow(Math.max(1, 0.5*P.dn*P.gs), 0.75);
+  bus.gain.setTargetAtTime(g, t, 0.05);
+}
+
+/* one grain: play `dur` seconds of output, reading the take at rate `rate`
+   from p (forwards) or back from p (rev). */
+function fire(t, p, dur, rate, rev, kind){
+  const D = buf.duration;
+  let off, avail;
+  if(rev){ const end = Math.min(D, Math.max(0, p)); off = D - end; avail = end; }
+  else   { const st  = Math.min(D, Math.max(0, p)); off = st;     avail = D - st; }
+  const dd = Math.min(dur, avail/rate);
+  if(!(dd >= 0.012)) return;
+  t = Math.max(t, ac.currentTime + 0.005);
+  const s = ac.createBufferSource(); s.buffer = rev ? revBuf : buf; s.playbackRate.value = rate;
+  const e = ac.createGain(); e.gain.value = 0;
+  s.connect(e);
+  let out = e;
+  if(ac.createStereoPanner && P.sw > 0){
+    const pn = ac.createStereoPanner(); pn.pan.value = (Math.random()*2-1)*P.sw; e.connect(pn); out = pn;
+  }
+  out.connect(bus);
+  e.gain.setValueCurveAtTime(kind === "slice" ? CUR_T : CUR_H, t, dd);
+  s.start(t, off); s.stop(t + dd + 0.02);
+  s.onended = () => { try{ s.disconnect(); e.disconnect(); if(out !== e) out.disconnect(); }catch(_){} };
+  grains.push({ t, dur:dd, p, len:dd*rate, rev, rate, kind });
+}
+
+function advance(dp){
+  pos += dp;
+  const D = buf.duration;
+  if(loopOn){
+    const a = reg.a, b = reg.b, L = b - a;
+    if(L > 0.02){
+      if(pos > b) pos = a + ((pos - a) % L);
+      else if(pos < a) pos = b - ((a - pos) % L);
+    }
+  } else if(pos >= D){ pos = D; playing = false; words(); }
+  else if(pos <= 0){ pos = 0; playing = false; words(); }
+}
+
+function grainStep(t, iv){
+  const sp = P.sp;
+  let rate = Math.pow(2, P.pt/12);
+  if(P.lk) rate *= Math.abs(sp);
+  if(!(P.lk && Math.abs(sp) < 0.02)){
+    rate = Math.max(0.02, Math.min(16, rate));
+    const rev = (sp < 0) !== (Math.random() < P.rv);
+    fire(t, pos + (Math.random()*2-1)*P.sc, P.gs, rate, rev, "grain");
+  }
+  if(!holding) advance(sp*iv);
+}
+
+function activeSlices(){
+  if(!loopOn || (reg.a <= 0.001 && reg.b >= buf.duration - 0.001)) return slices;
+  const s = slices.filter(x => x.s >= reg.a - 0.01 && x.s < reg.b);
+  return s.length ? s : slices;
+}
+/* an event is its body (the attack and the ring, until it has sunk back toward the
+   floor) and then its rest (the silence, and the hiss, until the next attack). gap
+   scales the rest: x1 is as played, 0 packs the attacks together, 2 doubles the
+   silences. thin drops events, the quietest first. */
+const thinP = str => Math.min(1, 2*P.th*(1 - 0.5*str));
+function sliceRate(){
+  let rate = Math.pow(2, P.pt/12);
+  if(P.lk) rate *= Math.abs(P.sp);
+  return rate;
+}
+function chopStep(t, ivGrid){
+  const sl = activeSlices(), n = sl.length;
+  if(!n) return ivGrid;
+  ci = Math.min(ci, n-1);
+  switch(P.co){
+    case 0: ci = (ci + 1) % n; break;
+    case 1: ci = (Math.random()*n)|0; break;
+    case 2: ci = (ci - 1 + n) % n; break;
+    case 3: ci = (ci + (Math.random() < 0.5 ? -1 : 1)*(Math.random() < 0.3 ? 2 : 1) + n*3) % n; break;
+    default: break;
+  }
+  const s = sl[ci];
+  if(P.lk && Math.abs(P.sp) < 0.02) return ivGrid;
+  const rate = Math.max(0.02, Math.min(16, sliceRate()));
+  const body = s.eb - s.s, rest = Math.max(0, s.e - s.eb);
+  const span = body + Math.min(P.gp, 1)*rest;
+  const own = P.tm === 1;
+  const iv = own ? Math.max(0.03, (body + P.gp*rest)/rate) : ivGrid;
+  pos = s.s;
+  if(Math.random() >= thinP(s.str)){
+    const dur = own ? span/rate*Math.min(P.cl, 1) : Math.min(span/rate, ivGrid*P.cl);
+    const rev = (P.sp < 0) !== (Math.random() < P.rv);
+    fire(t, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
+  }
+  return iv;
+}
+
+/* tap an attack to play it. the slices tile the take, so the one under your finger
+   is the one that plays; drag across the take to strum through them. */
+function sliceAt(t){
+  let lo = 0, hi = slices.length - 1;
+  while(lo < hi){ const m = (lo + hi + 1) >> 1; if(slices[m].s <= t) lo = m; else hi = m - 1; }
+  return lo;
+}
+function tapFire(i){
+  if(!buf || !slices.length) return;
+  if(ac.state === "suspended") ac.resume();
+  const s = slices[i];
+  if(P.lk && Math.abs(P.sp) < 0.02) return;
+  const rate = Math.max(0.02, Math.min(16, sliceRate()));
+  const span = (s.eb - s.s) + Math.min(P.gp, 1)*Math.max(0, s.e - s.eb);
+  const dur = span/rate*Math.min(P.cl, 1);
+  const rev = (P.sp < 0) !== (Math.random() < P.rv);
+  fire(ac.currentTime + 0.005, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
+  pos = s.s;
+}
+
+function tick(){
+  if(!buf || !ac) return;
+  const now = ac.currentTime;
+  if(!(playing || holding)){ nextT = 0; nextS = 0; return; }
+  const horizon = now + 0.25;
+  if(!P.md){
+    if(nextT < now) nextT = now + 0.02;
+    while(nextT < horizon){
+      const iv = (1/P.dn)*(0.8 + 0.4*Math.random());
+      grainStep(nextT, iv);
+      nextT += iv;
+    }
+  } else {
+    if(nextS < now) nextS = now + 0.02;
+    while(nextS < horizon) nextS += chopStep(nextS, 1/P.cs);
+  }
+}
+setInterval(tick, 30);
+
+/* ---------- the take, as a picture --------------------------------------------- */
+
+let PX = 3, W = 0, H = 0, img, gridCv, gridCtx, lit, ov;
+
+function build(){
+  const r = cv.getBoundingClientRect(), vw = Math.max(1, r.width), vh = Math.max(1, r.height);
+  PX = Math.max(3, Math.ceil(Math.max(innerWidth, innerHeight)/300));
+  cv.width = Math.max(PX*8, Math.floor(vw/PX)*PX);
+  cv.height = Math.max(PX*8, Math.floor(vh/PX)*PX);
+  W = cv.width/PX; H = cv.height/PX;
+  gridCv = document.createElement("canvas"); gridCv.width = W; gridCv.height = H;
+  gridCtx = gridCv.getContext("2d", { alpha:false });
+  img = gridCtx.createImageData(W, H);
+  for(let i=3;i<img.data.length;i+=4) img.data[i] = 255;
+  lit = new Uint8Array(W*H); ov = new Float32Array(W*H);
+  ctx.imageSmoothingEnabled = false;
+  computeBase();
+}
+
+function computeBase(){
+  base = null;
+  if(!TL || !W) return;
+  const B = TL.nb, nF = TL.bm.length/B;
+  const cell = new Float32Array(W*B);
+  for(let f=0;f<nF;f++){
+    const tt = (f*TL.hop + AN.N/2)/TL.rate;
+    const x = Math.min(W-1, Math.floor(tt/TL.dur*W));
+    for(let b=0;b<B;b++){ const v = TL.bm[f*B + b]; if(v > cell[x*B + b]) cell[x*B + b] = v; }
+  }
+  const ref = pct(cell, 0.995) + 1e-9;
+  base = new Float32Array(W*H);
+  for(let y=0;y<H;y++){
+    const bf = (H-1-y)/(H-1)*(B-1), b0 = Math.floor(bf), b1 = Math.min(B-1, b0+1), fr = bf - b0;
+    for(let x=0;x<W;x++){
+      const m = cell[x*B + b0]*(1-fr) + cell[x*B + b1]*fr;
+      base[y*W + x] = Math.pow(Math.min(1, Math.log(1 + 30*m/ref)/Math.log(31)), 1.6);
+    }
+  }
+}
+
+function draw(){
+  if(!img) return;
+  const now = ac ? ac.currentTime : 0, D = buf ? buf.duration : 1;
+  while(grains.length && grains[0].t + grains[0].dur + 0.1 < now) grains.shift();
+  ov.fill(0);
+  let latest = null;
+  for(const g of grains){
+    if(g.t > now) continue;
+    latest = g;
+    const age = (now - g.t)/g.dur; if(age > 1) continue;
+    const env = Math.pow(Math.sin(Math.PI*age), 2);
+    const x0s = g.rev ? g.p - g.len : g.p;
+    const cx0 = Math.max(0, Math.floor(x0s/D*W));
+    const cx1 = Math.min(W-1, Math.max(cx0 + 1, Math.ceil((x0s + g.len)/D*W)));
+    const h = (g.kind === "slice" ? 0.34 : 0.12)*H;
+    const cy = H*0.5 - Math.log2(g.rate)*(H/7.06);
+    const y0 = Math.max(0, Math.floor(cy - h/2)), y1 = Math.min(H-1, Math.ceil(cy + h/2));
+    const span = Math.max(1, cx1 - cx0);
+    for(let x=cx0; x<=cx1; x++){
+      let u = (x - cx0)/span; if(g.rev) u = 1 - u;
+      const d = env*(0.3 + 0.7*u);
+      for(let y=y0; y<=y1; y++){ const i = y*W + x; if(d > ov[i]) ov[i] = d; }
+    }
+  }
+  if(latest) shownPos = latest.p;
+  if(holding || !(playing)) shownPos = pos;
+  const a = reg.a/D*W, b = reg.b/D*W, outside = buf && loopOn;
+  for(let y=0;y<H;y++){
+    const row = (y&7)*8, row2 = ((y+3)&7)*8;
+    for(let x=0;x<W;x++){
+      const i = y*W + x;
+      let v = base ? base[i] > BAYER[row + (x&7)] : false;
+      if(ov[i] > BAYER[row2 + ((x+5)&7)]) v = !v;
+      if(outside && (x < a || x > b) && ((x + y)&1)) v = false;
+      lit[i] = v ? 1 : 0;
+    }
+  }
+  if(buf){
+    if(P.md && TL){
+      for(const sl of slices){
+        if(sl.a == null) continue;
+        const x0 = Math.min(W-1, Math.floor(sl.a/D*W)) + 1, x1 = Math.min(W-1, Math.floor(sl.eb/D*W));
+        for(let x=x0; x<=x1; x++) lit[x] ^= 1;
+      }
+      for(const e of TL.events){
+        const x = Math.min(W-1, Math.floor(e.t/D*W)), hh = Math.max(2, Math.round(e.s*H*0.12));
+        for(let y=0;y<hh;y++) lit[y*W + x] ^= 1;
+      }
+    }
+    const hx = Math.min(W-1, Math.max(0, Math.floor(shownPos/D*W)));
+    for(let y=0;y<H;y+=2) lit[y*W + hx] ^= 1;
+  }
+  const dd = img.data;
+  for(let i=0, o=0;i<lit.length;i++, o+=4){ const v = lit[i] ? 255 : 0; dd[o] = v; dd[o+1] = v; dd[o+2] = v; }
+  gridCtx.putImageData(img, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
+}
+
+const fmtT = s => Math.floor(s/60) + ":" + (s%60 < 10 ? "0" : "") + (s%60).toFixed(1);
+let hudLast = "";
+function hud(){
+  let s;
+  if(!buf) s = takeLabel || "";
+  else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
+           P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
+           (playing ? "" : "   stopped") + (loopOn ? "" : "   once");
+  if(s !== hudLast){ $("#hud").textContent = s; hudLast = s; }
+}
+
+function frame(){ draw(); hud(); requestAnimationFrame(frame); }
+
+/* ---------- pointer: hold to freeze, drag to scrub, or draw a loop ---------------- */
+
+let dragging = false, moved = false, lastTap = 0, tapIdx = -1;
+function fx(e){ const r = cv.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)); }
+cv.addEventListener("pointerdown", e => {
+  if(!buf) return;
+  cv.setPointerCapture(e.pointerId);
+  dragging = true; moved = false;
+  const D = buf.duration, t = fx(e)*D;
+  if(regionMode){ reg = { a:t, b:t }; }
+  else if(P.md){ tapIdx = sliceAt(t); tapFire(tapIdx); }
+  else { holding = true; pos = t; }
+});
+cv.addEventListener("pointermove", e => {
+  if(!dragging || !buf) return;
+  moved = true;
+  const D = buf.duration, t = fx(e)*D;
+  if(regionMode) reg.b = t;
+  else if(P.md){ const i = sliceAt(t); if(i !== tapIdx){ tapIdx = i; tapFire(i); } }
+  else pos = t;
+});
+function release(){
+  if(!dragging) return;
+  dragging = false;
+  if(regionMode){
+    let a = Math.min(reg.a, reg.b), b = Math.max(reg.a, reg.b);
+    if(b - a < 0.05){ a = 0; b = buf.duration; say("whole take"); } else { loopOn = true; say("loop " + fmtT(a) + " – " + fmtT(b)); }
+    reg = { a, b }; regionMode = false; words(); changed();
+    return;
+  }
+  holding = false;
+  const now = performance.now();
+  if(!P.md && !moved && now - lastTap < 350){ reg = { a:0, b:buf.duration }; say("whole take"); changed(); }
+  lastTap = now;
+}
+cv.addEventListener("pointerup", release);
+cv.addEventListener("pointercancel", release);
+
+/* ---------- the panel ---------------------------------------------------------------- */
+
+let tab = "tape";
+const sliders = [];
+function mkSlider(d){
+  const row = el("div","row"), l = el("span","l",d.label), v = el("span","v"), bar = el("div","bar"), fill = el("div","fill");
+  bar.append(fill); row.append(l, v, bar);
+  d.upd = () => {
+    const f = Math.min(1, Math.max(0, toF(d, P[d.k])));
+    if(d.c === "speed"){ const a = Math.min(f, .5), b = Math.max(f, .5); fill.style.left = a*100 + "%"; fill.style.width = (b-a)*100 + "%"; }
+    else { fill.style.left = "0"; fill.style.width = f*100 + "%"; }
+    v.textContent = d.fmt(P[d.k]);
+  };
+  const set = e => {
+    const r = bar.getBoundingClientRect();
+    P[d.k] = fromF(d, Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)));
+    d.upd(); changed();
+  };
+  bar.addEventListener("pointerdown", e => { bar.setPointerCapture(e.pointerId); set(e); });
+  bar.addEventListener("pointermove", e => { if(e.buttons) set(e); });
+  d.upd(); d.row = row;
+  return row;
+}
+
+function word(parent, txt, fn){
+  const b = el("button","w",txt); b.onclick = fn; parent.append(b); return b;
+}
+
+const W1 = {}, W2 = {}, W3 = {};
+function panel(){
+  const w1 = $("#w1"), w2 = $("#w2"), sl = $("#sl"), w3 = $("#w3");
+  W1.play = word(w1, "play", () => toggle());
+  W1.rev  = word(w1, "reverse", () => { P.sp = -P.sp || -1; syncSliders(); changed(); });
+  W1.loop = word(w1, "loop", () => { loopOn = !loopOn; words(); changed(); });
+  W1.reg  = word(w1, "region", () => { regionMode = !regionMode; say(regionMode ? "drag across the take" : ""); words(); });
+  for(const t of ["tape","grain","chop","space"]){
+    W2[t] = word(w2, t, () => {
+      tab = t;
+      if(t === "grain"){ P.md = 0; sync(); changed(); }
+      if(t === "chop"){ P.md = 1; sync(); changed(); say("tap an attack. drag across to strum. stop the sequence to play by hand"); }
+      showTab(); words();
+    });
+  }
+  for(const d of DEFS) sl.append(mkSlider(d));
+  /* quick speeds and options inside the tabs */
+  const q = el("div","wr"); q.id = "quick";
+  for(const [lab, val] of [["−2",-2],["−1",-1],["−½",-.5],["0",0],["½",.5],["1",1],["2",2]]){
+    const b = word(q, lab, () => { P.sp = val; syncSliders(); changed(); words(); });
+    b.dataset.v = val;
+  }
+  sl.append(q);
+  W3.lock = word(el("div","wr"), "", () => { P.lk = P.lk ? 0 : 1; words(); changed(); });
+  W3.lock.parentNode.id = "lockwrap"; sl.append(W3.lock.parentNode);
+  const ow = el("div","wr"); ow.id = "orderwrap";
+  W3.order  = word(ow, "", () => { P.co = (P.co + 1) % ORDERS.length; words(); changed(); });
+  W3.timing = word(ow, "", () => { P.tm = P.tm ? 0 : 1; words(); changed(); });
+  sl.append(ow);
+  W3.bounce = word(w3, "bounce", () => bounce());
+  W3.share  = word(w3, "share", () => share());
+  W3.takes  = word(w3, "takes", () => openCat());
+  showTab(); words();
+}
+function showTab(){
+  for(const d of DEFS) d.row.style.display = d.tab === tab ? "flex" : "none";
+  $("#quick").style.display = tab === "tape" ? "flex" : "none";
+  $("#lockwrap").style.display = tab === "tape" ? "flex" : "none";
+  $("#orderwrap").style.display = tab === "chop" ? "flex" : "none";
+}
+function syncSliders(){ for(const d of DEFS) d.upd(); }
+function words(){
+  W1.play.textContent = playing ? "stop" : "play";
+  W1.rev.classList.toggle("on", P.sp < 0);
+  W1.loop.classList.toggle("on", loopOn);
+  W1.reg.classList.toggle("on", regionMode);
+  for(const t in W2) W2[t].classList.toggle("on", t === tab);
+  W3.lock.textContent = "pitch follows speed: " + (P.lk ? "yes" : "no");
+  W3.order.textContent = "order: " + ORDERS[P.co];
+  W3.timing.textContent = "timing: " + (P.tm ? "own spacing" : "grid");
+  for(const b of $("#quick").children) b.classList.toggle("on", Math.abs(P.sp - parseFloat(b.dataset.v)) < 0.001);
+  W3.bounce.textContent = rec ? "stop bounce" : "bounce";
+  W3.bounce.classList.toggle("on", !!rec);
+}
+
+function toggle(){
+  if(!buf) return;
+  if(ac.state === "suspended") ac.resume();
+  if(!playing && !loopOn){
+    if(P.sp >= 0 && pos >= buf.duration - 0.01) pos = 0;
+    if(P.sp < 0 && pos <= 0.01) pos = buf.duration;
+  }
+  playing = !playing; nextT = 0; nextS = 0;
+  words();
+}
+addEventListener("keydown", e => {
+  if(e.code === "Space"){ e.preventDefault(); toggle(); }
+  if(e.key === "r"){ P.sp = -P.sp || -1; syncSliders(); changed(); words(); }
+});
+
+let noteTimer = 0;
+function say(s, html){
+  const n = $("#note");
+  if(html) n.innerHTML = s; else n.textContent = s;
+  clearTimeout(noteTimer);
+  if(s) noteTimer = setTimeout(() => { if(!n.querySelector("a")) n.textContent = ""; }, 4500);
+}
+
+/* ---------- the link is the remix ------------------------------------------------------ */
+
+const KEYS = ["sp","pt","rv","lk","gs","dn","sc","sw","md","cs","cl","co","gp","th","tm","ec","rm","lv"];
+let hashTimer = 0;
+function paramString(){
+  const q = new URLSearchParams();
+  for(const k of KEYS) if(Math.abs(P[k] - DEF[k]) > 1e-6) q.set(k, String(Math.round(P[k]*1000)/1000));
+  if(buf && (reg.a > 0.001 || reg.b < buf.duration - 0.001)){
+    q.set("la", (Math.round(reg.a*100)/100).toString()); q.set("lb", (Math.round(reg.b*100)/100).toString());
+  }
+  if(!loopOn) q.set("lo", "0");
+  return q.toString();
+}
+function writeHash(){
+  if(!take) return;
+  const q = paramString();
+  history.replaceState(null, "", "#" + take.did + "/" + take.cid + (q ? "?" + q : ""));
+}
+function changed(){ sync(); clearTimeout(hashTimer); hashTimer = setTimeout(writeHash, 400); }
+
+let pending = null;      // region from the address, applied once the take is loaded
+function parseHash(){
+  const h = (location.hash || "").replace(/^#/, "").trim();
+  const m = h.match(/^(did:[a-z0-9:%._-]+)\/([a-z0-9]+)(?:\?(.*))?$/i);
+  if(!m) return null;
+  return { did:m[1], cid:m[2], q:new URLSearchParams(m[3] || "") };
+}
+function applyParams(q){
+  for(const k of KEYS) if(q.has(k)){ const v = parseFloat(q.get(k)); if(isFinite(v)) P[k] = v; }
+  P.md = P.md ? 1 : 0; P.lk = P.lk ? 1 : 0; P.tm = P.tm ? 1 : 0;
+  pending = { la:q.has("la") ? parseFloat(q.get("la")) : null, lb:q.has("lb") ? parseFloat(q.get("lb")) : null, lo:q.get("lo") !== "0" };
+  syncSliders();
+  tab = P.md ? "chop" : "tape"; showTab();
+}
+
+async function share(){
+  if(!take){ say("this take is only on this device. pick one from the repo to get a link"); return; }
+  clearTimeout(hashTimer); writeHash();
+  const url = location.href;
+  if(navigator.share){ try{ await navigator.share({ title:"remix", url }); return; }catch(e){ if(e && e.name === "AbortError") return; } }
+  let ok = false;
+  try{ await navigator.clipboard.writeText(url); ok = true; }catch(e){}
+  const a = '<a href="' + url.replace(/"/g, "&quot;") + '">' + (ok ? "link copied" : "this is the link") + "</a>";
+  say(a, true);
+}
+
+/* ---------- bounce: record what you hear ------------------------------------------------ */
+
+let rec = null, recChunks = [];
+function bounce(){
+  if(!ac) return;
+  if(rec){ rec.stop(); return; }
+  const types = ["audio/webm;codecs=opus","audio/ogg;codecs=opus","audio/mp4","audio/webm"];
+  const mt = window.MediaRecorder ? types.find(t => MediaRecorder.isTypeSupported(t)) : null;
+  if(!window.MediaRecorder){ say("this browser can't record the output"); return; }
+  rec = new MediaRecorder(recDest.stream, mt ? { mimeType:mt } : undefined);
+  recChunks = [];
+  rec.ondataavailable = e => { if(e.data && e.data.size) recChunks.push(e.data); };
+  rec.onstop = () => {
+    const type = (rec && rec.mimeType) || mt || "audio/webm";
+    const blob = new Blob(recChunks, { type });
+    const url = URL.createObjectURL(blob);
+    const ext = /ogg/.test(type) ? "ogg" : /mp4/.test(type) ? "m4a" : "webm";
+    rec = null; words();
+    say('<a href="' + url + '" download="remix.' + ext + '">save remix.' + ext + "</a>", true);
+  };
+  rec.start(); words();
+  if(!playing && buf) toggle();
+  say("recording what you hear");
+}
+
+/* ---------- loading a take ------------------------------------------------------------------ */
+
+async function decodeBytes(bytes){
+  const coded = decodeADPCM(bytes);
+  if(coded){
+    const b = ac.createBuffer(1, coded.pcm.length, coded.rate);
+    b.getChannelData(0).set(coded.pcm);
+    return b;
+  }
+  return await ac.decodeAudioData(bytes);
+}
+async function pdsFor(did){
+  const r = await fetch("https://plc.directory/" + did);
+  if(!r.ok) throw new Error("could not resolve " + did);
+  const doc = await r.json();
+  const svc = (doc.service || []).find(s => String(s.id).endsWith("atproto_pds"));
+  if(!svc) throw new Error("no pds in that did document");
+  return svc.serviceEndpoint.replace(/\/$/, "");
+}
+
+function makeSlices(){
+  const D = buf.duration, ev = TL.events, out = [];
+  const lv = TL.lv, hop = TL.hop, r = TL.rate, N = AN.N, floor = pct(lv, 0.1);
+  const bodyEnd = (a, s, e) => {
+    const f0 = Math.max(0, Math.round((a*r - N*0.5)/hop));
+    let peak = 0;
+    for(let f=f0; f<Math.min(lv.length, f0 + 8); f++) if(lv[f] > peak) peak = lv[f];
+    const thr = Math.max(0.3*peak, floor*1.3);
+    let eb = e;
+    for(let f=f0 + 6; f<lv.length; f++){
+      const tt = (f*hop + N*0.5)/r;
+      if(tt >= e){ break; }
+      if(lv[f] < thr){ eb = tt; break; }
+    }
+    return Math.min(e, Math.max(s + 0.06, eb));
+  };
+  if(ev.length >= 2){
+    for(let i=0;i<ev.length;i++){
+      const s = Math.max(0, ev[i].t - 0.04), e = i+1 < ev.length ? Math.max(s + 0.05, ev[i+1].t - 0.04) : D;
+      if(e - s > 0.03) out.push({ s, e, eb:bodyEnd(ev[i].t, s, e), a:ev[i].t, str:ev[i].s });
+    }
+    if(ev[0].t > 0.3){ const e = Math.max(0.05, ev[0].t - 0.04); out.unshift({ s:0, e, eb:e, str:0.1 }); }
+  } else {
+    const n = Math.max(2, Math.min(16, Math.round(D/0.5)));
+    for(let i=0;i<n;i++){ const s = D*i/n, e = D*(i+1)/n; out.push({ s, e, eb:e, str:0.5 }); }
+  }
+  return out;
+}
+
+async function loadBuffer(abuf, label, t){
+  const mine = ++job;
+  playing = false; holding = false; grains.length = 0;
+  buf = null; TL = null; base = null; take = t || null; takeLabel = label || "";
+  words();
+  say("listening");
+  const rb = reverseBuf(abuf);
+  const tl = await analyse(mono(abuf), abuf.sampleRate, () => new Promise(r => setTimeout(r, 0)));
+  if(mine !== job) return;
+  buf = abuf; revBuf = rb; TL = tl;
+  slices = makeSlices(); ci = 0;
+  const D = buf.duration;
+  reg = { a:0, b:D }; loopOn = true;
+  if(pending){
+    if(pending.la != null && pending.lb != null && pending.lb > pending.la){ reg = { a:Math.max(0, pending.la), b:Math.min(D, pending.lb) }; }
+    loopOn = pending.lo; pending = null;
+  }
+  pos = P.sp < 0 ? reg.b : reg.a;
+  computeBase();
+  if(ac.state === "suspended") await ac.resume();
+  playing = true; nextT = 0; nextS = 0;
+  words(); say("");
+  if(take) writeHash();
+}
+
+async function playTake(t, label){
+  say("fetching");
+  const pds = await pdsFor(t.did);
+  const r = await fetch(pds + "/xrpc/com.atproto.sync.getBlob?did=" + encodeURIComponent(t.did) + "&cid=" + encodeURIComponent(t.cid));
+  if(!r.ok) throw new Error("take not found (" + r.status + ")");
+  const ab = await decodeBytes(await r.arrayBuffer());
+  await loadBuffer(ab, label || "", { did:t.did, cid:t.cid });
+}
+async function playFile(f){
+  say("reading");
+  const ab = await decodeBytes(await f.arrayBuffer());
+  await loadBuffer(ab, f.name.replace(/\.[a-z0-9]+$/i, ""), null);
+}
+
+/* ---------- the band's takes ------------------------------------------------------------------ */
+
+const BAND = "THE RAIN IS WATCHING BASEBALL";
+const HANDLES = ["rain.opposite.city", "rainwatchbaseball.bsky.social"];
+let catItems = null, catBusy = false;
+
+function findBlobs(o, out){
+  if(!o || typeof o !== "object") return;
+  if(o.$type === "blob" && o.ref && o.ref.$link) out.push({ cid:o.ref.$link, mime:o.mimeType || "" });
+  for(const k in o) findBlobs(o[k], out);
+}
+async function loadCatalogue(){
+  let did = null;
+  for(const h of HANDLES){
+    try{
+      const r = await fetch("https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=" + h);
+      if(r.ok){ did = (await r.json()).did; break; }
+    }catch(e){}
+  }
+  if(!did) throw new Error("could not reach the band's account");
+  const pds = await pdsFor(did);
+  const seen = new Set(), items = [];
+  let cursor = "";
+  for(let page=0; page<3; page++){
+    const r = await fetch(pds + "/xrpc/com.atproto.repo.listRecords?repo=" + encodeURIComponent(did) +
+      "&collection=app.bsky.feed.post&limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""));
+    if(!r.ok) break;
+    const j = await r.json();
+    for(const rec of (j.records || [])){
+      const v = rec.value || {}, raw = JSON.stringify(v);
+      const add = (cid) => { if(seen.has(cid)) return; seen.add(cid); items.push({ did, cid, when:v.createdAt || "", text:v.text || "" }); };
+      for(const m of raw.matchAll(/(?:take|remix)\/#(did:[a-z0-9:%._-]+)\/([a-z0-9]+)/gi)) if(m[1] === did) add(m[2]);
+      const bl = []; findBlobs(v, bl);
+      for(const b of bl) if(/^(audio|video)\//.test(b.mime) || b.mime === "application/octet-stream") add(b.cid);
+    }
+    cursor = j.cursor; if(!cursor) break;
+  }
+  items.sort((a, b) => a.when < b.when ? 1 : -1);
+  return items;
+}
+function renderCat(){
+  const list = $("#catlist"); list.textContent = "";
+  if(!catItems || !catItems.length){
+    const p = el("div","item", catBusy ? "looking for takes..." : "no takes found there. pick a file instead.");
+    list.append(p); return;
+  }
+  for(const it of catItems){
+    const b = el("button","item" + (take && take.cid === it.cid ? " cur" : ""));
+    const d = it.when ? new Date(it.when) : null;
+    const ds = d && !isNaN(d) ? d.toLocaleDateString(undefined, { month:"short", day:"numeric" }) + " " +
+      d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" }) : "";
+    const t = (it.text || "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().slice(0, 70);
+    const dd = el("div","d", ds || it.cid.slice(0, 12)); b.append(dd);
+    if(t) b.append(el("div","t", t));
+    b.onclick = async () => {
+      closeCat();
+      try{ await playTake({ did:it.did, cid:it.cid }, ds); }
+      catch(e){ say(String(e.message || e)); }
+    };
+    list.append(b);
+  }
+}
+async function openCat(){
+  $("#cat").classList.add("open");
+  renderCat();
+  if(catItems == null && !catBusy){
+    catBusy = true; renderCat();
+    try{ catItems = await loadCatalogue(); }catch(e){ catItems = []; $("#cathead").lastChild.textContent = String(e.message || e); }
+    catBusy = false; renderCat();
+  }
+}
+function closeCat(){ $("#cat").classList.remove("open"); }
+function catChrome(){
+  const h = $("#cathead"); h.textContent = "";
+  h.append(el("div","", BAND), el("div","", "takes. open one and take it apart."));
+  const w = $("#catwords");
+  word(w, "from file", () => $("#file").click());
+  word(w, "close", () => closeCat());
+}
+$("#file").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  closeCat();
+  try{ await playFile(f); }catch(err){ say("could not decode that"); }
+};
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", async e => {
+  e.preventDefault();
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(!f) return;
+  start(); closeCat();
+  try{ await playFile(f); }catch(err){ say("could not decode that"); }
+});
+
+/* ---------- boot ----------------------------------------------------------------------------------- */
+
+function start(){
+  if(started) return;
+  started = true;
+  const g = $("#gate"); if(g) g.remove();
+  buildGraph();
+  panel(); catChrome(); build();
+  requestAnimationFrame(frame);
+}
+async function begin(){
+  start();
+  const t = parseHash();
+  if(t){
+    applyParams(t.q);
+    try{ await playTake({ did:t.did, cid:t.cid }, ""); }
+    catch(e){ say(String(e.message || e)); openCat(); }
+  } else openCat();
+}
+$("#go").onclick = begin;
+addEventListener("hashchange", async () => {
+  if(!started) return;
+  const t = parseHash();
+  if(t && (!take || take.cid !== t.cid)){
+    applyParams(t.q);
+    try{ await playTake({ did:t.did, cid:t.cid }, ""); }catch(e){ say(String(e.message || e)); }
+  }
+});
+let rebuild = null;
+addEventListener("resize", () => { clearTimeout(rebuild); rebuild = setTimeout(() => { if(started) build(); }, 250); });
+</script>
+</body>
+</html>
