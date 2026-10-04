@@ -665,12 +665,11 @@ function draw(){
   ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
 }
 
-const fmtT = s => Math.floor(s/60) + ":" + (s%60 < 10 ? "0" : "") + (s%60).toFixed(1);
 let hudLast = "";
 function hud(){
   let s;
   if(!buf) s = takeLabel || "";
-  else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
+  else s = (takeLabel ? takeLabel + "\n" : "") + "×" +
            P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
            (playing ? "" : "   stopped") + (loopOn ? "" : "   once");
   if(s !== hudLast){ $("#hud").textContent = s; hudLast = s; }
@@ -704,7 +703,7 @@ function release(){
   dragging = false;
   if(regionMode){
     let a = Math.min(reg.a, reg.b), b = Math.max(reg.a, reg.b);
-    if(b - a < 0.05){ a = 0; b = buf.duration; say("whole take"); } else { loopOn = true; say("loop " + fmtT(a) + " – " + fmtT(b)); }
+    if(b - a < 0.05){ a = 0; b = buf.duration; say("whole take"); } else { loopOn = true; say("loop"); }
     reg = { a, b }; regionMode = false; words(); changed();
     return;
   }
@@ -978,7 +977,7 @@ async function playTake(t, label){
 async function playFile(f){
   say("reading");
   const ab = await decodeBytes(await f.arrayBuffer());
-  await loadBuffer(ab, f.name.replace(/\.[a-z0-9]+$/i, ""), null);
+  await loadBuffer(ab, "", null);
 }
 
 /* ---------- the band's takes ------------------------------------------------------------------ */
@@ -1019,6 +1018,7 @@ async function loadCatalogue(){
     cursor = j.cursor; if(!cursor) break;
   }
   items.sort((a, b) => a.when < b.when ? 1 : -1);
+  items.forEach((it, i) => { it.n = items.length - i; });   // 1 is the first take ever made
   return items;
 }
 function renderCat(){
@@ -1029,15 +1029,12 @@ function renderCat(){
   }
   for(const it of catItems){
     const b = el("button","item" + (take && take.cid === it.cid ? " cur" : ""));
-    const d = it.when ? new Date(it.when) : null;
-    const ds = d && !isNaN(d) ? d.toLocaleDateString(undefined, { month:"short", day:"numeric" }) + " " +
-      d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" }) : "";
-    const t = (it.text || "").replace(/https?:\/\/\S+/g, "").replace(/\s+/g, " ").trim().slice(0, 70);
-    const dd = el("div","d", ds || it.cid.slice(0, 12)); b.append(dd);
+    const t = (it.text || "").replace(/\S*(?:https?:\/\/|opposite\.city|did:)\S*/g, "").replace(/\s+/g, " ").trim().slice(0, 70);
+    b.append(el("div","d", "take " + it.n));
     if(t) b.append(el("div","t", t));
     b.onclick = async () => {
       closeCat();
-      try{ await playTake({ did:it.did, cid:it.cid }, ds); }
+      try{ await playTake({ did:it.did, cid:it.cid }, "take " + it.n); }
       catch(e){ say(String(e.message || e)); }
     };
     list.append(b);
