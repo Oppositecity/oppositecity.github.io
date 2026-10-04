@@ -665,11 +665,12 @@ function draw(){
   ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
 }
 
+const fmtT = s => Math.floor(s/60) + ":" + (s%60 < 10 ? "0" : "") + (s%60).toFixed(1);
 let hudLast = "";
 function hud(){
   let s;
   if(!buf) s = takeLabel || "";
-  else s = (takeLabel ? takeLabel + "\n" : "") + "×" +
+  else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
            P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
            (playing ? "" : "   stopped") + (loopOn ? "" : "   once");
   if(s !== hudLast){ $("#hud").textContent = s; hudLast = s; }
