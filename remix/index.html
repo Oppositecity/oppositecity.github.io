@@ -41,6 +41,8 @@
     padding:10px 10px;cursor:pointer;line-height:1.45}
   .item .d{letter-spacing:.14em}
   .item.cur{background:#fff;color:#000}
+  #invite{position:absolute;left:0;right:0;bottom:10px;display:none;justify-content:center;flex-wrap:wrap;gap:4px;z-index:3}
+  #pic.listen #note{bottom:66px}
 </style>
 </head>
 <body>
@@ -49,6 +51,7 @@
     <canvas id="cv"></canvas>
     <div id="hud"></div>
     <div id="note"></div>
+    <div id="invite"></div>
     <div id="cat">
       <div id="cathead"></div>
       <div class="wr" id="catwords"></div>
@@ -86,6 +89,11 @@
 
    Nothing here is decoration: if a mark is lit it is telling you where
    something is, how fast, or which way.
+
+   A take opened from a post first plays through as itself, once, over its
+   own picture, with nothing else on the screen. "take it apart" brings the
+   instrument in at the point you were listening to. A link that carries
+   settings skips that and opens the instrument as it was left.
 
    The link is the remix. Every setting lives in the address after the
    take's own id, so whatever you leave on screen is what whoever opens
@@ -397,6 +405,7 @@ let pos = 0, playing = false, holding = false, loopOn = true, reg = { a:0, b:1 }
 let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
 const grains = [];
 let shownPos = 0, take = null, takeLabel = "", job = 0, started = false;
+let rigOpen = false, listening = false, listenEnded = false, lnode = null, lstart = 0, loff = 0;
 
 const CUR_H = new Float32Array(128), CUR_T = new Float32Array(128);
 for(let i=0;i<128;i++){
@@ -632,6 +641,7 @@ function draw(){
   }
   if(latest) shownPos = latest.p;
   if(holding || !(playing)) shownPos = pos;
+  if(listening) shownPos = listenPos();
   const a = reg.a/D*W, b = reg.b/D*W, outside = buf && loopOn;
   for(let y=0;y<H;y++){
     const row = (y&7)*8, row2 = ((y+3)&7)*8;
@@ -670,6 +680,7 @@ let hudLast = "";
 function hud(){
   let s;
   if(!buf) s = takeLabel || "";
+  else if(listening) s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration);
   else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
            P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
            (playing ? "" : "   stopped") + (loopOn ? "" : "   once");
@@ -678,12 +689,89 @@ function hud(){
 
 function frame(){ draw(); hud(); requestAnimationFrame(frame); }
 
+/* ---------- listening: the take, played as itself ------------------------------------ */
+
+function listenStart(from){
+  stopListen();
+  const D = buf.duration;
+  from = Math.max(0, Math.min(D - 0.05, from));
+  const t0 = ac.currentTime + 0.02, rem = D - from;
+  const s = ac.createBufferSource(); s.buffer = buf;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(1, t0 + 0.012);
+  g.gain.setValueAtTime(1, t0 + Math.max(0.013, rem - 0.02));
+  g.gain.linearRampToValueAtTime(0, t0 + rem);
+  s.connect(g); g.connect(master);
+  s.start(t0, from);
+  lstart = t0; loff = from; listenEnded = false;
+  const n = { s, g };
+  s.onended = () => {
+    try{ g.disconnect(); }catch(_){}
+    if(lnode === n){ lnode = null; listenEnded = true; invite(); }
+  };
+  lnode = n; invite();
+}
+function listenPos(){
+  if(!buf) return 0;
+  if(lnode) return Math.min(buf.duration, loff + Math.max(0, ac.currentTime - lstart));
+  return listenEnded ? buf.duration : loff;
+}
+function stopListen(){
+  if(!lnode) return;
+  const { s, g } = lnode, now = ac.currentTime;
+  loff = listenPos(); lnode = null;
+  s.onended = () => { try{ g.disconnect(); }catch(_){} };
+  try{
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(0, now + 0.012);
+    s.stop(now + 0.02);
+  }catch(_){}
+}
+function invite(){
+  $("#invite").style.display = listening ? "flex" : "none";
+  if(I.again) I.again.style.display = listenEnded ? "" : "none";
+}
+const I = {};
+function inviteChrome(){
+  const v = $("#invite");
+  I.again = word(v, "again", () => listenStart(0));
+  I.open  = word(v, "take it apart", () => openRig());
+  I.takes = word(v, "takes", () => openCat());
+  invite();
+}
+function showRig(){
+  listening = false;
+  $("#pic").classList.remove("listen");
+  $("#panel").style.display = "";
+  $("#invite").style.display = "none";
+  build();
+}
+function showListen(){
+  listening = true;
+  $("#pic").classList.add("listen");
+  $("#panel").style.display = "none";
+  build();
+  listenStart(0);
+}
+function openRig(){
+  if(!listening || !buf) return;
+  const D = buf.duration, p = listenPos();
+  stopListen(); rigOpen = true;
+  showRig();
+  pos = p >= D - 0.05 ? reg.a : p;
+  playing = true; nextT = 0; nextS = 0;
+  words();
+}
+
 /* ---------- pointer: hold to freeze, drag to scrub, or draw a loop ---------------- */
 
 let dragging = false, moved = false, lastTap = 0, tapIdx = -1;
 function fx(e){ const r = cv.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)); }
 cv.addEventListener("pointerdown", e => {
   if(!buf) return;
+  if(listening){ listenStart(fx(e)*buf.duration); return; }
   cv.setPointerCapture(e.pointerId);
   dragging = true; moved = false;
   const D = buf.duration, t = fx(e)*D;
@@ -802,6 +890,7 @@ function words(){
 function toggle(){
   if(!buf) return;
   if(ac.state === "suspended") ac.resume();
+  if(listening){ if(lnode) stopListen(); else listenStart(listenEnded ? 0 : loff); return; }
   if(!playing && !loopOn){
     if(P.sp >= 0 && pos >= buf.duration - 0.01) pos = 0;
     if(P.sp < 0 && pos <= 0.01) pos = buf.duration;
@@ -944,6 +1033,7 @@ function makeSlices(){
 
 async function loadBuffer(abuf, label, t){
   const mine = ++job;
+  stopListen(); listening = false; listenEnded = false;
   playing = false; holding = false; grains.length = 0;
   buf = null; TL = null; base = null; take = t || null; takeLabel = label || "";
   words();
@@ -960,9 +1050,9 @@ async function loadBuffer(abuf, label, t){
     loopOn = pending.lo; pending = null;
   }
   pos = P.sp < 0 ? reg.b : reg.a;
-  computeBase();
   if(ac.state === "suspended") await ac.resume();
-  playing = true; nextT = 0; nextS = 0;
+  if(rigOpen){ showRig(); playing = true; nextT = 0; nextS = 0; }
+  else showListen();
   words(); say("");
   if(take) writeHash();
 }
@@ -978,6 +1068,7 @@ async function playTake(t, label){
 async function playFile(f){
   say("reading");
   const ab = await decodeBytes(await f.arrayBuffer());
+  rigOpen = true;
   await loadBuffer(ab, "", null);
 }
 
@@ -1079,12 +1170,14 @@ function start(){
   started = true;
   const g = $("#gate"); if(g) g.remove();
   buildGraph();
-  panel(); catChrome(); build();
+  if(!rigOpen){ $("#panel").style.display = "none"; $("#pic").classList.add("listen"); }
+  panel(); catChrome(); inviteChrome(); build();
   requestAnimationFrame(frame);
 }
 async function begin(){
-  start();
   const t = parseHash();
+  rigOpen = !!t && [...t.q.keys()].length > 0;
+  start();
   if(t){
     applyParams(t.q);
     try{ await playTake({ did:t.did, cid:t.cid }, ""); }
@@ -1096,6 +1189,7 @@ addEventListener("hashchange", async () => {
   if(!started) return;
   const t = parseHash();
   if(t && (!take || take.cid !== t.cid)){
+    if([...t.q.keys()].length) rigOpen = true;
     applyParams(t.q);
     try{ await playTake({ did:t.did, cid:t.cid }, ""); }catch(e){ say(String(e.message || e)); }
   }
