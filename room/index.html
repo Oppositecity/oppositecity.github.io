@@ -10,9 +10,9 @@
 <style>
 :root{
   --void:#0a0e13;
-  --air:#eef4f7;
-  --dim:#66757f;
-  --sig:#8fb8c9;
+  --air:#f6f9fb;
+  --soft:#dde8ed;
+  --sig:#a6e1f7;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
@@ -31,29 +31,26 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:3rem 1.5rem 9.5rem;
+  padding:3rem 1.5rem 12rem;
 }
 
-#field{
-  position:relative;
+/* One text, one slot per token. A slot holds the word it was and the word
+   it is becoming in the same place; the two blur into each other there. */
+#text{
   width:100%;
   max-width:36em;
-}
-
-.pass{
-  position:absolute;
-  top:50%;
-  left:0;
-  right:0;
-  transform:translateY(-50%);
   font-size:clamp(1rem,2.7vw,1.22rem);
   line-height:1.95;
-  letter-spacing:.01em;
-  will-change:opacity,transform;
 }
-
-#current{color:var(--air)}
-#incoming{color:var(--air);opacity:0}
+.chunk{white-space:nowrap}
+.slot{
+  display:inline-grid;
+  justify-items:center;
+  cursor:pointer;
+}
+.slot>span{grid-area:1/1;white-space:pre;will-change:filter,opacity}
+.slot>.b{opacity:0}
+.slot.sel{color:var(--sig)}
 
 #panel{
   position:fixed;
@@ -62,24 +59,44 @@ body{
   z-index:5;
   display:flex;
   flex-direction:column;
-  gap:.85rem;
-  font-size:.68rem;
-  letter-spacing:.2em;
-  text-transform:uppercase;
-  color:var(--dim);
+  gap:.8rem;
+  font-size:.82rem;
+  letter-spacing:.06em;
+  color:var(--soft);
 }
-#line{display:flex;gap:1.3rem;align-items:baseline}
+#line{display:flex;gap:1.3rem;align-items:baseline;flex-wrap:wrap;row-gap:.3rem}
 #count{color:var(--sig);white-space:nowrap}
-#status{color:var(--sig);opacity:0;transition:opacity .4s ease}
+#status{color:var(--air);opacity:0;transition:opacity .4s ease}
 #status.show{opacity:1}
-#rooms,#deck{display:flex;gap:1.15rem;flex-wrap:wrap;row-gap:.6rem}
+#rooms,#deck{display:flex;gap:1.3rem;flex-wrap:wrap;row-gap:.6rem}
 
-.act{cursor:pointer;color:var(--dim);background:none;border:0;font:inherit;letter-spacing:.2em;text-transform:uppercase;padding:0}
+.act{cursor:pointer;color:var(--soft);background:none;border:0;font:inherit;letter-spacing:inherit;padding:0}
 .act:hover,.act:focus-visible{color:var(--air)}
 .act.on{color:var(--sig)}
-.act:focus-visible{outline:2px solid var(--sig);outline-offset:4px}
+.act:focus-visible,.step:focus-visible{outline:2px solid var(--sig);outline-offset:4px}
 
-#editor{
+/* the lineage of one word, pass by pass */
+#trace{
+  display:none;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:.35rem .7rem;
+  max-height:8.5em;
+  overflow-y:auto;
+  touch-action:pan-y;
+  font-size:.95rem;
+  letter-spacing:0;
+  line-height:1.6;
+  color:var(--air);
+}
+#trace.open{display:flex}
+.step{background:none;border:0;font:inherit;color:var(--air);cursor:pointer;padding:0;text-align:left}
+.step small{font-size:.78em;color:var(--soft);margin-left:.5em}
+.step.now,.step.now small{color:var(--sig)}
+.to{color:var(--soft)}
+.note{color:var(--air)}
+
+.sheet{
   position:fixed;
   inset:0;
   background:var(--void);
@@ -89,57 +106,84 @@ body{
   padding:2rem 1.5rem;
   gap:1.5rem;
 }
-#editor.open{display:flex}
+.sheet.open{display:flex}
+
 #editor textarea{
   flex:1;
   width:100%;
   max-width:36em;
   margin:0 auto;
+  padding:1rem;
   background:transparent;
-  border:0;
+  border:1px solid var(--soft);
   outline:0;
   resize:none;
   color:var(--air);
   font-family:inherit;
   font-size:clamp(1rem,2.7vw,1.18rem);
   line-height:1.9;
+  touch-action:auto;
 }
-#editor textarea{touch-action:auto}
-#editor textarea::placeholder{color:var(--dim)}
-#editcontrols{display:flex;gap:1.6rem;justify-content:center}
+#editor textarea:focus{border-color:var(--sig)}
+#editor textarea::placeholder{color:var(--soft)}
+.sheetcontrols{display:flex;gap:1.6rem;justify-content:center;font-size:.9rem}
 
-@media (prefers-reduced-motion:reduce){
-  .pass{transition:none!important}
-}
+#how{overflow-y:auto;touch-action:pan-y}
+#how .body{max-width:34em;margin:0 auto;font-size:1rem;line-height:1.75}
+#how p{margin-bottom:1.25em}
+#how .room{color:var(--sig)}
+#how .wall{color:var(--air)}
 </style>
 </head>
 <body>
 
 <div id="stage">
-  <div id="field">
-    <div class="pass" id="current"></div>
-    <div class="pass" id="incoming"></div>
-  </div>
+  <div id="text"></div>
 </div>
 
 <div id="panel">
+  <div id="trace" aria-live="polite"></div>
   <div id="line">
-    <span id="count">pass 00</span>
-    <span id="status">scroll to play it back into the room</span>
+    <span id="count">pass 00 of 24</span>
+    <span id="status"></span>
   </div>
   <div id="rooms"></div>
   <div id="deck">
     <button class="act" id="editBtn">text</button>
     <button class="act" id="againBtn">again</button>
     <button class="act" id="copyBtn">copy</button>
+    <button class="act" id="howBtn">how it works</button>
   </div>
 </div>
 
-<div id="editor">
+<div class="sheet" id="editor">
   <textarea id="ta" spellcheck="false" placeholder="speak into the room"></textarea>
-  <div id="editcontrols">
+  <div class="sheetcontrols">
     <button class="act on" id="applyBtn">record</button>
     <button class="act" id="cancelBtn">cancel</button>
+  </div>
+</div>
+
+<div class="sheet" id="how">
+  <div class="body">
+    <p>After Alvin Lucier, who recorded himself speaking in a room and played the recording back into the room until the room's resonance had eaten the words. Here the room is a thesaurus.</p>
+    <p>Each scroll plays the text back into the room one more time. Every word is answered by a neighbour, and the neighbour takes its place.</p>
+    <p>Small words are walls: the, of, I, is, and, in. They never drift. They are the shape the drifting happens inside.</p>
+    <p>A replacement keeps the ending of the word it replaces (-ing, -ed, -s, -ly) and close to its syllable count, so the rhythm holds while the sense drains.</p>
+    <p>A word that appears twice is answered the same way both times. Repetition is what reinforces.</p>
+    <p>Early passes keep to common words. Rarer ones are let in as the tape goes on.</p>
+    <p>From pass 6 the punctuation wears away, from pass 10 the capitals, and from pass 16 neighbouring words begin to trade places.</p>
+    <p>The rooms answer differently.<br>
+      <span class="room">close</span> answers with synonyms first.<br>
+      <span class="room">large</span> with words that mean something like it.<br>
+      <span class="room">hall</span> with words it calls up.<br>
+      <span class="room">tiled</span> by sound, not sense.</p>
+    <p>Scrolling back replays the tape. It never plays it again. Changing rooms keeps what has been played so far and erases the rest. Again records a new tape.</p>
+    <p>Tap any word to see every word that stood in its place, which relation brought each one, and on which pass. Tap a step to go back to it.</p>
+    <p>The answers come from Datamuse, a free word-relation service, so the room needs a connection.</p>
+  </div>
+  <div class="sheetcontrols">
+    <button class="act on" id="howClose">close</button>
   </div>
 </div>
 
@@ -170,8 +214,8 @@ const WALLS = new Set(('a an the this that these those i me my myself you your w
 'what which who whom whose when where why how there here now').split(' '));
 
 const el = id => document.getElementById(id);
-const current=el('current'), incoming=el('incoming'), countEl=el('count'),
-      statusEl=el('status'), roomsEl=el('rooms'), editor=el('editor'), ta=el('ta');
+const textEl=el('text'), traceEl=el('trace'), countEl=el('count'), statusEl=el('status'),
+      roomsEl=el('rooms'), editor=el('editor'), how=el('how'), ta=el('ta');
 
 let S = null;
 let hinted = false;
@@ -341,13 +385,13 @@ async function reply(tok, room, rnd, used, pass){
           cands.sort((a,b) => b.f - a.f);
           const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.5) * cands.length));
           used.add(cands[i].w.toLowerCase());
-          return cands[i].w;
+          return { w:cands[i].w, via:param };
         }
       }
     }
   }
   const l = local(tok, room, rnd, used);
-  return l ? inflect(l, tag) : null;
+  return l ? { w:inflect(l, tag), via:'local' } : null;
 }
 
 async function pool(items, n, fn){
@@ -358,7 +402,9 @@ async function pool(items, n, fn){
 }
 
 async function playBack(tokens, room, rnd, pass){
-  const next = tokens.map(t => t.k==='w' ? {...t, hist:new Set(t.hist)} : {...t});
+  const next = tokens.map(t => t.k==='w'
+    ? {...t, hist:new Set(t.hist), via:null, moved:false}
+    : {...t, via:null, moved:false});
   const live = next.filter(t => t.k==='w' && !t.wall);
   const used = new Set(next.filter(t => t.k==='w').map(t => t.v.toLowerCase()));
   // the same word answers the same way — repetition is what reinforces
@@ -368,30 +414,33 @@ async function playBack(tokens, room, rnd, pass){
     if(!memo.has(key)) memo.set(key, reply(t, room, rnd, used, pass));
     const r = await memo.get(key);
     if(r){
-      used.add(r.toLowerCase());
-      t.v = t.cap ? r[0].toUpperCase()+r.slice(1) : r;
-      t.hist.add(r.toLowerCase());
+      used.add(r.w.toLowerCase());
+      t.v = t.cap ? r.w[0].toUpperCase()+r.w.slice(1) : r.w;
+      t.hist.add(r.w.toLowerCase());
+      t.via = r.via;
     }
   });
   return next;
 }
 
 // ── erosion: rhythm survives, grammar does not ─────────────────────
+// Erosion is now part of the tape, not a filter over it: what wears away
+// stays worn away, and every later pass is played back from the worn text.
 const clamp01 = x => Math.max(0, Math.min(1, x));
 
-function erode(tokens, pass, rnd){
-  const t = tokens.map(x => ({k:x.k, v:x.v, wall:x.wall}));
-  const comma = clamp01((pass-6)/9);
-  const stop  = clamp01((pass-12)/9);
-  const lower = clamp01((pass-10)/9);
-  const swap  = clamp01((pass-16)/9) * 0.35;
+function erode(t, pass, rnd){
+  const comma = clamp01((pass-6)/9)  * 0.3;
+  const stop  = clamp01((pass-12)/9) * 0.3;
+  const lower = clamp01((pass-10)/9) * 0.3;
+  const swap  = clamp01((pass-16)/8) * 0.1;
 
   for(const x of t){
-    if(x.k==='p'){
-      if(/^[,;:]+$/.test(x.v) && rnd() < comma) x.v='';
-      else if(/^[.!?]+$/.test(x.v) && rnd() < stop) x.v='';
-    } else if(x.k==='w'){
-      if(rnd() < lower) x.v = x.v.toLowerCase();
+    if(x.k==='p' && !x.gone){
+      if((/^[,;:]+$/.test(x.v) && rnd() < comma) || (/^[.!?]+$/.test(x.v) && rnd() < stop)){
+        x.gone = true; x.via = 'worn';
+      }
+    } else if(x.k==='w' && x.cap && rnd() < lower){
+      x.cap = false; x.v = x.v.toLowerCase();
     }
   }
   // adjacent transposition: same pulse, no sense
@@ -399,17 +448,36 @@ function erode(tokens, pass, rnd){
   for(let n=0;n<idx.length-1;n++){
     if(rnd() < swap){
       const a=idx[n], b=idx[n+1];
-      const tmp=t[a].v; t[a].v=t[b].v; t[b].v=tmp;
+      const tmp=t[a]; t[a]=t[b]; t[b]=tmp;
+      t[a].moved = t[b].moved = true;
       n++;
     }
   }
-  return t.map(x=>x.v).join('')
-    .replace(/ {2,}/g,' ')
-    .replace(/ ([,.;:!?])/g,'$1')
-    .replace(/\b([Aa])n?\b(\s+)([a-z])/gi, (m,art,sp,ch) => art + (/[aeiou]/i.test(ch) ? 'n' : '') + sp + ch)
-    .replace(/(^|[.!?]\s+)([a-z])/g, (m,a,b) => a + b.toUpperCase())
-    .trim();
 }
+
+// What a pass looks like, slot by slot. Spaces never move, so slot i is
+// the same place in every pass, and a word's lineage is just column i.
+function display(t){
+  const out = t.map(x => x.k==='sp' ? ' ' : (x.k==='p' && x.gone) ? '' : x.v);
+  for(let i=0;i<t.length;i++){
+    if(t[i].k!=='w') continue;
+    const l = out[i].toLowerCase();
+    if(l!=='a' && l!=='an') continue;
+    let j=i+1;
+    while(j<t.length && (t[j].k==='sp' || out[j]==='')) j++;
+    if(j<t.length && t[j].k==='w') out[i] = /^[aeiou]/i.test(out[j]) ? 'an' : 'a';
+  }
+  let start = true;
+  for(let i=0;i<t.length;i++){
+    if(t[i].k==='w'){
+      if(start && out[i]) out[i] = out[i][0].toUpperCase()+out[i].slice(1);
+      start = false;
+    } else if(t[i].k==='p' && /[.!?]$/.test(out[i])) start = true;
+  }
+  return out;
+}
+
+const textOf = d => d.join('').replace(/ {2,}/g,' ').replace(/ ([,.;:!?])/g,'$1').trim();
 
 // ── the tape ───────────────────────────────────────────────────────
 // Each pass is still generated once and only once, in order. Scrolling
@@ -419,79 +487,204 @@ function fresh(text){
   if(self.crypto && crypto.getRandomValues){
     seed = (seed ^ crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
   }
+  const first = tokenize(text).map(t => ({...t, via:null, moved:false}));
   return {
     text,
-    states: [tokenize(text)],
-    rendered: [text],
+    states: [first],
+    disp: [display(first)],
     top: 0,
     room: 'close',
     rnd: mulberry32(seed),
-    pending: null
+    pending: null,
+    stalls: 0
   };
 }
 
-let pos = 0, target = 0, raf = null, lastIndex = -1;
+const VIA = {
+  rel_syn:'synonym', ml:'means something like it', rel_trg:'called up by it',
+  sl:'sounds like it', rel_hom:'sounds the same', rel_cns:'same consonants',
+  worn:'worn away', local:'from memory'
+};
+const ROOM_SAYS = {
+  close:'close room. answers with synonyms first.',
+  large:'large room. answers with words that mean something like it.',
+  hall:'hall. answers with words it calls up.',
+  tiled:'tiled room. answers by sound, not sense.'
+};
+const HINT = 'scroll to play it back into the room. tap a word to trace it.';
+const BLUR = 0.45;   // em, at the height of the crossing
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let pos = 0, target = 0, raf = null;
+let slotEls = [], changed = [], lastA = -1, lastB = null, lastCp = -1, sel = null;
 const smooth = t => t*t*(3-2*t);
 
 function say(msg, latch){
   statusEl.textContent = msg;
   statusEl.classList.add('show');
   clearTimeout(say._t);
-  if(!latch) say._t = setTimeout(()=>statusEl.classList.remove('show'), 3600);
+  if(!latch) say._t = setTimeout(()=>statusEl.classList.remove('show'), 4200);
 }
 
 function prepare(){
   if(!S || S.pending || S.top >= PASSES) return;
-  const from = S.states[S.top], room = S.room, at = S.top + 1;
-  const before = S.rendered[S.top];
-  const job = playBack(from, room, S.rnd, at).then(tokens => ({
-    tokens, text: erode(tokens, at, S.rnd), at
-  }));
+  const from = S.states[S.top], room = S.room, at = S.top + 1, rnd = S.rnd;
+  const before = textOf(S.disp[S.top]);
+  const job = playBack(from, room, rnd, at).then(tokens => {
+    erode(tokens, at, rnd);
+    return { tokens, disp: display(tokens), at };
+  });
   S.pending = job;
   job.then(r => {
     if(S.pending !== job) return;
     S.pending = null;
     if(r.at !== S.top + 1) return;
 
-    if(offline){ say('no connection — the room cannot answer', true); return; }
+    if(offline){ say('no connection. the room cannot answer.', true); return; }
 
     // Nothing moved. Say so rather than committing the same text twice.
-    if(r.text === before){
-      S.stalls = (S.stalls || 0) + 1;
-      say(S.stalls > 2 ? 'the room has stopped answering' : 'the room did not answer — scroll again');
+    if(textOf(r.disp) === before){
+      S.stalls++;
+      say(S.stalls > 2 ? 'the room has stopped answering' : 'the room did not answer. scroll again.');
       return;
     }
     S.stalls = 0;
     S.states[r.at] = r.tokens;
-    S.rendered[r.at] = r.text;
+    S.disp[r.at] = r.disp;
     S.top = r.at;
     render();
+    renderTrace();
   }, () => { if(S.pending === job) S.pending = null; });
 }
 
-function render(){
-  const a = Math.max(0, Math.min(Math.floor(pos), S.top));
-  const f = Math.max(0, Math.min(1, pos - a));
+// ── the text as slots ──────────────────────────────────────────────
+function build(){
+  textEl.textContent = '';
+  slotEls = [];
+  let chunk = null;
+  S.states[0].forEach((x, i) => {
+    if(x.k === 'sp'){
+      textEl.appendChild(document.createTextNode(' '));
+      chunk = null; slotEls[i] = null;
+      return;
+    }
+    // a word and the punctuation touching it never break across lines
+    if(!chunk){ chunk = document.createElement('span'); chunk.className = 'chunk'; textEl.appendChild(chunk); }
+    const s = document.createElement('span');
+    s.className = 'slot';
+    s.dataset.i = i;
+    s.append(document.createElement('span'), document.createElement('span'));
+    s.firstChild.className = 'a'; s.lastChild.className = 'b';
+    chunk.appendChild(s);
+    slotEls[i] = s;
+  });
+  lastA = -1; lastB = null;
+}
 
-  if(a !== lastIndex){
-    current.textContent = S.rendered[a] || '';
-    incoming.textContent = S.rendered[a+1] || '';
-    lastIndex = a;
-  } else if(incoming.textContent === '' && S.rendered[a+1]){
-    incoming.textContent = S.rendered[a+1];
+function render(){
+  if(!S) return;
+  const a = Math.max(0, Math.min(Math.floor(pos), S.top));
+  const f = a >= S.top ? 0 : Math.max(0, Math.min(1, pos - a));
+  const A = S.disp[a], B = S.disp[a+1] || A;
+
+  if(a !== lastA || B !== lastB){
+    changed = [];
+    slotEls.forEach((s, i) => {
+      if(!s) return;
+      const sa = s.firstChild, sb = s.lastChild;
+      sa.textContent = A[i]; sb.textContent = B[i];
+      if(A[i] !== B[i]) changed.push(i);
+      else { s.style.width = ''; sa.style.cssText = ''; sb.style.cssText = 'opacity:0'; }
+    });
+    lastA = a; lastB = B;
   }
 
-  // a long dissolve, never two legible texts at once
-  const out = smooth(Math.min(1, f/0.55));
-  const inn = smooth(Math.max(0, (f-0.45)/0.55));
-  current.style.opacity = String(1 - out);
-  current.style.transform = 'translateY(calc(-50% - ' + (9*out).toFixed(2) + 'px))';
-  incoming.style.opacity = String(inn);
-  incoming.style.transform = 'translateY(calc(-50% + ' + (9*(1-inn)).toFixed(2) + 'px))';
+  // Only the words that move this pass are touched. The walls stay sharp.
+  // Each moving word goes out of focus where it stands while its
+  // replacement comes into focus in the same place; at the crossing both
+  // are smeared together and neither can be read.
+  const e = smooth(f);
+  for(const i of changed){
+    const s = slotEls[i], sa = s.firstChild, sb = s.lastChild;
+    const la = A[i].length, lb = B[i].length;
+    s.style.width = (la + (lb - la) * e).toFixed(3) + 'ch';
+    if(REDUCED){
+      sa.style.opacity = f < .5 ? '1' : '0';
+      sb.style.opacity = f < .5 ? '0' : '1';
+      continue;
+    }
+    const ba = BLUR * smooth(clamp01(f / .6));
+    const bb = BLUR * smooth(clamp01((1 - f) / .6));
+    sa.style.opacity = (1 - smooth(clamp01((f - .3) / .7))).toFixed(3);
+    sb.style.opacity = smooth(clamp01(f / .7)).toFixed(3);
+    sa.style.filter = ba < .005 ? 'none' : 'blur(' + ba.toFixed(3) + 'em)';
+    sb.style.filter = bb < .005 ? 'none' : 'blur(' + bb.toFixed(3) + 'em)';
+  }
 
-  countEl.textContent = 'pass ' + String(Math.round(pos)).padStart(2,'0');
+  const cp = Math.round(pos);
+  countEl.textContent = 'pass ' + String(cp).padStart(2,'0') + ' of ' + PASSES;
   [...roomsEl.children].forEach(b => b.classList.toggle('on', b.dataset.room===S.room));
+  if(cp !== lastCp){ lastCp = cp; renderTrace(); }
 }
+
+// ── the trace: every word that has stood in one place ──────────────
+function renderTrace(){
+  slotEls.forEach((s, i) => s && s.classList.toggle('sel', i === sel));
+  if(sel === null || !S){ traceEl.classList.remove('open'); traceEl.textContent = ''; return; }
+  const i = sel, cp = Math.round(pos), steps = [];
+
+  for(let p = 0; p <= S.top; p++){
+    const w = S.disp[p][i], tok = S.states[p][i];
+    if(p === 0){ steps.push({ p, w, label:'spoken' }); continue; }
+    const prev = steps[steps.length-1];
+    if(w.toLowerCase() === prev.w.toLowerCase() && !tok.moved) continue;
+    const parts = [];
+    if(tok.via) parts.push(VIA[tok.via] || tok.via);
+    if(tok.moved) parts.push('traded places');
+    if(!parts.length) parts.push('agrees with the next word');
+    steps.push({ p, w, label: parts.join(', ') + ', pass ' + p });
+  }
+
+  traceEl.textContent = '';
+  traceEl.classList.add('open');
+
+  if(steps.length === 1){
+    const t0 = S.states[0][i], w = steps[0].w;
+    const n = document.createElement('span');
+    n.className = 'note';
+    n.textContent =
+      t0.wall ? w + ' is a wall. small words never drift; they are the shape the drifting happens inside.'
+      : t0.k === 'p' ? 'punctuation. it begins to wear away at pass 6.'
+      : S.top === 0 ? 'scroll to hear what the room answers ' + w + ' with.'
+      : 'the room has not found anything to answer ' + w + ' with yet.';
+    traceEl.appendChild(n);
+    return;
+  }
+
+  let now = 0;
+  steps.forEach((st, k) => { if(st.p <= cp) now = k; });
+  steps.forEach((st, k) => {
+    if(k){ const to = document.createElement('span'); to.className = 'to'; to.textContent = '→'; traceEl.appendChild(to); }
+    const b = document.createElement('button');
+    b.className = 'step' + (k === now ? ' now' : '');
+    b.textContent = st.w || '(gone)';
+    const sm = document.createElement('small');
+    sm.textContent = st.label;
+    b.appendChild(sm);
+    b.onclick = () => { target = st.p; nudge(); };
+    traceEl.appendChild(b);
+  });
+  const nowEl = traceEl.querySelector('.now');
+  if(nowEl) nowEl.scrollIntoView({ block:'nearest' });
+}
+
+el('stage').addEventListener('click', e => {
+  const s = e.target.closest('.slot');
+  const i = s ? +s.dataset.i : null;
+  sel = (i === null || i === sel) ? null : i;
+  if(sel !== null && !hinted){ hinted = true; statusEl.classList.remove('show'); }
+  renderTrace();
+});
 
 function loop(){
   const d = target - pos;
@@ -501,7 +694,7 @@ function loop(){
     raf = null;
     return;
   }
-  pos += d * 0.08;          // slow — the fade is the piece
+  pos += d * 0.08;          // slow — the crossing is the piece
   render();
   raf = requestAnimationFrame(loop);
 }
@@ -520,16 +713,21 @@ function push(d){
 }
 
 // ── input: both directions, but the drift only happens once ────────
+const inTrace = e => !!(e.target && e.target.closest && e.target.closest('#trace'));
+const sheetOpen = () => editor.classList.contains('open') || how.classList.contains('open');
+
 addEventListener('wheel', e => {
-  if(editor.classList.contains('open')) return;
+  if(sheetOpen() || inTrace(e)) return;
   e.preventDefault();
   push(e.deltaY);
 }, {passive:false});
 
 let lastY = null;
-addEventListener('touchstart', e => { lastY = e.touches[0].clientY; }, {passive:true});
+addEventListener('touchstart', e => {
+  lastY = (sheetOpen() || inTrace(e)) ? null : e.touches[0].clientY;
+}, {passive:true});
 addEventListener('touchmove', e => {
-  if(lastY === null || editor.classList.contains('open')) return;
+  if(lastY === null || sheetOpen()) return;
   const y = e.touches[0].clientY;
   push((lastY - y) * 2.4);
   lastY = y;
@@ -537,7 +735,12 @@ addEventListener('touchmove', e => {
 addEventListener('touchend', () => { lastY = null; });
 
 addEventListener('keydown', e => {
-  if(editor.classList.contains('open')) return;
+  if(e.key === 'Escape'){
+    if(sheetOpen()){ editor.classList.remove('open'); how.classList.remove('open'); }
+    else { sel = null; renderTrace(); }
+    return;
+  }
+  if(sheetOpen()) return;
   if(e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' '){ e.preventDefault(); push(CHARGE/3); }
   if(e.key === 'ArrowUp' || e.key === 'PageUp'){ e.preventDefault(); push(-CHARGE/3); }
 });
@@ -549,13 +752,18 @@ Object.keys(ROOMS).forEach(name => {
   b.dataset.room = name;
   b.textContent = name;
   b.onclick = () => {
+    if(name === S.room){ say(ROOM_SAYS[name]); return; }
+    const keep = Math.max(0, Math.floor(pos));
+    const cut = S.top > keep;
     S.room = name;
     S.pending = null;
-    S.top = Math.max(0, Math.floor(pos));
-    S.states.length = S.rendered.length = S.top + 1;
+    S.top = keep;
+    S.states.length = S.disp.length = S.top + 1;
     target = Math.min(target, S.top);
-    lastIndex = -1;
+    lastA = -1;
     render();
+    renderTrace();
+    say(ROOM_SAYS[name] + (cut ? ' the tape after pass ' + keep + ' was erased.' : ''));
     nudge();
   };
   roomsEl.appendChild(b);
@@ -571,21 +779,25 @@ el('applyBtn').onclick = () => {
 };
 el('againBtn').onclick = () => start(S.text);
 el('copyBtn').onclick = () => {
-  navigator.clipboard.writeText(S.rendered[Math.round(pos)] || S.text).then(
+  navigator.clipboard.writeText(textOf(S.disp[Math.min(S.top, Math.round(pos))])).then(
     () => say('copied'),
     () => say('could not copy')
   );
 };
+el('howBtn').onclick = () => { how.classList.add('open'); how.scrollTop = 0; el('howClose').focus(); };
+el('howClose').onclick = () => how.classList.remove('open');
 
 // ── start ──────────────────────────────────────────────────────────
 function start(text){
   hinted = false;
   S = fresh(text);
+  sel = null;
   pos = target = 0;
-  lastIndex = -1;
-  incoming.textContent = '';
+  lastCp = -1;
+  build();
   render();
-  say('scroll to play it back into the room', true);
+  renderTrace();
+  say(HINT, true);
   prepare();
 }
 
