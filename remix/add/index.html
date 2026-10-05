@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="noindex">
+<title>add a take</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#000;color:#fff}
+  body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:15px;line-height:1.5;
+    max-width:560px;margin:0 auto;padding:18px 16px calc(28px + env(safe-area-inset-bottom))}
+  h1{font:inherit;letter-spacing:.3em;margin:0}
+  .sub{font-size:13px;letter-spacing:.2em;margin:2px 0 24px}
+  section{margin:0 0 28px}
+  label{display:block;letter-spacing:.12em;margin:12px 0 4px}
+  input[type=text],input[type=password],textarea{width:100%;font:inherit;color:#fff;background:#000;
+    border:1px solid #fff;border-radius:0;padding:10px;outline:none;-webkit-appearance:none}
+  textarea{resize:vertical;min-height:64px}
+  .wr{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin-top:8px}
+  .w{font:inherit;letter-spacing:.14em;color:#fff;background:#000;border:0;padding:10px 12px;cursor:pointer}
+  .w.on{background:#fff;color:#000}
+  a{color:#fff}
+  #env{display:block;width:100%;height:96px;image-rendering:pixelated;margin-top:12px}
+  .big{font-size:22px;letter-spacing:.12em}
+  #status{min-height:1.5em;letter-spacing:.1em}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<h1>ADD A TAKE</h1>
+<div class="sub">THE RAIN IS WATCHING BASEBALL · <a href="/remix/">takes</a></div>
+
+<!-- who is posting -->
+<section id="in">
+  <label for="handle">account</label>
+  <input type="text" id="handle" autocomplete="username" autocapitalize="off" spellcheck="false" value="rainwatchbaseball.bsky.social">
+  <label for="pw">app password</label>
+  <input type="password" id="pw" autocomplete="current-password">
+  <div class="wr"><button class="w" id="signin">sign in</button><button class="w" id="remember"></button></div>
+  <div style="margin-top:8px">an app password, not the account password. <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener">make one</a></div>
+</section>
+<section id="who" hidden>
+  <div>posting as <span id="whoname"></span></div>
+  <div class="wr"><button class="w" id="signout">sign out</button></div>
+</section>
+
+<!-- getting the sound -->
+<section id="cap">
+  <div class="wr"><button class="w" id="rec">record</button><button class="w" id="pick">choose a file</button></div>
+  <div class="big" id="clock" hidden></div>
+</section>
+<canvas id="env" hidden></canvas>
+
+<!-- the take, before it goes -->
+<section id="ready" hidden>
+  <div id="what"></div>
+  <div class="wr"><button class="w" id="listen">listen</button><button class="w" id="discard">discard</button></div>
+  <label for="caption">words with it, if any</label>
+  <textarea id="caption" maxlength="240"></textarea>
+  <div class="wr"><button class="w" id="post">post</button></div>
+</section>
+
+<!-- after -->
+<section id="done" hidden>
+  <div>posted.</div>
+  <div class="wr"><a class="w" id="openit" href="#">take it apart</a><a class="w" id="thepost" href="#" target="_blank" rel="noopener">the post</a></div>
+  <div class="wr"><button class="w" id="again">add another</button></div>
+</section>
+
+<div id="status"></div>
+<input type="file" id="file" accept="audio/*,video/*" hidden>
+
+<script>
+"use strict";
+/* =====================================================================
+   ADD A TAKE. A second way in, next to the recorder: record on the phone
+   or pick a file, and it goes to the account the same way the recorder's
+   takes do.
+
+   The audio is turned into the recorder's own format before it leaves:
+   one channel, 22050 Hz, IMA ADPCM behind the "OCA1" marker. So every
+   take is small (about 11 KB a second), plays in any browser through the
+   remix page's own decoder, and sounds like the other takes do. "listen"
+   plays the encoded bytes, so what you hear is what gets posted.
+
+   Posting writes three things to the account:
+     1. the audio, as a blob
+     2. a city.opposite.take record holding that blob, so the server keeps
+        it (a blob nothing points at gets thrown away)
+     3. a post whose words link to the take on the remix page, so it shows
+        up in the feed and in the remix page's list of takes
+
+   Sign-in uses an app password. The page keeps the session in memory; it
+   only stores anything if "remember this phone" is on, and then it stores
+   the session token, never the password. Every page on this site shares
+   one browser storage, so remembering is a convenience with that cost.
+ ==================================================================== */
+
+const $ = s => document.querySelector(s);
+const RATE = 22050;
+const KEY = "remix.add.session";
+let S = null, remember = false;
+let ac = null, take = null;
+
+function say(s){ $("#status").textContent = s || ""; }
+function ctx(){
+  if(!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if(ac.state === "suspended") ac.resume();
+  return ac;
+}
+
+/* ---------- the recorder's format ---------------------------------------- */
+
+const STEP = new Int32Array([
+  7,8,9,10,11,12,13,14,16,17,19,21,23,25,28,31,34,37,41,45,50,55,60,66,73,
+  80,88,97,107,118,130,143,157,173,190,209,230,253,279,307,337,371,408,449,
+  494,544,598,658,724,796,876,963,1060,1166,1282,1411,1552,1707,1878,2066,
+  2272,2499,2749,3024,3327,3660,4026,4428,4871,5358,5894,6484,7132,7845,
+  8630,9493,10442,11487,12635,13899,15289,16818,18500,20350,22385,24623,
+  27086,29794,32767]);
+const INDEX = new Int32Array([-1,-1,-1,-1,2,4,6,8]);
+
+function encodeADPCM(pcm, rate){
+  const n = pcm.length, out = new Uint8Array(12 + ((n + 1) >> 1));
+  out.set([79, 67, 65, 49]);
+  const dv = new DataView(out.buffer);
+  dv.setUint32(4, rate, true); dv.setUint32(8, n, true);
+  let pred = 0, index = 0;
+  for(let i=0;i<n;i++){
+    const s = Math.round(Math.max(-1, Math.min(1, pcm[i]))*32767);
+    const step = STEP[index];
+    let diff = s - pred, code = 0, q = step >> 3;
+    if(diff < 0){ code = 8; diff = -diff; }
+    if(diff >= step){ code |= 4; diff -= step; q += step; }
+    if(diff >= (step >> 1)){ code |= 2; diff -= step >> 1; q += step >> 1; }
+    if(diff >= (step >> 2)){ code |= 1; q += step >> 2; }
+    pred += (code & 8) ? -q : q;
+    if(pred > 32767) pred = 32767;
+    if(pred < -32768) pred = -32768;
+    index += INDEX[code & 7];
+    if(index < 0) index = 0;
+    if(index > 88) index = 88;
+    const k = 12 + (i >> 1);
+    if(i & 1) out[k] |= code << 4; else out[k] = code;
+  }
+  return out;
+}
+function decodeADPCM(bytes){
+  const b = new Uint8Array(bytes);
+  if(b[0]!==79 || b[1]!==67 || b[2]!==65 || b[3]!==49) return null;
+  const rate = new DataView(bytes).getUint32(4, true);
+  const n = (b.length - 12) * 2, out = new Float32Array(n);
+  let pred = 0, index = 0;
+  for(let i=0;i<n;i++){
+    const byte = b[12 + (i >> 1)], code = (i & 1) ? (byte >> 4) : (byte & 15), step = STEP[index];
+    let q = step >> 3;
+    if(code & 4) q += step;
+    if(code & 2) q += step >> 1;
+    if(code & 1) q += step >> 2;
+    pred += (code & 8) ? -q : q;
+    if(pred > 32767) pred = 32767;
+    if(pred < -32768) pred = -32768;
+    index += INDEX[code & 7];
+    if(index < 0) index = 0;
+    if(index > 88) index = 88;
+    out[i] = pred/32768;
+  }
+  return { rate, pcm:out };
+}
+
+/* ---------- the picture: how loud, along the take ----------------------- */
+
+const PX = 3;
+function drawEnv(vals){
+  const cv = $("#env"); cv.hidden = false;
+  const w = Math.max(PX, Math.floor(cv.clientWidth/PX)), h = Math.max(PX, Math.floor(cv.clientHeight/PX));
+  cv.width = w*PX; cv.height = h*PX;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#000"; c.fillRect(0, 0, cv.width, cv.height);
+  c.fillStyle = "#fff";
+  const mid = (h - 1)/2;
+  for(let x=0;x<w;x++){
+    const v = vals[Math.floor(x*vals.length/w)] || 0;
+    const half = Math.round(Math.sqrt(Math.min(1, v))*mid);
+    for(let y=Math.round(mid - half); y<=Math.round(mid + half); y++) c.fillRect(x*PX, y*PX, PX, PX);
+  }
+}
+function peaksOf(pcm, cols){
+  const out = new Float32Array(cols), per = Math.max(1, Math.floor(pcm.length/cols));
+  for(let x=0;x<cols;x++){
+    let m = 0; const a = x*per, b = Math.min(pcm.length, a + per);
+    for(let i=a;i<b;i++){ const v = Math.abs(pcm[i]); if(v > m) m = v; }
+    out[x] = m;
+  }
+  return out;
+}
+const fmt = s => Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2, "0");
+
+/* ---------- signing in ---------------------------------------------------- */
+
+async function resolveHandle(h){
+  const r = await fetch("https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=" + encodeURIComponent(h));
+  if(!r.ok) throw new Error("no account called " + h);
+  return (await r.json()).did;
+}
+async function pdsFor(did){
+  const url = did.startsWith("did:web:") ? "https://" + did.slice(8) + "/.well-known/did.json" : "https://plc.directory/" + did;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error("could not look up " + did);
+  const doc = await r.json();
+  const svc = (doc.service || []).find(s => String(s.id).endsWith("atproto_pds"));
+  if(!svc) throw new Error("that account has no server listed");
+  return svc.serviceEndpoint.replace(/\/$/, "");
+}
+/* accounts hosted by bluesky sign in at bsky.social and then talk to their own server */
+function entryway(pds){
+  try{ return /\.bsky\.network$/.test(new URL(pds).hostname) ? "https://bsky.social" : pds; }catch(e){ return pds; }
+}
+function save(){
+  try{
+    if(remember && S) localStorage.setItem(KEY, JSON.stringify({ did:S.did, handle:S.handle, pds:S.pds, host:S.host, refresh:S.refresh }));
+    else localStorage.removeItem(KEY);
+  }catch(e){}
+}
+async function signIn(){
+  const handle = $("#handle").value.trim().replace(/^@/, ""), pw = $("#pw").value.trim();
+  if(!handle || !pw){ say("the account and an app password, both"); return; }
+  say("signing in");
+  try{
+    const did = handle.startsWith("did:") ? handle : await resolveHandle(handle);
+    const pds = await pdsFor(did), host = entryway(pds);
+    const r = await fetch(host + "/xrpc/com.atproto.server.createSession", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ identifier:handle, password:pw })
+    });
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(r.status === 401 ? "that account and app password didn't work" : (j.message || "sign in failed (" + r.status + ")"));
+    S = { did:j.did || did, handle:j.handle || handle, access:j.accessJwt, refresh:j.refreshJwt, pds, host };
+    $("#pw").value = "";
+    save(); show(); say("");
+  }catch(e){ say(e.message || String(e)); }
+}
+async function refreshSession(){
+  const r = await fetch(S.host + "/xrpc/com.atproto.server.refreshSession", {
+    method:"POST", headers:{ Authorization:"Bearer " + S.refresh }
+  });
+  if(!r.ok){ S = null; save(); show(); throw new Error("signed out. sign in again"); }
+  const j = await r.json();
+  S.access = j.accessJwt; S.refresh = j.refreshJwt;
+  save();
+}
+async function call(nsid, init, retried){
+  if(!S.access && !retried){ await refreshSession(); }
+  const r = await fetch(S.pds + "/xrpc/" + nsid, Object.assign({}, init, {
+    headers:Object.assign({}, init.headers || {}, { Authorization:"Bearer " + S.access })
+  }));
+  if(r.ok) return r.json();
+  const j = await r.json().catch(() => ({}));
+  if(!retried && (j.error === "ExpiredToken" || r.status === 401)){ await refreshSession(); return call(nsid, init, true); }
+  throw new Error(j.message || j.error || (nsid + " failed (" + r.status + ")"));
+}
+function signOut(){
+  if(S && S.refresh){
+    fetch(S.host + "/xrpc/com.atproto.server.deleteSession", { method:"POST", headers:{ Authorization:"Bearer " + S.refresh } }).catch(() => {});
+  }
+  S = null; save(); show();
+}
+
+/* ---------- getting the sound ---------------------------------------------- */
+
+let rec = null, chunks = [], stream = null, analyser = null, t0 = 0, live = [], wake = null, raf = 0;
+const MAX_SECONDS = 20*60;
+
+async function startRec(){
+  ctx();
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 } });
+  }catch(e){ say("no microphone: " + (e.message || e.name)); return; }
+  const types = ["audio/webm;codecs=opus","audio/ogg;codecs=opus","audio/mp4","audio/webm"];
+  const mt = window.MediaRecorder ? types.find(t => MediaRecorder.isTypeSupported(t)) : null;
+  if(!window.MediaRecorder){ say("this browser can't record"); stream.getTracks().forEach(t => t.stop()); return; }
+  rec = new MediaRecorder(stream, mt ? { mimeType:mt } : undefined);
+  chunks = [];
+  rec.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = async () => {
+    const type = rec.mimeType || mt || "audio/webm";
+    stream.getTracks().forEach(t => t.stop());
+    try{ if(wake) await wake.release(); }catch(_){}
+    wake = null; rec = null; cancelAnimationFrame(raf);
+    $("#clock").hidden = true; $("#rec").textContent = "record"; $("#rec").classList.remove("on"); $("#pick").hidden = false;
+    await load(await new Blob(chunks, { type }).arrayBuffer(), "phone");
+  };
+  const src = ac.createMediaStreamSource(stream);
+  analyser = ac.createAnalyser(); analyser.fftSize = 1024;
+  src.connect(analyser);
+  live = []; t0 = performance.now();
+  rec.start(1000);
+  try{ if(navigator.wakeLock) wake = await navigator.wakeLock.request("screen"); }catch(_){}
+  $("#rec").textContent = "stop"; $("#rec").classList.add("on"); $("#pick").hidden = true;
+  $("#clock").hidden = false; $("#ready").hidden = true; $("#done").hidden = true;
+  say("recording");
+  const buf = new Float32Array(analyser.fftSize);
+  let n = 0, m = 0;
+  const tick = () => {
+    if(!rec) return;
+    analyser.getFloatTimeDomainData(buf);
+    for(let i=0;i<buf.length;i++){ const v = Math.abs(buf[i]); if(v > m) m = v; }
+    if(++n >= 4){ live.push(m); n = 0; m = 0; if(live.length > 400) live.shift(); }
+    const secs = (performance.now() - t0)/1000;
+    $("#clock").textContent = fmt(secs);
+    drawEnv(live.length ? live.slice(-Math.floor($("#env").clientWidth/PX)) : [0]);
+    if(secs > MAX_SECONDS){ stopRec(); return; }
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+}
+function stopRec(){ if(rec && rec.state !== "inactive"){ say("reading"); rec.stop(); } }
+
+/* any audio in: one channel at 22050 Hz, then the recorder's format */
+async function load(ab, source){
+  say("reading");
+  let buf;
+  try{ buf = await ctx().decodeAudioData(ab); }
+  catch(e){ say("could not read that audio"); return; }
+  if(buf.duration < 0.5){ say("too short to be a take"); return; }
+  const n = Math.ceil(buf.duration*RATE);
+  const off = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, n, RATE);
+  const s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();
+  const pcm = (await off.startRendering()).getChannelData(0);
+  const bytes = encodeADPCM(pcm, RATE);
+  take = { pcm, rate:RATE, dur:pcm.length/RATE, source, bytes };
+  drawEnv(peaksOf(pcm, 400));
+  $("#what").textContent = "a take, " + fmt(take.dur) + " long, " + (bytes.length < 1048576 ? Math.ceil(bytes.length/1024) + " KB" : (bytes.length/1048576).toFixed(1) + " MB");
+  $("#ready").hidden = false; $("#done").hidden = true;
+  say(S ? "" : "sign in to post it");
+}
+
+let lsrc = null;
+function listen(){
+  if(!take) return;
+  if(lsrc){ try{ lsrc.stop(); }catch(_){} lsrc = null; $("#listen").textContent = "listen"; return; }
+  const d = decodeADPCM(take.bytes.buffer);
+  const b = ctx().createBuffer(1, d.pcm.length, d.rate);
+  b.getChannelData(0).set(d.pcm);
+  lsrc = ac.createBufferSource(); lsrc.buffer = b; lsrc.connect(ac.destination);
+  lsrc.onended = () => { lsrc = null; $("#listen").textContent = "listen"; };
+  lsrc.start(); $("#listen").textContent = "stop";
+}
+function discard(){
+  if(lsrc){ try{ lsrc.stop(); }catch(_){} lsrc = null; }
+  take = null; $("#ready").hidden = true; $("#env").hidden = true; $("#caption").value = ""; say("");
+}
+
+/* ---------- posting ---------------------------------------------------------- */
+
+let busy = false;
+async function post(){
+  if(busy || !take) return;
+  if(!S){ say("sign in first"); return; }
+  busy = true; $("#post").textContent = "posting…";
+  try{
+    say("sending the audio");
+    const up = await call("com.atproto.repo.uploadBlob", {
+      method:"POST", headers:{ "Content-Type":"application/octet-stream" }, body:take.bytes
+    });
+    const blob = up.blob, cid = blob.ref.$link, now = new Date().toISOString();
+
+    say("writing the take");
+    await call("com.atproto.repo.createRecord", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ repo:S.did, collection:"city.opposite.take", record:{
+        $type:"city.opposite.take", audio:blob, codec:"oca1", sampleRate:take.rate,
+        durationMs:Math.round(take.dur*1000), source:take.source, createdAt:now } })
+    });
+
+    say("posting");
+    const url = "https://opposite.city/remix/#" + S.did + "/" + cid;
+    const words = $("#caption").value.trim(), label = "take it apart";
+    const lead = words ? words + "\n\n" : "", te = new TextEncoder();
+    const byteStart = te.encode(lead).length, byteEnd = byteStart + te.encode(label).length;
+    const p = await call("com.atproto.repo.createRecord", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ repo:S.did, collection:"app.bsky.feed.post", record:{
+        $type:"app.bsky.feed.post", text:lead + label, createdAt:now,
+        facets:[{ index:{ byteStart, byteEnd }, features:[{ $type:"app.bsky.richtext.facet#link", uri:url }] }] } })
+    });
+
+    $("#openit").href = url;
+    $("#thepost").href = "https://bsky.app/profile/" + S.did + "/post/" + p.uri.split("/").pop();
+    $("#ready").hidden = true; $("#done").hidden = false;
+    take = null; $("#caption").value = "";
+    say("");
+  }catch(e){ say((e.message || String(e)) + ". the take is still here; post again when you can"); }
+  busy = false; $("#post").textContent = "post";
+}
+
+/* ---------- wiring ------------------------------------------------------------- */
+
+function show(){
+  $("#in").hidden = !!S; $("#who").hidden = !S;
+  if(S) $("#whoname").textContent = "@" + S.handle;
+  $("#remember").textContent = "remember this phone: " + (remember ? "yes" : "no");
+  $("#remember").classList.toggle("on", remember);
+}
+$("#signin").onclick = signIn;
+$("#pw").addEventListener("keydown", e => { if(e.key === "Enter") signIn(); });
+$("#remember").onclick = () => { remember = !remember; save(); show(); };
+$("#signout").onclick = signOut;
+$("#rec").onclick = () => rec ? stopRec() : startRec();
+$("#pick").onclick = () => { ctx(); $("#file").click(); };
+$("#file").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if(f) await load(await f.arrayBuffer(), "file");
+};
+$("#listen").onclick = listen;
+$("#discard").onclick = discard;
+$("#post").onclick = post;
+$("#again").onclick = () => { $("#done").hidden = true; $("#env").hidden = true; say(""); };
+
+(async () => {
+  try{
+    const kept = JSON.parse(localStorage.getItem(KEY) || "null");
+    if(kept && kept.refresh){
+      remember = true;
+      S = Object.assign({ access:null }, kept);
+      show();
+      await refreshSession();
+    }
+  }catch(e){ S = null; }
+  show();
+})();
+</script>
+</body>
+</html>
