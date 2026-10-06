@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
-<title>remix</title>
+<title>opposite city</title>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
   html,body{margin:0;padding:0;height:100%;background:#000;color:#fff;overflow:hidden;overscroll-behavior:none}
@@ -30,9 +30,6 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='white'/%3E%3C/svg%3E");
     background-size:4px 4px;image-rendering:pixelated}
   .fill{position:absolute;top:0;bottom:0;background:#fff}
-  #gate{position:fixed;inset:0;z-index:9;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
-  #go{font:inherit;font-size:16px;letter-spacing:.5em;color:#fff;background:#000;border:0;padding:18px 22px;cursor:pointer}
-  #gsub{font-size:12px;letter-spacing:.3em;text-align:center;padding:0 20px;line-height:1.8}
   #cat{position:absolute;inset:0;background:#000;z-index:5;display:none;flex-direction:column;overflow:hidden}
   #cat.open{display:flex}
   #cathead{padding:12px 10px 4px;font-size:13px;letter-spacing:.2em;line-height:1.7}
@@ -65,7 +62,6 @@
     <div class="wr" id="w3"></div>
   </div>
 </div>
-<div id="gate"><button id="go">REMIX</button><div id="gsub">THE RAIN IS WATCHING BASEBALL<br>field recordings, in your hands</div></div>
 <input type="file" id="file" accept="audio/*,video/*" style="display:none">
 
 <script>
@@ -94,6 +90,12 @@
    own picture, with nothing else on the screen. "take it apart" brings the
    instrument in at the point you were listening to. A link that carries
    settings skips that and opens the instrument as it was left.
+
+   There is no start screen. The take is fetched and drawn straight away;
+   a phone will not make sound until it is touched, so the first touch
+   anywhere wakes the sound, and "play" is there for that first touch.
+
+   "undo" steps back through changes to the settings, one at a time.
 
    The link is the remix. Every setting lives in the address after the
    take's own id, so whatever you leave on screen is what whoever opens
@@ -406,6 +408,7 @@ let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
 const grains = [];
 let shownPos = 0, take = null, takeLabel = "", job = 0, started = false;
 let rigOpen = false, listening = false, listenEnded = false, lnode = null, lstart = 0, loff = 0;
+let curHead = 0;          // where the head was when a grain was cut: the playhead draws this, not the scattered read point
 
 const CUR_H = new Float32Array(128), CUR_T = new Float32Array(128);
 for(let i=0;i<128;i++){
@@ -466,7 +469,7 @@ function fire(t, p, dur, rate, rev, kind){
   e.gain.setValueCurveAtTime(kind === "slice" ? CUR_T : CUR_H, t, dd);
   s.start(t, off); s.stop(t + dd + 0.02);
   s.onended = () => { try{ s.disconnect(); e.disconnect(); if(out !== e) out.disconnect(); }catch(_){} };
-  grains.push({ t, dur:dd, p, len:dd*rate, rev, rate, kind });
+  grains.push({ t, dur:dd, p, len:dd*rate, rev, rate, kind, hd:curHead });
 }
 
 function advance(dp){
@@ -489,6 +492,7 @@ function grainStep(t, iv){
   if(!(P.lk && Math.abs(sp) < 0.02)){
     rate = Math.max(0.02, Math.min(16, rate));
     const rev = (sp < 0) !== (Math.random() < P.rv);
+    curHead = pos;
     fire(t, pos + (Math.random()*2-1)*P.sc, P.gs, rate, rev, "grain");
   }
   if(!holding) advance(sp*iv);
@@ -531,6 +535,7 @@ function chopStep(t, ivGrid){
   if(Math.random() >= thinP(s.str)){
     const dur = own ? span/rate*Math.min(P.cl, 1) : Math.min(span/rate, ivGrid*P.cl);
     const rev = (P.sp < 0) !== (Math.random() < P.rv);
+    curHead = s.s;
     fire(t, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
   }
   return iv;
@@ -552,6 +557,7 @@ function tapFire(i){
   const span = (s.eb - s.s) + Math.min(P.gp, 1)*Math.max(0, s.e - s.eb);
   const dur = span/rate*Math.min(P.cl, 1);
   const rev = (P.sp < 0) !== (Math.random() < P.rv);
+  curHead = s.s;
   fire(ac.currentTime + 0.005, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
   pos = s.s;
 }
@@ -633,17 +639,24 @@ function draw(){
     const x0s = g.rev ? g.p - g.len : g.p;
     const cx0 = Math.max(0, Math.floor(x0s/D*W));
     const cx1 = Math.min(W-1, Math.max(cx0 + 1, Math.ceil((x0s + g.len)/D*W)));
-    const h = (g.kind === "slice" ? 0.34 : 0.12)*H;
-    const cy = H*0.5 - Math.log2(g.rate)*(H/7.06);
-    const y0 = Math.max(0, Math.floor(cy - h/2)), y1 = Math.min(H-1, Math.ceil(cy + h/2));
+    /* a grain carries every pitch in the stretch it reads, so it is drawn the
+       full height of the picture, as that stretch of picture moved to where
+       it now sounds: up for higher, down for lower. faint where the take is
+       quiet, so the grain's extent still shows. */
+    const shift = Math.round(Math.log2(g.rate)*(H/7.06));
     const span = Math.max(1, cx1 - cx0);
     for(let x=cx0; x<=cx1; x++){
       let u = (x - cx0)/span; if(g.rev) u = 1 - u;
-      const d = env*(0.3 + 0.7*u);
-      for(let y=y0; y<=y1; y++){ const i = y*W + x; if(d > ov[i]) ov[i] = d; }
+      const k = env*(0.4 + 0.6*u);
+      for(let y=0; y<H; y++){
+        const sy = y + shift;
+        const c = (base && sy >= 0 && sy < H) ? base[sy*W + x] : 0;
+        const d = k*(0.12 + 0.88*c);
+        const i = y*W + x; if(d > ov[i]) ov[i] = d;
+      }
     }
   }
-  if(latest) shownPos = latest.p;
+  if(latest) shownPos = latest.hd;
   if(holding || !(playing)) shownPos = pos;
   if(listening) shownPos = listenPos();
   const a = reg.a/D*W, b = reg.b/D*W, outside = buf && loopOn;
@@ -736,10 +749,12 @@ function stopListen(){
 function invite(){
   $("#invite").style.display = listening ? "flex" : "none";
   if(I.again) I.again.style.display = listenEnded ? "" : "none";
+  if(I.play) I.play.style.display = (!lnode && !listenEnded) ? "" : "none";
 }
 const I = {};
 function inviteChrome(){
   const v = $("#invite");
+  I.play  = word(v, "play", () => { wake(); listenStart(loff); });
   I.again = word(v, "again", () => listenStart(0));
   I.open  = word(v, "take it apart", () => openRig());
   I.takes = word(v, "takes", () => openCat());
@@ -757,7 +772,8 @@ function showListen(){
   $("#pic").classList.add("listen");
   $("#panel").style.display = "none";
   build();
-  listenStart(0);
+  loff = 0;
+  if(ac.state === "running") listenStart(0); else invite();
 }
 function openRig(){
   if(!listening || !buf) return;
@@ -779,7 +795,7 @@ cv.addEventListener("pointerdown", e => {
   cv.setPointerCapture(e.pointerId);
   dragging = true; moved = false;
   const D = buf.duration, t = fx(e)*D;
-  if(regionMode){ reg = { a:t, b:t }; }
+  if(regionMode){ remember(); reg = { a:t, b:t }; }
   else if(P.md){ tapIdx = sliceAt(t); tapFire(tapIdx); }
   else { holding = true; pos = t; }
 });
@@ -802,11 +818,29 @@ function release(){
   }
   holding = false;
   const now = performance.now();
-  if(!P.md && !moved && now - lastTap < 350){ reg = { a:0, b:buf.duration }; say("whole take"); changed(); }
+  if(!P.md && !moved && now - lastTap < 350){ remember(); reg = { a:0, b:buf.duration }; say("whole take"); changed(); }
   lastTap = now;
 }
 cv.addEventListener("pointerup", release);
 cv.addEventListener("pointercancel", release);
+
+/* ---------- undo: every change to the settings can be stepped back ------------------- */
+
+const undoStack = [];
+function remember(){
+  undoStack.push(JSON.stringify({ P, loopOn, reg }));
+  if(undoStack.length > 60) undoStack.shift();
+}
+function undo(){
+  const s = undoStack.pop();
+  if(!s){ words(); return; }
+  const o = JSON.parse(s);
+  Object.assign(P, o.P); loopOn = o.loopOn; reg = o.reg;
+  if(P.md && tab === "grain") tab = "chop";
+  if(!P.md && tab === "chop") tab = "grain";
+  syncSliders(); showTab(); words(); changed();
+  say("undone");
+}
 
 /* ---------- the panel ---------------------------------------------------------------- */
 
@@ -826,7 +860,7 @@ function mkSlider(d){
     P[d.k] = fromF(d, Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)));
     d.upd(); changed();
   };
-  bar.addEventListener("pointerdown", e => { bar.setPointerCapture(e.pointerId); set(e); });
+  bar.addEventListener("pointerdown", e => { remember(); bar.setPointerCapture(e.pointerId); set(e); });
   bar.addEventListener("pointermove", e => { if(e.buttons) set(e); });
   d.upd(); d.row = row;
   return row;
@@ -840,14 +874,15 @@ const W1 = {}, W2 = {}, W3 = {};
 function panel(){
   const w1 = $("#w1"), w2 = $("#w2"), sl = $("#sl"), w3 = $("#w3");
   W1.play = word(w1, "play", () => toggle());
-  W1.rev  = word(w1, "reverse", () => { P.sp = -P.sp || -1; syncSliders(); changed(); });
-  W1.loop = word(w1, "loop", () => { loopOn = !loopOn; words(); changed(); });
+  W1.rev  = word(w1, "reverse", () => { remember(); P.sp = -P.sp || -1; syncSliders(); changed(); words(); });
+  W1.loop = word(w1, "loop", () => { remember(); loopOn = !loopOn; words(); changed(); });
   W1.reg  = word(w1, "region", () => { regionMode = !regionMode; say(regionMode ? "drag across the take" : ""); words(); });
+  W1.undo = word(w1, "undo", () => undo());
   for(const t of ["tape","grain","chop","space"]){
     W2[t] = word(w2, t, () => {
       tab = t;
-      if(t === "grain"){ P.md = 0; sync(); changed(); }
-      if(t === "chop"){ P.md = 1; sync(); changed(); say("tap an attack. drag across to strum. stop the sequence to play by hand"); }
+      if(t === "grain" && P.md){ remember(); P.md = 0; sync(); changed(); }
+      if(t === "chop" && !P.md){ remember(); P.md = 1; sync(); changed(); say("tap an attack. drag across to strum. stop the sequence to play by hand"); }
       showTab(); words();
     });
   }
@@ -855,15 +890,15 @@ function panel(){
   /* quick speeds and options inside the tabs */
   const q = el("div","wr"); q.id = "quick";
   for(const [lab, val] of [["−2",-2],["−1",-1],["−½",-.5],["0",0],["½",.5],["1",1],["2",2]]){
-    const b = word(q, lab, () => { P.sp = val; syncSliders(); changed(); words(); });
+    const b = word(q, lab, () => { remember(); P.sp = val; syncSliders(); changed(); words(); });
     b.dataset.v = val;
   }
   sl.append(q);
-  W3.lock = word(el("div","wr"), "", () => { P.lk = P.lk ? 0 : 1; words(); changed(); });
+  W3.lock = word(el("div","wr"), "", () => { remember(); P.lk = P.lk ? 0 : 1; words(); changed(); });
   W3.lock.parentNode.id = "lockwrap"; sl.append(W3.lock.parentNode);
   const ow = el("div","wr"); ow.id = "orderwrap";
-  W3.order  = word(ow, "", () => { P.co = (P.co + 1) % ORDERS.length; words(); changed(); });
-  W3.timing = word(ow, "", () => { P.tm = P.tm ? 0 : 1; words(); changed(); });
+  W3.order  = word(ow, "", () => { remember(); P.co = (P.co + 1) % ORDERS.length; words(); changed(); });
+  W3.timing = word(ow, "", () => { remember(); P.tm = P.tm ? 0 : 1; words(); changed(); });
   sl.append(ow);
   W3.bounce = word(w3, "bounce", () => bounce());
   W3.share  = word(w3, "share", () => share());
@@ -882,6 +917,7 @@ function words(){
   W1.rev.classList.toggle("on", P.sp < 0);
   W1.loop.classList.toggle("on", loopOn);
   W1.reg.classList.toggle("on", regionMode);
+  W1.undo.style.display = undoStack.length ? "" : "none";
   for(const t in W2) W2[t].classList.toggle("on", t === tab);
   W3.lock.textContent = "pitch follows speed: " + (P.lk ? "yes" : "no");
   W3.order.textContent = "order: " + ORDERS[P.co];
@@ -904,7 +940,8 @@ function toggle(){
 }
 addEventListener("keydown", e => {
   if(e.code === "Space"){ e.preventDefault(); toggle(); }
-  if(e.key === "r"){ P.sp = -P.sp || -1; syncSliders(); changed(); words(); }
+  if(e.key === "r"){ remember(); P.sp = -P.sp || -1; syncSliders(); changed(); words(); }
+  if((e.ctrlKey || e.metaKey) && e.key === "z"){ e.preventDefault(); undo(); }
 });
 
 let noteTimer = 0;
@@ -1060,7 +1097,8 @@ async function loadBuffer(abuf, label, t){
     loopOn = pending.lo; pending = null;
   }
   pos = P.sp < 0 ? reg.b : reg.a;
-  if(ac.state === "suspended") await ac.resume();
+  /* never wait on the sound waking here: before a touch, a phone holds that promise
+     open, and waiting would keep the picture from ever showing */
   if(rigOpen){ showRig(); playing = true; nextT = 0; nextS = 0; }
   else showListen();
   words(); say("");
@@ -1099,8 +1137,12 @@ async function playFile(f){
 
 /* ---------- the band's takes ------------------------------------------------------------------ */
 
-const BAND = "THE RAIN IS WATCHING BASEBALL";
-const HANDLES = ["rain.opposite.city", "rainwatchbaseball.bsky.social"];
+const BAND = "OPPOSITE CITY";
+/* takes are read by account id, which never changes when a handle does.
+   the first account's id is fixed; handles the project has gone by are
+   looked up too, so a take is found whichever of them it was posted under. */
+const DIDS = ["did:plc:srqsjbfm2sfyhqvzfyl3as2t"];
+const HANDLES = ["oppositecity.bsky.social", "opposite.city", "rainwatchbaseball.bsky.social"];
 let catItems = null, catBusy = false;
 
 function findBlobs(o, out){
@@ -1109,16 +1151,23 @@ function findBlobs(o, out){
   for(const k in o) findBlobs(o[k], out);
 }
 async function loadCatalogue(){
-  let did = null;
-  for(const h of HANDLES){
+  const dids = new Set(DIDS);
+  await Promise.all(HANDLES.map(async h => {
     try{
       const r = await fetch("https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=" + h);
-      if(r.ok){ did = (await r.json()).did; break; }
+      if(r.ok){ const d = (await r.json()).did; if(d) dids.add(d); }
     }catch(e){}
-  }
-  if(!did) throw new Error("could not reach the band's account");
-  const pds = await pdsFor(did);
+  }));
   const seen = new Set(), items = [];
+  for(const did of dids){
+    try{ await readTakes(did, seen, items); }catch(e){}
+  }
+  items.sort((a, b) => a.when < b.when ? 1 : -1);
+  items.forEach((it, i) => { it.n = items.length - i; });   // 1 is the first take ever made
+  return items;
+}
+async function readTakes(did, seen, items){
+  const pds = await pdsFor(did);
   let cursor = "";
   for(let page=0; page<3; page++){
     const r = await fetch(pds + "/xrpc/com.atproto.repo.listRecords?repo=" + encodeURIComponent(did) +
@@ -1134,9 +1183,6 @@ async function loadCatalogue(){
     }
     cursor = j.cursor; if(!cursor) break;
   }
-  items.sort((a, b) => a.when < b.when ? 1 : -1);
-  items.forEach((it, i) => { it.n = items.length - i; });   // 1 is the first take ever made
-  return items;
 }
 function renderCat(){
   const list = $("#catlist"); list.textContent = "";
@@ -1190,10 +1236,12 @@ addEventListener("drop", async e => {
 
 /* ---------- boot ----------------------------------------------------------------------------------- */
 
+function wake(){ if(ac && ac.state !== "running") ac.resume(); }
+addEventListener("pointerdown", wake, true);
+addEventListener("keydown", wake, true);
 function start(){
   if(started) return;
   started = true;
-  const g = $("#gate"); if(g) g.remove();
   buildGraph();
   if(!rigOpen){ $("#panel").style.display = "none"; $("#pic").classList.add("listen"); }
   panel(); catChrome(); inviteChrome(); build();
@@ -1209,7 +1257,7 @@ async function begin(){
     catch(e){ say(String(e.message || e)); openCat(); }
   } else openCat();
 }
-$("#go").onclick = begin;
+begin();
 addEventListener("hashchange", async () => {
   if(!started) return;
   const t = parseHash();
