@@ -182,7 +182,7 @@ async function analyse(pcm, rate, yieldFn){
       let m = 0; for(let i=edges[b];i<edges[b+1];i++) m += mag[i]*mag[i];
       bm[t*B + b] = Math.sqrt(m);
     }
-    if(yieldFn && (t % 400) === 399) await yieldFn();
+    if(yieldFn && (t % 150) === 149) await yieldFn(t + 1, nF, bm, hop);
   }
   // log-compress above a floor taken from this take, so the hiss under a
   // quiet passage can't swing the log wildly; then the rise in each band is
@@ -597,12 +597,16 @@ function build(){
 function computeBase(){
   base = null;
   if(!TL || !W) return;
-  const B = TL.nb, nF = TL.bm.length/B;
+  baseFrom(TL.bm, TL.nb, TL.bm.length/TL.nb, TL.hop, TL.rate, TL.dur);
+}
+/* the dots arrive left to right while the take is being read */
+function baseFrom(bm, B, nF, hop, rate, dur){
+  if(!W) return;
   const cell = new Float32Array(W*B);
   for(let f=0;f<nF;f++){
-    const tt = (f*TL.hop + AN.N/2)/TL.rate;
-    const x = Math.min(W-1, Math.floor(tt/TL.dur*W));
-    for(let b=0;b<B;b++){ const v = TL.bm[f*B + b]; if(v > cell[x*B + b]) cell[x*B + b] = v; }
+    const tt = (f*hop + AN.N/2)/rate;
+    const x = Math.min(W-1, Math.floor(tt/dur*W));
+    for(let b=0;b<B;b++){ const v = bm[f*B + b]; if(v > cell[x*B + b]) cell[x*B + b] = v; }
   }
   const ref = pct(cell, 0.995) + 1e-9;
   base = new Float32Array(W*H);
@@ -1039,7 +1043,13 @@ async function loadBuffer(abuf, label, t){
   words();
   say("listening");
   const rb = reverseBuf(abuf);
-  const tl = await analyse(mono(abuf), abuf.sampleRate, () => new Promise(r => setTimeout(r, 0)));
+  const tl = await analyse(mono(abuf), abuf.sampleRate, (done, total, bm, hop) => {
+    if(mine === job){
+      baseFrom(bm, AN.BANDS, done, hop, abuf.sampleRate, abuf.duration);
+      say("listening " + Math.round(done/total*100) + "%");
+    }
+    return new Promise(r => setTimeout(r, 0));
+  });
   if(mine !== job) return;
   buf = abuf; revBuf = rb; TL = tl;
   slices = makeSlices(); ci = 0;
@@ -1062,7 +1072,22 @@ async function playTake(t, label){
   const pds = await pdsFor(t.did);
   const r = await fetch(pds + "/xrpc/com.atproto.sync.getBlob?did=" + encodeURIComponent(t.did) + "&cid=" + encodeURIComponent(t.cid));
   if(!r.ok) throw new Error("take not found (" + r.status + ")");
-  const ab = await decodeBytes(await r.arrayBuffer());
+  const total = +((r.headers && r.headers.get("content-length")) || 0);
+  let bytes;
+  if(total && r.body && r.body.getReader){
+    const rd = r.body.getReader(), parts = [];
+    let got = 0;
+    for(;;){
+      const { done, value } = await rd.read();
+      if(done) break;
+      parts.push(value); got += value.length;
+      say("fetching " + Math.min(99, Math.round(got/total*100)) + "%");
+    }
+    const all = new Uint8Array(got); let o = 0;
+    for(const p of parts){ all.set(p, o); o += p.length; }
+    bytes = all.buffer;
+  } else bytes = await r.arrayBuffer();
+  const ab = await decodeBytes(bytes);
   await loadBuffer(ab, label || "", { did:t.did, cid:t.cid });
 }
 async function playFile(f){
