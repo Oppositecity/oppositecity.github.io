@@ -85,7 +85,13 @@
    remix page's own decoder, and sounds like the other takes do. "listen"
    plays the encoded bytes, so what you hear is what gets posted.
 
-   Posting writes three things to the account:
+   A long take goes up in parts of at most ten minutes, cut evenly, each
+   its own blob, record and post, threaded under the first. Every part
+   stays small enough to take apart on a phone, and far under the
+   server's 50 MB limit for a blob. An hour is the most the page will
+   take in at once: past that a phone runs out of room to read it.
+
+   Posting writes three things to the account, for each part:
      1. the audio, as a blob
      2. a city.opposite.take record holding that blob, so the server keeps
         it (a blob nothing points at gets thrown away)
@@ -122,6 +128,7 @@ const STEP = new Int32Array([
   27086,29794,32767]);
 const INDEX = new Int32Array([-1,-1,-1,-1,2,4,6,8]);
 
+const size = b => b < 1048576 ? Math.ceil(b/1024) + " KB" : (b/1048576).toFixed(1) + " MB";
 function encodeADPCM(pcm, rate){
   const n = pcm.length, out = new Uint8Array(12 + ((n + 1) >> 1));
   out.set([79, 67, 65, 49]);
@@ -271,7 +278,9 @@ function signOut(){
 /* ---------- getting the sound ---------------------------------------------- */
 
 let rec = null, chunks = [], stream = null, analyser = null, t0 = 0, live = [], wake = null, raf = 0;
-const MAX_SECONDS = 20*60;
+const MAX_SECONDS = 60*60;          // the most read in at once, recorded or picked
+const PART_SECS = 10*60;            // the longest one part runs
+const BLOB_MAX = 50*1024*1024;      // the server's ceiling for a blob
 
 async function startRec(){
   ctx();
@@ -326,14 +335,25 @@ async function load(ab, source){
   try{ buf = await ctx().decodeAudioData(ab); }
   catch(e){ say("could not read that audio"); return; }
   if(buf.duration < 0.5){ say("too short to be a take"); return; }
+  if(buf.duration > MAX_SECONDS + 1){ say("that runs " + fmt(buf.duration) + ". an hour at most; trim it first"); return; }
   const n = Math.ceil(buf.duration*RATE);
   const off = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, n, RATE);
   const s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();
   const pcm = (await off.startRendering()).getChannelData(0);
-  const bytes = encodeADPCM(pcm, RATE);
-  take = { pcm, rate:RATE, dur:pcm.length/RATE, source, bytes };
+  /* cut evenly, so there is no short scrap at the end */
+  const count = Math.max(1, Math.ceil(pcm.length/(PART_SECS*RATE))), per = Math.ceil(pcm.length/count);
+  const parts = [];
+  for(let i=0;i<count;i++){
+    const seg = pcm.subarray(i*per, Math.min(pcm.length, (i+1)*per));
+    const bytes = encodeADPCM(seg, RATE);
+    if(bytes.length > BLOB_MAX){ say("a part came out too big to post"); return; }
+    parts.push({ bytes, dur:seg.length/RATE });
+  }
+  const total = parts.reduce((a, p) => a + p.bytes.length, 0);
+  take = { pcm, rate:RATE, dur:pcm.length/RATE, source, parts, session:String(Date.now()), sent:0, root:null, prev:null, first:null };
   drawEnv(peaksOf(pcm, 400));
-  $("#what").textContent = "a take, " + fmt(take.dur) + " long, " + (bytes.length < 1048576 ? Math.ceil(bytes.length/1024) + " KB" : (bytes.length/1048576).toFixed(1) + " MB");
+  $("#what").textContent = "a take, " + fmt(take.dur) + " long, " + size(total) +
+    (count > 1 ? ". it goes up in " + count + " parts of " + fmt(parts[0].dur) + ", threaded" : "");
   $("#ready").hidden = false; $("#done").hidden = true;
   say(S ? "" : "sign in to post it");
 }
@@ -342,9 +362,9 @@ let lsrc = null;
 function listen(){
   if(!take) return;
   if(lsrc){ try{ lsrc.stop(); }catch(_){} lsrc = null; $("#listen").textContent = "listen"; return; }
-  const d = decodeADPCM(take.bytes.buffer);
-  const b = ctx().createBuffer(1, d.pcm.length, d.rate);
-  b.getChannelData(0).set(d.pcm);
+  const ds = take.parts.map(p => decodeADPCM(p.bytes.buffer));
+  const b = ctx().createBuffer(1, ds.reduce((a, d) => a + d.pcm.length, 0), RATE);
+  let o = 0; for(const d of ds){ b.getChannelData(0).set(d.pcm, o); o += d.pcm.length; }
   lsrc = ac.createBufferSource(); lsrc.buffer = b; lsrc.connect(ac.destination);
   lsrc.onended = () => { lsrc = null; $("#listen").textContent = "listen"; };
   lsrc.start(); $("#listen").textContent = "stop";
@@ -362,38 +382,51 @@ async function post(){
   if(!S){ say("sign in first"); return; }
   busy = true; $("#post").textContent = "posting…";
   try{
-    say("sending the audio");
-    const up = await call("com.atproto.repo.uploadBlob", {
-      method:"POST", headers:{ "Content-Type":"application/octet-stream" }, body:take.bytes
-    });
-    const blob = up.blob, cid = blob.ref.$link, now = new Date().toISOString();
+    const n = take.parts.length;
+    for(let i=take.sent; i<n; i++){
+      const part = take.parts[i], tag = n > 1 ? "part " + (i+1) + " of " + n + ": " : "";
+      say(tag + "sending the audio");
+      const up = await call("com.atproto.repo.uploadBlob", {
+        method:"POST", headers:{ "Content-Type":"application/octet-stream" }, body:part.bytes
+      });
+      const blob = up.blob, cid = blob.ref.$link, now = new Date().toISOString();
 
-    say("writing the take");
-    await call("com.atproto.repo.createRecord", {
-      method:"POST", headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({ repo:S.did, collection:"city.opposite.take", record:{
-        $type:"city.opposite.take", audio:blob, codec:"oca1", sampleRate:take.rate,
-        durationMs:Math.round(take.dur*1000), source:take.source, createdAt:now } })
-    });
+      say(tag + "writing the take");
+      const rec = { $type:"city.opposite.take", audio:blob, codec:"oca1", sampleRate:take.rate,
+        durationMs:Math.round(part.dur*1000), source:take.source, createdAt:now };
+      if(n > 1){ rec.session = take.session; rec.part = i + 1; rec.parts = n; }
+      await call("com.atproto.repo.createRecord", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ repo:S.did, collection:"city.opposite.take", record:rec })
+      });
 
-    say("posting");
-    const url = "https://opposite.city/remix/#" + S.did + "/" + cid;
-    const words = $("#caption").value.trim(), label = "take it apart";
-    const lead = words ? words + "\n\n" : "", te = new TextEncoder();
-    const byteStart = te.encode(lead).length, byteEnd = byteStart + te.encode(label).length;
-    const p = await call("com.atproto.repo.createRecord", {
-      method:"POST", headers:{ "Content-Type":"application/json" },
-      body:JSON.stringify({ repo:S.did, collection:"app.bsky.feed.post", record:{
-        $type:"app.bsky.feed.post", text:lead + label, createdAt:now,
-        facets:[{ index:{ byteStart, byteEnd }, features:[{ $type:"app.bsky.richtext.facet#link", uri:url }] }] } })
-    });
+      say(tag + "posting");
+      const url = "https://opposite.city/remix/#" + S.did + "/" + cid;
+      const words = i === 0 ? $("#caption").value.trim() : "";
+      const label = "take it apart", head = n > 1 ? (i+1) + " / " + n + "  " : "";
+      const lead = (words ? words + "\n\n" : "") + head, te = new TextEncoder();
+      const byteStart = te.encode(lead).length, byteEnd = byteStart + te.encode(label).length;
+      const post = { $type:"app.bsky.feed.post", text:lead + label, createdAt:now,
+        facets:[{ index:{ byteStart, byteEnd }, features:[{ $type:"app.bsky.richtext.facet#link", uri:url }] }] };
+      if(take.root) post.reply = { root:take.root, parent:take.prev };
+      const p = await call("com.atproto.repo.createRecord", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body:JSON.stringify({ repo:S.did, collection:"app.bsky.feed.post", record:post })
+      });
+      const ref = { uri:p.uri, cid:p.cid };
+      if(!take.root){ take.root = ref; take.first = { url, uri:p.uri }; }
+      take.prev = ref; take.sent = i + 1;
+    }
 
-    $("#openit").href = url;
-    $("#thepost").href = "https://bsky.app/profile/" + S.did + "/post/" + p.uri.split("/").pop();
+    $("#openit").href = take.first.url;
+    $("#thepost").href = "https://bsky.app/profile/" + S.did + "/post/" + take.first.uri.split("/").pop();
     $("#ready").hidden = true; $("#done").hidden = false;
     take = null; $("#caption").value = "";
     say("");
-  }catch(e){ say((e.message || String(e)) + ". the take is still here; post again when you can"); }
+  }catch(e){
+    const left = take ? take.parts.length - take.sent : 0;
+    say((e.message || String(e)) + ". " + (take && take.sent ? left + " part" + (left === 1 ? "" : "s") + " still to go; post again to finish" : "the take is still here; post again when you can"));
+  }
   busy = false; $("#post").textContent = "post";
 }
 
