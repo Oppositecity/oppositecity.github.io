@@ -14,11 +14,10 @@
   #app{position:fixed;inset:0;display:flex;flex-direction:column;height:100dvh}
   #pic{flex:1;min-height:0;position:relative}
   #cv{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;touch-action:none}
-  #hud{position:absolute;left:10px;top:8px;right:10px;pointer-events:none;font-size:13px;letter-spacing:.14em;
-    line-height:1.5;text-shadow:0 0 6px #000,0 0 3px #000,0 0 2px #000;white-space:pre}
-  #note{position:absolute;left:10px;right:10px;bottom:8px;font-size:13px;letter-spacing:.14em;
-    text-shadow:0 0 6px #000,0 0 3px #000,0 0 2px #000;text-align:center;pointer-events:none}
-  #note a{color:#fff;pointer-events:auto;text-decoration:underline}
+  #info{background:#000;padding:6px 10px 0}
+  #hud{font-size:13px;letter-spacing:.14em;line-height:1.5;height:3em;white-space:pre;overflow:hidden}
+  #note{font-size:13px;letter-spacing:.14em;line-height:1.5;height:1.5em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #note a{color:#fff;text-decoration:underline}
   #panel{padding:4px 6px calc(6px + env(safe-area-inset-bottom));background:#000}
   .wr{display:flex;flex-wrap:wrap;align-items:center}
   .w{font:inherit;font-size:14px;letter-spacing:.14em;color:#fff;background:#000;border:0;padding:9px 10px;cursor:pointer}
@@ -38,29 +37,59 @@
     padding:10px 10px;cursor:pointer;line-height:1.45}
   .item .d{letter-spacing:.14em}
   .item.cur{background:#fff;color:#000}
-  #invite{position:absolute;left:0;right:0;bottom:10px;display:none;justify-content:center;flex-wrap:wrap;gap:4px;z-index:3}
-  #pic.listen #note{bottom:66px}
+  #invite{display:none;flex-wrap:wrap;gap:4px;padding:2px 0 calc(6px + env(safe-area-inset-bottom));background:#000}
+  #sheet{position:fixed;inset:0;background:#000;z-index:20;display:none;flex-direction:column;overflow-y:auto;
+    padding:14px 12px calc(20px + env(safe-area-inset-bottom))}
+  #sheet.open{display:flex}
+  #sheet .h{font-size:13px;letter-spacing:.2em;line-height:1.7;margin-bottom:10px}
+  #sheet input,#sheet textarea{font:inherit;font-size:16px;color:#fff;background:#000;border:1px solid #fff;padding:9px 10px;
+    margin:4px 0 8px;width:100%;-webkit-user-select:text;user-select:text;border-radius:0}
+  #sheet textarea{height:90px;resize:none}
+  #sheet label{font-size:13px;letter-spacing:.14em;margin-top:6px}
+  #sheet a{color:#fff;text-decoration:underline;letter-spacing:.1em}
+  #sheet .st{font-size:13px;letter-spacing:.14em;line-height:1.6;min-height:1.6em;margin:8px 0}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="pic">
     <canvas id="cv"></canvas>
-    <div id="hud"></div>
-    <div id="note"></div>
-    <div id="invite"></div>
     <div id="cat">
       <div id="cathead"></div>
       <div class="wr" id="catwords"></div>
       <div id="catlist"></div>
     </div>
   </div>
+  <div id="info">
+    <div id="hud"></div>
+    <div id="note"></div>
+  </div>
+  <div class="wr" id="invite"></div>
   <div id="panel">
     <div class="wr" id="w1"></div>
     <div class="wr" id="w2"></div>
     <div id="sl"></div>
     <div class="wr" id="w3"></div>
   </div>
+</div>
+<div id="sheet">
+  <div class="h" id="shhead"></div>
+  <div id="shin">
+    <label for="shhandle">your bluesky account</label>
+    <input id="shhandle" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you.bsky.social">
+    <label for="shpw">an app password, not your real one</label>
+    <input id="shpw" type="password" autocomplete="off" placeholder="xxxx-xxxx-xxxx-xxxx">
+    <div class="wr" id="shinw"></div>
+    <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener">make an app password</a>
+  </div>
+  <div id="shout" hidden>
+    <div class="wr" id="shwho"></div>
+    <label for="shwords">a few words, if you want</label>
+    <textarea id="shwords" maxlength="240"></textarea>
+    <div class="wr" id="shoutw"></div>
+  </div>
+  <div class="st" id="shst"></div>
+  <div class="wr" id="shclose"></div>
 </div>
 <input type="file" id="file" accept="audio/*,video/*" style="display:none">
 
@@ -748,6 +777,7 @@ function stopListen(){
 }
 function invite(){
   $("#invite").style.display = listening ? "flex" : "none";
+  $("#info").style.paddingBottom = listening ? "0" : "";
   if(I.again) I.again.style.display = listenEnded ? "" : "none";
   if(I.play) I.play.style.display = (!lnode && !listenEnded) ? "" : "none";
 }
@@ -878,6 +908,7 @@ function panel(){
   W1.loop = word(w1, "loop", () => { remember(); loopOn = !loopOn; words(); changed(); });
   W1.reg  = word(w1, "region", () => { regionMode = !regionMode; say(regionMode ? "drag across the take" : ""); words(); });
   W1.undo = word(w1, "undo", () => undo());
+  W1.orig = word(w1, "original", () => original());
   for(const t of ["tape","grain","chop","space"]){
     W2[t] = word(w2, t, () => {
       tab = t;
@@ -902,6 +933,7 @@ function panel(){
   sl.append(ow);
   W3.bounce = word(w3, "bounce", () => bounce());
   W3.share  = word(w3, "share", () => share());
+  W3.post   = word(w3, "post", () => openSheet());
   W3.takes  = word(w3, "takes", () => openCat());
   showTab(); words();
 }
@@ -918,6 +950,7 @@ function words(){
   W1.loop.classList.toggle("on", loopOn);
   W1.reg.classList.toggle("on", regionMode);
   W1.undo.style.display = undoStack.length ? "" : "none";
+  W1.orig.style.display = (buf && paramString()) ? "" : "none";
   for(const t in W2) W2[t].classList.toggle("on", t === tab);
   W3.lock.textContent = "pitch follows speed: " + (P.lk ? "yes" : "no");
   W3.order.textContent = "order: " + ORDERS[P.co];
@@ -939,6 +972,7 @@ function toggle(){
   words();
 }
 addEventListener("keydown", e => {
+  if(e.target && e.target.closest && e.target.closest("input,textarea")) return;
   if(e.code === "Space"){ e.preventDefault(); toggle(); }
   if(e.key === "r"){ remember(); P.sp = -P.sp || -1; syncSliders(); changed(); words(); }
   if((e.ctrlKey || e.metaKey) && e.key === "z"){ e.preventDefault(); undo(); }
@@ -970,7 +1004,20 @@ function writeHash(){
   const q = paramString();
   history.replaceState(null, "", "#" + take.did + "/" + take.cid + (q ? "?" + q : ""));
 }
-function changed(){ sync(); clearTimeout(hashTimer); hashTimer = setTimeout(writeHash, 400); }
+function changed(){
+  sync(); clearTimeout(hashTimer); hashTimer = setTimeout(writeHash, 400);
+  if(W1.orig) W1.orig.style.display = (buf && paramString()) ? "" : "none";
+}
+/* every setting back to the take as it was. undo brings the remix back */
+function original(){
+  if(!buf) return;
+  remember();
+  Object.assign(P, DEF);
+  loopOn = true; reg = { a:0, b:buf.duration }; regionMode = false;
+  if(tab === "chop") tab = "grain";
+  syncSliders(); showTab(); words(); changed();
+  say("the take as it was. undo for the remix");
+}
 
 let pending = null;      // region from the address, applied once the take is loaded
 function parseHash(){
@@ -1006,6 +1053,132 @@ async function share(){
   try{ await navigator.clipboard.writeText(url); ok = true; }catch(e){}
   const a = '<a href="' + url.replace(/"/g, "&quot;") + '">' + (ok ? "link copied" : "this is the link") + "</a>";
   say(a, true);
+}
+
+/* ---------- post: the remix goes up as a reply under the take's own post ------------------ */
+
+/* same session the give page keeps, so a phone signed in there is signed in here */
+const SKEY = "remix.give.session";
+let S = null, keep = false, sheetBusy = false;
+try{
+  const k = JSON.parse(localStorage.getItem(SKEY) || "null");
+  if(k && k.refresh){ S = Object.assign({ access:null }, k); keep = true; }
+}catch(e){}
+function saveS(){
+  try{
+    if(keep && S) localStorage.setItem(SKEY, JSON.stringify({ did:S.did, handle:S.handle, pds:S.pds, host:S.host, refresh:S.refresh }));
+    else localStorage.removeItem(SKEY);
+  }catch(e){}
+}
+function entryway(pds){
+  try{ return /\.bsky\.network$/.test(new URL(pds).hostname) ? "https://bsky.social" : pds; }catch(e){ return pds; }
+}
+async function refreshS(){
+  const r = await fetch(S.host + "/xrpc/com.atproto.server.refreshSession", { method:"POST", headers:{ Authorization:"Bearer " + S.refresh } });
+  if(!r.ok){ S = null; saveS(); sheetShow(); throw new Error("signed out. sign in again"); }
+  const j = await r.json(); S.access = j.accessJwt; S.refresh = j.refreshJwt; saveS();
+}
+async function callS(nsid, body, retried){
+  if(!S.access && !retried) await refreshS();
+  const r = await fetch(S.pds + "/xrpc/" + nsid, { method:"POST",
+    headers:{ "Content-Type":"application/json", Authorization:"Bearer " + S.access }, body:JSON.stringify(body) });
+  if(r.ok) return r.json();
+  const j = await r.json().catch(() => ({}));
+  if(!retried && (j.error === "ExpiredToken" || r.status === 401)){ await refreshS(); return callS(nsid, body, true); }
+  throw new Error(j.message || j.error || ("posting failed (" + r.status + ")"));
+}
+async function signInS(){
+  const handle = $("#shhandle").value.trim().replace(/^@/, ""), pw = $("#shpw").value.trim();
+  if(!handle || !pw){ sheetSay("the account and an app password, both"); return; }
+  sheetSay("signing in");
+  try{
+    let did = handle;
+    if(!handle.startsWith("did:")){
+      const r = await fetch("https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=" + encodeURIComponent(handle));
+      if(!r.ok) throw new Error("no account called " + handle);
+      did = (await r.json()).did;
+    }
+    const pds = await pdsFor(did), host = entryway(pds);
+    const r = await fetch(host + "/xrpc/com.atproto.server.createSession", { method:"POST",
+      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ identifier:handle, password:pw }) });
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error(r.status === 401 ? "that account and app password didn't work" : (j.message || "sign in failed (" + r.status + ")"));
+    S = { did:j.did || did, handle:j.handle || handle, access:j.accessJwt, refresh:j.refreshJwt, pds, host };
+    $("#shpw").value = "";
+    saveS(); sheetShow(); sheetSay("");
+  }catch(e){ sheetSay(e.message || String(e)); }
+}
+function signOutS(){
+  if(S && S.refresh) fetch(S.host + "/xrpc/com.atproto.server.deleteSession", { method:"POST", headers:{ Authorization:"Bearer " + S.refresh } }).catch(() => {});
+  S = null; saveS(); sheetShow();
+}
+/* the take's own post: the oldest post on the take's account that carries its id */
+async function findAnchor(t){
+  if(t.anchor !== undefined) return t.anchor;
+  const pds = await pdsFor(t.did);
+  let cursor = "", hit = null;
+  for(let page=0; page<6; page++){
+    const r = await fetch(pds + "/xrpc/com.atproto.repo.listRecords?repo=" + encodeURIComponent(t.did) +
+      "&collection=app.bsky.feed.post&limit=100" + (cursor ? "&cursor=" + encodeURIComponent(cursor) : ""));
+    if(!r.ok) break;
+    const j = await r.json();
+    for(const rec of (j.records || [])){
+      if(JSON.stringify(rec.value || {}).includes(t.cid)) hit = { uri:rec.uri, cid:rec.cid, reply:(rec.value || {}).reply || null };
+    }
+    cursor = j.cursor; if(!cursor) break;
+  }
+  t.anchor = hit;
+  return hit;
+}
+const postLink = uri => { const p = uri.split("/"); return "https://bsky.app/profile/" + p[2] + "/post/" + p[4]; };
+function sheetSay(s, html){ const n = $("#shst"); if(html) n.innerHTML = s; else n.textContent = s || ""; }
+function sheetShow(){
+  $("#shin").hidden = !!S; $("#shout").hidden = !S;
+  const who = $("#shwho"); who.textContent = "";
+  if(S){ who.append(el("div","w","as @" + S.handle)); word(who, "sign out", () => signOutS()); }
+  SH.keep.textContent = "remember this phone: " + (keep ? "yes" : "no");
+  SH.keep.classList.toggle("on", keep);
+  SH.post.textContent = sheetBusy ? "posting..." : "post";
+}
+const SH = {};
+function sheetChrome(){
+  SH.sign = word($("#shinw"), "sign in", () => signInS());
+  SH.keep = word($("#shinw"), "", () => { keep = !keep; saveS(); sheetShow(); });
+  SH.post = word($("#shoutw"), "post", () => postRemix());
+  word($("#shclose"), "close", () => closeSheet());
+  $("#shpw").addEventListener("keydown", e => { if(e.key === "Enter") signInS(); });
+}
+function openSheet(){
+  if(!take){ say("this take is only on this device. pick one from takes to post a remix of it"); return; }
+  if(!paramString()){ say("nothing changed yet. this is still the take as it was"); return; }
+  if(!SH.post) sheetChrome();
+  $("#shhead").textContent = "post this remix as a reply under " + (takeLabel || "the take") + ", from your own bluesky account.";
+  sheetSay(""); sheetShow();
+  $("#sheet").classList.add("open");
+}
+function closeSheet(){ $("#sheet").classList.remove("open"); }
+async function postRemix(){
+  if(sheetBusy || !S || !take) return;
+  sheetBusy = true; sheetShow(); sheetSay("finding the take's post");
+  try{
+    clearTimeout(hashTimer); writeHash();
+    const url = location.href;
+    const a = await findAnchor(take);
+    if(!a) throw new Error("couldn't find the post this take came from");
+    const parent = { uri:a.uri, cid:a.cid }, root = a.reply && a.reply.root ? a.reply.root : parent;
+    const words = $("#shwords").value.trim(), label = "remix";
+    const lead = words ? words + "\n\n" : "", te = new TextEncoder();
+    const byteStart = te.encode(lead).length, byteEnd = byteStart + te.encode(label).length;
+    sheetSay("posting");
+    const p = await callS("com.atproto.repo.createRecord", { repo:S.did, collection:"app.bsky.feed.post", record:{
+      $type:"app.bsky.feed.post", text:lead + label, createdAt:new Date().toISOString(),
+      reply:{ root, parent },
+      facets:[{ index:{ byteStart, byteEnd }, features:[{ $type:"app.bsky.richtext.facet#link", uri:url }] }],
+      embed:{ $type:"app.bsky.embed.external", external:{ uri:url, title:"remix of " + (takeLabel || "a take"), description:BAND } } } });
+    $("#shwords").value = "";
+    sheetSay('posted. <a href="' + postLink(p.uri) + '" target="_blank" rel="noopener">see it under the take</a>', true);
+  }catch(e){ sheetSay((e.message || String(e)) + ". the remix is still here; post again when you can"); }
+  sheetBusy = false; sheetShow();
 }
 
 /* ---------- bounce: record what you hear ------------------------------------------------ */
