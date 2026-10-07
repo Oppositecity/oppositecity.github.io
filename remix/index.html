@@ -979,7 +979,17 @@ function parseHash(){
   if(!m) return null;
   return { did:m[1], cid:m[2], q:new URLSearchParams(m[3] || "") };
 }
+/* a take starts from the plain settings. the only settings that arrive with a
+   take are the ones written into its link. */
+function resetSettings(){
+  Object.assign(P, DEF);
+  undoStack.length = 0;
+  tab = "tape";
+  syncSliders(); showTab(); sync(); words();
+}
 function applyParams(q){
+  Object.assign(P, DEF);
+  undoStack.length = 0;
   for(const k of KEYS) if(q.has(k)){ const v = parseFloat(q.get(k)); if(isFinite(v)) P[k] = v; }
   P.md = P.md ? 1 : 0; P.lk = P.lk ? 1 : 0; P.tm = P.tm ? 1 : 0;
   pending = { la:q.has("la") ? parseFloat(q.get("la")) : null, lb:q.has("lb") ? parseFloat(q.get("lb")) : null, lo:q.get("lo") !== "0" };
@@ -1129,6 +1139,7 @@ async function playTake(t, label){
   await loadBuffer(ab, label || "", { did:t.did, cid:t.cid });
 }
 async function playFile(f){
+  resetSettings(); pending = null;
   say("reading");
   const ab = await decodeBytes(await f.arrayBuffer());
   rigOpen = true;
@@ -1196,7 +1207,7 @@ function renderCat(){
     b.append(el("div","d", "take " + it.n));
     if(t) b.append(el("div","t", t));
     b.onclick = async () => {
-      closeCat();
+      closeCat(); resetSettings(); pending = null;
       try{ await playTake({ did:it.did, cid:it.cid }, "take " + it.n); }
       catch(e){ say(String(e.message || e)); }
     };
