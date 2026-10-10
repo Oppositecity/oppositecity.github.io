@@ -42,6 +42,17 @@ button:disabled:hover{background:none;color:var(--fg)}
 .clip{cursor:pointer;white-space:pre;font-variant-numeric:tabular-nums;padding:2px 0}
 .clip:hover,.clip:focus-visible{background:var(--fg);color:var(--bg);outline:none}
 .clip.cur{font-weight:700}
+/* a blinking block marks an empty field you can type into; it steps aside once you're typing */
+@keyframes cur{0%,49%{background-size:1ch 1.1em}50%,100%{background-size:0 0}}
+input[type=text],input[type=number]{caret-color:#fff;caret-shape:block}
+input[type=text]:placeholder-shown:not(:focus),input[type=number]:placeholder-shown:not(:focus){background-image:linear-gradient(#fff,#fff);background-repeat:no-repeat;background-size:1ch 1.1em;background-position:8px 50%;padding-left:calc(8px + 1.6ch);animation:cur 1.06s steps(1) infinite}
+input::placeholder{color:#fff;opacity:1}
+@media (prefers-reduced-motion:reduce){input[type=text]:placeholder-shown:not(:focus),input[type=number]:placeholder-shown:not(:focus){animation:none}}
+#xmx{display:block;width:100%;font-size:clamp(28px,6vw,44px);font-weight:700;line-height:1;padding:18px 0;margin:0 0 22px;letter-spacing:.06em;background:var(--fg);color:var(--bg)}
+#xmx::before,#xmx::after{content:none}
+#xmx:hover,#xmx:focus-visible{outline:3px solid var(--out);outline-offset:-3px}
+.clip{display:flex;gap:2ch;align-items:baseline}.clip .t{flex:1;white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.clip .x{cursor:pointer;white-space:nowrap}.clip .x:hover{background:var(--bg);color:var(--fg)}
 #drop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);align-items:center;justify-content:center;font-size:24px;z-index:5}
 .hide{display:none!important}
 #measure{position:absolute;visibility:hidden;font-size:12px;white-space:pre}
@@ -79,10 +90,11 @@ button:disabled:hover{background:none;color:var(--fg)}
 <div id="edit" class="hide">
   <div id="wave"></div>
   <div id="readout"></div>
+  <button id="xmx">ximeremix</button>
   <div class="row">
     <button id="play">play loop</button>
     <button id="downbeat">find downbeat</button>
-    <label>bpm <input class="n" type="number" id="bpm" min="40" max="300" step="0.01"></label>
+    <label>bpm <input class="n" type="number" id="bpm" min="40" max="300" step="0.01" placeholder="120"></label>
     <button id="tap">tap</button>
     <button id="detect">detect</button>
     <label>beats <select id="beats">
@@ -94,7 +106,6 @@ button:disabled:hover{background:none;color:var(--fg)}
   </div>
   <div class="row"><label style="flex:1">name <input type="text" id="name" spellcheck="false"></label></div>
   <div class="row">
-    <button id="xmx">ximeremix</button>
     <button id="savefull">save full quality wav</button>
     <button id="savepiko">save for pikocore</button>
     <button id="del">delete clip</button>
@@ -258,7 +269,9 @@ function listClips(){
   clips.forEach((c,i)=>{
     const d=document.createElement('div');d.className='clip'+(i===cur?' cur':'');d.tabIndex=0;
     const beats=c.bpm?((c.selB-c.selA)*c.bpm/60).toFixed(1)+' beats':'';
-    d.textContent=`${i===cur?'▸':' '} ${String(c.n).padStart(2)}  ${c.name}  ${(c.selB-c.selA).toFixed(2)}s  ${beats}`;
+    const t=document.createElement('span');t.className='t';t.textContent=`${i===cur?'▸':' '} ${String(c.n).padStart(2)}  ${c.name}  ${(c.selB-c.selA).toFixed(2)}s  ${beats}`;
+    const x=document.createElement('span');x.className='x';x.textContent='[ ximeremix ]';x.onclick=e=>{e.stopPropagation();toXmx(c)};
+    d.append(t,x);
     d.onclick=()=>select(i);d.onkeydown=e=>{if(e.key==='Enter')select(i)};
     $('clips').appendChild(d);
   });
@@ -399,8 +412,8 @@ async function savePiko(c){
 }
 /* hand the clip to ximeremix: same site, so it goes through this device's storage, never a server */
 function clipDB(){return new Promise((ok,no)=>{const r=indexedDB.open('ximeremix',1);r.onupgradeneeded=()=>r.result.createObjectStore('clips');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
-$('xmx').onclick=async()=>{
-  const c=C();if(!c)return;
+async function toXmx(c){
+  if(!c)return;
   const w=window.open('about:blank','_blank');
   try{
     const db=await clipDB(),key=Date.now().toString(36);
@@ -413,7 +426,8 @@ $('xmx').onclick=async()=>{
     const url='/ximeremix/?clip='+key;
     if(w)w.location=url;else location.href=url;
   }catch(e){if(w)w.close();msg('Could not hand the clip over: '+(e.message||e))}
-};
+}
+$('xmx').onclick=()=>toXmx(C());
 $('savefull').onclick=()=>{if(C()){saveFull(C());msg('Saved '+C().name+'.wav')}};
 $('savepiko').onclick=()=>{if(C()){savePiko(C());msg('Saved the pikocore file for clip '+C().n+'.')}};
 </script>
