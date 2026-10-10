@@ -94,6 +94,7 @@ button:disabled:hover{background:none;color:var(--fg)}
   </div>
   <div class="row"><label style="flex:1">name <input type="text" id="name" spellcheck="false"></label></div>
   <div class="row">
+    <button id="xmx">ximeremix</button>
     <button id="savefull">save full quality wav</button>
     <button id="savepiko">save for pikocore</button>
     <button id="del">delete clip</button>
@@ -396,6 +397,23 @@ async function savePiko(c){
   const r=await off.startRendering();
   dl(wav([r.getChannelData(0)],24000),bpm>0?`${c.name}_beats${beats}_bpm${Math.round(bpm)}.wav`:`${c.name}_24k.wav`);
 }
+/* hand the clip to ximeremix: same site, so it goes through this device's storage, never a server */
+function clipDB(){return new Promise((ok,no)=>{const r=indexedDB.open('ximeremix',1);r.onupgradeneeded=()=>r.result.createObjectStore('clips');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+$('xmx').onclick=async()=>{
+  const c=C();if(!c)return;
+  const w=window.open('about:blank','_blank');
+  try{
+    const db=await clipDB(),key=Date.now().toString(36);
+    await new Promise((ok,no)=>{
+      const st=db.transaction('clips','readwrite').objectStore('clips');
+      st.put({wav:wav(slice(c),c.buf.sampleRate),name:c.name},key);
+      const k=st.getAllKeys();k.onsuccess=()=>{k.result.sort().slice(0,-12).forEach(x=>st.delete(x))};
+      st.transaction.oncomplete=ok;st.transaction.onerror=()=>no(st.transaction.error);
+    });
+    const url='/ximeremix/?clip='+key;
+    if(w)w.location=url;else location.href=url;
+  }catch(e){if(w)w.close();msg('Could not hand the clip over: '+(e.message||e))}
+};
 $('savefull').onclick=()=>{if(C()){saveFull(C());msg('Saved '+C().name+'.wav')}};
 $('savepiko').onclick=()=>{if(C()){savePiko(C());msg('Saved the pikocore file for clip '+C().n+'.')}};
 </script>
