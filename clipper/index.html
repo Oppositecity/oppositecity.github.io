@@ -9,13 +9,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#000;--fg:#fff;--out:#7aa7ff;--played:#ffe066;--pad:clamp(16px,4vw,40px)}
+:root{--bg:#000;--fg:#fff;--out:#7aa7ff;--played:#ffe066;--rec:#ff2b2b;--pad:clamp(16px,4vw,40px)}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--fg)}
 body{font:16px/1.5 "Courier Prime","Courier New",Courier,monospace;padding:calc(var(--pad) + env(safe-area-inset-top,0px)) var(--pad) calc(var(--pad) + env(safe-area-inset-bottom,0px))}
 main{max-width:820px}
 h1{font-size:28px;font-weight:700;margin:0 0 28px;letter-spacing:.02em}
-p{margin:0 0 12px}
 .row{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin:0 0 18px}
 input[type=text],input[type=number],select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--fg);padding:6px 8px;border-radius:0}
 input[type=text]{width:100%}
@@ -23,17 +22,26 @@ input.t{width:9.5ch}
 input.n{width:8ch}
 label{white-space:nowrap}
 button{font:inherit;color:var(--fg);background:none;border:0;padding:4px 0;cursor:pointer}
-button::before{content:"[ "}
-button::after{content:" ]"}
+button:not(#sample)::before{content:"[ "}
+button:not(#sample)::after{content:" ]"}
 button:hover,button:focus-visible{background:var(--fg);color:var(--bg);outline:none}
 button:disabled{cursor:default;opacity:.5}
 button:disabled:hover{background:none;color:var(--fg)}
-#player-wrap{position:relative;width:100%;aspect-ratio:16/9;margin:0 0 18px;display:none}
+#player-wrap{position:relative;width:100%;aspect-ratio:16/9;margin:0 0 10px;display:none}
 #player-wrap iframe,#player{position:absolute;inset:0;width:100%;height:100%}
+#now{margin:0 0 18px;font-variant-numeric:tabular-nums}
+#sample{display:block;width:100%;font-size:clamp(40px,9vw,72px);font-weight:700;line-height:1;padding:28px 0;margin:0 0 6px;letter-spacing:.06em;background:var(--fg);color:var(--bg);touch-action:manipulation}
+#sample:hover,#sample:focus-visible{background:var(--fg);color:var(--bg);outline:3px solid var(--rec);outline-offset:-3px}
+#sample.rec,#sample.rec:hover{background:var(--rec);color:var(--fg);outline:none}
+#samplehint{margin:0 0 28px}
 #wave{margin:8px 0 6px;font-size:12px;line-height:1;white-space:pre;overflow:hidden;cursor:ew-resize;touch-action:none;user-select:none;min-height:1em}
 #wave .o{color:var(--out)} #wave .s{color:var(--fg)} #wave .p{color:var(--played)}
 #readout{margin:0 0 18px;font-variant-numeric:tabular-nums}
-#msg{min-height:1.5em;margin:0 0 18px}
+#msg{min-height:1.5em;margin:0 0 22px}
+#clips{margin:0 0 22px}
+.clip{cursor:pointer;white-space:pre;font-variant-numeric:tabular-nums;padding:2px 0}
+.clip:hover,.clip:focus-visible{background:var(--fg);color:var(--bg);outline:none}
+.clip.cur{font-weight:700}
 #drop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);align-items:center;justify-content:center;font-size:24px;z-index:5}
 .hide{display:none!important}
 #measure{position:absolute;visibility:hidden;font-size:12px;white-space:pre}
@@ -45,22 +53,28 @@ button:disabled:hover{background:none;color:var(--fg)}
 
 <div class="row"><input type="text" id="url" placeholder="Paste a YouTube link" autocomplete="off" spellcheck="false"></div>
 <div id="player-wrap"><div id="player"></div></div>
+<div id="now"></div>
+
+<button id="sample">SAMPLE</button>
+<div id="samplehint">Press to start recording what's playing, press again to stop. The S key works too.</div>
 
 <div class="row">
   <label>in <input class="t" type="text" id="tin" placeholder="0:00"></label>
   <button id="setin">set from video</button>
   <label>out <input class="t" type="text" id="tout" placeholder="0:30"></label>
   <button id="setout">set from video</button>
+  <button id="cap">capture range</button>
 </div>
 
 <div class="row">
-  <button id="cap">capture</button>
   <button id="open">open a file</button>
   <input type="file" id="file" accept="audio/*,video/*" class="hide">
   <label><input type="checkbox" id="auto" checked> auto: find tempo, downbeat and bars, then save</label>
 </div>
 
-<div id="msg">Paste a link, set in and out, then capture. Chrome on a computer records this tab's audio as the clip plays, so a 30 second clip takes 30 seconds.</div>
+<div id="msg">Chrome on a computer records this tab's audio as it plays. The first time, choose this tab and turn on "Also share tab audio".</div>
+
+<div id="clips"></div>
 
 <div id="edit" class="hide">
   <div id="wave"></div>
@@ -82,6 +96,7 @@ button:disabled:hover{background:none;color:var(--fg)}
   <div class="row">
     <button id="savefull">save full quality wav</button>
     <button id="savepiko">save for pikocore</button>
+    <button id="del">delete clip</button>
   </div>
 </div>
 </main>
@@ -93,13 +108,13 @@ const $=id=>document.getElementById(id);
 const msg=t=>{$('msg').textContent=t};
 const fmt=s=>{if(!isFinite(s))return'';s=Math.max(0,s);const m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(3).padStart(6,'0')};
 const parseT=v=>{v=String(v).trim();if(!v)return NaN;const p=v.split(':').map(Number);return p.reduce((a,x)=>a*60+x,0)};
-const slug=s=>(s||'clip').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'clip';
+const slug=s=>(s||'clip').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,32)||'clip';
+const stamp=s=>{const m=Math.floor(s/60),x=Math.floor(s%60);return m+'m'+String(x).padStart(2,'0')+'s'};
 
 /* ---------- YouTube ---------- */
-let player=null,ytReady=false,pendingId=null;
+let player=null,ytReady=false,pendingId=null,title='clip';
 window.onYouTubeIframeAPIReady=()=>{ytReady=true;if(pendingId)loadVideo(pendingId)};
 (()=>{const s=document.createElement('script');s.src='https://www.youtube.com/iframe_api';document.head.appendChild(s)})();
-
 function vidFrom(u){
   try{const x=new URL(u.trim());
     let id=x.hostname.includes('youtu.be')?x.pathname.slice(1):x.searchParams.get('v');
@@ -114,210 +129,241 @@ function loadVideo(id){
   if(player){player.cueVideoById(id);setTimeout(onVid,800);return}
   player=new YT.Player('player',{videoId:id,playerVars:{playsinline:1,rel:0},events:{onReady:onVid}});
 }
-function onVid(){
-  try{const d=player.getVideoData();if(d&&d.title&&!$('name').dataset.user)$('name').value=slug(d.title)}catch(e){}
+function onVid(){try{const d=player.getVideoData();if(d&&d.title)title=slug(d.title)}catch(e){}}
+$('url').addEventListener('input',()=>{const v=vidFrom($('url').value);if(!v)return;if(isFinite(v.ts))$('tin').value=fmt(v.ts);loadVideo(v.id)});
+const vt=()=>player&&player.getCurrentTime?player.getCurrentTime():0;
+$('setin').onclick=()=>{if(player)$('tin').value=fmt(vt())};
+$('setout').onclick=()=>{if(player)$('tout').value=fmt(vt())};
+setInterval(()=>{
+  if(player&&player.getCurrentTime)$('now').textContent='video at '+fmt(vt());
+  if(recMode==='button')$('sample').textContent='● REC '+((performance.now()-recStartPerf)/1000).toFixed(1)+'s';
+},100);
+
+/* ---------- capture core ---------- */
+let ctx=null,node=null,stream=null,recording=false,chunks=null,recMode=null,recStartPerf=0;
+function ensureCtx(){if(!ctx)ctx=new AudioContext();if(ctx.state==='suspended')ctx.resume()}
+async function ensureStream(){
+  if(stream)return true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){msg('This browser cannot record tab audio. Use Chrome on a computer, or open a file instead.');return false}
+  try{stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},preferCurrentTab:true,selfBrowserSurface:'include'})}
+  catch(e){msg('Sharing was cancelled. Choose this tab and turn on "Also share tab audio".');return false}
+  const at=stream.getAudioTracks()[0];
+  if(!at){stream.getTracks().forEach(t=>t.stop());stream=null;msg('No audio came through. Choose this tab and turn on "Also share tab audio".');return false}
+  stream.getVideoTracks().forEach(t=>t.stop());
+  at.onended=()=>{stream=null};
+  if(!node){
+    const code=`class R extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c.length)this.port.postMessage(c.map(x=>x.slice()));return true}}registerProcessor('rec',R)`;
+    await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code],{type:'text/javascript'})));
+    node=new AudioWorkletNode(ctx,'rec',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
+    node.port.onmessage=e=>{if(!recording)return;const d=e.data;chunks[0].push(d[0]);chunks[1].push(d[1]||d[0])};
+    const g=ctx.createGain();g.gain.value=0;node.connect(g).connect(ctx.destination);
+  }
+  ctx.createMediaStreamSource(new MediaStream([at])).connect(node);
+  return true;
 }
-$('url').addEventListener('input',()=>{
-  const v=vidFrom($('url').value);if(!v)return;
-  if(isFinite(v.ts))$('tin').value=fmt(v.ts);
-  loadVideo(v.id);
+function startRec(){chunks=[[],[]];recording=true}
+function stopRec(){
+  recording=false;const n=chunks[0].reduce((s,c)=>s+c.length,0);
+  if(!n){msg('Nothing was recorded. Check that tab audio is shared and the video is not muted.');return null}
+  const out=ctx.createBuffer(2,n,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=out.getChannelData(ch);let o=0;for(const c of chunks[ch]){d.set(c,o);o+=c.length}}
+  let pk=0;for(const v of out.getChannelData(0))pk=Math.max(pk,Math.abs(v));
+  if(pk<1e-4){msg('The recording is silent. Unmute the video and try again.');return null}
+  return out;
+}
+
+/* big button */
+let recT0=0;
+async function toggleSample(){
+  if(recMode==='range')return;
+  if(recMode==='button'){
+    recMode=null;$('sample').classList.remove('rec');$('sample').textContent='SAMPLE';
+    const b=stopRec();if(b)addClip(b,0,b.duration,recT0);
+    return;
+  }
+  if(!player)return msg('Paste a YouTube link first, or open a file.');
+  ensureCtx();if(!await ensureStream())return;
+  stopPreview();
+  if(player.getPlayerState()!==1)player.playVideo();
+  recT0=vt();startRec();recMode='button';recStartPerf=performance.now();
+  $('sample').classList.add('rec');$('cap').disabled=true;
+  msg('Recording. Press SAMPLE again to stop.');
+}
+$('sample').onclick=()=>{toggleSample().finally(()=>{if(recMode!=='button')$('cap').disabled=false})};
+addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()!=='s'||e.repeat||e.metaKey||e.ctrlKey||e.altKey)return;
+  const t=document.activeElement&&document.activeElement.tagName;if(t==='INPUT'||t==='SELECT')return;
+  e.preventDefault();$('sample').click();
 });
-$('setin').onclick=()=>{if(player)$('tin').value=fmt(player.getCurrentTime())};
-$('setout').onclick=()=>{if(player)$('tout').value=fmt(player.getCurrentTime())};
-$('name').addEventListener('input',()=>$('name').dataset.user=1);
 
-/* ---------- audio core ---------- */
-let ctx=null,node=null,stream=null,recording=false,chunks=null;
-let buf=null,env=null,envRate=0,selA=0,selB=0,preview=null,playStart=0;
-function ensureCtx(){
-  if(!ctx)ctx=new AudioContext();
-  if(ctx.state==='suspended')ctx.resume();
-}
-async function ensureNode(){
-  if(node)return;
-  const code=`class R extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c.length)this.port.postMessage(c.map(x=>x.slice()));return true}}registerProcessor('rec',R)`;
-  await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code],{type:'text/javascript'})));
-  node=new AudioWorkletNode(ctx,'rec',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
-  node.port.onmessage=e=>{if(!recording)return;const d=e.data;chunks[0].push(d[0]);chunks[1].push(d[1]||d[0])};
-  const g=ctx.createGain();g.gain.value=0;node.connect(g).connect(ctx.destination);
-}
-
+/* range capture */
 $('cap').onclick=async()=>{
   if(!player)return msg('Paste a YouTube link first.');
   const a=parseT($('tin').value),b=parseT($('tout').value);
   if(!(b>a))return msg('Set an out point after the in point.');
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia)return msg('This browser cannot record tab audio. Use Chrome on a computer, or open a file instead.');
-  ensureCtx();
-  if(!stream){
-    try{stream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},preferCurrentTab:true,selfBrowserSurface:'include'})}
-    catch(e){return msg('Capture was cancelled. Choose this tab and turn on "Also share tab audio".')}
-    const at=stream.getAudioTracks()[0];
-    if(!at){stream.getTracks().forEach(t=>t.stop());stream=null;return msg('No audio came through. Choose this tab and turn on "Also share tab audio".')}
-    stream.getVideoTracks().forEach(t=>t.stop());
-    at.onended=()=>{stream=null};
-    await ensureNode();
-    ctx.createMediaStreamSource(new MediaStream([at])).connect(node);
-  }
+  ensureCtx();if(!await ensureStream())return;
   stopPreview();
-  const pad=0.4,from=Math.max(0,a-pad);
-  chunks=[[],[]];recording=false;let t0=0,armed=false;
-  $('cap').disabled=true;
+  const pad=0.4,from=Math.max(0,a-pad);let t0=0,armed=false,started=false;
+  recMode='range';$('cap').disabled=true;$('sample').disabled=true;
   player.pauseVideo();player.seekTo(from,true);
   setTimeout(()=>{player.playVideo();armed=true},250);
-  msg('Capturing. Leave this tab open and the volume up.');
+  msg('Capturing the range. Leave this tab open.');
   const tick=setInterval(()=>{
     if(!armed)return;
-    const st=player.getPlayerState(),t=player.getCurrentTime();
-    if(!recording&&st===1&&Math.abs(t-from)<1.5){recording=true;t0=t}
-    if(recording){
-      msg('Capturing '+fmt(t)+' of '+fmt(b+pad)+'. Leave this tab open.');
-      if(t>=b+pad||st===0){clearInterval(tick);recording=false;player.pauseVideo();$('cap').disabled=false;finishCapture(a-t0,b-t0)}
+    const st=player.getPlayerState(),t=vt();
+    if(!started&&st===1&&Math.abs(t-from)<1.5){started=true;t0=t;startRec()}
+    if(started){
+      msg('Capturing '+fmt(t)+' of '+fmt(b+pad)+'.');
+      if(t>=b+pad||st===0){
+        clearInterval(tick);player.pauseVideo();recMode=null;$('cap').disabled=false;$('sample').disabled=false;
+        const buf=stopRec();
+        if(buf){addClip(buf,Math.max(0,a-t0),Math.min(buf.duration,b-t0),a);$('tin').value=fmt(b);$('tout').value='';$('tout').focus()}
+      }
     }
   },15);
 };
 
-function finishCapture(a,b){
-  const n=chunks[0].reduce((s,c)=>s+c.length,0);
-  if(!n)return msg('Nothing was recorded. Check that tab audio was shared and the video is not muted.');
-  const out=ctx.createBuffer(2,n,ctx.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=out.getChannelData(ch);let o=0;for(const c of chunks[ch]){d.set(c,o);o+=c.length}}
-  let peak=0;for(let ch=0;ch<2;ch++)for(const v of out.getChannelData(ch))peak=Math.max(peak,Math.abs(v));
-  if(peak<1e-4)return msg('The recording is silent. Unmute the video and try again.');
-  loadBuffer(out,Math.max(0,a),Math.min(out.duration,b));
-}
-
 /* ---------- files ---------- */
 $('open').onclick=()=>$('file').click();
-$('file').onchange=e=>{if(e.target.files[0])openFile(e.target.files[0])};
+$('file').onchange=e=>{for(const f of e.target.files)openFile(f);e.target.value=''};
 async function openFile(f){
   ensureCtx();
-  try{
-    const b=await ctx.decodeAudioData(await f.arrayBuffer());
-    if(!$('name').dataset.user)$('name').value=slug(f.name.replace(/\.[^.]+$/,''));
-    loadBuffer(b,0,b.duration);
-  }catch(e){msg('That file could not be decoded. Try WAV, MP3, FLAC or AIFF.')}
+  try{const b=await ctx.decodeAudioData(await f.arrayBuffer());addClip(b,0,b.duration,0,slug(f.name.replace(/\.[^.]+$/,'')))}
+  catch(e){msg('That file could not be decoded. Try WAV, MP3, FLAC or AIFF.')}
 }
 let dragDepth=0;
 addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;$('drop').style.display='flex'});
 addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;$('drop').style.display='none'}});
 addEventListener('dragover',e=>e.preventDefault());
-addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('drop').style.display='none';const f=e.dataTransfer.files[0];if(f)openFile(f)});
+addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('drop').style.display='none';for(const f of e.dataTransfer.files)openFile(f)});
+
+/* ---------- clips ---------- */
+let clips=[],cur=-1,serial=0;
+const C=()=>clips[cur];
+function addClip(buf,a,b,srcT,name){
+  serial++;
+  const c={buf,selA:a,selB:b,bpm:'',name:name||(title+'-'+stamp(srcT)),n:serial};
+  buildEnv(c);clips.push(c);select(clips.length-1);
+  if($('auto').checked)autoClip(c);else msg('Clip '+c.n+' captured. Trim it, then save.');
+  listClips();render();
+}
+function select(i){
+  stopPreview();cur=i;const c=C();
+  $('edit').classList.toggle('hide',!c);if(!c){listClips();return}
+  $('bpm').value=c.bpm;$('name').value=c.name;computePeaks();listClips();render();
+}
+function listClips(){
+  $('clips').innerHTML='';
+  clips.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='clip'+(i===cur?' cur':'');d.tabIndex=0;
+    const beats=c.bpm?((c.selB-c.selA)*c.bpm/60).toFixed(1)+' beats':'';
+    d.textContent=`${i===cur?'▸':' '} ${String(c.n).padStart(2)}  ${c.name}  ${(c.selB-c.selA).toFixed(2)}s  ${beats}`;
+    d.onclick=()=>select(i);d.onkeydown=e=>{if(e.key==='Enter')select(i)};
+    $('clips').appendChild(d);
+  });
+}
+$('name').addEventListener('input',()=>{if(C()){C().name=slug($('name').value);listClips()}});
+$('bpm').addEventListener('input',()=>{if(C()){C().bpm=$('bpm').value;render();listClips()}});
+$('del').onclick=()=>{if(!C())return;stopPreview();clips.splice(cur,1);select(Math.min(cur,clips.length-1))};
 
 /* ---------- analysis ---------- */
-function buildEnv(){
-  const sr=buf.sampleRate,hop=512,L=buf.getChannelData(0),R=buf.numberOfChannels>1?buf.getChannelData(1):L;
+function buildEnv(c){
+  const b=c.buf,hop=512,L=b.getChannelData(0),R=b.numberOfChannels>1?b.getChannelData(1):L;
   const n=Math.floor(L.length/hop),e=new Float32Array(n);
   for(let i=0;i<n;i++){let s=0;for(let j=i*hop;j<(i+1)*hop;j++){const v=(L[j]+R[j])*.5;s+=v*v}e[i]=Math.sqrt(s/hop)}
   const f=new Float32Array(n);for(let i=1;i<n;i++)f[i]=Math.max(0,e[i]-e[i-1]);
-  env=f;envRate=sr/hop;
+  c.env=f;c.envRate=b.sampleRate/hop;
 }
-function detectBpm(){
-  const i0=Math.floor(selA*envRate),i1=Math.min(env.length,Math.floor(selB*envRate));
-  const x=env.slice(i0,i1);if(x.length<envRate*3)return null;
-  let mean=0;for(const v of x)mean+=v;mean/=x.length;
-  const y=x.map(v=>v-mean);
+function detectBpm(c){
+  const i0=Math.floor(c.selA*c.envRate),i1=Math.min(c.env.length,Math.floor(c.selB*c.envRate));
+  const x=c.env.slice(i0,i1);if(x.length<c.envRate*3)return null;
+  let mean=0;for(const v of x)mean+=v;mean/=x.length;const y=x.map(v=>v-mean);
   const ac=lag=>{const l0=Math.floor(lag),fr=lag-l0;let s=0;for(let i=0;i+l0+1<y.length;i++)s+=y[i]*(y[i+l0]*(1-fr)+y[i+l0+1]*fr);return s};
   let best=null,bs=-Infinity;
-  for(let bpm=70;bpm<=200;bpm+=0.25){
-    const lag=envRate*60/bpm;
-    const s=ac(lag)+0.5*ac(lag*2)+0.25*ac(lag*4);
-    if(s>bs){bs=s;best=bpm}
-  }
+  for(let bpm=70;bpm<=200;bpm+=0.25){const lag=c.envRate*60/bpm,s=ac(lag)+0.5*ac(lag*2)+0.25*ac(lag*4);if(s>bs){bs=s;best=bpm}}
   return best;
 }
-function findDownbeat(){
-  const c=Math.round(selA*envRate),w=Math.round(0.2*envRate);
-  let bi=c,bv=-1;
-  for(let i=Math.max(1,c-w);i<=Math.min(env.length-1,c+w);i++)if(env[i]>bv){bv=env[i];bi=i}
-  const len=selB-selA;
-  selA=Math.max(0,(bi-1)/envRate);selB=Math.min(buf.duration,selA+len);
+function findDownbeat(c){
+  const k=Math.round(c.selA*c.envRate),w=Math.round(0.2*c.envRate);let bi=k,bv=-1;
+  for(let i=Math.max(1,k-w);i<=Math.min(c.env.length-1,k+w);i++)if(c.env[i]>bv){bv=c.env[i];bi=i}
+  const len=c.selB-c.selA;c.selA=Math.max(0,(bi-1)/c.envRate);c.selB=Math.min(c.buf.duration,c.selA+len);
 }
-function snapBars(){
-  const bpm=+$('bpm').value;if(!(bpm>0))return msg('Set a bpm first. Detect it, tap it, or type it.')||false;
-  const beat=60/bpm,max=buf.duration-selA;
-  let beats=$('beats').value==='auto'?Math.max(4,Math.round((selB-selA)/beat/4)*4):+$('beats').value;
+function snapBars(c,quiet){
+  const bpm=+c.bpm,say=t=>{if(!quiet)msg(t);return false};
+  if(!(bpm>0))return say('Set a bpm first. Detect it, tap it, or type it.');
+  const beat=60/bpm,max=c.buf.duration-c.selA,mode=$('beats').value;
+  let beats=mode==='auto'?Math.max(4,Math.round((c.selB-c.selA)/beat/4)*4):+mode;
   if(beats*beat>max){
-    if($('beats').value!=='auto')return msg(beats+' beats at '+bpm+' bpm runs past the end of the clip.')||false;
-    beats=Math.floor(max/beat/4)*4;if(beats<4)return msg('The clip is shorter than one bar at '+bpm+' bpm.')||false;
+    if(mode!=='auto')return say(beats+' beats at '+bpm+' bpm runs past the end of the clip.');
+    beats=Math.floor(max/beat/4)*4;if(beats<4)return say('The clip is shorter than one bar at '+bpm+' bpm.');
   }
-  selB=selA+beats*beat;return true;
+  c.selB=c.selA+beats*beat;return true;
 }
-function curBeats(){const bpm=+$('bpm').value;return bpm>0?(selB-selA)*bpm/60:NaN}
+function autoClip(c){
+  const bpm=detectBpm(c);if(bpm)c.bpm=bpm.toFixed(2);
+  let snapped=false;if(c.bpm){findDownbeat(c);snapped=snapBars(c,true)}
+  if(c===C())$('bpm').value=c.bpm;
+  saveFull(c);savePiko(c);
+  msg(`Clip ${c.n} saved`+(c.bpm?(snapped?', snapped to bars at '+(+c.bpm).toFixed(1)+' bpm.':', too short to snap to whole bars.'):', too short to find a tempo.')+' Trim and save again if it needs work.');
+}
 
 /* ---------- waveform ---------- */
-let cols=0,peaks=null;
-const ROWS=11;
+let cols=0,peaks=null;const ROWS=11;
 function computePeaks(){
+  const c=C();if(!c)return;
   const cw=$('measure').getBoundingClientRect().width||7.2;
   cols=Math.max(20,Math.floor($('wave').clientWidth/cw));
-  const L=buf.getChannelData(0),R=buf.numberOfChannels>1?buf.getChannelData(1):L,per=L.length/cols;
+  const L=c.buf.getChannelData(0),R=c.buf.numberOfChannels>1?c.buf.getChannelData(1):L,per=L.length/cols;
   peaks=new Float32Array(cols);let mx=0;
-  for(let c=0;c<cols;c++){let p=0;const s=Math.floor(c*per),e=Math.floor((c+1)*per);for(let i=s;i<e;i+=4)p=Math.max(p,Math.abs(L[i]),Math.abs(R[i]));peaks[c]=p;mx=Math.max(mx,p)}
-  for(let c=0;c<cols;c++)peaks[c]/=mx||1;
+  for(let k=0;k<cols;k++){let p=0;const s=Math.floor(k*per),e=Math.floor((k+1)*per);for(let i=s;i<e;i+=4)p=Math.max(p,Math.abs(L[i]),Math.abs(R[i]));peaks[k]=p;mx=Math.max(mx,p)}
+  for(let k=0;k<cols;k++)peaks[k]/=mx||1;
 }
 function render(){
-  if(!buf)return;
-  const dur=buf.duration,mid=(ROWS-1)/2;
-  let playT=-1;
-  if(preview){const span=selB-selA;playT=selA+((ctx.currentTime-playStart)%span)}
-  const cls=new Array(cols);
-  for(let c=0;c<cols;c++){const t=(c+.5)/cols*dur;cls[c]=(t<selA||t>selB)?'o':(playT>=0&&t<=playT?'p':'s')}
+  const c=C();if(!c||!peaks)return;
+  const dur=c.buf.duration,mid=(ROWS-1)/2;let playT=-1;
+  if(preview){const span=c.selB-c.selA;playT=c.selA+((ctx.currentTime-playStart)%span)}
+  const cls=[];for(let k=0;k<cols;k++){const t=(k+.5)/cols*dur;cls[k]=(t<c.selA||t>c.selB)?'o':(playT>=0&&t<=playT?'p':'s')}
   let html='';
   for(let r=0;r<ROWS;r++){
-    let cur=null,run='';
-    for(let c=0;c<cols;c++){
-      const ch=Math.abs(r-mid)<=Math.max(.5,peaks[c]*(mid+.5))?'█':' ';
-      if(cls[c]!==cur){if(cur)html+=`<span class="${cur}">${run}</span>`;cur=cls[c];run=''}
+    let cl=null,run='';
+    for(let k=0;k<cols;k++){
+      const ch=Math.abs(r-mid)<=Math.max(.5,peaks[k]*(mid+.5))?'█':' ';
+      if(cls[k]!==cl){if(cl)html+=`<span class="${cl}">${run}</span>`;cl=cls[k];run=''}
       run+=ch;
     }
-    html+=`<span class="${cur}">${run}</span>\n`;
+    html+=`<span class="${cl}">${run}</span>\n`;
   }
   $('wave').innerHTML=html;
-  const b=curBeats();
-  $('readout').textContent=`in ${fmt(selA)}   out ${fmt(selB)}   ${(selB-selA).toFixed(3)} s`+(isFinite(b)?`   ${b.toFixed(2)} beats`:'');
+  const bt=c.bpm?(c.selB-c.selA)*c.bpm/60:NaN;
+  $('readout').textContent=`in ${fmt(c.selA)}   out ${fmt(c.selB)}   ${(c.selB-c.selA).toFixed(3)} s`+(isFinite(bt)?`   ${bt.toFixed(2)} beats`:'');
 }
-addEventListener('resize',()=>{if(buf){computePeaks();render()}});
+addEventListener('resize',()=>{if(C()){computePeaks();render()}});
 let dragging=null;
-$('wave').addEventListener('pointerdown',e=>{
-  if(!buf)return;const t=tAt(e);dragging=Math.abs(t-selA)<Math.abs(t-selB)?'a':'b';
-  $('wave').setPointerCapture(e.pointerId);moveHandle(t);
-});
+$('wave').addEventListener('pointerdown',e=>{if(!C())return;const t=tAt(e);dragging=Math.abs(t-C().selA)<Math.abs(t-C().selB)?'a':'b';$('wave').setPointerCapture(e.pointerId);moveHandle(t)});
 $('wave').addEventListener('pointermove',e=>{if(dragging)moveHandle(tAt(e))});
-$('wave').addEventListener('pointerup',()=>{dragging=null;if(preview)startPreview()});
-function tAt(e){const r=$('wave').getBoundingClientRect();return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*buf.duration}
-function moveHandle(t){if(dragging==='a')selA=Math.min(t,selB-0.01);else selB=Math.max(t,selA+0.01);render()}
+$('wave').addEventListener('pointerup',()=>{if(dragging){dragging=null;listClips();if(preview)startPreview()}});
+function tAt(e){const r=$('wave').getBoundingClientRect();return Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*C().buf.duration}
+function moveHandle(t){const c=C();if(dragging==='a')c.selA=Math.min(t,c.selB-0.01);else c.selB=Math.max(t,c.selA+0.01);render()}
 
 /* ---------- preview ---------- */
+let preview=null,playStart=0;
 function startPreview(){
-  stopPreview(true);
-  preview=ctx.createBufferSource();preview.buffer=buf;preview.loop=true;
-  preview.loopStart=selA;preview.loopEnd=selB;preview.connect(ctx.destination);
-  playStart=ctx.currentTime;preview.start(0,selA);$('play').textContent='stop loop';
+  const c=C();if(!c)return;stopPreview(true);ensureCtx();
+  preview=ctx.createBufferSource();preview.buffer=c.buf;preview.loop=true;
+  preview.loopStart=c.selA;preview.loopEnd=c.selB;preview.connect(ctx.destination);
+  playStart=ctx.currentTime;preview.start(0,c.selA);$('play').textContent='stop loop';
   (function f(){if(preview){render();requestAnimationFrame(f)}})();
 }
 function stopPreview(keep){if(preview){preview.stop();preview=null}if(!keep)$('play').textContent='play loop';render()}
-$('play').onclick=()=>{ensureCtx();preview?stopPreview():startPreview()};
-
-/* ---------- load + auto ---------- */
-function loadBuffer(b,a,bb){
-  stopPreview();buf=b;selA=a;selB=bb;
-  $('edit').classList.remove('hide');buildEnv();computePeaks();
-  if($('auto').checked){
-    const bpm=detectBpm();if(bpm)$('bpm').value=bpm.toFixed(2);
-    findDownbeat();const ok=snapBars();render();
-    if(ok){savePiko();saveFull();msg('Saved both files. Adjust and save again if the loop needs work.')}
-    else render();
-  }else{render();msg('Captured. Drag the edges to trim, then save.')}
-}
-$('downbeat').onclick=()=>{if(buf){findDownbeat();render();if(preview)startPreview()}};
-$('detect').onclick=()=>{if(!buf)return;const b=detectBpm();if(b){$('bpm').value=b.toFixed(2);render()}else msg('The selection is too short to find a tempo. Select at least three seconds.')};
-$('snap').onclick=()=>{if(buf&&snapBars()){render();if(preview)startPreview()}};
-$('bpm').addEventListener('input',render);
+$('play').onclick=()=>{preview?stopPreview():startPreview()};
+$('downbeat').onclick=()=>{if(C()){findDownbeat(C());render();listClips();if(preview)startPreview()}};
+$('detect').onclick=()=>{const c=C();if(!c)return;const b=detectBpm(c);if(b){c.bpm=b.toFixed(2);$('bpm').value=c.bpm;render();listClips()}else msg('The selection is too short to find a tempo. Select at least three seconds, or tap it.')};
+$('snap').onclick=()=>{if(C()&&snapBars(C())){render();listClips();if(preview)startPreview()}};
 let taps=[];
 $('tap').onclick=()=>{
   const now=performance.now();if(taps.length&&now-taps[taps.length-1]>2000)taps=[];
   taps.push(now);if(taps.length>9)taps.shift();
-  if(taps.length>=3){const iv=(taps[taps.length-1]-taps[0])/(taps.length-1);$('bpm').value=(60000/iv).toFixed(2);render()}
+  if(taps.length>=3&&C()){C().bpm=(60000/((taps[taps.length-1]-taps[0])/(taps.length-1))).toFixed(2);$('bpm').value=C().bpm;render();listClips()}
 };
 
 /* ---------- export ---------- */
@@ -330,31 +376,28 @@ function wav(chs,sr){
   let o=44;for(let i=0;i<n;i++)for(let c=0;c<nc;c++){const s=Math.max(-1,Math.min(1,chs[c][i]));v.setInt16(o,s<0?s*0x8000:s*0x7fff,true);o+=2}
   return new Blob([v],{type:'audio/wav'});
 }
-function slice(){
-  const sr=buf.sampleRate,s=Math.floor(selA*sr),e=Math.floor(selB*sr);
-  const chs=[];for(let c=0;c<buf.numberOfChannels;c++)chs.push(buf.getChannelData(c).slice(s,e));
+function slice(c){
+  const sr=c.buf.sampleRate,s=Math.floor(c.selA*sr),e=Math.floor(c.selB*sr),chs=[];
+  for(let k=0;k<c.buf.numberOfChannels;k++)chs.push(c.buf.getChannelData(k).slice(s,e));
   const f=Math.min(Math.floor(sr*.002),chs[0].length>>1);
   for(const d of chs)for(let i=0;i<f;i++){const g=i/f;d[i]*=g;d[d.length-1-i]*=g}
   return chs;
 }
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
-function baseName(){return slug($('name').value)}
-function saveFull(){if(!buf)return;dl(wav(slice(),buf.sampleRate),baseName()+'.wav')}
-async function savePiko(){
-  if(!buf)return;
-  let bpm=+$('bpm').value,beats=Math.round(curBeats());
-  if(!(bpm>0)){msg('Set a bpm before saving for pikocore so the filename carries the beat grid.');return}
-  while(bpm<100){bpm*=2;beats*=2}while(bpm>200){bpm/=2;beats=Math.max(1,Math.round(beats/2))}
-  const chs=slice(),n=chs[0].length;
-  const src=new AudioBuffer({length:n,numberOfChannels:chs.length,sampleRate:buf.sampleRate});
+function saveFull(c){dl(wav(slice(c),c.buf.sampleRate),c.name+'.wav')}
+async function savePiko(c){
+  let bpm=+c.bpm,beats=bpm>0?Math.round((c.selB-c.selA)*bpm/60):0;
+  if(bpm>0){while(bpm<100){bpm*=2;beats*=2}while(bpm>200){bpm/=2;beats=Math.max(1,Math.round(beats/2))}}
+  const chs=slice(c),n=chs[0].length;
+  const src=new AudioBuffer({length:n,numberOfChannels:chs.length,sampleRate:c.buf.sampleRate});
   chs.forEach((d,i)=>src.copyToChannel(d,i));
-  const off=new OfflineAudioContext(1,Math.max(1,Math.round(n/buf.sampleRate*24000)),24000);
+  const off=new OfflineAudioContext(1,Math.max(1,Math.round(n/c.buf.sampleRate*24000)),24000);
   const s=off.createBufferSource();s.buffer=src;s.connect(off.destination);s.start();
   const r=await off.startRendering();
-  dl(wav([r.getChannelData(0)],24000),`${baseName()}_beats${beats}_bpm${Math.round(bpm)}.wav`);
+  dl(wav([r.getChannelData(0)],24000),bpm>0?`${c.name}_beats${beats}_bpm${Math.round(bpm)}.wav`:`${c.name}_24k.wav`);
 }
-$('savefull').onclick=()=>{saveFull();msg('Saved '+baseName()+'.wav')};
-$('savepiko').onclick=()=>{savePiko();msg('Saved the pikocore file: mono, 24 kHz, beats and bpm in the name.')};
+$('savefull').onclick=()=>{if(C()){saveFull(C());msg('Saved '+C().name+'.wav')}};
+$('savepiko').onclick=()=>{if(C()){savePiko(C());msg('Saved the pikocore file for clip '+C().n+'.')}};
 </script>
 </body>
 </html>
