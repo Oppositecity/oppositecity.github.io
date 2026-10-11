@@ -39,11 +39,17 @@ h2{font-family:var(--display);font-size:clamp(28px,7vw,44px);font-weight:400;mar
 .pdl{max-width:560px;display:flex;flex-direction:column;gap:16px}
 .pdt{display:flex;justify-content:space-between;gap:12px;font-family:var(--serif);font-size:14px;color:var(--muted);margin-bottom:6px}
 .pdt span:last-child{font-family:var(--mono);font-size:12px;white-space:nowrap}
+.cl{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.cb{flex:1;min-width:0}
+.cb .track{display:block}
+.cb .fill{display:block}
+.cv{font-family:var(--mono);font-size:12px;white-space:nowrap;min-width:9.5em;text-align:right}
 .brk{background:#07070b;padding:70px 24px}
 .brk h2{font-size:clamp(24px,6vw,36px);margin-bottom:20px}
 .prose{max-width:540px}
 .prose p{font-family:var(--serif);font-size:15px;color:var(--muted);line-height:1.7;margin:0 0 16px}
 .prose h3{font-family:var(--serif);font-size:16px;font-weight:400;margin:26px 0 10px}
+.prose a{color:var(--accent)}
 .prose .notes p{font-size:14px;color:var(--dim);margin-bottom:12px}
 .end{padding:80px 24px calc(80px + env(safe-area-inset-bottom,0px))}
 .end h2{font-size:clamp(26px,6.5vw,40px);margin-bottom:22px}
@@ -56,7 +62,7 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <div id="gauge" aria-hidden="true"></div>
 <header>
 <h1>The Descent</h1>
-<p class="lede">One object, traced back through the systems and physical events it depends on. The upper tiers use H.T. Odum's emergy accounting: the total solar energy used, directly and indirectly, to make something, in solar emjoules (sej). Emergy measures cost, not value.</p>
+<p class="lede">One cup of coffee, traced back through the people, machines and systems that made it, then through the physical events those depend on. The upper tiers use H.T. Odum's emergy accounting: the total solar energy used, directly and indirectly, to make something, in solar emjoules (sej). Emergy measures cost, not value.</p>
 <p class="lede2">Sunlight is where the method stops. The page continues past it in ordinary physical units.</p>
 <div class="obj">Tracing<b>a cup of coffee</b></div>
 </header>
@@ -64,43 +70,47 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <section class="end">
 <div class="prose">
 <h2>What changes and what doesn't</h2>
-<p>Trace a different object and the first three tiers would change. The sunlight tier and everything below the break would stay the same, because every object on Earth depends on the same sun, the same stellar history, and the same initial conditions.</p>
-<p>The tiers are not a sum. Each one shows the scale of the system the tier above draws on, and only a small fraction of it went into the object. A cup of coffee uses about a hundred-thousandth of one farm-hectare's year, and a negligible share of the sun's output.</p>
+<p>Trace a different object and the cup, the chain, the farm and the economy would all change. The sunlight tier and everything below the break would stay the same, because every object on Earth depends on the same sun, the same stellar history, and the same initial conditions.</p>
+<p>The tiers are not a sum. After the chain, each tier shows the scale of a system the cup draws on, and only a small fraction of it went into the cup.</p>
 <p>Emergy counts what was used to produce something. It says nothing about whether the thing is useful or worth having. Odum sometimes treated emergy as a measure of value. That move is the most disputed part of his method, and this page does not make it.</p>
 <p>Georges Bataille argued that a society is defined less by how it produces than by how it spends the surplus energy it cannot use productively, and he traced that surplus to the sun. The lower tiers show that the sun's output is itself drawn from older stores.</p>
 <div class="notes">
 <h3>Notes on the figures</h3>
 <p>Above the break: emergy estimates (sej) following Odum's method. They are order-of-magnitude, depend on where system boundaries are drawn, and vary between published baselines. Rain transformity and the geobiosphere baseline follow Odum (1996) and Brown et al. (2016).</p>
+<p>The chain is a composite. Transformities are from Nicaragua, the price split is a 2019 UK breakdown of a café cup applied to a $3 cup, and services are converted at the 2011 U.S. emergy-to-money ratio. The bean's energy content (20 MJ/kg) and the beans per cup (≈ 15 g roasted, ≈ 18 g green) are assumptions. The farmer's share of about 1¢ comes from the same UK breakdown. Freight energy is derived from the UK government's average container-ship factor of 0.016 kg CO₂e per tonne-km. Brewing is not broken out; one study puts the whole chain at about 1.9 MJ for a 100 mL cup, most of it outside the steps shown.</p>
 <p>Below the break: physical energies (J), order-of-magnitude. The Penrose figure is an estimate of initial-condition improbability, and its interpretation is contested.</p>
-<p>Bars are log₁₀. Each section has its own axis, printed under every bar: sej above the break, J below it, and W/m³ in the power-density panel. A bar is comparable only to bars on the same axis. Solid bars are amounts; bars with ticks are rates per year.</p>
+<p>Bars are log₁₀. Each section has its own axis, printed under every bar: sej above the break, J below it, W/m³ in the power-density panel, and years in the age panel. The chain uses linear shares. A bar is comparable only to bars on the same axis. Solid bars are amounts; bars with ticks are rates per year.</p>
+<p>Sources: <a href="https://research.slu.se/en/publications/emergy-evaluation-on-the-production-processing-and-export-of-coff/">Cuadra and Rydberg (2006), emergy of coffee in Nicaragua</a> · <a href="https://www.frontiersin.org/journals/energy-research/articles/10.3389/fenrg.2014.00041/full">Campbell, Lu and Walker (2014), U.S. emergy and money flows</a> · <a href="https://www.sherwood.news/business/the-economics-of-coffee/">UK café cup cost breakdown (2019)</a> · <a href="https://sca.coffee/sca-news/25/issue-22/mapping-the-past-to-model-the-future-dalaz">value distribution in German retail coffee</a> · <a href="https://www.fcgov.com/climatewise/pdf/coffee.pdf">green coffee production energy, 10.7 MJ/kg</a> · <a href="https://thermalscience.vinca.rs/pdfs/papers-2016/TSCI16S5271V.pdf">industrial roasting, 1.67 GJ per tonne, and the 1.9 MJ chain total</a> · <a href="https://www.climatiq.io/data/emission-factor/7094d984-e1f7-4406-a9b7-8f810cbda45e">container-ship emission factor</a>.</p>
 <p>H.T. Odum, <i>Environment, Power, and Society</i> (1971) and <i>Environmental Accounting</i> (1996). Georges Bataille, <i>La Part maudite</i> (1949). Roger Penrose, <i>The Emperor's New Mind</i> (1989).</p>
 </div>
 </div>
 </section>
 <script>
 const C={object:"#ecc98a",bio:"#5fd6c4",econ:"#9fd36a",solar:"#f5cf55",stellar:"#ff9b5c",grav:"#b894ff",forge:"#ff6fae",origin:"#86c8ff",cold:"#d4ebff"};
-const SEJ_MIN=10,SEJ_MAX=25,J_MIN=35,J_MAX=70,PD_MIN=-1,PD_MAX=9;
+const SEJ_MIN=10,SEJ_MAX=26,J_MIN=35,J_MAX=70,PD_MIN=-1,PD_MAX=9;
 const SUP={"-":"⁻",0:"⁰",1:"¹",2:"²",3:"³",4:"⁴",5:"⁵",6:"⁶",7:"⁷",8:"⁸",9:"⁹"};
 const sup=n=>String(n).split("").map(c=>SUP[c]||c).join("");
 const DEFAULT_OBJECT_TIERS = [
   {
     key: "cup", label: "The cup", exp: 12, unit: "sej", color: C.object,
-    stat: "≈ 3 × 10¹² sej",
-    hook: "Estimated from its price: about $3 at roughly 10¹² sej per dollar.",
-    prose: "For finished goods, emergy is usually estimated from price using a national emergy-to-money ratio: the country's total annual emergy use divided by its GDP. For the United States, published ratios fall around 10¹² sej per dollar, depending on year and method. A $3 cup therefore comes to a few times 10¹² sej. This is a shortcut. It assumes the price is proportional to the inputs, which is often not true for any single product.",
+    stat: "≈ 1 × 10¹² sej in the coffee itself · ≈ 4 × 10¹² sej for the whole purchase",
+    hook: "A $3 cup of black coffee, about 15 g of roasted beans grown in Nicaragua and drunk in Los Angeles.",
+    prose: "Cuadra and Rydberg (2006) measured transformities along Nicaragua's coffee chain: 1.77 × 10⁶ sej/J for green coffee and 3.64 × 10⁶ sej/J for roasted. Taking roasted coffee at about 20 MJ/kg (an assumption, the energy content of the bean), 15 g carries about 1 × 10¹² sej. The cup as bought also includes the café's labor, rent and materials. Odum's method counts those through money, at the U.S. emergy-to-money ratio of 1.56 × 10¹² sej per dollar (2011), which brings the whole purchase to about 4 × 10¹² sej. The chain below splits that up.",
   },
+];
+const ECON_TIERS = [
   {
     key: "farm", label: "The farm", exp: 16, unit: "sej/yr",
     color: C.bio,
     stat: "≈ 10¹⁵–10¹⁶ sej per hectare per year",
     hook: "The production system the beans come from, measured over one year.",
-    prose: "Rainfall alone delivers about 2 × 10¹⁵ sej to a hectare receiving 2 m of rain a year (chemical potential of rain ≈ 4.9 J/g; transformity of rain ≈ 1.8 × 10⁴ sej/J). Fertilizer, fuel, machinery and labor typically raise the total to around 10¹⁶. A hectare yields roughly a tonne of green coffee a year, enough for about 100,000 cups, so the farm's share of one cup is around 10¹¹ sej. The rest of the cup's 10¹² comes from processing, shipping, roasting and retail.",
+    prose: "Rainfall alone delivers about 2 × 10¹⁵ sej to a hectare receiving 2 m of rain a year (chemical potential of rain ≈ 4.9 J/g; transformity of rain ≈ 1.8 × 10⁴ sej/J). Fertilizer, fuel, machinery and labor typically raise the total to around 10¹⁶. A hectare yields roughly a tonne of green coffee a year, enough for tens of thousands of cups.",
   },
   {
-    key: "economy", label: "The economy", exp: 24, unit: "sej/yr", color: C.econ,
-    stat: "≈ 10²³–10²⁵ sej per year for a national economy",
-    hook: "Shipping, roasting and retail draw on a whole economy's annual emergy use.",
-    prose: "National emergy budgets combine renewable flows (sun, rain, wind, tide, geothermal heat) with fuels, minerals and imports. Published estimates range from about 10²³ sej per year for smaller economies to about 10²⁵ for the largest. This figure is also what sets the emergy-to-money ratio used in the first tier, so the price estimate and this tier depend on the same accounting.",
+    key: "economy", label: "The economy", exp: 25, unit: "sej/yr", color: C.econ,
+    stat: "≈ 2 × 10²⁵ sej per year: the U.S. economy, 2011",
+    hook: "The café, its rent and its wages sit inside an economy that uses more emergy each year than the whole biosphere receives.",
+    prose: "Campbell, Lu and Walker (2014) put the U.S. emergy-to-money ratio at 1.56 × 10¹² sej per dollar in 2011. Multiplied by that year's GDP of about $15.5 trillion, U.S. emergy use comes to about 2.4 × 10²⁵ sej per year, roughly twice the geobiosphere's annual baseline of 1.2 × 10²⁵. That is only possible because most of it comes from stores rather than current flows: fossil fuels, minerals and soils, accumulated over very long periods. The next panel shows how old they are.",
   },
 ];
 const SUN_TIER = {
@@ -164,7 +174,11 @@ function tier(t,min,max,scale){
   b.onclick=()=>{const o=p.hidden;p.hidden=!o;b.setAttribute("aria-expanded",o);b.querySelector("em").textContent=o?"Hide details":"Details";};
   root.appendChild(s);
 }
-[...DEFAULT_OBJECT_TIERS,SUN_TIER].forEach(t=>tier(t,SEJ_MIN,SEJ_MAX,"sej"));
+DEFAULT_OBJECT_TIERS.forEach(t=>tier(t,SEJ_MIN,SEJ_MAX,"sej"));
+chain();
+ECON_TIERS.forEach(t=>tier(t,SEJ_MIN,SEJ_MAX,"sej"));
+ages();
+tier(SUN_TIER,SEJ_MIN,SEJ_MAX,"sej");
 const br=document.createElement("section");
 br.className="brk";br.dataset.depth="sej → J";
 br.innerHTML=`<div class="prose"><h2>The unit changes here</h2>
@@ -172,6 +186,59 @@ br.innerHTML=`<div class="prose"><h2>The unit changes here</h2>
 <p>Below this point the figures are physical energies in joules, given as orders of magnitude. They are not emergy, and their bars use a separate scale. They are ordered by time: each event had to happen before the one above it.</p></div>`;
 root.appendChild(br);
 LOWER.forEach((t,i)=>{tier(t,J_MIN,J_MAX,"J");if(t.key==="fuel")density();});
+
+function chain(){
+  const R=[
+    {k:"Farm and wet mill, Nicaragua",em:14.4,mo:0.4,emv:"≈ 6 × 10¹¹ sej",mov:"≈ 1¢",en:"≈ 0.19 MJ to grow and process ≈ 18 g of green coffee",d:false},
+    {k:"Export, ocean freight, roasting",em:10.3,mo:3.6,emv:"≈ 5 × 10¹¹ sej",mov:"≈ 11¢",en:"freight ≈ 0.02 MJ for ≈ 4,500 km by sea · roasting ≈ 0.03 MJ",d:false},
+    {k:"Cup, lid and other materials",em:11.7,mo:11,emv:"≈ 5 × 10¹¹ sej",mov:"≈ 33¢",en:"emergy estimated from price",d:true},
+    {k:"Café staff",em:26.5,mo:25,emv:"≈ 1.2 × 10¹² sej",mov:"≈ 75¢",en:"emergy estimated from price",d:true},
+    {k:"Rent and shop costs",em:37.1,mo:35,emv:"≈ 1.6 × 10¹² sej",mov:"≈ $1.05",en:"emergy estimated from price",d:true},
+    {k:"Tax and profit",em:0,mo:25,emv:"none",mov:"≈ 75¢",en:"a transfer: no physical input at this step",d:false},
+  ];
+  const s=document.createElement("section");
+  s.className="pd";s.dataset.depth="the chain";
+  const W=40;
+  s.innerHTML=`<div class="prose"><h2>Where the cup comes from</h2>
+<p>Each step below shows two shares of the same cup. The upper bar is its share of the cup's emergy, the work that went into it. The lower bar is its share of the $3 price, the money it keeps. Where the upper bar is long and the lower short, a step puts in more than it is paid for. Where the lower bar is long and the upper short, it is paid more than it puts in.</p></div>
+<div class="pdl">${R.map(r=>{
+  const ew=Math.max(r.em?1.5:0,r.em/W*100), mw=Math.max(1.5,r.mo/W*100);
+  const ef=r.d?`repeating-linear-gradient(90deg,${C.bio} 0 3px,#000 3px 5px)`:C.bio;
+  return `<div class="pdr"><div class="pdt"><span>${esc(r.k)}</span></div>
+<div class="cl"><span class="cb"><span class="track"><span class="fill" data-w="${ew}" style="background:${ef}"></span></span></span><span class="cv" style="color:${C.bio}">${r.em}% · ${r.emv}</span></div>
+<div class="cl"><span class="cb"><span class="track"><span class="fill" data-w="${mw}" style="background:${C.accent}"></span></span></span><span class="cv" style="color:${C.accent}">${r.mo}% · ${r.mov}</span></div>
+<div class="ns">${esc(r.en)}</div></div>`}).join("")}
+<div class="ns">bars: share of the cup, linear, 0–40% · teal: emergy · gold: price · dotted: emergy estimated from price</div></div>
+<div class="prose" style="margin-top:28px">
+<p>The farm supplies about 14% of the cup's emergy and keeps about 0.4% of its price, roughly 1¢. Café staff, rent and materials line up closely on both bars, but only because Odum's method values services by the money paid for them, so those three agree by construction. Tax and profit carry no physical input at all and keep a quarter of the price.</p>
+<p>Ocean freight is the smallest physical step. Moving 18 g of beans 4,500 km by container ship uses about 0.02 MJ, less than a tenth of what it took to grow them.</p>
+<p>Format changes the split. For coffee sold in bags at German supermarkets, a value-distribution study for the Global Coffee Platform, IDH and Solidaridad found about 20% of the value staying with producers. In a café cup, the beans are about 4% of the price.</p>
+<p>Cuadra and Rydberg reached the same conclusion with Nicaragua's own figures: exporting green coffee sends out more emergy than the money received can buy back. They estimated a fair price for green coffee at 0.7 to 3 times what was being paid.</p>
+<p>Brand, location and contract terms are not shown as a separate step. Their cost in energy is negligible, and their share of the price sits inside the rent, roasting and profit lines.</p></div>`;
+  root.appendChild(s);
+}
+
+function ages(){
+  const R=[
+    ["Sunlight on the leaf, since leaving the sun's surface","≈ 8 minutes",-4.8,C.solar],
+    ["Rain on the farm, time spent in the atmosphere","≈ 9 days",-1.6,C.bio],
+    ["Farm topsoil","10²–10⁴ years",3,C.bio],
+    ["Sunlight's energy, since leaving the sun's core","10⁴–10⁵ years",4.5,C.solar],
+    ["Diesel and natural gas for the ship and the roaster","10⁷–10⁸ years",7.7,C.econ],
+  ];
+  const lo=-6,hi=10;
+  const s=document.createElement("section");
+  s.className="pd";s.dataset.depth="age";
+  s.innerHTML=`<div class="prose"><h2>How old is what the chain uses</h2>
+<p>The same cup draws on energy and materials of very different ages. Current flows, like rain and sunlight, renew within days. Stores, like soil and fossil fuel, took centuries to hundreds of millions of years to accumulate, and are spent much faster than they form.</p></div>
+<div class="pdl">${R.map(r=>{const w=Math.max(2,(r[2]-lo)/(hi-lo)*100);
+return `<div class="pdr"><div class="pdt"><span>${esc(r[0])}</span><span style="color:${r[3]}">${r[1]}</span></div>
+<div class="track"><div class="fill" data-w="${w}" style="background:${r[3]}"></div></div></div>`}).join("")}
+<div class="ns">axis 10⁻⁶–10¹⁰ years, log</div></div>
+<div class="prose" style="margin-top:28px">
+<p>Below this point the page follows the oldest of these stores back to its source. Fossil fuel is stored sunlight. Sunlight is stored hydrogen. Hydrogen is stored from the first minutes of the universe.</p></div>`;
+  root.appendChild(s);
+}
 
 function density(){
   const rows=[
