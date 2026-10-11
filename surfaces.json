@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-09-21",
+ "published": "2026-10-11",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -404,6 +404,22 @@
    ],
    "blurb": "Charles Fourier classified everything — the passions, the eight hundred and ten characters of both sexes, the ranks of cuckoldry and of bankruptcy. This lays those systems on one surface as a pathways chart, every class, order and species in place at once with nothing hidden behind a click. It is drawn only from Fourier's own texts: no commentators, and nothing supplied where he was silent.",
    "url": "https://opposite.city/clef/"
+  },
+  {
+   "slug": "descent",
+   "name": "THE DESCENT",
+   "district": "viz",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "emergy",
+    "odum",
+    "transformity",
+    "stellar nucleosynthesis",
+    "orders of magnitude"
+   ],
+   "blurb": "A cup of coffee traced back through everything it depends on. The first tiers follow H.T. Odum's emergy accounting, in solar emjoules: the cup, estimated from its price; the farm hectare it comes from, measured over a year; the economy that ships and roasts it; and sunlight, which the method defines as transformity one and treats as its baseline. The unit stops there, because there is no solar emergy of the processes that make sunlight, so the page changes to joules and keeps going in time order: the sun's hydrogen, the collapse that lit it, the earlier stars that made its heavier elements, the first minutes after the Big Bang, and Penrose's estimate of how improbable the initial condition was. The two scales are drawn separately and never mixed. Emergy measures what was used to make something, not what it is worth.",
+   "url": "https://opposite.city/descent/"
   }
  ]
 }
