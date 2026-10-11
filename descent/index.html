@@ -35,6 +35,10 @@ h2{font-family:var(--display);font-size:clamp(28px,7vw,44px);font-weight:400;mar
 .more button span{display:inline-block;transition:transform .3s ease}
 .more button[aria-expanded=true] span{transform:rotate(90deg)}
 .more p{font-family:var(--serif);font-size:15px;color:var(--muted);line-height:1.68;margin:12px 0 0}
+.pd{padding:58px 24px 46px}
+.pdl{max-width:560px;display:flex;flex-direction:column;gap:16px}
+.pdt{display:flex;justify-content:space-between;gap:12px;font-family:var(--serif);font-size:14px;color:var(--muted);margin-bottom:6px}
+.pdt span:last-child{font-family:var(--mono);font-size:12px;white-space:nowrap}
 .brk{background:#07070b;padding:70px 24px}
 .brk h2{font-size:clamp(24px,6vw,36px);margin-bottom:20px}
 .prose{max-width:540px}
@@ -68,14 +72,14 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 <h3>Notes on the figures</h3>
 <p>Above the break: emergy estimates (sej) following Odum's method. They are order-of-magnitude, depend on where system boundaries are drawn, and vary between published baselines. Rain transformity and the geobiosphere baseline follow Odum (1996) and Brown et al. (2016).</p>
 <p>Below the break: physical energies (J), order-of-magnitude. The Penrose figure is an estimate of initial-condition improbability, and its interpretation is contested.</p>
-<p>Bars are log₁₀ on two separate scales, sej above the break and J below it. A bar is comparable only to bars in the same section.</p>
+<p>Bars are log₁₀. Each section has its own axis, printed under every bar: sej above the break, J below it, and W/m³ in the power-density panel. A bar is comparable only to bars on the same axis. Solid bars are amounts; bars with ticks are rates per year.</p>
 <p>H.T. Odum, <i>Environment, Power, and Society</i> (1971) and <i>Environmental Accounting</i> (1996). Georges Bataille, <i>La Part maudite</i> (1949). Roger Penrose, <i>The Emperor's New Mind</i> (1989).</p>
 </div>
 </div>
 </section>
 <script>
 const C={object:"#ecc98a",bio:"#5fd6c4",econ:"#9fd36a",solar:"#f5cf55",stellar:"#ff9b5c",grav:"#b894ff",forge:"#ff6fae",origin:"#86c8ff",cold:"#d4ebff"};
-const SEJ_MAX=25,J_MAX=70;
+const SEJ_MIN=10,SEJ_MAX=25,J_MIN=35,J_MAX=70,PD_MIN=-1,PD_MAX=9;
 const SUP={"-":"⁻",0:"⁰",1:"¹",2:"²",3:"³",4:"⁴",5:"⁵",6:"⁶",7:"⁷",8:"⁸",9:"⁹"};
 const sup=n=>String(n).split("").map(c=>SUP[c]||c).join("");
 const DEFAULT_OBJECT_TIERS = [
@@ -141,31 +145,59 @@ const LOWER = [
 const root=document.getElementById("tiers");
 const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 let n=0;
-function tier(t,max){
+function tier(t,min,max,scale){
   n++;
   const s=document.createElement("section");
   s.dataset.depth=t.unrenderable?"off scale":"10"+sup(t.exp);
-  const pct=t.unrenderable?100:Math.min(100,t.exp/max*100);
-  const fill=t.unrenderable?`background:repeating-linear-gradient(90deg,${t.color} 0 3px,transparent 3px 8px)`:`background:${t.color}`;
+  const pct=t.unrenderable?100:Math.max(2,Math.min(100,(t.exp-min)/(max-min)*100));
+  const rate=/\/yr$/.test(t.unit);
+  const fill=t.unrenderable?`background:repeating-linear-gradient(90deg,${t.color} 0 3px,transparent 3px 8px)`
+    :rate?`background:repeating-linear-gradient(90deg,${t.color} 0 14px,#000 14px 16px)`:`background:${t.color}`;
   const id="p"+n;
   s.innerHTML=`<div class="meta"><span class="n">${String(n).padStart(2,"0")}</span><span style="color:${t.color}">${t.unrenderable?"off scale":"~10"+sup(t.exp)+" "+t.unit}</span></div>
 <h2>${esc(t.label)}</h2>
 <div class="stat" style="color:${t.color}">${esc(t.stat)}</div>
-<div class="bar"><div class="track"><div class="fill" data-w="${pct}" style="${fill}"></div></div>${t.unrenderable?'<div class="ns">not to scale</div>':""}</div>
+<div class="bar"><div class="track"><div class="fill" data-w="${pct}" style="${fill}"></div></div><div class="ns">${t.unrenderable?"not to scale":(rate?"rate, per year":"amount")+" · axis 10"+sup(min)+"–10"+sup(max)+" "+scale}</div></div>
 <p class="hook">${esc(t.hook)}</p>
 <div class="more"><button aria-expanded="false" aria-controls="${id}"><span>▸</span><em style="font-style:normal">Details</em></button><p id="${id}" hidden>${esc(t.prose)}</p></div>`;
   const b=s.querySelector("button"),p=s.querySelector("p[id]");
   b.onclick=()=>{const o=p.hidden;p.hidden=!o;b.setAttribute("aria-expanded",o);b.querySelector("em").textContent=o?"Hide details":"Details";};
   root.appendChild(s);
 }
-[...DEFAULT_OBJECT_TIERS,SUN_TIER].forEach(t=>tier(t,SEJ_MAX));
+[...DEFAULT_OBJECT_TIERS,SUN_TIER].forEach(t=>tier(t,SEJ_MIN,SEJ_MAX,"sej"));
 const br=document.createElement("section");
 br.className="brk";br.dataset.depth="sej → J";
 br.innerHTML=`<div class="prose"><h2>The unit changes here</h2>
 <p>The tiers above are measured in solar emjoules, which are defined relative to sunlight. The unit has no meaning for processes that produce sunlight, so there is no solar emergy of a hydrogen atom or a supernova.</p>
 <p>Below this point the figures are physical energies in joules, given as orders of magnitude. They are not emergy, and their bars use a separate scale. They are ordered by time: each event had to happen before the one above it.</p></div>`;
 root.appendChild(br);
-LOWER.forEach(t=>tier(t,J_MAX));
+LOWER.forEach((t,i)=>{tier(t,J_MIN,J_MAX,"J");if(t.key==="fuel")density();});
+
+function density(){
+  const rows=[
+    ["The sun, averaged over its whole volume","0.27","≈ 0.3",-0.57,C.stellar],
+    ["A compost pile, active phase","10²–10³","≈ 100s, varies widely",2.3,C.bio],
+    ["The sun's core, at the centre","276","≈ 280",2.44,C.stellar],
+    ["A working horse, mechanical output only","1,400","≈ 700 W from ≈ 0.5 m³",3.15,C.object],
+    ["A human body at rest","1,100","≈ 80 W from ≈ 0.07 m³",3.04,C.object],
+    ["A human brain","15,000","≈ 20 W from ≈ 1.3 L",4.18,C.object],
+    ["A car engine","10⁶","≈ 100 kW from ≈ 0.1 m³",6,C.econ],
+    ["A pressurized-water reactor core","10⁸","≈ 100 kW per litre",8,C.origin],
+  ].sort((a,b)=>a[3]-b[3]);
+  const s=document.createElement("section");
+  s.className="pd";s.dataset.depth="W/m³";
+  s.innerHTML=`<div class="prose"><h2>Why the sun is bright</h2>
+<p>Measured per cubic metre, the sun's core produces about as much heat as a compost pile, and less than your body. Rates of power per unit volume, on one log axis:</p></div>
+<div class="pdl">${rows.map(r=>{const w=Math.max(2,(r[3]-PD_MIN)/(PD_MAX-PD_MIN)*100);
+return `<div class="pdr"><div class="pdt"><span>${esc(r[0])}</span><span style="color:${r[4]}">${r[1]} W/m³</span></div>
+<div class="track"><div class="fill" data-w="${w}" style="background:${r[4]}"></div></div><div class="ns">${esc(r[2])}</div></div>`}).join("")}
+<div class="ns">axis 10⁻¹–10⁹ W/m³ · rates, not amounts</div></div>
+<div class="prose" style="margin-top:28px">
+<p>Fusion in the core is slow because its first step needs the weak interaction to turn a proton into a neutron. An average proton in the core waits billions of years before it fuses.</p>
+<p>The sun is bright for two other reasons. It is very large, about 1.4 × 10²⁷ m³, so a low rate per cubic metre adds up to 3.8 × 10²⁶ W. And it is very well insulated: energy released in the core takes on the order of 10⁴–10⁵ years to work its way out. A compost pile the size of the sun, kept from collapsing or running out, would shine with a similar total output for the same reasons.</p>
+<p>The compost figure is the least certain on this list. Measured heat release depends on the material, moisture, and stage of decomposition.</p></div>`;
+  root.appendChild(s);
+}
 
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){const f=e.target;f.style.width=f.dataset.w+"%";io.unobserve(f);}}),{threshold:.2});
 document.querySelectorAll(".fill").forEach(f=>io.observe(f));
