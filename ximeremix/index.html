@@ -37,7 +37,6 @@
     padding:10px 10px;cursor:pointer;line-height:1.45}
   .item .d{letter-spacing:.14em}
   .item.cur{background:#fff;color:#000}
-  #invite{display:none;flex-wrap:wrap;gap:4px;padding:2px 0 calc(6px + env(safe-area-inset-bottom));background:#000}
   #sheet{position:fixed;inset:0;background:#000;z-index:20;display:none;flex-direction:column;overflow-y:auto;
     padding:14px 12px calc(20px + env(safe-area-inset-bottom))}
   #sheet.open{display:flex}
@@ -70,7 +69,6 @@
     <div id="hud"></div>
     <div id="note"></div>
   </div>
-  <div class="wr" id="invite"></div>
   <div id="panel">
     <div class="wr" id="w1"></div>
     <div class="wr" id="w2"></div>
@@ -121,10 +119,11 @@
    Nothing here is decoration: if a mark is lit it is telling you where
    something is, how fast, or which way.
 
-   A take opened from a post first plays through as itself, once, over its
-   own picture, with nothing else on the screen. "take it apart" brings the
-   instrument in at the point you were listening to. A link that carries
-   settings skips that and opens the instrument as it was left.
+   A take opened from a post opens on the whole instrument, but the take
+   plays clean, once, as itself: the original, untouched. The first touch on
+   the picture or any control hands it to the instrument at the point you
+   had reached, and the remix begins. A link that carries settings skips
+   the clean play and opens the remix as it was left.
 
    There is no start screen. The take is fetched and drawn straight away;
    a phone will not make sound until it is touched, so the first touch
@@ -442,7 +441,7 @@ let pos = 0, playing = false, holding = false, loopOn = true, reg = { a:0, b:1 }
 let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
 const grains = [];
 let shownPos = 0, take = null, takeLabel = "", job = 0, started = false;
-let rigOpen = false, listening = false, listenEnded = false, lnode = null, lstart = 0, loff = 0;
+let rigOpen = false, clean = false, listenEnded = false, lnode = null, lstart = 0, loff = 0;
 let curHead = 0;          // where the head was when a grain was cut: the playhead draws this, not the scattered read point
 
 const CUR_H = new Float32Array(128), CUR_T = new Float32Array(128);
@@ -693,7 +692,7 @@ function draw(){
   }
   if(latest) shownPos = latest.hd;
   if(holding || !(playing)) shownPos = pos;
-  if(listening) shownPos = listenPos();
+  if(clean) shownPos = listenPos();
   const a = reg.a/D*W, b = reg.b/D*W, outside = buf && loopOn;
   for(let y=0;y<H;y++){
     const row = (y&7)*8, row2 = ((y+3)&7)*8;
@@ -732,7 +731,7 @@ let hudLast = "";
 function hud(){
   let s;
   if(!buf) s = takeLabel || "";
-  else if(listening) s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration);
+  else if(clean) s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   as played";
   else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
            P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
            (playing ? "" : "   stopped") + (loopOn ? "" : "   once");
@@ -741,7 +740,7 @@ function hud(){
 
 function frame(){ draw(); hud(); requestAnimationFrame(frame); }
 
-/* ---------- listening: the take, played as itself ------------------------------------ */
+/* ---------- clean: the take, played as itself, before anyone touches it ------------------------------------ */
 
 function listenStart(from){
   stopListen();
@@ -760,9 +759,9 @@ function listenStart(from){
   const n = { s, g };
   s.onended = () => {
     try{ g.disconnect(); }catch(_){}
-    if(lnode === n){ lnode = null; listenEnded = true; invite(); }
+    if(lnode === n){ lnode = null; listenEnded = true; words(); }
   };
-  lnode = n; invite();
+  lnode = n; words();
 }
 function listenPos(){
   if(!buf) return 0;
@@ -781,47 +780,34 @@ function stopListen(){
     s.stop(now + 0.02);
   }catch(_){}
 }
-function invite(){
-  $("#invite").style.display = listening ? "flex" : "none";
-  $("#info").style.paddingBottom = listening ? "0" : "";
-  if(I.again) I.again.style.display = listenEnded ? "" : "none";
-  if(I.play) I.play.style.display = (!lnode && !listenEnded) ? "" : "none";
-  if(listening){ clearTimeout(noteTimer); $("#note").textContent = "take it apart and repost"; }
-}
-const I = {};
-function inviteChrome(){
-  const v = $("#invite");
-  I.play  = word(v, "play", () => { wake(); listenStart(loff); });
-  I.again = word(v, "again", () => listenStart(0));
-  I.open  = word(v, "take it apart", () => openRig());
-  I.takes = word(v, "takes", () => openCat());
-  invite();
-}
 function showRig(){
-  listening = false;
   $("#pic").classList.remove("listen");
   $("#panel").style.display = "";
-  $("#invite").style.display = "none";
-  say("");
   build();
 }
-function showListen(){
-  listening = true;
-  $("#pic").classList.add("listen");
-  $("#panel").style.display = "none";
-  build();
-  loff = 0;
-  if(ac.state === "running") listenStart(0); else invite();
-}
-function openRig(){
-  if(!listening || !buf) return;
-  const D = buf.duration, p = listenPos();
-  stopListen(); rigOpen = true;
+/* the take, as played, on the open instrument. the line under it says what to do */
+function startClean(){
+  clean = true; listenEnded = false; loff = 0; playing = false;
   showRig();
+  if(ac.state === "running") listenStart(0);
+  cleanNote();
+}
+function cleanNote(){ if(clean){ clearTimeout(noteTimer); $("#note").textContent = "take it apart and repost"; } }
+/* the first touch: the clean take stops where it was and the instrument carries on from there */
+function handoff(){
+  if(!clean || !buf) return;
+  const D = buf.duration, p = listenPos();
+  stopListen(); clean = false; listenEnded = false; rigOpen = true;
   pos = p >= D - 0.05 ? reg.a : p;
   playing = true; nextT = 0; nextS = 0;
+  $("#note").textContent = "";
   words();
 }
+$("#panel").addEventListener("pointerdown", e => {
+  if(!clean) return;
+  if(W1.play && e.target === W1.play) return;          // play and stop work on the clean take
+  wake(); handoff();
+}, true);
 
 /* ---------- pointer: hold to freeze, drag to scrub, or draw a loop ---------------- */
 
@@ -829,7 +815,11 @@ let dragging = false, moved = false, lastTap = 0, tapIdx = -1;
 function fx(e){ const r = cv.getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left)/r.width)); }
 cv.addEventListener("pointerdown", e => {
   if(!buf) return;
-  if(listening){ listenStart(fx(e)*buf.duration); return; }
+  if(clean){
+    wake();
+    if(!lnode && !listenEnded && loff === 0){ listenStart(fx(e)*buf.duration); return; }   // nothing heard yet: this touch plays the take from here
+    handoff();
+  }
   cv.setPointerCapture(e.pointerId);
   dragging = true; moved = false;
   const D = buf.duration, t = fx(e)*D;
@@ -953,7 +943,7 @@ function showTab(){
 }
 function syncSliders(){ for(const d of DEFS) d.upd(); }
 function words(){
-  W1.play.textContent = playing ? "stop" : "play";
+  W1.play.textContent = (clean ? !!lnode : playing) ? "stop" : "play";
   W1.rev.classList.toggle("on", P.sp < 0);
   W1.loop.classList.toggle("on", loopOn);
   W1.reg.classList.toggle("on", regionMode);
@@ -971,7 +961,7 @@ function words(){
 function toggle(){
   if(!buf) return;
   if(ac.state === "suspended") ac.resume();
-  if(listening){ if(lnode) stopListen(); else listenStart(listenEnded ? 0 : loff); return; }
+  if(clean){ if(lnode) stopListen(); else listenStart(listenEnded ? 0 : loff); words(); cleanNote(); return; }
   if(!playing && !loopOn){
     if(P.sp >= 0 && pos >= buf.duration - 0.01) pos = 0;
     if(P.sp < 0 && pos <= 0.01) pos = buf.duration;
@@ -982,7 +972,7 @@ function toggle(){
 addEventListener("keydown", e => {
   if(e.target && e.target.closest && e.target.closest("input,textarea")) return;
   if(e.code === "Space"){ e.preventDefault(); toggle(); }
-  if(e.key === "r"){ remember(); P.sp = -P.sp || -1; syncSliders(); changed(); words(); }
+  if(e.key === "r"){ handoff(); remember(); P.sp = -P.sp || -1; syncSliders(); changed(); words(); }
   if((e.ctrlKey || e.metaKey) && e.key === "z"){ e.preventDefault(); undo(); }
 });
 
@@ -1265,7 +1255,7 @@ function makeSlices(){
 
 async function loadBuffer(abuf, label, t){
   const mine = ++job;
-  stopListen(); listening = false; listenEnded = false;
+  stopListen(); clean = false; listenEnded = false;
   playing = false; holding = false; grains.length = 0;
   buf = null; TL = null; base = null; take = t || null; takeLabel = label || "";
   words();
@@ -1290,9 +1280,10 @@ async function loadBuffer(abuf, label, t){
   pos = P.sp < 0 ? reg.b : reg.a;
   /* never wait on the sound waking here: before a touch, a phone holds that promise
      open, and waiting would keep the picture from ever showing */
+  say("");
   if(rigOpen){ showRig(); playing = true; nextT = 0; nextS = 0; }
-  else showListen();
-  words(); say("");
+  else startClean();
+  words();
   if(take) writeHash();
 }
 
@@ -1388,7 +1379,7 @@ function renderCat(){
     b.append(el("div","d", "take " + it.n));
     if(t) b.append(el("div","t", t));
     b.onclick = async () => {
-      closeCat(); resetSettings(); pending = null;
+      closeCat(); resetSettings(); pending = null; rigOpen = false;
       try{ await playTake({ did:it.did, cid:it.cid }, "take " + it.n); }
       catch(e){ say(String(e.message || e)); }
     };
@@ -1435,8 +1426,7 @@ function start(){
   if(started) return;
   started = true;
   buildGraph();
-  if(!rigOpen){ $("#panel").style.display = "none"; $("#pic").classList.add("listen"); }
-  panel(); catChrome(); inviteChrome(); build();
+  panel(); catChrome(); build();
   requestAnimationFrame(frame);
 }
 /* a clip handed over from the clipper: read once from this device's storage, never posted */
@@ -1481,7 +1471,7 @@ addEventListener("hashchange", async () => {
   if(!started) return;
   const t = parseHash();
   if(t && (!take || take.cid !== t.cid)){
-    if([...t.q.keys()].length) rigOpen = true;
+    rigOpen = [...t.q.keys()].length > 0;
     applyParams(t.q);
     try{ await playTake({ did:t.did, cid:t.cid }, ""); }catch(e){ say(String(e.message || e)); }
   }
