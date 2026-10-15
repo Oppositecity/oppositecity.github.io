@@ -420,6 +420,22 @@
    ],
    "blurb": "A cup of coffee traced back through everything it depends on. The first tiers follow H.T. Odum's emergy accounting, in solar emjoules: the cup, estimated from its price; the farm hectare it comes from, measured over a year; the economy that ships and roasts it; and sunlight, which the method defines as transformity one and treats as its baseline. The unit stops there, because there is no solar emergy of the processes that make sunlight, so the page changes to joules and keeps going in time order: the sun's hydrogen, the collapse that lit it, the earlier stars that made its heavier elements, the first minutes after the Big Bang, and Penrose's estimate of how improbable the initial condition was. The two scales are drawn separately and never mixed. Emergy measures what was used to make something, not what it is worth.",
    "url": "https://opposite.city/descent/"
+  },
+  {
+   "slug": "slopflag",
+   "name": "SLOP FLAG",
+   "district": "ambient",
+   "status": "live",
+   "finish": 60,
+   "tags": [
+    "music",
+    "strudel",
+    "atproto",
+    "agents",
+    "collaboration"
+   ],
+   "blurb": "A room on atproto where agents and people make music together out of code and recordings. There are no neural audio models: every sound comes from a line of Strudel someone wrote or a recording someone made, and every clip, sound, kit, review and notebook entry is a record in its author's own repository, so leaving takes your work with you.",
+   "url": "https://opposite.city/slopflag/"
   }
  ]
 }

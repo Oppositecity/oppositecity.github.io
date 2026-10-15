@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>sound engine</title></head>
+<body>
+<script type="module">
+// The sound engine. It runs in a sandboxed frame with no access to the studio page,
+// its sign-in or its storage, because every clip is code written by someone else.
+// It only receives a mix to play and sends back time, highlights and rendered audio.
+import { initStrudel, samples, Pattern, Hap, TimeSpan, Fraction, renderPatternAudio, getAudioContext, initAudio }
+  from './vendor/strudel/index.mjs';
+
+const post = (msg, transfer) => parent.postMessage(msg, '*', transfer);
+let repl = null, playing = false, pattern = null, spec = null, loadedKits = new Set();
+const slots = { notes: [], audio: [] };
+const ready = initStrudel({ prebake: () => samples('github:tidalcycles/dirt-samples') }).then((r) => (repl = r));
+globalThis.sfNotes = (i) => slots.notes[i];
+globalThis.sfAudio = (i) => slots.audio[i];
+
+const hap = (s, f, b, e, v) => new Hap(new TimeSpan(Fraction(s), Fraction(f)), new TimeSpan(Fraction(Math.max(s, b)), Fraction(Math.min(f, e))), v, {});
+function notesPattern({ notes, len, tpc, instrument }) {
+  return new Pattern((st) => {
+    const b = st.span.begin.valueOf(), e = st.span.end.valueOf(), out = [];
+    for (let k = Math.floor(b / len); k * len < e; k++) for (const n of notes) {
+      const s = k * len + n.t / tpc, f = s + n.d / tpc;
+      if (s < e && f > b) out.push(hap(s, f, b, e, { note: n.p, s: instrument || 'triangle', gain: ((n.v ?? 96) / 127) * 0.9 }));
+    }
+    return out;
+  });
+}
+function oncePattern(name, len) {
+  return new Pattern((st) => {
+    const b = st.span.begin.valueOf(), e = st.span.end.valueOf(), out = [];
+    for (let k = Math.floor(b / len); k * len < e; k++) { const s = k * len, f = s + len; if (s < e && f > b) out.push(hap(s, f, b, e, { s: name })); }
+    return out;
+  });
+}
+async function prepare(next) {
+  await ready;
+  spec = next;
+  slots.notes = (spec.notes || []).map(notesPattern);
+  const bank = {};
+  (spec.audio || []).forEach((a, i) => { bank[`sfa_${a.key}`] = [a.url]; });
+  for (const kit of spec.kits || []) {
+    if (loadedKits.has(kit.id)) continue;
+    for (const s of kit.samples) (bank[`${kit.name}_${s.name}`] ||= []).push(s.url);
+    loadedKits.add(kit.id);
+  }
+  if (Object.keys(bank).length) await samples(bank);
+  slots.audio = (spec.audio || []).map((a) => oncePattern(`sfa_${a.key}`, a.len));
+}
+async function start() {
+  await ready;
+  await initAudio();
+  await getAudioContext().resume?.();
+  repl.setCps(spec.cps);
+  pattern = await repl.evaluate(spec.code, true);
+  if (!pattern) throw new Error('The mix did not evaluate. One of the clips has a mistake.');
+  playing = true; post({ type: 'playing', on: true });
+}
+function stop() { repl?.stop(); playing = false; post({ type: 'playing', on: false }); }
+
+function ranges(now) {
+  const byUri = {};
+  let haps = [];
+  try { haps = pattern.queryArc(now, now + 0.001); } catch { return byUri; }
+  for (const h of haps) {
+    if (!h.whole || h.whole.begin.valueOf() > now || h.whole.end.valueOf() <= now) continue;
+    for (const loc of h.context?.locations || []) {
+      const m = (spec.codeMap || []).find((m) => loc.start >= m.from && loc.end <= m.to);
+      if (m && loc.end - loc.start < 200) (byUri[m.uri] ||= []).push([loc.start - m.from, loc.end - m.from]);
+    }
+  }
+  return byUri;
+}
+// A timer, not animation frames: browsers pause animation frames in hidden frames.
+setInterval(() => {
+  if (playing && repl && pattern) { const now = repl.scheduler.now(); post({ type: 'tick', now, ranges: ranges(now) }); }
+}, 33);
+
+async function render(bars) {
+  await ready;
+  stop();
+  const pat = await repl.evaluate(spec.code, false);
+  let wav = null;
+  const create = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
+  URL.createObjectURL = (b) => { if (b instanceof Blob && b.type === 'audio/wav') wav = b; return create.call(URL, b); };
+  HTMLAnchorElement.prototype.click = function () {};
+  try { await renderPatternAudio(pat, spec.cps, 0, bars, 44100, 128, false, 'mix'); }
+  finally { URL.createObjectURL = create; HTMLAnchorElement.prototype.click = click; }
+  if (!wav) throw new Error('Rendering produced no audio.');
+  return wav.arrayBuffer();
+}
+
+addEventListener('message', async (ev) => {
+  const m = ev.data || {};
+  try {
+    if (m.type === 'mix') { await prepare(m.spec); if (playing) await start(); post({ type: 'prepared', id: m.id }); }
+    if (m.type === 'play') await start();
+    if (m.type === 'stop') stop();
+    if (m.type === 'render') { const buf = await render(m.bars); post({ type: 'rendered', id: m.id, wav: buf }, [buf]); }
+  } catch (e) { post({ type: 'error', id: m.id, message: String(e?.message || e) }); }
+});
+ready.then(() => post({ type: 'ready' })).catch((e) => post({ type: 'error', message: String(e) }));
+</script>
+</body></html>
