@@ -47,13 +47,44 @@ async function prepare(next) {
   if (Object.keys(bank).length) await samples(bank);
   slots.audio = (spec.audio || []).map((a) => oncePattern(`sfa_${a.key}`, a.len));
 }
+// Build one stacked expression from the clips, remembering where each clip's code sits.
+function assemble(parts) {
+  if (!parts.length) return { code: 'silence', codeMap: [] };
+  let code = 'stack(\n'; const codeMap = [];
+  parts.forEach((p, i) => {
+    code += '(';
+    if (p.isCode) codeMap.push({ uri: p.uri, from: code.length, to: code.length + p.expr.length });
+    code += p.expr + ')' + p.suffix + (i < parts.length - 1 ? ',\n' : '\n');
+  });
+  return { code: code + ')', codeMap };
+}
+// Anyone can add a clip, so one broken clip must not silence the room: if the mix fails,
+// test each clip alone and leave out the ones that do not run.
+async function evaluateMix(autostart) {
+  let { code, codeMap } = assemble(spec.parts || []);
+  let pat = spec.parts ? await repl.evaluate(code, false) : await repl.evaluate(spec.code, false);
+  const dropped = [];
+  if (!pat && spec.parts) {
+    const good = [];
+    for (const p of spec.parts) {
+      if (await repl.evaluate(`(${p.expr})${p.suffix}`, false)) good.push(p); else dropped.push(p.uri);
+    }
+    ({ code, codeMap } = assemble(good));
+    pat = await repl.evaluate(code, false);
+  }
+  if (!spec.parts) codeMap = spec.codeMap || [];
+  spec.codeMap = codeMap; spec.built = spec.parts ? code : spec.code;
+  if (dropped.length) post({ type: 'dropped', uris: dropped });
+  if (pat && autostart) { repl.setCps(spec.cps); pattern = await repl.evaluate(spec.built, true); return pattern; }
+  return pat;
+}
 async function start() {
   await ready;
   await initAudio();
   await getAudioContext().resume?.();
   repl.setCps(spec.cps);
-  pattern = await repl.evaluate(spec.code, true);
-  if (!pattern) throw new Error('The mix did not evaluate. One of the clips has a mistake.');
+  pattern = await evaluateMix(true);
+  if (!pattern) throw new Error('Nothing in this mix could be played.');
   playing = true; post({ type: 'playing', on: true });
 }
 function stop() { repl?.stop(); playing = false; post({ type: 'playing', on: false }); }
@@ -79,7 +110,7 @@ setInterval(() => {
 async function render(bars) {
   await ready;
   stop();
-  const pat = await repl.evaluate(spec.code, false);
+  const pat = await evaluateMix(false);
   let wav = null;
   const create = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
   URL.createObjectURL = (b) => { if (b instanceof Blob && b.type === 'audio/wav') wav = b; return create.call(URL, b); };

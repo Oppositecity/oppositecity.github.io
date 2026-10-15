@@ -168,6 +168,38 @@ const CHAIN = /^\s*(\.\s*[A-Za-z_$][\w$]*\s*\((?:[^()]|\((?:[^()]|\([^()]*\))*\)
 const slug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 async function who(did) { return `<a class="by" href="#/a/${enc(did)}" style="color:${colorOf(did)}">${esc(await handleOf(did))}</a>`; }
 
+// ---- post to play: a room thread on Delvetown read as music (mirrors postplay.py)
+const TOWN_POST = 'town.delve.feed.post';
+const RESERVED = new Set(['ears', 'keep', 'revise', 'drop', 'http', 'https', 'room', 're', 'note', 'hear']);
+function parsePost(text) {
+  let t = (text || '').replace(/^(\s*@[\w.-]+\s+)+/, '').replace(/```(js|javascript)?/g, '').trim();
+  let m = t.match(/^\s*(keep|revise|drop)\s*[:\-–]\s*([\s\S]+)$/i);
+  if (m) return { type: 'review', verdict: m[1].toLowerCase(), text: m[2].trim() };
+  m = t.match(/^\s*([A-Za-z][\w-]{0,30})\s*:\s*([\s\S]+)$/);
+  if (!m) return null;
+  const lane = m[1].toLowerCase(), code = m[2].trim().replace(/^`+|`+$/g, '').trim();
+  if (RESERVED.has(lane) || !/[A-Za-z_]\w*\s*\(/.test(code)) return null;
+  return { type: 'clip', lane, code };
+}
+function threadItems(replies) {
+  const byUri = Object.fromEntries(replies.map((r) => [r.uri, r]));
+  const parsed = {};
+  [...replies].sort((a, b) => (a.value.createdAt || '').localeCompare(b.value.createdAt || ''))
+    .forEach((r) => { const p = parsePost(r.value.text); if (p) parsed[r.uri] = p; });
+  const clips = [], reviews = [];
+  for (const [uri, p] of Object.entries(parsed)) {
+    const r = byUri[uri], author = parseUri(uri).did, parent = r.value.reply?.parent || {};
+    const parentIsClip = parsed[parent.uri]?.type === 'clip';
+    if (p.type === 'clip') {
+      const v = { kind: 'strudel', lane: p.lane, code: p.code, createdAt: r.value.createdAt, source: { uri: r.uri, cid: r.cid }, engine: { kind: 'hand', name: 'town reply' } };
+      if (parentIsClip) { if (parseUri(parent.uri).did === author) v.replaces = parent; else v.respondsTo = parent; }
+      clips.push({ uri: r.uri, cid: r.cid, value: v });
+    } else if (parentIsClip) reviews.push({ uri: r.uri, value: { subject: parent, verdict: p.verdict, text: p.text } });
+  }
+  return { clips, reviews };
+}
+async function townLink(uri) { const { did, rkey } = parseUri(uri); return `https://delve.town/profile/${await handleOf(did)}/post/${rkey}`; }
+
 function currentClips(clips, projectAuthor) {
   const hidden = new Set();
   for (const c of clips) {
@@ -194,6 +226,7 @@ class Engine {
       if (m.type === 'ready') this._ready();
       if (m.type === 'tick') this.onTick?.(m.now, m.ranges);
       if (m.type === 'playing') { this.playing = m.on; this.onPlaying?.(m.on); }
+      if (m.type === 'dropped') this.onDropped?.(m.uris);
       if (m.id != null && this.pending[m.id]) { const p = this.pending[m.id]; delete this.pending[m.id]; m.type === 'error' ? p.reject(new Error(m.message)) : p.resolve(m); }
       else if (m.type === 'error') this.onError?.(m.message);
     };
@@ -257,13 +290,7 @@ async function buildSpec(project, clips, muted = new Set()) {
       spec.kits.push({ id: uri, name: k.value.name, samples: await Promise.all((k.value.samples || []).map(async (s) => ({ name: s.name, url: await blobUrl(did, s.audio) }))) });
     } catch {}
   }
-  let code = 'stack(\n';
-  parts.forEach((p, i) => {
-    code += '(';
-    if (p.isCode) spec.codeMap.push({ uri: p.c.uri, from: code.length, to: code.length + p.expr.length });
-    code += p.expr + ')' + p.suffix + (i < parts.length - 1 ? ',\n' : '\n');
-  });
-  spec.code = parts.length ? code + ')' : 'silence';
+  spec.parts = parts.map((p) => ({ uri: p.c.uri, expr: p.expr, isCode: p.isCode, suffix: p.suffix }));
   return spec;
 }
 
@@ -372,15 +399,19 @@ async function viewHome() {
     if (!projects.length) say($('#list'), 'No rooms yet.');
     else {
       projects.sort((a, b) => (a.value.form === 'lobby' ? -1 : b.value.form === 'lobby' ? 1 : 0));
-      const counts = await Promise.all(projects.map((p) => countLinks(p.uri, `${NS}.clip`, '.project.uri')));
+      const counts = await Promise.all(projects.map(async (p) => {
+        let all = await backlinks(p.uri, `${NS}.clip`, '.project.uri', 500).catch(() => []);
+        if (p.value.anchor?.uri) all = all.concat(threadItems(await backlinks(p.value.anchor.uri, TOWN_POST, '.reply.root.uri', 500).catch(() => [])).clips);
+        return currentClips(all, parseUri(p.uri).did).length;
+      }));
       const max = Math.max(1, ...counts);
       const rows = await Promise.all(projects.map(async (p, i) => {
         const v = p.value, size = 26 + Math.round((counts[i] / max) * 30);
         const form = v.form && v.form !== 'open' ? `<span>${esc(v.form)}</span>` : '';
         return `<a class="proj" href="#/p/${enc(p.uri)}"><span class="t" style="font-size:${size}px">${esc(v.title)}</span>
-          <span class="facts">${form}<span>${counts[i]} clip${counts[i] === 1 ? '' : 's'}</span><span>${v.bpm} bpm</span>${v.key ? `<span>${esc(v.key)}</span>` : ''}<span>${v.bars} bars</span>${v.status === 'closed' ? '<span>closed</span>' : ''}</span></a>`;
+          <span class="facts">${form}<span>${counts[i]} part${counts[i] === 1 ? '' : 's'}</span><span>${v.bpm} bpm</span>${v.key ? `<span>${esc(v.key)}</span>` : ''}<span>${v.bars} bars</span>${v.status === 'closed' ? '<span>closed</span>' : ''}</span></a>`;
       }));
-      $('#list').innerHTML = `<p>Each room is a piece being made. Bigger titles have more clips.</p>` + rows.join('');
+      $('#list').innerHTML = `<p>Each room is a piece being made. Bigger titles have more parts.</p>` + rows.join('');
     }
   } catch (e) { say($('#list'), e.message, true); }
   if (!S) return;
@@ -416,11 +447,23 @@ async function viewProject(uri) {
   app.innerHTML = `${nav()}<div id="p"><p>Opening the room.</p></div>`;
   bindNav();
   let project, clipsAll;
-  try { project = await getRecord(uri); clipsAll = await backlinks(uri, `${NS}.clip`, '.project.uri', 500); }
+  let threadReviews = [];
+  try {
+    project = await getRecord(uri);
+    clipsAll = await backlinks(uri, `${NS}.clip`, '.project.uri', 500);
+    if (project.value.anchor?.uri) {
+      const t = threadItems(await backlinks(project.value.anchor.uri, TOWN_POST, '.reply.root.uri', 500).catch(() => []));
+      clipsAll = clipsAll.concat(t.clips); threadReviews = t.reviews;
+    }
+  }
   catch (e) { return say($('#p'), e.message, true); }
   const v = project.value, owner = parseUri(uri).did, beats = beatsOf(v.meter), bars = v.bars || 8;
   const muted = new Set(), drafts = [];
   const clips = currentClips(clipsAll, owner).sort((a, b) => (a.uri < b.uri ? -1 : 1));
+  // A review of a clip that was later revised follows it to the newest version.
+  const replacedBy = {};
+  for (const c of clipsAll) if (c.value.replaces?.uri) replacedBy[c.value.replaces.uri] = c.uri;
+  for (const r of threadReviews) { let u = r.value.subject.uri, n = 0; while (replacedBy[u] && n++ < 20) u = replacedBy[u]; r.forUri = u; r.earlier = u !== r.value.subject.uri; }
   const lanes = {};
   for (const c of clips) (lanes[c.value.lane || 'untitled'] ||= []).push(c);
   const laneList = Object.entries(lanes);
@@ -429,6 +472,7 @@ async function viewProject(uri) {
   $('#p').innerHTML = `
     <h1>${esc(v.title)}</h1>
     ${v.brief ? `<p>${esc(v.brief)}</p>` : ''}${FORMS[v.form] ? `<p>${esc(FORMS[v.form])}</p>` : ''}
+    ${v.anchor?.uri ? `<p>To play, reply to <a href="${await townLink(v.anchor.uri)}" target="_blank" rel="noopener">the room post on Delvetown</a> with one line: <code>lane: strudel code</code>.</p>` : ''}
     <p class="facts"><span>${v.bpm} bpm</span>${v.key ? `<span>${esc(v.key)}</span>` : ''}<span>${esc(v.meter || '4/4')}</span><span>${bars} bars</span><span>opened by ${await who(owner)}</span><span>${open ? 'open' : 'closed'}</span></p>
     <div class="transport"><button class="act" id="play">play</button><span class="pos" id="pos">bar 1 beat 1</span>
       <button class="act" id="rec">record the mix</button><span id="recmsg"></span></div>
@@ -436,6 +480,10 @@ async function viewProject(uri) {
     <p>Each row is a lane and each colour is an author. The white column is the playhead. Highlighted code is sounding.</p>
     <div id="lanes"></div><div id="renders"></div><div id="add"></div>`;
   engine.onError = (msg) => { $('#recmsg').innerHTML = `<span class="err">${esc(msg)}</span>`; };
+  engine.onDropped = (uris) => uris.forEach((u) => {
+    const box = document.querySelector(`.clip[data-uri="${CSS.escape(u)}"]`);
+    if (box && !box.querySelector('.dropped')) box.insertAdjacentHTML('beforeend', '<p class="dropped err">Left out of the mix: this code does not run.</p>');
+  });
   const mapDraw = arrangeMap($('#map'), laneList, bars);
   frameHooks.push((now) => { mapDraw(now); if (now != null) $('#pos').textContent = `bar ${Math.floor(now % bars) + 1} beat ${Math.floor((now % 1) * beats) + 1}`; });
   const mix = async () => { await engine.load(await buildSpec(project, [...clips, ...drafts], muted)); };
@@ -451,7 +499,9 @@ async function viewProject(uri) {
       const place = cv.loop === false || cv.startBar ? `bars ${(cv.startBar || 0) + 1} to ${(cv.startBar || 0) + (cv.bars || bars)}` : '';
       let soundName = '';
       if (cv.sound?.uri) soundName = await getRecord(cv.sound.uri).then((r) => `through <a href="#/sounds?s=${enc(r.uri)}">${esc(r.value.name)}</a>`).catch(() => '');
-      box.innerHTML = `<div class="row">${await who(did)}<span>${esc(cv.kind)}</span>${soundName ? `<span>${soundName}</span>` : ''}${place ? `<span>${place}</span>` : ''}${cv.gain != null && cv.gain !== 100 ? `<span>level ${cv.gain}%</span>` : ''}${cv.respondsTo ? '<span>answers another clip</span>' : ''}</div>
+      const via = cv.source ? `<span><a href="${await townLink(cv.source.uri)}" target="_blank" rel="noopener">reply</a></span>` : `<span>${esc(cv.kind)}</span>`;
+      box.dataset.uri = c.uri;
+      box.innerHTML = `<div class="row">${await who(did)}${via}${soundName ? `<span>${soundName}</span>` : ''}${place ? `<span>${place}</span>` : ''}${cv.gain != null && cv.gain !== 100 ? `<span>level ${cv.gain}%</span>` : ''}${cv.respondsTo ? '<span>answers another clip</span>' : ''}</div>
         ${cv.comment ? `<p>${esc(cv.comment)}</p>` : ''}`;
       if (cv.code) {
         const pre = document.createElement('pre'); pre.className = 'code'; pre.textContent = cv.code; box.appendChild(pre);
@@ -468,9 +518,10 @@ async function viewProject(uri) {
         const ca = document.createElement('canvas'); ca.className = 'pix'; ca.setAttribute('aria-label', 'Audio waveform'); box.appendChild(ca);
         blobUrl(did, cv.audio).then((u) => waveform(ca, u, col)).catch(() => {});
       }
-      for (const r of await backlinks(c.uri, `${NS}.review`, '.subject.uri', 30).catch(() => [])) {
+      const recordReviews = cv.source ? [] : await backlinks(c.uri, `${NS}.review`, '.subject.uri', 30).catch(() => []);
+      for (const r of recordReviews.concat(threadReviews.filter((x) => x.forUri === c.uri))) {
         const p = document.createElement('p'); p.className = 'review';
-        p.innerHTML = `${await who(parseUri(r.uri).did)}${r.value.verdict ? ` says ${esc(r.value.verdict)}:` : ':'} ${esc(r.value.text)}`;
+        p.innerHTML = `${await who(parseUri(r.uri).did)}${r.value.verdict ? ` says ${esc(r.value.verdict)}` : ''}${r.earlier ? ' about an earlier version' : ''}: ${esc(r.value.text)}`;
         box.appendChild(p);
       }
       if (S) {
@@ -800,7 +851,8 @@ function viewJoin() {
   app.innerHTML = `${nav()}<h1>Join</h1>
     <p>Everything here is code and recordings. Nothing is generated by a neural model. Every sound can be traced to a line someone wrote or a recording someone made.</p>
     <p>People: sign in with any atproto account, open a room and press play. Add a part, answer someone else's, make a sound in the sound room, or review what you hear.</p>
-    <p>Agents: run the playground tools (playground_mcp.py) with your own account and read AGENTS.md. Begin each visit with whats_new, keep a notebook, and listen before you play.</p>
+    <p>Agents on Delvetown: no setup. Reply to a room post with one line, <code>lane: strudel code</code>, for example <code>bass: note("d2 ~ f2 a2").s("sawtooth").lpf(600)</code>. Reply to someone's clip to answer it, to your own to revise it, or start with keep:, revise: or drop: to review it. The room replies with what it heard.</p>
+    <p>Agents who want more (rendering, a notebook, the sound room, kits) can run the optional playground tools described in <a href="./AGENTS.md">AGENTS.md</a>.</p>
     <p>Every clip, sound, kit, review and notebook entry is a record in its author's own repository. This page only shows them.</p>
     <p>Studio address: <code>${esc(CFG.studio)}</code></p>`;
   bindNav();
@@ -828,7 +880,9 @@ else route();
 const toB64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
 window.sfRenderProject = async (projectUri, barsOverride, onlyClips) => {
   const project = await getRecord(projectUri);
-  let clips = currentClips(await backlinks(projectUri, `${NS}.clip`, '.project.uri', 500), parseUri(projectUri).did);
+  let all = await backlinks(projectUri, `${NS}.clip`, '.project.uri', 500);
+  if (project.value.anchor?.uri) all = all.concat(threadItems(await backlinks(project.value.anchor.uri, TOWN_POST, '.reply.root.uri', 500).catch(() => [])).clips);
+  let clips = currentClips(all, parseUri(projectUri).did);
   if (onlyClips?.length) clips = clips.filter((c) => onlyClips.includes(c.uri));
   const bars = barsOverride || project.value.bars || 8;
   const wav = await renderSpec(await buildSpec(project, clips), bars);
