@@ -198,7 +198,7 @@ function threadItems(replies) {
     const r = byUri[uri], author = parseUri(uri).did, parent = r.value.reply?.parent || {};
     const parentIsClip = parsed[parent.uri]?.type === 'clip';
     if (p.type === 'clip') {
-      const v = { kind: 'strudel', lane: p.lane, code: p.code, createdAt: r.value.createdAt, source: { uri: r.uri, cid: r.cid }, engine: { kind: 'hand', name: 'town reply' } };
+      const v = { kind: 'strudel', lane: p.lane, code: p.code, createdAt: r.value.createdAt, source: { uri: r.uri, cid: r.cid }, engine: p.code.startsWith('/* house player */') ? { kind: 'generated', name: 'house player' } : { kind: 'hand', name: 'town reply' } };
       if (parentIsClip) { if (parseUri(parent.uri).did === author) v.replaces = parent; else v.respondsTo = parent; }
       clips.push({ uri: r.uri, cid: r.cid, value: v });
     } else if (parentIsClip) reviews.push({ uri: r.uri, value: { subject: parent, verdict: p.verdict, text: p.text } });
@@ -632,7 +632,9 @@ async function viewProject(uri) {
         <label for="ei">Instrument (when no sound is chosen)</label><input id="ei" value="${esc(rv.instrument || 'triangle')}"></div>
       <div id="eaudio"><label for="ef">Audio file, under 5 MB</label><input id="ef" type="file" accept="audio/*"></div>
       <label for="ecm">Say something to the band (optional)</label><input id="ecm">
-      <p class="row"><button class="act" id="eaud">hear it in the mix</button><button class="act" id="epub">publish</button></p><div id="emsg"></div>`;
+      <p class="row"><button class="act" id="eaud">hear it in the mix</button><button class="act" id="ehouse">ask the house player</button>${navigator.gpu ? '<button class="act" id="emodel">ask the house player, with a model in this tab</button>' : ''}${S ? '<button class="act" id="epub">publish</button>' : '<button class="act" id="ecopy">copy as a Delvetown reply</button>'}</p><div id="emsg"></div>
+      ${S ? '' : `<p>No account needed to try an idea. To put it in the room, reply to the room's thread on Delvetown with the copied line${project.value.anchor?.uri ? ` (<a id="elink" target="_blank" rel="noopener">open the thread</a>)` : ''}, or <a href="#/signin">sign in</a> to publish here.</p>`}`;
+    if (!S) { $('#ek').innerHTML = '<option value="strudel">Strudel code</option>' }
     const kind = $('#ek');
     kind.value = rv.kind === 'strudel' || !rv.kind ? 'strudel' : rv.notes ? 'notes' : 'audio';
     const show = () => ['code', 'notes', 'audio'].forEach((k) => $(`#e${k}`).classList.toggle('hidden', kind.value !== (k === 'code' ? 'strudel' : k)));
@@ -651,16 +653,47 @@ async function viewProject(uri) {
       if ($('#ecm').value.trim()) rec.comment = $('#ecm').value.trim();
       return rec;
     };
+    const askHouse = async (degrees) => {
+      const { plan } = await import('./housemate.mjs');
+      const ctx = { key: v.key, bpm: v.bpm, seed: String(Date.now()), degrees, lanes: clips.map((c) => ({ name: c.value.lane || '', pitchRange: null, drums: false })) };
+      const out = plan(ctx);
+      $('#el').value = out.lane; kind.value = 'strudel'; show(); $('#ec').value = out.code;
+      say($('#emsg'), `House player: ${out.why}. Hear it, change it, or ask again.`);
+    };
+    $('#ehouse').onclick = () => askHouse().catch((e) => say($('#emsg'), e.message, true));
+    if ($('#emodel')) $('#emodel').onclick = async () => {
+      // Experimental. A small model runs in this tab on WebGPU, slowly, and only suggests a melody shape (digits);
+      // the house player's rules turn it into code, and fall back to their own line if the answer does not fit.
+      try {
+        say($('#emsg'), 'Loading a small model into this tab (a few hundred MB the first time). This can take a while.');
+        const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm');
+        const eng = await webllm.CreateMLCEngine('Qwen2.5-0.5B-Instruct-q4f16_1-MLC', { initProgressCallback: (p) => say($('#emsg'), `Loading the model: ${p.text}`) });
+        say($('#emsg'), 'Thinking.');
+        const r = await eng.chat.completions.create({ max_tokens: 24, temperature: 0.9, messages: [{ role: 'user',
+          content: 'Write one short melody as 8 steps. Use digits 0-7 for scale degrees and ~ for a rest, separated by spaces. Reply with only the 8 steps.' }] });
+        await askHouse(r.choices[0].message.content.trim());
+      } catch (e) { say($('#emsg'), `The model did not run (${e.message}). The house player still works without it.`, true); }
+    };
     $('#eaud').onclick = async () => {
       try {
         const rec = await draft();
         if (rec.kind === 'audio') throw new Error('Audio clips can be heard after publishing.');
-        drafts.length = 0; drafts.push({ uri: `at://${S.did}/${NS}.clip/draft`, cid: '', value: rec });
+        drafts.length = 0; drafts.push({ uri: `at://${S?.did || 'did:guest'}/${NS}.clip/draft`, cid: '', value: rec });
         await mix(); await engine.play();
         say($('#emsg'), 'Playing the mix with your draft. It is not published yet.');
       } catch (e) { say($('#emsg'), e.message, true); }
     };
-    $('#epub').onclick = async () => {
+    if (!S) {
+      if ($('#elink')) townLink(project.value.anchor.uri).then((u) => { $('#elink').href = u; }).catch(() => {});
+      $('#ecopy').onclick = async () => {
+        try {
+          const rec = await draft(), line = `${rec.lane}: ${rec.code}`;
+          await navigator.clipboard.writeText(line);
+          say($('#emsg'), 'Copied. Paste it as a reply in the room thread.');
+        } catch (e) { say($('#emsg'), e.message, true); }
+      };
+    }
+    if (S) $('#epub').onclick = async () => {
       try {
         const rec = await draft();
         if (rec.kind === 'audio') { const f = $('#ef').files[0]; if (f.size > 5e6) throw new Error('That file is over 5 MB.'); rec.audio = await uploadBlob(f); }
@@ -672,8 +705,7 @@ async function viewProject(uri) {
     };
     add.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
-  if (open && S) { $('#add').innerHTML = '<h2>Sit in</h2><p class="row"><button class="act" id="addgo">plug in</button></p>'; $('#addgo').onclick = () => openEditor(null, 'add'); }
-  else if (open) $('#add').innerHTML = '<h2>Sit in</h2><p><a href="#/signin">Sign in</a> to play, or send an agent in (see <a href="#/join">how to sit in</a>).</p>';
+  if (open) { $('#add').innerHTML = `<h2>Sit in</h2><p class="row"><button class="act" id="addgo">${S ? 'plug in' : 'try a part'}</button></p>${S ? '' : '<p>No sign-in needed to hear a part in the mix. Agents: see <a href="#/join">how to sit in</a>.</p>'}`; $('#addgo').onclick = () => openEditor(null, 'add'); }
 }
 
 // ---------------- sound room

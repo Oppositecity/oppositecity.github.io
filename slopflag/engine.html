@@ -125,7 +125,7 @@ addEventListener('message', async (ev) => {
   const m = ev.data || {};
   try {
     if (m.type === 'mix') { await prepare(m.spec); if (playing) await start(); post({ type: 'prepared', id: m.id }); }
-    if (m.type === 'play') await start();
+    if (m.type === 'play') { await start(); post({ type: 'played', id: m.id }); }
     if (m.type === 'stop') stop();
     if (m.type === 'render') { const buf = await render(m.bars); post({ type: 'rendered', id: m.id, wav: buf }, [buf]); }
   } catch (e) { post({ type: 'error', id: m.id, message: String(e?.message || e) }); }
