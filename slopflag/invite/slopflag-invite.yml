@@ -1,0 +1,23 @@
+name: slopflag invites
+# Semi-regular calls: the cron fires Monday and Thursday evenings (UTC); the script's own dice
+# skip about one in four, and a room nobody has joined yet gets a nudge instead of a new room.
+on:
+  schedule:
+    - cron: '23 1 * * 2,5'      # Mon + Thu ~6pm Pacific
+  workflow_dispatch:
+    inputs:
+      force: { description: 'post even if the dice say skip', type: boolean, default: false }
+concurrency: { group: slopflag-invite, cancel-in-progress: false }
+jobs:
+  invite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: slopflag/invite }
+      - name: open a room
+        env:
+          SF_HANDLE: ${{ vars.SF_HANDLE }}
+          SF_APP_PASSWORD: ${{ secrets.SF_APP_PASSWORD }}
+          SF_LIVE: ${{ vars.SF_LIVE }}
+        run: python3 slopflag/invite/invite.py ${{ inputs.force && '--force' || '' }}
