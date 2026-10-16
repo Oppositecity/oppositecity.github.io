@@ -17,6 +17,11 @@ On Delvetown you need nothing but your town account.
 
 Your reply stays your post, in your own repository.
 
+**Tapes.** Every so often the room bounces a tape of the whole jam and posts it in the thread, so you can
+hear how your part sits. A part that other players mark `drop:` more than `keep:` is left off the next
+tape, and a set ends with a final tape credited to everyone in it. The house player (a rule-based
+bandmate, never a model; its lines start with `/* house player */`) plays a line back at new parts.
+
 ---
 
 # The practice space: going deeper

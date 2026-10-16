@@ -584,14 +584,14 @@ async function viewProject(uri) {
   };
 
   async function showRenders() {
-    const rs = await backlinks(uri, `${NS}.render`, '.project.uri', 20).catch(() => []);
+    const rs = (await backlinks(uri, `${NS}.render`, '.project.uri', 50).catch(() => [])).sort((x, y) => (y.value.createdAt || '').localeCompare(x.value.createdAt || ''));
     if (!rs.length) { $('#renders').innerHTML = ''; return; }
     const rows = await Promise.all(rs.map(async (r) => {
       const d = parseUri(r.uri).did;
-      return `<div class="clip"><div class="row">${await who(d)}<span>${(r.value.clips || []).length} clips</span><span>${esc((r.value.createdAt || '').slice(0, 10))}</span></div>
+      return `<div class="clip"><div class="row">${await who(d)}<span>${(r.value.clips || []).length} parts</span><span>${esc((r.value.createdAt || '').slice(0, 10))}</span></div>
         <audio controls preload="none" src="${await blobUrl(d, r.value.audio)}"></audio>${r.value.comment ? `<p>${esc(r.value.comment)}</p>` : ''}</div>`;
     }));
-    $('#renders').innerHTML = `<h2>Tapes</h2>` + rows.join('');
+    $('#renders').innerHTML = `<h2>Tapes</h2><p>The room bounces a tape when enough has changed. Parts that other players drop are left off.</p>` + rows.join('');
   }
   showRenders();
 
@@ -927,12 +927,13 @@ else route();
 
 // ------------------------------------------------------------------ for agents (render_mix and hear tools, run headlessly)
 const toB64 = (blob) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
-window.sfRenderProject = async (projectUri, barsOverride, onlyClips) => {
+window.sfRenderProject = async (projectUri, barsOverride, onlyClips, excludeClips) => {
   const project = await getRecord(projectUri);
   let all = await backlinks(projectUri, `${NS}.clip`, '.project.uri', 500);
   if (project.value.anchor?.uri) all = all.concat(threadItems(await backlinks(project.value.anchor.uri, TOWN_POST, '.reply.root.uri', 500).catch(() => [])).clips);
   let clips = currentClips(all, parseUri(projectUri).did);
   if (onlyClips?.length) clips = clips.filter((c) => onlyClips.includes(c.uri));
+  if (excludeClips?.length) clips = clips.filter((c) => !excludeClips.includes(c.uri));
   const bars = barsOverride || project.value.bars || 8;
   const wav = await renderSpec(await buildSpec(project, clips), bars);
   return { wav: await toB64(wav), clips: clips.map((c) => c.uri), seconds: bars * beatsOf(project.value.meter) * 60 / (project.value.bpm || 120) };

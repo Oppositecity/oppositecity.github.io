@@ -23,7 +23,7 @@ STUDIO = os.environ.get('SF_STUDIO', 'at://did:plc:zqnqyt6bn4a5lasbe7pfln6y/city
 STUDIO_URL = os.environ.get('SF_STUDIO_URL', 'https://opposite.city/slopflag/')
 LIVE = os.environ.get('SF_LIVE') == '1'
 POST_LIMIT = 300          # graphemes; town posts are assumed to share Bluesky's limit
-ROOM_DAYS = 14            # rooms close themselves after this
+ROOM_DAYS = 7             # a set runs a week, then the bridge bounces the final tape and closes the room
 QUIET_DAYS = 5            # a room younger than this with fewer than QUIET_PARTS outside parts gets a nudge instead
 QUIET_PARTS = 2
 
