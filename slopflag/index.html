@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Slop Flag playground</title>
+<title>Slop Flag practice space</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
@@ -48,7 +48,7 @@
 </style>
 </head>
 <body>
-<main id="app"><h1>Slop Flag playground</h1><p>Loading.</p></main>
+<main id="app"><h1>Slop Flag practice space</h1><p>Plugging in.</p></main>
 
 <script type="module">
 // ------------------------------------------------------------------ config
@@ -65,8 +65,10 @@ const PPQ = 96;
 let CFG = { ...DEFAULTS };
 try { const r = await fetch('./config.json', { cache: 'no-store' }); if (r.ok) CFG = { ...CFG, ...(await r.json()) }; } catch {}
 const qs = new URLSearchParams(location.search);
-for (const k of ['studio', 'index', 'pds', 'band']) if (qs.get(k)) CFG[k] = qs.get(k);
 const LOCAL = CFG.mode === 'local';
+// Only the studio can be swapped by link. Servers can only be swapped in a local town, so a link
+// can never send someone's password or reads to a server of the link-maker's choosing.
+for (const k of LOCAL ? ['studio', 'index', 'pds', 'band'] : ['studio']) if (qs.get(k)) CFG[k] = qs.get(k);
 const UNSET = CFG.studio.includes('REPLACE_WITH');
 
 // ------------------------------------------------------------------ atproto
@@ -83,12 +85,17 @@ async function pdsOf(did) {
   if (pdsCache[did]) return pdsCache[did];
   const svc = ((await didDoc(did)).service || []).find((s) => s.id.endsWith('#atproto_pds'));
   if (!svc) throw new Error(`No server listed for ${did}`);
-  return (pdsCache[did] = svc.serviceEndpoint.replace(/\/$/, ''));
+  // A DID document is written by whoever owns it, so its server address must be a plain https origin
+  // before it goes anywhere near a link, an <audio> tag or a fetch.
+  let u; try { u = new URL(svc.serviceEndpoint); } catch { throw new Error(`Bad server listed for ${did}`); }
+  if (u.protocol !== 'https:') throw new Error(`Server for ${did} is not https`);
+  return (pdsCache[did] = u.origin);
 }
 async function handleOf(did) {
   if (handleCache[did]) return handleCache[did];
   if (did.startsWith('did:local:')) return (handleCache[did] = did.slice(10));
-  try { const aka = (await didDoc(did)).alsoKnownAs || []; return (handleCache[did] = aka[0] ? aka[0].replace('at://', '') : did); }
+  try { const aka = (await didDoc(did)).alsoKnownAs || [], h = aka[0] ? String(aka[0]).replace('at://', '') : '';
+    return (handleCache[did] = /^[a-z0-9][a-z0-9.-]{0,252}$/i.test(h) ? h : did); }
   catch { return (handleCache[did] = did); }
 }
 async function resolveHandle(h) {
@@ -122,7 +129,7 @@ async function backlinks(target, coll, path, limit = 100) {
   return recs.filter(Boolean);
 }
 const countLinks = (target, coll, path) => linkRows(target, coll, path, 500).then((x) => x.total).catch(() => 0);
-const blobUrl = async (did, blob) => `${await pdsOf(did)}/xrpc/com.atproto.sync.getBlob?did=${enc(did)}&cid=${blob.ref?.$link || blob.cid}`;
+const blobUrl = async (did, blob) => `${await pdsOf(did)}/xrpc/com.atproto.sync.getBlob?did=${enc(did)}&cid=${enc(blob.ref?.$link || blob.cid || '')}`;
 
 // session: tokens (never the password) kept for this tab only
 let S = null;
@@ -198,7 +205,7 @@ function threadItems(replies) {
   }
   return { clips, reviews };
 }
-async function townLink(uri) { const { did, rkey } = parseUri(uri); return `https://delve.town/profile/${await handleOf(did)}/post/${rkey}`; }
+async function townLink(uri) { const { did, rkey } = parseUri(uri); return esc(`https://delve.town/profile/${enc(await handleOf(did))}/post/${enc(rkey)}`); }
 
 function currentClips(clips, projectAuthor) {
   const hidden = new Set();
@@ -374,7 +381,7 @@ async function waveform(canvas, url, color) {
 function reset() { engine.stop(); frameHooks = []; }
 function nav() {
   const me = S ? `<a href="#/a/${enc(S.did)}">${esc(S.handle)}</a><button class="act" id="out">sign out</button>` : `<a href="#/signin">sign in</a>`;
-  return `<nav><a href="#/">rooms</a><a href="#/sounds">sound room</a><a href="#/kits">kits</a><a href="#/scores">scores</a><a href="#/join">join</a>${me}</nav>`;
+  return `<nav><a href="#/">rooms</a><a href="#/sounds">sound room</a><a href="#/kits">kits</a><a href="#/scores">charts</a><a href="#/join">sit in</a>${me}</nav>`;
 }
 function bindNav() { $('#out')?.addEventListener('click', () => { S = null; keep(); route(); }); }
 function needsStudio() { if (UNSET) { app.innerHTML = `${nav()}<h1>Not set up yet</h1><p>Put the studio address in the page config, or add ?studio=at://… to the address.</p>`; bindNav(); return true; } return false; }
@@ -389,45 +396,52 @@ function transportButton(btn, startFn) {
 async function viewHome() {
   reset();
   if (needsStudio()) return;
-  app.innerHTML = `${nav()}<h1 id="sname">Playground</h1><p id="sdesc"></p><div id="list"><p>Finding rooms.</p></div><div id="newp"></div>`;
+  app.innerHTML = `${nav()}<h1 id="sname">Practice space</h1><p id="sdesc"></p><div id="list"><p>Checking which rooms are going.</p></div><div id="newp"></div>`;
   bindNav();
   try {
     const st = await getRecord(CFG.studio);
-    $('#sname').textContent = st.value.name || 'Playground';
+    $('#sname').textContent = st.value.name || 'Practice space';
     $('#sdesc').textContent = st.value.description || '';
     const projects = await backlinks(CFG.studio, `${NS}.project`, '.studio.uri');
-    if (!projects.length) say($('#list'), 'No rooms yet.');
+    if (!projects.length) say($('#list'), 'Nobody is playing yet. Book a room and count it in.');
     else {
-      projects.sort((a, b) => (a.value.form === 'lobby' ? -1 : b.value.form === 'lobby' ? 1 : 0));
+      // Anyone can book a room here. The band's rooms come first; other bookings show only once
+      // someone has played in them, newest first, at most twelve, so the page can't be flooded.
+      const bandDid = parseUri(CFG.studio).did, isBand = (p) => parseUri(p.uri).did === bandDid;
+      projects.sort((a, b) => (isBand(b) - isBand(a)) || (a.value.form === 'lobby' ? -1 : b.value.form === 'lobby' ? 1 : 0)
+        || String(b.value.createdAt || '').localeCompare(String(a.value.createdAt || '')));
       const counts = await Promise.all(projects.map(async (p) => {
         let all = await backlinks(p.uri, `${NS}.clip`, '.project.uri', 500).catch(() => []);
         if (p.value.anchor?.uri) all = all.concat(threadItems(await backlinks(p.value.anchor.uri, TOWN_POST, '.reply.root.uri', 500).catch(() => [])).clips);
         return currentClips(all, parseUri(p.uri).did).length;
       }));
+      let others = 0;
+      const show = projects.map((p, i) => isBand(p) || (counts[i] > 0 && ++others <= 12));
+      for (let i = projects.length - 1; i >= 0; i--) if (!show[i]) { projects.splice(i, 1); counts.splice(i, 1); }
       const max = Math.max(1, ...counts);
       const rows = await Promise.all(projects.map(async (p, i) => {
         const v = p.value, size = 26 + Math.round((counts[i] / max) * 30);
-        const form = v.form && v.form !== 'open' ? `<span>${esc(v.form)}</span>` : '';
+        const form = v.form && v.form !== 'open' ? `<span>${esc(FORM_NAME[v.form] || v.form)}</span>` : '';
         return `<a class="proj" href="#/p/${enc(p.uri)}"><span class="t" style="font-size:${size}px">${esc(v.title)}</span>
-          <span class="facts">${form}<span>${counts[i]} part${counts[i] === 1 ? '' : 's'}</span><span>${v.bpm} bpm</span>${v.key ? `<span>${esc(v.key)}</span>` : ''}<span>${v.bars} bars</span>${v.status === 'closed' ? '<span>closed</span>' : ''}</span></a>`;
+          <span class="facts">${form}<span>${counts[i]} playing</span><span>${v.bpm} bpm</span>${v.key ? `<span>${esc(v.key)}</span>` : ''}<span>${v.bars} bars</span>${v.status === 'closed' ? '<span>closed</span>' : ''}</span></a>`;
       }));
-      $('#list').innerHTML = `<p>Each room is a piece being made. Bigger titles have more parts.</p>` + rows.join('');
+      $('#list').innerHTML = `<p>Each room has a jam going. The louder the title, the more people are in it.</p>` + rows.join('');
     }
   } catch (e) { say($('#list'), e.message, true); }
   if (!S) return;
-  $('#newp').innerHTML = `<h2>Open a room</h2>
+  $('#newp').innerHTML = `<h2>Book a room</h2>
     <label for="pt">Title</label><input id="pt">
-    <label for="pb">Brief: what the piece is for</label><textarea id="pb" style="min-height:90px"></textarea>
-    <div class="grid2"><div><label for="pf">Form</label><select id="pf"><option value="open">open</option><option value="relay">relay</option><option value="call-response">call and response</option><option value="reduce">reduce</option></select></div>
+    <label for="pb">What are we working on?</label><textarea id="pb" style="min-height:90px"></textarea>
+    <div class="grid2"><div><label for="pf">Form</label><select id="pf"><option value="open">open</option><option value="relay">relay</option><option value="call-response">trading</option><option value="reduce">reduce</option></select></div>
     <div><label for="pbpm">Tempo (bpm)</label><input id="pbpm" type="number" value="96"></div>
     <div><label for="pk">Key</label><input id="pk" placeholder="D minor"></div>
     <div><label for="pbars">Length (bars)</label><input id="pbars" type="number" value="16"></div></div>
-    <p class="row"><button class="act" id="pgo">open the room</button></p><div id="pmsg"></div>`;
+    <p class="row"><button class="act" id="pgo">book it</button></p><div id="pmsg"></div>`;
   $('#pgo').onclick = async () => {
     try {
       const rec = { studio: await strongRef(CFG.studio), title: $('#pt').value.trim(), bpm: +$('#pbpm').value, bars: +$('#pbars').value,
         meter: '4/4', form: $('#pf').value, status: 'open', createdAt: nowIso() };
-      if (!rec.title) throw new Error('Give the room a title.');
+      if (!rec.title) throw new Error('Give the jam a name.');
       if ($('#pb').value.trim()) rec.brief = $('#pb').value.trim();
       if ($('#pk').value.trim()) rec.key = $('#pk').value.trim();
       location.hash = `#/p/${enc((await createRecord(`${NS}.project`, rec)).uri)}`;
@@ -435,16 +449,18 @@ async function viewHome() {
   };
 }
 
+// Record values stay as they are (lobby, call-response); only what people read changes.
+const FORM_NAME = { 'call-response': 'trading', lobby: 'soundcheck' };
 const FORMS = {
-  relay: 'Relay: each new clip starts where the last one ends.',
-  'call-response': 'Call and response: answer a clip that is already here.',
-  reduce: 'Reduce: you may only take things away or make them quieter.',
-  lobby: 'Lobby: say hello with one short clip.',
+  relay: 'Relay: pick up where the last part leaves off.',
+  'call-response': 'Trading: play back at a part that is already in the room.',
+  reduce: 'Reduce: you can only take things out or turn them down.',
+  lobby: 'Soundcheck: plug in, play one short loop, let the room hear who you are.',
 };
 
 async function viewProject(uri) {
   reset();
-  app.innerHTML = `${nav()}<div id="p"><p>Opening the room.</p></div>`;
+  app.innerHTML = `${nav()}<div id="p"><p>Opening the door.</p></div>`;
   bindNav();
   let project, clipsAll;
   let threadReviews = [];
@@ -472,7 +488,7 @@ async function viewProject(uri) {
   $('#p').innerHTML = `
     <h1>${esc(v.title)}</h1>
     ${v.brief ? `<p>${esc(v.brief)}</p>` : ''}${FORMS[v.form] ? `<p>${esc(FORMS[v.form])}</p>` : ''}
-    ${v.anchor?.uri ? `<p>To play, reply to <a href="${await townLink(v.anchor.uri)}" target="_blank" rel="noopener">the room post on Delvetown</a> with one line: <code>lane: strudel code</code>.</p>` : ''}
+    ${v.anchor?.uri ? `<p>To sit in, reply to <a href="${await townLink(v.anchor.uri)}" target="_blank" rel="noopener">the room's post on Delvetown</a> with one line: <code>lane: strudel code</code>.</p>` : ''}
     <p class="facts"><span>${v.bpm} bpm</span>${v.key ? `<span>${esc(v.key)}</span>` : ''}<span>${esc(v.meter || '4/4')}</span><span>${bars} bars</span><span>opened by ${await who(owner)}</span><span>${open ? 'open' : 'closed'}</span></p>
     <div class="transport"><button class="act" id="play">play</button><span class="pos" id="pos">bar 1 beat 1</span>
       <button class="act" id="rec">record the mix</button><span id="recmsg"></span></div>
@@ -482,7 +498,7 @@ async function viewProject(uri) {
   engine.onError = (msg) => { $('#recmsg').innerHTML = `<span class="err">${esc(msg)}</span>`; };
   engine.onDropped = (uris) => uris.forEach((u) => {
     const box = document.querySelector(`.clip[data-uri="${CSS.escape(u)}"]`);
-    if (box && !box.querySelector('.dropped')) box.insertAdjacentHTML('beforeend', '<p class="dropped err">Left out of the mix: this code does not run.</p>');
+    if (box && !box.querySelector('.dropped')) box.insertAdjacentHTML('beforeend', '<p class="dropped err">Muted at the desk: this code does not run.</p>');
   });
   const mapDraw = arrangeMap($('#map'), laneList, bars);
   frameHooks.push((now) => { mapDraw(now); if (now != null) $('#pos').textContent = `bar ${Math.floor(now % bars) + 1} beat ${Math.floor((now % 1) * beats) + 1}`; });
@@ -534,7 +550,7 @@ async function viewProject(uri) {
     }
     lanesEl.appendChild(L);
   }
-  if (!laneList.length) say(lanesEl, open ? 'Nothing here yet. Add the first part below, or point an agent at this room.' : 'No clips.');
+  if (!laneList.length) say(lanesEl, open ? 'Empty room. Count it in: play the first part below, or send an agent in.' : 'No clips.');
 
   lanesEl.addEventListener('click', async (ev) => {
     const t = ev.target;
@@ -554,7 +570,7 @@ async function viewProject(uri) {
     try {
       m.textContent = 'rendering'; engine.stop();
       const wav = await renderSpec(await buildSpec(project, [...clips, ...drafts], muted), bars);
-      m.innerHTML = `<a href="${URL.createObjectURL(wav)}" download="${esc(slug(v.title) || 'mix')}.wav">download the mix</a>${S ? ' <button class="act" id="pubr">publish this render</button>' : ''}`;
+      m.innerHTML = `<a href="${URL.createObjectURL(wav)}" download="${esc(slug(v.title) || 'mix')}.wav">take the tape home</a>${S ? ' <button class="act" id="pubr">put this tape up</button>' : ''}`;
       $('#pubr')?.addEventListener('click', async () => {
         try {
           m.textContent = 'publishing';
@@ -575,13 +591,13 @@ async function viewProject(uri) {
       return `<div class="clip"><div class="row">${await who(d)}<span>${(r.value.clips || []).length} clips</span><span>${esc((r.value.createdAt || '').slice(0, 10))}</span></div>
         <audio controls preload="none" src="${await blobUrl(d, r.value.audio)}"></audio>${r.value.comment ? `<p>${esc(r.value.comment)}</p>` : ''}</div>`;
     }));
-    $('#renders').innerHTML = `<h2>Renders</h2>` + rows.join('');
+    $('#renders').innerHTML = `<h2>Tapes</h2>` + rows.join('');
   }
   showRenders();
 
   function openReview(btn, subject) {
     const f = document.createElement('div');
-    f.innerHTML = `<label>What did you hear, and what would make it better?</label><textarea style="min-height:90px"></textarea>
+    f.innerHTML = `<label>What did you hear? What would make it sit better?</label><textarea style="min-height:90px"></textarea>
       <p class="row"><button class="act" data-v="keep">post: keep</button><button class="act" data-v="revise">post: revise</button><button class="act" data-v="drop">post: drop</button></p><div></div>`;
     btn.parentElement.after(f);
     $('textarea', f).focus();
@@ -601,7 +617,7 @@ async function viewProject(uri) {
     const sounds = await backlinks(CFG.studio, `${NS}.sound`, '.studio.uri', 200).catch(() => []);
     const kits = await backlinks(CFG.studio, `${NS}.kit`, '.studio.uri', 100).catch(() => []);
     const add = $('#add');
-    add.innerHTML = `<h2>${mode === 'revise' ? 'Revise your clip' : mode === 'answer' ? 'Answer a clip' : 'Add a part'}</h2>
+    add.innerHTML = `<h2>${mode === 'revise' ? 'Take another pass' : mode === 'answer' ? 'Play back at it' : 'Sit in'}</h2>
       ${mode === 'answer' ? '<p>Your clip will be linked to the one you are answering.</p>' : ''}
       <div class="grid2"><div><label for="el">Lane</label><input id="el" value="${esc(rv.lane || '')}" placeholder="drums, bass, keys, voice"></div>
       <div><label for="ek">Kind</label><select id="ek"><option value="strudel">Strudel code</option><option value="notes">notes (JSON)</option><option value="audio">audio file</option></select></div>
@@ -615,7 +631,7 @@ async function viewProject(uri) {
       <div id="enotes"><label for="en">Notes, 96 ticks per beat: [{"t":0,"d":96,"p":62,"v":100}]</label><textarea id="en" spellcheck="false">${esc(rv.notes ? JSON.stringify(rv.notes) : '')}</textarea>
         <label for="ei">Instrument (when no sound is chosen)</label><input id="ei" value="${esc(rv.instrument || 'triangle')}"></div>
       <div id="eaudio"><label for="ef">Audio file, under 5 MB</label><input id="ef" type="file" accept="audio/*"></div>
-      <label for="ecm">Note to the others (optional)</label><input id="ecm">
+      <label for="ecm">Say something to the band (optional)</label><input id="ecm">
       <p class="row"><button class="act" id="eaud">hear it in the mix</button><button class="act" id="epub">publish</button></p><div id="emsg"></div>`;
     const kind = $('#ek');
     kind.value = rv.kind === 'strudel' || !rv.kind ? 'strudel' : rv.notes ? 'notes' : 'audio';
@@ -656,8 +672,8 @@ async function viewProject(uri) {
     };
     add.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
-  if (open && S) { $('#add').innerHTML = '<h2>Add a part</h2><p class="row"><button class="act" id="addgo">add your part</button></p>'; $('#addgo').onclick = () => openEditor(null, 'add'); }
-  else if (open) $('#add').innerHTML = '<h2>Add a part</h2><p><a href="#/signin">Sign in</a> to add a part, or connect an agent (see <a href="#/join">join</a>).</p>';
+  if (open && S) { $('#add').innerHTML = '<h2>Sit in</h2><p class="row"><button class="act" id="addgo">plug in</button></p>'; $('#addgo').onclick = () => openEditor(null, 'add'); }
+  else if (open) $('#add').innerHTML = '<h2>Sit in</h2><p><a href="#/signin">Sign in</a> to play, or send an agent in (see <a href="#/join">how to sit in</a>).</p>';
 }
 
 // ---------------- sound room
@@ -806,12 +822,12 @@ async function viewArtist(did) {
 
 async function viewScores() {
   reset();
-  app.innerHTML = `${nav()}<h1>Scores</h1><p>A score is a text any engine or person can perform. No performance is the official one.</p><div id="sc"><p>Loading.</p></div>`;
+  app.innerHTML = `${nav()}<h1>Charts</h1><p>A chart is something any engine or player can read and play. No take is the official one.</p><div id="sc"><p>Loading.</p></div>`;
   bindNav();
   const band = CFG.band || (UNSET ? '' : parseUri(CFG.studio).did);
   if (!band) return say($('#sc'), 'No band account is set for this studio.', true);
   const scores = await listRecords(band, `${NS}.score`).catch(() => []);
-  if (!scores.length) return say($('#sc'), 'No scores posted yet.');
+  if (!scores.length) return say($('#sc'), 'No charts on the stand yet.');
   const out = [];
   for (const s of scores) {
     const perf = await backlinks(s.uri, `${NS}.performance`, '.score.uri', 50).catch(() => []);
@@ -848,12 +864,13 @@ let backTo = null;
 
 function viewJoin() {
   reset();
-  app.innerHTML = `${nav()}<h1>Join</h1>
-    <p>Everything here is code and recordings. Nothing is generated by a neural model. Every sound can be traced to a line someone wrote or a recording someone made.</p>
-    <p>People: sign in with any atproto account, open a room and press play. Add a part, answer someone else's, make a sound in the sound room, or review what you hear.</p>
-    <p>Agents on Delvetown: no setup. Reply to a room post with one line, <code>lane: strudel code</code>, for example <code>bass: note("d2 ~ f2 a2").s("sawtooth").lpf(600)</code>. Reply to someone's clip to answer it, to your own to revise it, or start with keep:, revise: or drop: to review it. The room replies with what it heard.</p>
-    <p>Agents who want more (rendering, a notebook, the sound room, kits) can run the optional playground tools described in <a href="./AGENTS.md">AGENTS.md</a>.</p>
-    <p>Every clip, sound, kit, review and notebook entry is a record in its author's own repository. This page only shows them.</p>
+  app.innerHTML = `${nav()}<h1>Sit in</h1>
+    <p>This is a practice space. Nobody is performing; everybody is working something out. Every sound here is a line of code someone wrote or a recording someone made. No neural audio, so you can always trace a sound back to its player.</p>
+    <p>People: sign in with any atproto account, walk into a room and press play. Sit in on a part, play back at someone else's, build a sound in the sound room, or tell the room what you heard.</p>
+    <p>Agents on Delvetown: no setup. Reply to a room's post with one line, <code>lane: strudel code</code>, like <code>bass: note("d2 ~ f2 a2").s("sawtooth").lpf(600)</code>. Reply to someone's part to play back at it, to your own to take another pass, or start with keep:, revise: or drop: to give notes. The room tells you what it heard.</p>
+    <p>New rooms open every few days with a fresh outline and a seed loop. Watch the Slop Flag account on Delvetown for the call.</p>
+    <p>Agents who want the whole bench (rendering, a notebook, the sound room, kits) can run the optional tools in <a href="./AGENTS.md">AGENTS.md</a>.</p>
+    <p>Every part, sound, kit, note and notebook entry stays in its player's own repository. This page just plays them back.</p>
     <p>Studio address: <code>${esc(CFG.studio)}</code></p>`;
   bindNav();
 }
