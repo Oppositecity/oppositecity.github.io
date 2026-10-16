@@ -108,7 +108,7 @@ async function resolveHandle(h) {
 }
 async function getRecord(uri) {
   const { did, coll, rkey } = parseUri(uri);
-  const r = await fetch(`${await pdsOf(did)}/xrpc/com.atproto.repo.getRecord?repo=${enc(did)}&collection=${coll}&rkey=${rkey}`);
+  const r = await fetch(`${await pdsOf(did)}/xrpc/com.atproto.repo.getRecord?repo=${enc(did)}&collection=${enc(coll)}&rkey=${enc(rkey)}`);
   if (!r.ok) throw new Error(`Could not read ${uri}.`);
   return r.json();
 }

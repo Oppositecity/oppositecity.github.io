@@ -12,6 +12,7 @@ const NOTE = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
 const MODES = { minor: 'minor', major: 'major', dorian: 'dorian', mixolydian: 'mixolydian', phrygian: 'phrygian', lydian: 'lydian' };
 const STEPS = { minor: [0, 2, 3, 5, 7, 8, 10], major: [0, 2, 4, 5, 7, 9, 11], dorian: [0, 2, 3, 5, 7, 9, 10], mixolydian: [0, 2, 4, 5, 7, 9, 10], phrygian: [0, 1, 3, 5, 7, 8, 10], lydian: [0, 2, 4, 6, 7, 9, 11] };
 const PCNAME = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+const SHARPS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];   // the event reader's pitch-class names
 
 function rng(seed) {
   let h = 1779033703 ^ seed.length;
@@ -27,9 +28,13 @@ export function parseKey(key, last) {
     const mode = /^maj/i.test(m[3] || '') ? 'major' : /^min/i.test(m[3] || '') ? 'minor' : (MODES[(m[3] || 'minor').toLowerCase()] || 'minor');
     return { pc: (pc + 12) % 12, mode };
   }
-  const pcs = last?.pitchClasses;                       // no key given: lean on what was just played
-  if (pcs && Object.keys(pcs).length) {
-    const top = Object.entries(pcs).sort((a, b) => b[1] - a[1])[0][0] | 0;
+  const pcs = {};                                        // no key given: lean on what was just played
+  for (const [k, n] of Object.entries(last?.pitchClasses || {})) {   // keys are note names ("D", "A#") or 0-11
+    const pc = /^\d+$/.test(k) ? +k % 12 : SHARPS.indexOf(k);
+    if (pc >= 0) pcs[pc] = (pcs[pc] || 0) + n;
+  }
+  if (Object.keys(pcs).length) {
+    const top = +Object.entries(pcs).sort((a, b) => b[1] - a[1])[0][0];
     const minorThird = (pcs[(top + 3) % 12] || 0) > (pcs[(top + 4) % 12] || 0);
     return { pc: top, mode: minorThird ? 'minor' : 'major' };
   }
@@ -57,25 +62,35 @@ export function plan(ctx) {
     lane = free('drums');
     const kick = pick(r, ['bd(3,8)', 'bd(5,8,2)', 'bd ~ ~ bd ~ ~ bd ~', 'bd ~ bd ~']);
     const hats = pick(r, ['hh*8', 'hh*4', '[~ hh]*4', 'hh(7,8)']);
-    code = `stack(s("${kick}"), s("~ sd ~ sd"), s("${hats}").gain(.45))`;
+    const snare = pick(r, ['~ sd ~ sd', '~ ~ sd ~', '~ [sd cp] ~ sd', '~ cp ~ ~ ~ cp ~ ~']);
+    code = `stack(s("${kick}"), s("${snare}"), s("${hats}").gain(.45))`;
     why = 'the room has no drums';
   } else if (!bass) {
     lane = free('bass');
     const own = clean(ctx.degrees);
     const deg = own || pick(r, ['0 ~ 4 ~ 3 ~ 2 ~', '0 ~ ~ 4 ~ 3 ~ ~', '0 0 ~ 4 ~ 2 ~ 3', '<0 3> ~ <4 5> ~ 0 ~ 2 ~']);
-    code = `n("${deg}").scale("${scaleName(key, 2)}").s("sawtooth").lpf(500).lpenv(2).gain(.8)`;
+    const voice = pick(r, ['.s("sawtooth").lpf(500).lpenv(2).gain(.8)', '.s("square").lpf(420).lpenv(3).lpdecay(.15).decay(.25).sustain(.2).gain(.7)',
+      '.s("sawtooth").ftype("ladder").lpf(450).lpq(12).lpenv(4).lpdecay(.15).decay(.2).sustain(0).distort(.2).gain(.8)', '.s("sine").fmi(1.5).fmh(1).decay(.4).sustain(.3).gain(.9)']);
+    code = `n("${deg}").scale("${scaleName(key, 2)}")${voice}`;
     why = 'nothing in the room sits below C3';
   } else if (!high) {
     lane = free('lead');
     const own = clean(ctx.degrees);
     const deg = own || pick(r, ['~ 2 ~ 4 ~ ~ 3 ~', '4 ~ ~ 2 ~ 3 ~ ~', '~ ~ 4 ~ 6 ~ 4 ~', '<2 4> ~ ~ 3 ~ ~ 0 ~']);
-    code = `n("${deg}").scale("${scaleName(key, 5)}").s("triangle").delay(.35).delaytime(.375).delayfeedback(.35).room(.4).gain(.6)`;
+    const voice = pick(r, ['.s("triangle").delay(.35).delaytime(.375).delayfeedback(.35).room(.4).gain(.6)',
+      '.s("sine").fmi(3).fmh(3.5).fmenv("exp").fmdecay(.4).decay(1).sustain(0).room(.5).gain(.5)',
+      '.s("square").pw(.25).decay(.15).sustain(.3).crush(6).coarse(2).gain(.45)',
+      '.s("triangle").decay(.22).sustain(0).lpf(2400).lpenv(3).lpdecay(.1).delay(.25).delaytime(.1875).delayfeedback(.3).gain(.6)']);
+    code = `n("${deg}").scale("${scaleName(key, 5)}")${voice}`;
     why = 'nothing in the room sits above C5';
   } else {
     lane = free('counter');
     const own = clean(ctx.degrees);
     const deg = own || pick(r, ['~ 0 ~ ~ 2 ~ ~ ~', '~ ~ 2 ~ ~ 4 ~ ~', '<0 2> ~ ~ ~ <4 3> ~ ~ ~']);
-    code = `n("${deg}").scale("${scaleName(key, 4)}").s("sine").attack(.02).release(.6).room(.5).gain(.45)`;
+    const voice = pick(r, ['.s("sine").attack(.02).release(.6).room(.5).gain(.45)', '.s("sawtooth").vowel("<a o u>").attack(.5).release(1).lpf(2200).room(.5).gain(.35)',
+      '.s("sine").fmi(1.2).fmh(2).decay(.5).sustain(.1).tremolo(4).tremolodepth(.3).crush(10).lpf(3000).room(.35).gain(.55)',
+      '.s("supersaw").detune(.25).unison(5).spread(.7).lpf(sine.range(400,1800).slow(9)).attack(.8).release(1.6).chorus(.4).gain(.3)']);
+    code = `n("${deg}").scale("${scaleName(key, 4)}")${voice}`;
     why = 'every register has someone, so a quiet counter-line in the middle';
   }
   return { lane, code: TAG + code, why, key: `${PCNAME[key.pc]} ${key.mode}` };

@@ -78,9 +78,31 @@ async function evaluateMix(autostart) {
   if (pat && autostart) { repl.setCps(spec.cps); pattern = await repl.evaluate(spec.built, true); return pattern; }
   return pat;
 }
+// Anyone can post a clip, so nothing a clip says may reach the speakers unchecked: everything that would go
+// straight to the output goes through a fast limiter first (a clip with .gain(50) is heard at a sane level).
+let limited = false;
+function limitOutput() {
+  const ctx = getAudioContext();
+  if (limited || !ctx) return;
+  limited = true;
+  const lim = ctx.createDynamicsCompressor();
+  lim.threshold.value = -6; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.08;
+  const master = ctx.createGain(); master.gain.value = 0.85;
+  const connect = AudioNode.prototype.connect;
+  const clip = ctx.createWaveShaper();   // a hard ceiling: whatever gets through the compressor cannot pass +-1
+  const n = 1024, curve = new Float32Array(n);
+  for (let i = 0; i < n; i++) curve[i] = Math.tanh((i / (n - 1) * 2 - 1) * 2.5) / Math.tanh(2.5) * 0.95;
+  clip.curve = curve;
+  connect.call(lim, clip); connect.call(clip, master); connect.call(master, ctx.destination);
+  AudioNode.prototype.connect = function (target, ...rest) {
+    return connect.call(this, target === ctx.destination && this !== master ? lim : target, ...rest);
+  };
+  globalThis.__master = master;   // lets a test listen at the output; the frame is sandboxed, nothing else can reach it
+}
 async function start() {
   await ready;
   await initAudio();
+  limitOutput();
   await getAudioContext().resume?.();
   repl.setCps(spec.cps);
   pattern = await evaluateMix(true);
