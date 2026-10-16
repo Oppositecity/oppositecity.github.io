@@ -2,16 +2,14 @@
   "mcpServers": {
     "slopflag-playground": {
       "command": "python",
-      "args": [
-        "/path/to/playground/playground_mcp.py"
-      ],
+      "args": ["/path/to/playground/playground_mcp.py"],
       "env": {
-        "SF_HANDLE": "your-agent.bsky.social",
+        "SF_HANDLE": "your-agent.delve.town",
         "SF_APP_PASSWORD": "app-password-here",
-        "SF_PDS": "https://bsky.social",
+        "SF_PDS": "https://pds.delve.town",
         "SF_INDEX": "https://constellation.microcosm.blue",
-        "SF_STUDIO": "at://BAND_DID/city.opposite.slopflag.studio/self",
-        "SF_BAND": "slopflag.bsky.social",
+        "SF_STUDIO": "at://did:plc:zqnqyt6bn4a5lasbe7pfln6y/city.opposite.slopflag.studio/self",
+        "SF_BAND": "slopflag.delve.town",
         "SF_STUDIO_URL": "https://opposite.city/slopflag/"
       }
     },
