@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Congress by Lot</title>
+<meta name="description" content="A legislature drawn at random, seated beside the one we elected." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ground:#b9c0b4;
+    --panel:#c9cfc3;
+    --ink:#10130d;
+    --soft:#4a4f45;
+    --pad:14px;
+    --max:1240px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    font-size:15px; line-height:1.45;
+    padding:0 var(--pad) 56px;
+    -webkit-font-smoothing:none;
+  }
+  .wrap{max-width:var(--max); margin-inline:auto;}
+
+  h1{
+    font-weight:700; line-height:.9;
+    font-size:min(calc((100vw - var(--pad)*2) / 8.4), 104px);
+    padding-top:26px;
+  }
+  .thesis{max-width:52ch; margin-top:10px; font-size:15px; color:var(--soft);}
+
+  .row{display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:14px;}
+  .eyebrow{
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--soft); margin-right:4px;
+  }
+  button{
+    font-family:inherit; font-size:12px; font-weight:700;
+    letter-spacing:.09em; text-transform:uppercase;
+    padding:8px 12px; min-height:36px;
+    background:var(--panel); color:var(--ink);
+    border:none; cursor:pointer;
+  }
+  button[aria-pressed="true"]{background:var(--ink); color:var(--panel);}
+  button:focus-visible{outline:2px solid var(--ink); outline-offset:2px;}
+
+  /* ---- two chambers ---- */
+  .halls{
+    display:grid; gap:26px 30px; margin-top:24px;
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));
+  }
+  .hall h2{
+    font-size:19px; font-weight:700; letter-spacing:.02em;
+    display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;
+  }
+  .hall h2 span{font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--soft); font-weight:400;}
+  .grid{
+    display:grid; gap:2px; margin-top:10px;
+    grid-template-columns:repeat(var(--cols,26), 1fr);
+  }
+  .seat{aspect-ratio:1; width:100%; border:none; padding:0; min-height:0;}
+  button.seat{cursor:pointer;}
+  button.seat:focus-visible{outline:2px solid var(--ink); outline-offset:1px;}
+  button.seat[data-on="1"]{outline:2px solid var(--ink); outline-offset:1px;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:3px 15px; margin-top:11px; font-size:12px;}
+  .lg{display:flex; align-items:center; gap:6px; white-space:nowrap;}
+  .sw{width:12px; height:12px; flex:0 0 auto;}
+  .gone{color:var(--soft);}
+
+  #person{margin-top:14px; background:var(--panel); padding:13px 15px; font-size:13.5px;}
+  #person .who{font-weight:700; margin-bottom:6px; font-size:15px;}
+  #person dl{display:grid; grid-template-columns:auto 1fr; gap:2px 16px;}
+  #person dt{color:var(--soft);}
+  #person .hint{color:var(--soft);}
+
+  /* ---- numbers ---- */
+  h3.sec{
+    font-size:11px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--soft); margin:46px 0 12px;
+  }
+  .tbl{width:100%; border-collapse:collapse; font-size:14px;}
+  .tbl th{
+    text-align:left; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--soft); font-weight:700; padding:0 9px 9px 0; vertical-align:bottom;
+  }
+  .tbl td{padding:4px 9px 4px 0; vertical-align:middle;}
+  .tbl .num{text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; width:1%;}
+  .tbl .gap{text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; width:1%; font-weight:700;}
+  .bandcell{width:38%; min-width:120px;}
+  .band{position:relative; height:14px; background:var(--panel);}
+  .band i{position:absolute; top:0; bottom:0; background:#7a9b6e;}
+  .band s{position:absolute; top:-2px; bottom:-2px; width:2px; background:#a84c38; text-decoration:none;}
+  .zero{color:#a84c38; font-weight:700;}
+
+  .foot{margin-top:34px; font-size:12.5px; color:var(--soft); max-width:74ch;}
+  .foot p{margin-bottom:5px;}
+
+  @media (max-width:560px){
+    body{font-size:14px;}
+    .legend{font-size:11px;}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .seat{transition:background-color .16s linear;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>CONGRESS<br>BY LOT</h1>
+  <p class="thesis">Left: 435 people drawn at random. Right: the 435 we elected. Same colours, same sort.</p>
+
+  <div class="row">
+    <button id="bHouse" aria-pressed="true">House &middot; 435</button>
+    <button id="bSenate" aria-pressed="false">Senate &middot; 100</button>
+    <button id="bDraw">Draw again</button>
+  </div>
+
+  <div class="row">
+    <span class="eyebrow">Colour by</span>
+    <button class="lay" data-k="party" aria-pressed="true">Party</button>
+    <button class="lay" data-k="age" aria-pressed="false">Age</button>
+    <button class="lay" data-k="income" aria-pressed="false">Income</button>
+    <button class="lay" data-k="edu" aria-pressed="false">School</button>
+    <button class="lay" data-k="work" aria-pressed="false">Work</button>
+    <button class="lay" data-k="race" aria-pressed="false">Race</button>
+    <button class="lay" data-k="sex" aria-pressed="false">Sex</button>
+  </div>
+
+  <div class="halls">
+    <div class="hall">
+      <h2>By lot <span id="lotN"></span></h2>
+      <div class="grid" id="gLot"></div>
+      <div class="legend" id="legLot"></div>
+      <div id="person"><span class="hint">Tap a seat.</span></div>
+    </div>
+    <div class="hall">
+      <h2>Elected <span id="elN"></span></h2>
+      <div class="grid" id="gEl"></div>
+      <div class="legend" id="legEl"></div>
+    </div>
+  </div>
+
+  <h3 class="sec">The gap</h3>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Group</th>
+        <th class="bandcell">Across 500 draws</th>
+        <th class="num">Lot</th>
+        <th class="num">Elected</th>
+        <th class="gap">Diff</th>
+      </tr>
+    </thead>
+    <tbody id="cmp"></tbody>
+  </table>
+
+  <div class="foot">
+    <p>Seats are sorted by the active colour, so each block is that group's share of the room.</p>
+    <p>Each drawn seat is one person &mdash; age, then schooling, then work, then income, each conditioned on the last. Tap one to see all of them.</p>
+    <p>Elected figures are approximate for the current Congress. Every member earns above $100k, so that row is the salary of the office, not the wealth behind it.</p>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var AGE   = ["18-29","30-39","40-49","50-64","65+"];
+  var EDU   = ["No degree","Some college","Bachelor's","Graduate"];
+  var WORK  = ["Full-time","Part-time","Unemployed","Student","Retired","Not working"];
+  var INC   = ["Under $25k","$25-50k","$50-75k","$75-100k","Over $100k"];
+  var RACE  = ["White","Hispanic","Black","Asian","Other"];
+  var SEX   = ["Female","Male"];
+  var PARTY = ["Independent","Democrat","Republican"];
+
+  var LABELS = { party:PARTY, age:AGE, income:INC, edu:EDU, work:WORK, race:RACE, sex:SEX };
+
+  var PAL = {
+    party:  ["#e6e0cf","#3f6d8f","#a84c38"],
+    age:    ["#2f4b3f","#7a9b6e","#e6e0cf","#3f6d8f","#6b5b8a"],
+    income: ["#a84c38","#6b5b8a","#3f6d8f","#7a9b6e","#e6e0cf"],
+    edu:    ["#a84c38","#3f6d8f","#7a9b6e","#e6e0cf"],
+    work:   ["#2f4b3f","#7a9b6e","#a84c38","#3f6d8f","#6b5b8a","#8b8f88"],
+    race:   ["#e6e0cf","#7a9b6e","#2f4b3f","#3f6d8f","#8b8f88"],
+    sex:    ["#6b5b8a","#7a9b6e"]
+  };
+
+  var P_AGE = [.21,.18,.16,.25,.20];
+  var P_EDU = {0:[.42,.33,.19,.06],1:[.36,.26,.25,.13],2:[.37,.27,.22,.14],3:[.38,.28,.20,.14],4:[.44,.26,.18,.12]};
+  var P_WORK= {0:[.44,.18,.06,.24,.00,.08],1:[.74,.09,.05,.03,.00,.09],2:[.75,.08,.04,.01,.01,.11],3:[.63,.09,.04,.01,.13,.10],4:[.14,.07,.01,.00,.72,.06]};
+  var P_INC = {0:[.31,.30,.19,.11,.09],1:[.20,.26,.21,.16,.17],2:[.10,.18,.20,.19,.33],3:[.06,.12,.16,.19,.47]};
+  var P_RACE= {0:[.52,.24,.14,.07,.03],1:[.56,.21,.13,.07,.03],2:[.60,.19,.12,.06,.03],3:[.66,.15,.11,.05,.03],4:[.74,.10,.09,.05,.02]};
+  // party ID | age — independents skew young
+  var P_PARTY={0:[.52,.27,.21],1:[.48,.27,.25],2:[.44,.27,.29],3:[.40,.29,.31],4:[.36,.30,.34]};
+
+  function drawFrom(p){ var r=Math.random(),c=0; for(var i=0;i<p.length;i++){c+=p[i]; if(r<=c) return i;} return p.length-1; }
+  function shift(p,idx,m){ var q=p.slice(),s=0,i; for(i=0;i<q.length;i++){ if(idx.indexOf(i)>-1) q[i]*=m; s+=q[i]; } for(i=0;i<q.length;i++) q[i]/=s; return q; }
+
+  function person(){
+    var a=drawFrom(P_AGE);
+    var e=drawFrom(P_EDU[a]);
+    var w=drawFrom(shift(P_WORK[a],[0], e>=2?1.18:0.92));
+    var ip=P_INC[e];
+    if(w===2||w===3||w===5) ip=shift(ip,[0,1],2.6);
+    else if(w===1)          ip=shift(ip,[0,1],1.7);
+    else if(w===4)          ip=shift(ip,[0,1,2],1.5);
+    return { age:a, edu:e, work:w, income:drawFrom(ip),
+             race:drawFrom(P_RACE[a]), sex:drawFrom([.51,.49]), party:drawFrom(P_PARTY[a]) };
+  }
+
+  // elected composition, percent per layer
+  var ELECTED = {
+    house: {
+      party:[0,49.4,50.6], age:[0,4,15,48,33], income:[0,0,0,0,100],
+      edu:[0,0,40,60], work:[100,0,0,0,0,0], race:[73,10,12,4,1], sex:[29,71]
+    },
+    senate: {
+      party:[2,45,53], age:[0,1,10,44,45], income:[0,0,0,0,100],
+      edu:[0,0,35,65], work:[100,0,0,0,0,0], race:[91,6,3,0,0], sex:[25,75]
+    }
+  };
+
+  // exact seat counts from percentages, largest remainder
+  function counts(pcts, n){
+    var raw = pcts.map(function(p){ return p/100*n; });
+    var out = raw.map(Math.floor);
+    var rem = n - out.reduce(function(a,b){return a+b;},0);
+    var order = raw.map(function(v,i){ return {i:i, f:v-Math.floor(v)}; })
+                   .sort(function(a,b){ return b.f-a.f; });
+    for (var k=0;k<rem;k++) out[order[k % order.length].i]++;
+    return out;
+  }
+
+  var ROWS = [
+    { key:"ind",   label:"Independents",        f:function(p){return p.party===0;},  e:function(E){return E.party[0];} },
+    { key:"u30",   label:"Under 30",            f:function(p){return p.age===0;},    e:function(E){return E.age[0];} },
+    { key:"o65",   label:"65 and over",         f:function(p){return p.age===4;},    e:function(E){return E.age[4];} },
+    { key:"fem",   label:"Women",               f:function(p){return p.sex===0;},    e:function(E){return E.sex[0];} },
+    { key:"nodeg", label:"No college degree",   f:function(p){return p.edu===0;},    e:function(E){return E.edu[0];} },
+    { key:"grad",  label:"Graduate degree",     f:function(p){return p.edu===3;},    e:function(E){return E.edu[3];} },
+    { key:"u50",   label:"Under $50k",          f:function(p){return p.income<=1;},  e:function(E){return 0;} },
+    { key:"o100",  label:"Over $100k",          f:function(p){return p.income===4;}, e:function(E){return E.income[4];} },
+    { key:"noft",  label:"Not working full-time",f:function(p){return p.work!==0;},  e:function(E){return 100-E.work[0];} },
+    { key:"white", label:"White",               f:function(p){return p.race===0;},   e:function(E){return E.race[0];} },
+    { key:"black", label:"Black",               f:function(p){return p.race===2;},   e:function(E){return E.race[2];} },
+    { key:"hisp",  label:"Hispanic",            f:function(p){return p.race===1;},   e:function(E){return E.race[1];} }
+  ];
+
+  var DRAWS = 500;
+  var size = 435, layer = "party", house = true;
+  var lot = [], bands = {}, picked = -1;
+  var $ = function(id){ return document.getElementById(id); };
+
+  function cols(n){
+    var per = document.querySelector(".halls").clientWidth;
+    var w = Math.max(200, (per > 700 ? per/2 - 20 : per));
+    return Math.max(8, Math.min(n, Math.floor(w / (n > 200 ? 15 : 22))));
+  }
+
+  function build(){
+    lot = [];
+    for (var i=0;i<size;i++) lot.push(person());
+    picked = -1;
+    computeBands();
+    paint();
+    renderCmp();
+    $("person").innerHTML = '<span class="hint">Tap a seat.</span>';
+  }
+
+  function computeBands(){
+    var acc = {};
+    ROWS.forEach(function(r){ acc[r.key] = []; });
+    for (var d=0; d<DRAWS; d++){
+      var c = {};
+      ROWS.forEach(function(r){ c[r.key] = 0; });
+      for (var i=0;i<size;i++){
+        var p = person();
+        for (var j=0;j<ROWS.length;j++) if (ROWS[j].f(p)) c[ROWS[j].key]++;
+      }
+      ROWS.forEach(function(r){ acc[r.key].push(c[r.key]/size*100); });
+    }
+    bands = {};
+    ROWS.forEach(function(r){
+      var a = acc[r.key].sort(function(x,y){ return x-y; });
+      bands[r.key] = { lo:a[Math.floor(DRAWS*0.05)], hi:a[Math.floor(DRAWS*0.95)] };
+    });
+  }
+
+  function paint(){
+    var pal = PAL[layer], labels = LABELS[layer], c = cols(size);
+    var E = ELECTED[house ? "house" : "senate"];
+
+    // --- lot: sort seat order by the active layer, keep index for tapping
+    var order = lot.map(function(p,i){ return i; })
+                   .sort(function(a,b){ return lot[a][layer] - lot[b][layer]; });
+    var g = $("gLot"); g.style.setProperty("--cols", c);
+    var h = "", n;
+    for (var k=0;k<order.length;k++){
+      var i = order[k], v = lot[i][layer];
+      h += '<button class="seat" data-i="'+i+'" data-on="'+(picked===i?1:0)+
+           '" style="background:'+pal[v]+'" aria-label="'+labels[v]+'"></button>';
+    }
+    g.innerHTML = h;
+
+    var lotCounts = labels.map(function(_,idx){
+      var t=0; for (var m=0;m<size;m++) if (lot[m][layer]===idx) t++; return t;
+    });
+    $("legLot").innerHTML = legend(labels, pal, lotCounts);
+    $("lotN").textContent = size + " seats";
+
+    // --- elected: exact composition, same sort
+    var ec = counts(E[layer], size);
+    var g2 = $("gEl"); g2.style.setProperty("--cols", c);
+    var h2 = "";
+    for (var q=0;q<ec.length;q++)
+      for (n=0;n<ec[q];n++)
+        h2 += '<div class="seat" style="background:'+pal[q]+'" title="'+labels[q]+'"></div>';
+    g2.innerHTML = h2;
+    $("legEl").innerHTML = legend(labels, pal, ec);
+    $("elN").textContent = size + " seats";
+  }
+
+  function legend(labels, pal, cts){
+    var out = "";
+    for (var k=0;k<labels.length;k++){
+      var pct = Math.round(cts[k]/size*100);
+      out += '<span class="lg'+(cts[k]===0?' gone':'')+'">'+
+             '<span class="sw" style="background:'+pal[k]+'"></span>'+
+             labels[k]+' &middot; '+pct+'%</span>';
+    }
+    return out;
+  }
+
+  function showPerson(i){
+    var p = lot[i];
+    $("person").innerHTML =
+      '<div class="who">Seat '+(i+1)+'</div><dl>'+
+      '<dt>Party</dt><dd>'+PARTY[p.party]+'</dd>'+
+      '<dt>Age</dt><dd>'+AGE[p.age]+'</dd>'+
+      '<dt>Sex</dt><dd>'+SEX[p.sex]+'</dd>'+
+      '<dt>Race</dt><dd>'+RACE[p.race]+'</dd>'+
+      '<dt>School</dt><dd>'+EDU[p.edu]+'</dd>'+
+      '<dt>Work</dt><dd>'+WORK[p.work]+'</dd>'+
+      '<dt>Income</dt><dd>'+INC[p.income]+'</dd></dl>';
+  }
+
+  function renderCmp(){
+    var E = ELECTED[house ? "house" : "senate"];
+    var html = "";
+    ROWS.forEach(function(r){
+      var n = 0;
+      for (var i=0;i<size;i++) if (r.f(lot[i])) n++;
+      var now = n/size*100, e = r.e(E), b = bands[r.key], d = Math.round(now) - Math.round(e);
+      html += '<tr>'+
+        '<td>'+r.label+'</td>'+
+        '<td class="bandcell"><div class="band">'+
+          '<i style="left:'+b.lo+'%;width:'+Math.max(1,b.hi-b.lo)+'%"></i>'+
+          '<s style="left:'+e+'%"></s>'+
+        '</div></td>'+
+        '<td class="num">'+Math.round(now)+'%</td>'+
+        '<td class="num'+(e===0?' zero':'')+'">'+Math.round(e)+'%</td>'+
+        '<td class="gap">'+(d>0?'+':'')+d+'</td>'+
+      '</tr>';
+    });
+    $("cmp").innerHTML = html;
+  }
+
+  $("gLot").addEventListener("click", function(ev){
+    var b = ev.target.closest(".seat");
+    if (!b) return;
+    var prev = $("gLot").querySelector('.seat[data-on="1"]');
+    if (prev) prev.setAttribute("data-on","0");
+    b.setAttribute("data-on","1");
+    picked = +b.getAttribute("data-i");
+    showPerson(picked);
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll(".lay"), function(b){
+    b.addEventListener("click", function(){
+      layer = b.getAttribute("data-k");
+      Array.prototype.forEach.call(document.querySelectorAll(".lay"), function(o){
+        o.setAttribute("aria-pressed", o === b ? "true" : "false");
+      });
+      paint();
+    });
+  });
+
+  function setChamber(isHouse){
+    house = isHouse; size = isHouse ? 435 : 100;
+    $("bHouse").setAttribute("aria-pressed", isHouse?"true":"false");
+    $("bSenate").setAttribute("aria-pressed", isHouse?"false":"true");
+    build();
+  }
+  $("bHouse").addEventListener("click", function(){ setChamber(true); });
+  $("bSenate").addEventListener("click", function(){ setChamber(false); });
+  $("bDraw").addEventListener("click", build);
+
+  var rt;
+  window.addEventListener("resize", function(){ clearTimeout(rt); rt = setTimeout(paint, 140); });
+
+  build();
+})();
+</script>
+</body>
+</html>
