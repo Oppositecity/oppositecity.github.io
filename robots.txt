@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /windows.html
+Disallow: /syllababbler/syllababbler-9.html
+
+Sitemap: https://opposite.city/sitemap.xml

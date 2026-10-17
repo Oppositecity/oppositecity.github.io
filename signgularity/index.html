@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>SIGNGULARITY</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   :root{ --ink:#ffffff; --bg:#000000; --track:rgba(255,255,255,.45); --field:rgba(0,0,0,.55); --dock: max(14px, env(safe-area-inset-bottom)); }
   body.on-white{ --ink:#000000; --bg:#ffffff; --track:rgba(0,0,0,.45); --field:rgba(255,255,255,.6); }
@@ -125,7 +125,7 @@
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="vendor/three.r128.min.js"></script>
 <script>
 (function(){
 'use strict';
