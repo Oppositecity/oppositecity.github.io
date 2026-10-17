@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPLIT — figure-ground type generator</title>
+<style>
+  :root{ --ink:#111; --paper:#fafafa; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:var(--paper); color:var(--ink); }
+  body{
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    font-size:14px; line-height:1.6;
+    padding:28px 20px 80px;
+    max-width:880px; margin:0 auto;
+  }
+  h1{ font-size:14px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
+  .sub{ opacity:.55; margin-bottom:22px; }
+  #stage{ width:100%; margin-bottom:26px; }
+  #stage canvas{ width:100%; height:auto; display:block; }
+  .row{ display:flex; align-items:center; gap:12px; margin:10px 0; flex-wrap:wrap; }
+  .row.off{ opacity:.25; pointer-events:none; }
+  label{ width:8.5em; flex-shrink:0; text-transform:uppercase; letter-spacing:.08em; font-size:12px; opacity:.75; }
+  .val{ width:3.5em; text-align:right; font-size:12px; opacity:.6; }
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; flex:1; min-width:120px;
+    height:18px; background:transparent; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{ height:2px; background:var(--ink); }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; margin-top:-6px;
+    background:var(--ink); border-radius:50%;
+  }
+  input[type=range]::-moz-range-track{ height:2px; background:var(--ink); }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; background:var(--ink); border:none; border-radius:50%; }
+  input[type=text]{
+    font:inherit; flex:1; min-width:160px; background:transparent; color:var(--ink);
+    border:none; border-bottom:2px solid var(--ink); padding:4px 2px; outline:none;
+    text-transform:uppercase; letter-spacing:.12em;
+  }
+  button{
+    font:inherit; font-size:12px; letter-spacing:.12em; text-transform:uppercase;
+    background:var(--ink); color:var(--paper); border:none; padding:8px 16px;
+    cursor:pointer; border-radius:0;
+  }
+  button.ghost{ background:transparent; color:var(--ink); text-decoration:underline; padding:8px 4px; }
+  button:focus-visible, input:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
+  .actions{ margin-top:22px; display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .note{ margin-top:30px; font-size:12px; opacity:.5; max-width:56ch; }
+</style>
+</head>
+<body>
+
+<h1>Split</h1>
+<div class="sub">figure-ground reversal type generator</div>
+
+<div id="stage"><canvas id="cv"></canvas></div>
+
+<div class="row"><label for="txt">text</label><input id="txt" type="text" value="OPPOSITE" maxlength="64" autocomplete="off"></div>
+<div class="row"><label for="axes">axes</label><input id="axes" type="range" min="1" max="24" value="2"><span class="val" id="axesV">2</span></div>
+<div class="row" id="rowsRow"><label for="rows">y axes</label><input id="rows" type="range" min="1" max="6" value="2"><span class="val" id="rowsV">2</span></div>
+<div class="row" id="angleRow"><label for="angle">angle</label><input id="angle" type="range" min="0" max="180" value="0"><span class="val" id="angleV">0</span></div>
+<div class="row"><label for="drift">drift</label><input id="drift" type="range" min="0" max="100" value="0"><span class="val" id="driftV">0</span></div>
+<div class="row"><label for="scramble">scramble</label><input id="scramble" type="range" min="0" max="100" value="0"><span class="val" id="scrambleV">0</span></div>
+<div class="row"><label for="hue">hue</label><input id="hue" type="range" min="0" max="360" value="0"><span class="val" id="hueV">0</span></div>
+<div class="row"><label for="sat">saturation</label><input id="sat" type="range" min="0" max="100" value="0"><span class="val" id="satV">0</span></div>
+<div class="row"><label for="wpl">per line</label><input id="wpl" type="range" min="1" max="12" value="4"><span class="val" id="wplV">4</span></div>
+
+<div class="actions">
+  <button id="modeBtn">Mode: Pinwheel</button>
+  <button id="reseed" class="ghost">Reshuffle</button>
+  <button id="invert" class="ghost">Invert all</button>
+  <button id="fontBtn" class="ghost">Glyph: Grotesk</button>
+  <button id="save" class="ghost">Save PNG</button>
+</div>
+
+<div class="note">
+Two tones only, always exact opposites. In pinwheel mode, AXES is the number of
+lines through the letter's center — 1 axis is a rotatable bisection, 2 is
+quadrant blades, 8 is a dazzle rosette. Drift bends the blades unevenly;
+scramble spins each letter to its own angle.
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const $ = id => document.getElementById(id);
+
+  const state = {
+    text:'OPPOSITE', mode:'pinwheel',
+    axes:2, rows:2, angle:0, drift:0, scramble:0,
+    hue:0, sat:0, perLine:4, seed:1, inverted:false,
+    font:'grotesk'
+  };
+
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+
+  function tones(){
+    const h=state.hue, s=state.sat;
+    let dark = `hsl(${h} ${s}% ${s>0?12:6}%)`;
+    let light= `hsl(${h} ${s}% ${s>0?92:96}%)`;
+    return state.inverted ? [light,dark] : [dark,light];
+  }
+
+  function glyphFont(px){
+    return state.font==='courier'
+      ? `700 ${px}px 'Courier Prime','Courier New',Courier,monospace`
+      : `900 ${px}px 'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif`;
+  }
+
+  function positions(n, size, rnd, driftAmt){
+    const p=[0];
+    for(let i=1;i<n;i++){
+      const base=i*size/n;
+      const maxJ=(size/n)*0.45*driftAmt;
+      p.push(base+(rnd()*2-1)*maxJ);
+    }
+    p.push(size);
+    return p;
+  }
+
+  // sector boundary angles for a pinwheel of `axes` lines (2*axes blades)
+  function sectorAngles(axes, baseRad, rnd, driftAmt){
+    const n=axes*2, step=Math.PI*2/n, a=[];
+    for(let k=0;k<n;k++){
+      const maxJ=step*0.42*driftAmt;
+      a.push(baseRad + k*step + (rnd()*2-1)*maxJ);
+    }
+    a.push(a[0]+Math.PI*2);
+    // enforce monotonic so wedges never invert
+    for(let k=1;k<a.length;k++) if(a[k]<=a[k-1]) a[k]=a[k-1]+0.01;
+    return a;
+  }
+
+  function drawGlyph(ch,cx,cy,T,color){
+    ctx.fillStyle=color;
+    ctx.font=glyphFont(T*0.82);
+    ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+    ctx.fillText(ch,cx,cy);
+  }
+
+  function render(){
+    const glyphs=[...state.text.toUpperCase()];
+    const per=state.perLine;
+    const n=Math.max(glyphs.length,1);
+    const linesN=Math.ceil(n/per);
+    const T=220, GAP=Math.round(T*0.09), PAD=GAP*2;
+    const colsOnGrid=Math.min(per,n);
+    const W=PAD*2+colsOnGrid*T+(colsOnGrid-1)*GAP;
+    const H=PAD*2+linesN*T+(linesN-1)*GAP;
+    const dpr=2;
+    cv.width=W*dpr; cv.height=H*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const [A,B]=tones();
+    ctx.fillStyle=B; ctx.fillRect(0,0,W,H);
+
+    const rnd=mulberry32(state.seed*7919+1);
+    const driftAmt=state.drift/100, scr=state.scramble/100;
+    const R=T*0.75; // wedge reach past corners
+
+    glyphs.forEach((ch,idx)=>{
+      const gx=PAD+(idx%per)*(T+GAP);
+      const gy=PAD+Math.floor(idx/per)*(T+GAP);
+      const phase = rnd()<scr ? 1 : 0;
+      const spin = (rnd()*2-1)*Math.PI*scr;     // per-letter rotation under scramble
+      if(ch===' ') return;
+
+      ctx.font=glyphFont(T*0.82);
+      const m=ctx.measureText(ch);
+      const asc=m.actualBoundingBoxAscent||T*0.6, dsc=m.actualBoundingBoxDescent||0;
+      const bx=gx+T/2, by=gy+T/2+(asc-dsc)/2;   // glyph baseline point
+      const ccx=gx+T/2, ccy=gy+T/2;             // tile center
+
+      if(state.mode==='grid'){
+        const xs=positions(state.axes,T,rnd,driftAmt);
+        const ys=positions(state.rows,T,rnd,driftAmt);
+        for(let i=0;i<state.axes;i++){
+          for(let j=0;j<state.rows;j++){
+            const p=(i+j+phase)%2;
+            const x0=gx+xs[i], x1=gx+xs[i+1];
+            const y0=gy+ys[j], y1=gy+ys[j+1];
+            ctx.save();
+            ctx.beginPath(); ctx.rect(x0,y0,x1-x0,y1-y0); ctx.clip();
+            ctx.fillStyle=p?A:B; ctx.fillRect(x0,y0,x1-x0,y1-y0);
+            drawGlyph(ch,bx,by,T,p?B:A);
+            ctx.restore();
+          }
+        }
+      } else { // pinwheel
+        const base=state.angle*Math.PI/180 + spin;
+        const a=sectorAngles(state.axes, base, rnd, driftAmt);
+        for(let k=0;k<a.length-1;k++){
+          const p=(k+phase)%2;
+          ctx.save();
+          ctx.beginPath(); ctx.rect(gx,gy,T,T); ctx.clip();       // tile
+          ctx.beginPath();                                        // wedge
+          ctx.moveTo(ccx,ccy);
+          ctx.lineTo(ccx+R*2*Math.cos(a[k]),   ccy+R*2*Math.sin(a[k]));
+          ctx.arc(ccx,ccy,R*2,a[k],a[k+1]);
+          ctx.closePath(); ctx.clip();
+          ctx.fillStyle=p?A:B; ctx.fillRect(gx,gy,T,T);
+          drawGlyph(ch,bx,by,T,p?B:A);
+          ctx.restore();
+        }
+      }
+    });
+  }
+
+  function syncModeUI(){
+    const pin = state.mode==='pinwheel';
+    $('modeBtn').textContent = 'Mode: ' + (pin?'Pinwheel':'Grid');
+    $('rowsRow').classList.toggle('off', pin);
+    $('angleRow').classList.toggle('off', !pin);
+  }
+
+  const bind=(id,key,valId)=>{
+    $(id).addEventListener('input',e=>{
+      state[key]=+e.target.value;
+      if(valId) $(valId).textContent=e.target.value;
+      render();
+    });
+  };
+  bind('axes','axes','axesV'); bind('rows','rows','rowsV');
+  bind('angle','angle','angleV');
+  bind('drift','drift','driftV'); bind('scramble','scramble','scrambleV');
+  bind('hue','hue','hueV'); bind('sat','sat','satV');
+  bind('wpl','perLine','wplV');
+  $('txt').addEventListener('input',e=>{ state.text=e.target.value||' '; render(); });
+  $('modeBtn').addEventListener('click',()=>{
+    state.mode = state.mode==='pinwheel' ? 'grid' : 'pinwheel';
+    syncModeUI(); render();
+  });
+  $('reseed').addEventListener('click',()=>{ state.seed=(Math.random()*1e9)|0; render(); });
+  $('invert').addEventListener('click',()=>{ state.inverted=!state.inverted; render(); });
+  $('fontBtn').addEventListener('click',e=>{
+    state.font = state.font==='grotesk' ? 'courier' : 'grotesk';
+    e.target.textContent = 'Glyph: ' + (state.font==='grotesk'?'Grotesk':'Courier');
+    render();
+  });
+  $('save').addEventListener('click',()=>{
+    cv.toBlob(b=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(b);
+      a.download='split-'+state.text.toLowerCase().replace(/\s+/g,'-')+'.png';
+      a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    });
+  });
+
+  syncModeUI();
+  render();
+})();
+</script>
+</body>
+</html>
