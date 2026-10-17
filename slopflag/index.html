@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Slop Flag practice space</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   :root { color-scheme: dark; --bg: #000; --fg: #fff; --err: #ffa3a3; }
   * { box-sizing: border-box; }
@@ -512,12 +512,13 @@ async function viewProject(uri) {
     for (const c of lclips) {
       const cv = c.value, did = parseUri(c.uri).did, col = colorOf(did);
       const box = document.createElement('div'); box.className = 'clip';
-      const place = cv.loop === false || cv.startBar ? `bars ${(cv.startBar || 0) + 1} to ${(cv.startBar || 0) + (cv.bars || bars)}` : '';
+      const sb = Number(cv.startBar) || 0, nb = Number(cv.bars) || bars;
+      const place = cv.loop === false || sb ? `bars ${sb + 1} to ${sb + nb}` : '';
       let soundName = '';
       if (cv.sound?.uri) soundName = await getRecord(cv.sound.uri).then((r) => `through <a href="#/sounds?s=${enc(r.uri)}">${esc(r.value.name)}</a>`).catch(() => '');
       const via = cv.source ? `<span><a href="${await townLink(cv.source.uri)}" target="_blank" rel="noopener">reply</a></span>` : `<span>${esc(cv.kind)}</span>`;
       box.dataset.uri = c.uri;
-      box.innerHTML = `<div class="row">${await who(did)}${via}${soundName ? `<span>${soundName}</span>` : ''}${place ? `<span>${place}</span>` : ''}${cv.gain != null && cv.gain !== 100 ? `<span>level ${cv.gain}%</span>` : ''}${cv.respondsTo ? '<span>answers another clip</span>' : ''}</div>
+      box.innerHTML = `<div class="row">${await who(did)}${via}${soundName ? `<span>${soundName}</span>` : ''}${place ? `<span>${place}</span>` : ''}${cv.gain != null && cv.gain !== 100 ? `<span>level ${esc(Number(cv.gain) || 0)}%</span>` : ''}${cv.respondsTo ? '<span>answers another clip</span>' : ''}</div>
         ${cv.comment ? `<p>${esc(cv.comment)}</p>` : ''}`;
       if (cv.code) {
         const pre = document.createElement('pre'); pre.className = 'code'; pre.textContent = cv.code; box.appendChild(pre);
@@ -819,7 +820,7 @@ async function viewKits() {
     const t = e.target; if (!t.dataset.kit) return;
     try {
       const k = kits.find((x) => x.uri === t.dataset.kit), did = parseUri(k.uri).did;
-      const spec = { cps: 0.25, code: `s("${k.value.name}_${t.dataset.s}")`, codeMap: [], notes: [], audio: [],
+      const spec = { cps: 0.25, code: `s(${JSON.stringify(`${k.value.name}_${t.dataset.s}`)})`, codeMap: [], notes: [], audio: [],
         kits: [{ id: k.uri, name: k.value.name, samples: await Promise.all(k.value.samples.map(async (s) => ({ name: s.name, url: await blobUrl(did, s.audio) }))) }] };
       await engine.load(spec); await engine.play(); setTimeout(() => engine.stop(), 4000);
     } catch (err) { $('#kmsg').innerHTML = `<span class="err">${esc(err.message)}</span>`; }

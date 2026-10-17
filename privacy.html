@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<title>Privacy · OPPOSITE CITY</title>
+<style>
+  :root{--desk:#3a3a3a;--face:#c0c0c0;--hi:#fff;--lo:#808080;--shadow:#000}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--desk);font-family:'Courier Prime','Courier New',Courier,monospace;font-size:15px;line-height:1.5;color:#000;padding:16px}
+  .win{max-width:760px;margin:0 auto;background:var(--face);border:2px solid;border-color:var(--hi) var(--shadow) var(--shadow) var(--hi);box-shadow:inset 1px 1px 0 var(--face),inset -1px -1px 0 var(--lo);padding:3px}
+  .bar{background:#000080;color:#fff;padding:4px 8px;letter-spacing:1px;font-weight:700}
+  .body{padding:14px 16px 18px}
+  h1{font-size:22px;margin-bottom:10px} h2{font-size:16px;margin:18px 0 6px}
+  p,ul{margin-bottom:10px} ul{padding-left:22px}
+  a{color:#000080} code{background:#fff;padding:0 3px}
+</style>
+</head>
+<body>
+<div class="win"><div class="bar">OPPOSITE.CITY — PRIVACY</div><div class="body">
+<h1>Privacy</h1>
+<p>OPPOSITE CITY is a set of static pages. It has no accounts of its own, no cookies, no analytics and no tracking scripts, and it keeps no server-side record of you. The site is hosted on GitHub Pages, which keeps ordinary web-server logs (such as your IP address) under <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. Fonts and scripts the site needs are served from opposite.city itself.</p>
+<h2>Things your browser may send elsewhere</h2>
+<p>Some surfaces talk to other services when you use them. Everything here happens in your browser, not through us:</p>
+<ul>
+<li><b>Bluesky / atproto</b> (<code>bsky.social</code>, <code>public.api.bsky.app</code>, <code>plc.directory</code>, your own PDS, <code>pds.delve.town</code>): aureole, idiophone, poemstream, remix, slopflag, ximeremix. Signing in or posting sends your handle and, where you choose to publish, your content to those services.</li>
+<li><b>Datamuse</b> (<code>api.datamuse.com</code>): aureole, dof, room, for word lookups.</li>
+<li><b>Hugging Face and jsDelivr</b>: apophasis, crypsis, pentimento, semantic-voyage, slopflag and titivillus download in-browser model files or code libraries from these hosts. The models then run on your device.</li>
+<li><b>Internet Archive</b>: clef and shellac may load audio or text from archive.org.</li>
+<li><b>YouTube</b>: clipper loads the YouTube player API when you use it.</li>
+<li><b>Microcosm Constellation</b> (<code>constellation.microcosm.blue</code>): backlink lookups in some atproto surfaces.</li>
+<li><b>GitHub</b> (<code>raw.githubusercontent.com</code>): semantic-voyage loads data files.</li>
+</ul>
+<p>Each of those services sees your IP address and what is requested, under its own policy. The page source of each surface is the authoritative list.</p>
+<h2>Sign-in and storage</h2>
+<ul>
+<li>Surfaces that publish to Bluesky ask for an <b>app password</b>, never your main password. Create one at <a href="https://bsky.app/settings/app-passwords">bsky.app/settings/app-passwords</a> and revoke it when you are done. It is sent only to your Bluesky or PDS host.</li>
+<li>slopflag keeps its session in <code>sessionStorage</code> (gone when the tab closes). ximeremix and remix keep a refresh token in <code>localStorage</code> only if you tick "remember"; clear it by signing out or clearing site data.</li>
+<li>Other surfaces may keep drafts or settings in your browser's storage. That data never leaves your device.</li>
+</ul>
+<h2>Security reports</h2>
+<p>See <a href="/.well-known/security.txt">security.txt</a>.</p>
+</div></div>
+</body>
+</html>

@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1146,7 +1148,7 @@ async function findAnchor(t){
   t.anchor = hit;
   return hit;
 }
-const postLink = uri => { const p = uri.split("/"); return "https://bsky.app/profile/" + p[2] + "/post/" + p[4]; };
+const postLink = uri => { const p = uri.split("/"); return "https://bsky.app/profile/" + encodeURIComponent(p[2]) + "/post/" + encodeURIComponent(p[4]); };
 function sheetSay(s, html){ const n = $("#shst"); if(html) n.innerHTML = s; else n.textContent = s || ""; }
 function sheetShow(){
   $("#shin").hidden = !!S; $("#shout").hidden = !S;
