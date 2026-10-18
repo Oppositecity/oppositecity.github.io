@@ -439,7 +439,7 @@ function toF(d, v){
 
 let ac = null, bus, dry, echoSend, dly, dlp, fbg, roomSend, conv, master, comp, recDest;
 let buf = null, revBuf = null, TL = null, base = null;
-let pos = 0, playing = false, holding = false, loopOn = true, reg = { a:0, b:1 };
+let pos = 0, playing = false, holding = false, loopOn = false, reg = { a:0, b:1 };
 let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
 const grains = [];
 let shownPos = 0, take = null, takeLabel = "", job = 0, started = false;
@@ -737,7 +737,7 @@ function hud(){
   else if(clean) s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   as played";
   else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
            P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
-           (playing ? "" : "   stopped") + (loopOn ? "" : "   once");
+           (playing ? "" : "   stopped") + (loopOn ? "   loop" : "");
   if(s !== hudLast){ $("#hud").textContent = s; hudLast = s; }
 }
 
@@ -1012,7 +1012,7 @@ function paramString(){
   if(buf && (reg.a > 0.001 || reg.b < buf.duration - 0.001)){
     q.set("la", (Math.round(reg.a*100)/100).toString()); q.set("lb", (Math.round(reg.b*100)/100).toString());
   }
-  if(!loopOn) q.set("lo", "0");
+  if(loopOn) q.set("lo", "1");
   return q.toString();
 }
 function writeHash(){
@@ -1029,7 +1029,7 @@ function original(){
   if(!paramString()){ say("this is the original"); return; }
   remember();
   Object.assign(P, DEF);
-  loopOn = true; reg = { a:0, b:buf.duration }; regionMode = false;
+  loopOn = false; reg = { a:0, b:buf.duration }; regionMode = false;
   if(tab === "chop") tab = "grain";
   syncSliders(); showTab(); words(); changed();
   say("the original. undo for the remix");
@@ -1055,7 +1055,7 @@ function applyParams(q){
   undoStack.length = 0;
   for(const k of KEYS) if(q.has(k)){ const v = parseFloat(q.get(k)); if(isFinite(v)) P[k] = v; }
   P.md = P.md ? 1 : 0; P.lk = P.lk ? 1 : 0; P.tm = P.tm ? 1 : 0;
-  pending = { la:q.has("la") ? parseFloat(q.get("la")) : null, lb:q.has("lb") ? parseFloat(q.get("lb")) : null, lo:q.get("lo") !== "0" };
+  pending = { la:q.has("la") ? parseFloat(q.get("la")) : null, lb:q.has("lb") ? parseFloat(q.get("lb")) : null, lo:q.has("lo") ? q.get("lo") !== "0" : (q.has("la") && q.has("lb")) };
   syncSliders();
   tab = P.md ? "chop" : "tape"; showTab();
 }
@@ -1290,7 +1290,7 @@ async function loadBuffer(abuf, label, t){
   buf = abuf; revBuf = rb; TL = tl;
   slices = makeSlices(); ci = 0;
   const D = buf.duration;
-  reg = { a:0, b:D }; loopOn = true;
+  reg = { a:0, b:D }; loopOn = false;
   if(pending){
     if(pending.la != null && pending.lb != null && pending.lb > pending.la){ reg = { a:Math.max(0, pending.la), b:Math.min(D, pending.lb) }; }
     loopOn = pending.lo; pending = null;
