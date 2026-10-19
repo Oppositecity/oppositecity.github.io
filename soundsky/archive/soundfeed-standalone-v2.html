@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundFeed - Share Audio on Bluesky</title>
     <style>
@@ -236,6 +239,7 @@
 
     <script type="module">
         import { BskyAgent } from 'https://esm.sh/@atproto/api@0.13.20';
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         const AUDIO_EMBED_TYPE = 'com.soundfeed.embed.audio';
         let agent = null;
@@ -367,10 +371,10 @@
                     div.className = 'audio-post';
                     
                     div.innerHTML = `
-                        <div class="post-author">@${item.post.author.handle}</div>
-                        ${item.post.embed.title ? `<div class="track-title">${item.post.embed.title}</div>` : ''}
-                        ${item.post.record.text ? `<div class="post-text">${item.post.record.text}</div>` : ''}
-                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${item.post.author.did}&cid=${item.post.embed.audio.ref.$link}"></audio>
+                        <div class="post-author">@${esc(item.post.author.handle)}</div>
+                        ${item.post.embed.title ? `<div class="track-title">${esc(item.post.embed.title)}</div>` : ''}
+                        ${item.post.record.text ? `<div class="post-text">${esc(item.post.record.text)}</div>` : ''}
+                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(item.post.author.did)}&cid=${encodeURIComponent(item.post.embed.audio.ref.$link)}"></audio>
                     `;
                     
                     feedDiv.appendChild(div);

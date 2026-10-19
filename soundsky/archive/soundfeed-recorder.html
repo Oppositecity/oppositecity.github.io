@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundFeed - Record & Share Audio</title>
     <style>
@@ -319,7 +322,6 @@
             </div>
 
             <div id="upload-status"></div>
-            <div id="debug-info" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; font-size: 12px; font-family: monospace;"></div>
         </div>
 
         <!-- Feed Section -->
@@ -337,6 +339,7 @@
 
     <script type="module">
         import { BskyAgent } from 'https://esm.sh/@atproto/api@0.13.20';
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         const AUDIO_EMBED_TYPE = 'com.soundfeed.embed.audio';
         let agent = null;
@@ -485,7 +488,7 @@
                     encoding: 'audio/webm'
                 });
 
-                const postData = {
+                await agent.post({
                     text: postText || '🎵',
                     createdAt: new Date().toISOString(),
                     embed: {
@@ -495,18 +498,7 @@
                         mimeType: 'audio/webm',
                         size: recordedBlob.size
                     }
-                };
-
-                // Debug: show what we're posting
-                document.getElementById('debug-info').innerHTML = `
-                    <strong>Debug: What we're posting</strong><br>
-                    Embed type: ${postData.embed.$type}<br>
-                    Audio CID: ${blobResponse.data.blob.ref.$link}<br>
-                    Size: ${recordedBlob.size} bytes<br>
-                    Mime: ${postData.embed.mimeType}
-                `;
-
-                await agent.post(postData);
+                });
 
                 statusDiv.textContent = '✅ Posted successfully!';
                 statusDiv.className = 'success';
@@ -587,28 +579,10 @@
 
         async function loadAudioFeed() {
             const feedDiv = document.getElementById('audio-feed');
-            const debugDiv = document.getElementById('debug-info');
             feedDiv.innerHTML = '<p style="text-align:center;">Loading...</p>';
 
             try {
                 const response = await agent.getTimeline({ limit: 50 });
-                
-                // Debug: show all embed types in timeline
-                const embedTypes = response.data.feed.map(item => {
-                    const type = item.post.embed?.$type || 'no-embed';
-                    return type;
-                });
-                
-                const audioCount = embedTypes.filter(t => t === AUDIO_EMBED_TYPE).length;
-                
-                debugDiv.innerHTML = `
-                    <strong>Debug: Feed Analysis</strong><br>
-                    Total posts checked: ${response.data.feed.length}<br>
-                    Posts with audio embed: ${audioCount}<br>
-                    Looking for: ${AUDIO_EMBED_TYPE}<br>
-                    Embed types found: ${[...new Set(embedTypes)].join(', ')}
-                `;
-                
                 const audioPosts = response.data.feed.filter(item =>
                     item.post.embed && item.post.embed.$type === AUDIO_EMBED_TYPE
                 );
@@ -624,10 +598,10 @@
                     div.className = 'audio-post';
 
                     div.innerHTML = `
-                        <div class="post-author">@${item.post.author.handle}</div>
-                        ${item.post.embed.title ? `<div class="track-title">${item.post.embed.title}</div>` : ''}
-                        ${item.post.record.text ? `<div class="post-text">${item.post.record.text}</div>` : ''}
-                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${item.post.author.did}&cid=${item.post.embed.audio.ref.$link}"></audio>
+                        <div class="post-author">@${esc(item.post.author.handle)}</div>
+                        ${item.post.embed.title ? `<div class="track-title">${esc(item.post.embed.title)}</div>` : ''}
+                        ${item.post.record.text ? `<div class="post-text">${esc(item.post.record.text)}</div>` : ''}
+                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(item.post.author.did)}&cid=${encodeURIComponent(item.post.embed.audio.ref.$link)}"></audio>
                     `;
 
                     feedDiv.appendChild(div);

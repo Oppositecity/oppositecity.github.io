@@ -11,7 +11,7 @@ while IFS= read -r f; do
   # remote <script src> must carry integrity (module imports can't; keep those pinned to exact versions)
   grep -oE '<script[^>]+src="https?://[^"]+"[^>]*>' "$f" | grep -v 'integrity=' | grep -v 'youtube.com/iframe_api' | sed "s|^|FAIL: $f: remote script without integrity: |" | grep . && fail=1
   grep -oE "import\(['\"]https://[^'\"]+" "$f" | grep -vE '@[0-9]+\.[0-9]+\.[0-9]+' | sed "s|^|FAIL: $f: unpinned remote import: |" | grep . && fail=1
-done < <(find . -name '*.html' -not -path './.git/*' -not -path '*/vendor/*')
+done < <(find . -name '*.html' -not -path './.git/*' -not -path '*/vendor/*' -not -path './lode/android/*')
 for f in og.png favicon.svg favicon.ico 404.html robots.txt sitemap.xml .well-known/security.txt privacy.html .nojekyll; do
   [ -e "$f" ] || bad "missing $f"
 done

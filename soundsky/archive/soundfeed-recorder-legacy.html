@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundFeed - Record & Share Audio</title>
     <style>
@@ -336,6 +339,7 @@
 
     <script type="module">
         import { BskyAgent } from 'https://esm.sh/@atproto/api@0.13.20';
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         const AUDIO_EMBED_TYPE = 'com.soundfeed.embed.audio';
         let agent = null;
@@ -591,31 +595,4 @@
                 feedDiv.innerHTML = '';
                 audioPosts.forEach(item => {
                     const div = document.createElement('div');
-                    div.className = 'audio-post';
-
-                    div.innerHTML = `
-                        <div class="post-author">@${item.post.author.handle}</div>
-                        ${item.post.embed.title ? `<div class="track-title">${item.post.embed.title}</div>` : ''}
-                        ${item.post.record.text ? `<div class="post-text">${item.post.record.text}</div>` : ''}
-                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${item.post.author.did}&cid=${item.post.embed.audio.ref.$link}"></audio>
-                    `;
-
-                    feedDiv.appendChild(div);
-                });
-            } catch (error) {
-                console.error('Feed failed:', error);
-                feedDiv.innerHTML = '<p style="text-align:center;color:#dc3545;">Failed to load feed</p>';
-            }
-        }
-
-        function handleLogout() {
-            agent = null;
-            document.getElementById('login-section').classList.remove('hidden');
-            document.getElementById('record-section').classList.add('hidden');
-            document.getElementById('feed-section').classList.add('hidden');
-            document.getElementById('user-info').classList.add('hidden');
-            document.getElementById('login-form').reset();
-        }
-    </script>
-</body>
-</html>
+                    

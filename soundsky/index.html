@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundFeed - Record & Share Audio</title>
     <style>
@@ -277,6 +279,7 @@
                 <div id="playback-area" class="playback hidden">
                     <p><strong>Preview your recording:</strong></p>
                     <audio id="playback-audio" controls></audio>
+                    <button id="cancel-recording" style="background: #6c757d; margin-top: 10px;">🗑️ Delete & Record Again</button>
                 </div>
 
                 <form id="post-form" class="hidden">
@@ -319,6 +322,7 @@
             </div>
 
             <div id="upload-status"></div>
+            <div id="debug-info" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; font-size: 12px; font-family: monospace;"></div>
         </div>
 
         <!-- Feed Section -->
@@ -336,6 +340,7 @@
 
     <script type="module">
         import { BskyAgent } from 'https://esm.sh/@atproto/api@0.13.20';
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         const AUDIO_EMBED_TYPE = 'com.soundfeed.embed.audio';
         let agent = null;
@@ -348,6 +353,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('login-form').addEventListener('submit', handleLogin);
             document.getElementById('record-btn').addEventListener('click', toggleRecording);
+            document.getElementById('cancel-recording').addEventListener('click', cancelRecording);
             document.getElementById('post-form').addEventListener('submit', handlePost);
             document.getElementById('upload-form').addEventListener('submit', handleUpload);
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -461,6 +467,15 @@
             document.getElementById('timer').textContent = '00:00';
         }
 
+        function cancelRecording() {
+            recordedBlob = null;
+            document.getElementById('playback-area').classList.add('hidden');
+            document.getElementById('post-form').classList.add('hidden');
+            document.getElementById('post-form').reset();
+            document.getElementById('upload-status').textContent = '';
+            document.getElementById('upload-status').className = '';
+        }
+
         async function handlePost(e) {
             e.preventDefault();
             const postText = document.getElementById('post-text').value;
@@ -484,7 +499,7 @@
                     encoding: 'audio/webm'
                 });
 
-                await agent.post({
+                const postData = {
                     text: postText || '🎵',
                     createdAt: new Date().toISOString(),
                     embed: {
@@ -494,7 +509,18 @@
                         mimeType: 'audio/webm',
                         size: recordedBlob.size
                     }
-                });
+                };
+
+                // Debug: show what we're posting
+                document.getElementById('debug-info').innerHTML = `
+                    <strong>Debug: What we're posting</strong><br>
+                    Embed type: ${postData.embed.$type}<br>
+                    Audio CID: ${blobResponse.data.blob.ref.$link}<br>
+                    Size: ${recordedBlob.size} bytes<br>
+                    Mime: ${postData.embed.mimeType}
+                `;
+
+                await agent.post(postData);
 
                 statusDiv.textContent = '✅ Posted successfully!';
                 statusDiv.className = 'success';
@@ -575,13 +601,34 @@
 
         async function loadAudioFeed() {
             const feedDiv = document.getElementById('audio-feed');
+            const debugDiv = document.getElementById('debug-info');
             feedDiv.innerHTML = '<p style="text-align:center;">Loading...</p>';
 
             try {
                 const response = await agent.getTimeline({ limit: 50 });
-                const audioPosts = response.data.feed.filter(item =>
-                    item.post.embed && item.post.embed.$type === AUDIO_EMBED_TYPE
-                );
+                
+                // Debug: show all embed types in timeline
+                const embedTypes = response.data.feed.map(item => {
+                    const type = item.post.embed?.$type || 'no-embed';
+                    return type;
+                });
+                
+                const audioCount = embedTypes.filter(t => t === AUDIO_EMBED_TYPE).length;
+                
+                debugDiv.innerHTML = `
+                    <strong>Debug: Feed Analysis</strong><br>
+                    Total posts checked: ${response.data.feed.length}<br>
+                    Posts with audio embed: ${audioCount}<br>
+                    Looking for: ${AUDIO_EMBED_TYPE}<br>
+                    Embed types found: ${esc([...new Set(embedTypes)].join(", "))}
+                `;
+                
+                const audioPosts = response.data.feed.filter(item => {
+                    if (!item.post.embed || !item.post.embed.$type) return false;
+                    const embedType = item.post.embed.$type;
+                    // Match both "com.soundfeed.embed.audio" and "com.soundfeed.embed.audio#view"
+                    return embedType === AUDIO_EMBED_TYPE || embedType.startsWith(AUDIO_EMBED_TYPE);
+                });
 
                 if (audioPosts.length === 0) {
                     feedDiv.innerHTML = '<p style="text-align:center;color:#999;">No audio posts yet!</p>';
@@ -591,4 +638,31 @@
                 feedDiv.innerHTML = '';
                 audioPosts.forEach(item => {
                     const div = document.createElement('div');
-                    
+                    div.className = 'audio-post';
+
+                    div.innerHTML = `
+                        <div class="post-author">@${esc(item.post.author.handle)}</div>
+                        ${item.post.embed.title ? `<div class="track-title">${esc(item.post.embed.title)}</div>` : ''}
+                        ${item.post.record.text ? `<div class="post-text">${esc(item.post.record.text)}</div>` : ''}
+                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(item.post.author.did)}&cid=${encodeURIComponent(item.post.embed.audio.ref.$link)}"></audio>
+                    `;
+
+                    feedDiv.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Feed failed:', error);
+                feedDiv.innerHTML = '<p style="text-align:center;color:#dc3545;">Failed to load feed</p>';
+            }
+        }
+
+        function handleLogout() {
+            agent = null;
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('record-section').classList.add('hidden');
+            document.getElementById('feed-section').classList.add('hidden');
+            document.getElementById('user-info').classList.add('hidden');
+            document.getElementById('login-form').reset();
+        }
+    </script>
+</body>
+</html>

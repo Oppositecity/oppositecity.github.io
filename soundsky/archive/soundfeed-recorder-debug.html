@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundFeed - Record & Share Audio</title>
     <style>
@@ -277,7 +280,6 @@
                 <div id="playback-area" class="playback hidden">
                     <p><strong>Preview your recording:</strong></p>
                     <audio id="playback-audio" controls></audio>
-                    <button id="cancel-recording" style="background: #6c757d; margin-top: 10px;">🗑️ Delete & Record Again</button>
                 </div>
 
                 <form id="post-form" class="hidden">
@@ -338,6 +340,7 @@
 
     <script type="module">
         import { BskyAgent } from 'https://esm.sh/@atproto/api@0.13.20';
+        const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
         const AUDIO_EMBED_TYPE = 'com.soundfeed.embed.audio';
         let agent = null;
@@ -350,7 +353,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('login-form').addEventListener('submit', handleLogin);
             document.getElementById('record-btn').addEventListener('click', toggleRecording);
-            document.getElementById('cancel-recording').addEventListener('click', cancelRecording);
             document.getElementById('post-form').addEventListener('submit', handlePost);
             document.getElementById('upload-form').addEventListener('submit', handleUpload);
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
@@ -462,15 +464,6 @@
         function stopTimer() {
             clearInterval(timerInterval);
             document.getElementById('timer').textContent = '00:00';
-        }
-
-        function cancelRecording() {
-            recordedBlob = null;
-            document.getElementById('playback-area').classList.add('hidden');
-            document.getElementById('post-form').classList.add('hidden');
-            document.getElementById('post-form').reset();
-            document.getElementById('upload-status').textContent = '';
-            document.getElementById('upload-status').className = '';
         }
 
         async function handlePost(e) {
@@ -617,15 +610,12 @@
                     Total posts checked: ${response.data.feed.length}<br>
                     Posts with audio embed: ${audioCount}<br>
                     Looking for: ${AUDIO_EMBED_TYPE}<br>
-                    Embed types found: ${[...new Set(embedTypes)].join(', ')}
+                    Embed types found: ${esc([...new Set(embedTypes)].join(", "))}
                 `;
                 
-                const audioPosts = response.data.feed.filter(item => {
-                    if (!item.post.embed || !item.post.embed.$type) return false;
-                    const embedType = item.post.embed.$type;
-                    // Match both "com.soundfeed.embed.audio" and "com.soundfeed.embed.audio#view"
-                    return embedType === AUDIO_EMBED_TYPE || embedType.startsWith(AUDIO_EMBED_TYPE);
-                });
+                const audioPosts = response.data.feed.filter(item =>
+                    item.post.embed && item.post.embed.$type === AUDIO_EMBED_TYPE
+                );
 
                 if (audioPosts.length === 0) {
                     feedDiv.innerHTML = '<p style="text-align:center;color:#999;">No audio posts yet!</p>';
@@ -638,10 +628,10 @@
                     div.className = 'audio-post';
 
                     div.innerHTML = `
-                        <div class="post-author">@${item.post.author.handle}</div>
-                        ${item.post.embed.title ? `<div class="track-title">${item.post.embed.title}</div>` : ''}
-                        ${item.post.record.text ? `<div class="post-text">${item.post.record.text}</div>` : ''}
-                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${item.post.author.did}&cid=${item.post.embed.audio.ref.$link}"></audio>
+                        <div class="post-author">@${esc(item.post.author.handle)}</div>
+                        ${item.post.embed.title ? `<div class="track-title">${esc(item.post.embed.title)}</div>` : ''}
+                        ${item.post.record.text ? `<div class="post-text">${esc(item.post.record.text)}</div>` : ''}
+                        <audio controls src="https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(item.post.author.did)}&cid=${encodeURIComponent(item.post.embed.audio.ref.$link)}"></audio>
                     `;
 
                     feedDiv.appendChild(div);
