@@ -116,7 +116,10 @@
                    the box thickens toward the way it is travelling, so
                    a grain running backwards leans the other way.
      the head      one column of dither, where the take is being read.
-     outside loop  half the pixels go out.
+     the loop      the stretch of take being worked is drawn inverted,
+                   live while you drag it out. a grain reading inside it
+                   inverts back, so it shows as the plain picture moving
+                   through the dark block: two scales, two inversions.
      ticks (chop)  along the top edge, one for every attack the take
                    was found to contain, taller when struck harder.
 
@@ -698,14 +701,17 @@ function draw(){
   if(latest) shownPos = latest.hd;
   if(holding || !(playing)) shownPos = pos;
   if(clean) shownPos = listenPos();
-  const a = reg.a/D*W, b = reg.b/D*W, outside = buf && loopOn;
+  const ra = Math.min(reg.a, reg.b), rb = Math.max(reg.a, reg.b);
+  const a = ra/D*W, b = rb/D*W;
+  const whole = ra <= 0.001 && rb >= D - 0.001;
+  const inside = buf && !clean && !whole && (loopOn || (regionMode && dragging));
   for(let y=0;y<H;y++){
     const row = (y&7)*8, row2 = ((y+3)&7)*8;
     for(let x=0;x<W;x++){
       const i = y*W + x;
       let v = base ? base[i] > BAYER[row + (x&7)] : false;
       if(ov[i] > BAYER[row2 + ((x+5)&7)]) v = !v;
-      if(outside && (x < a || x > b) && ((x + y)&1)) v = false;
+      if(inside && x >= a && x <= b) v = !v;
       lit[i] = v ? 1 : 0;
     }
   }
