@@ -1,0 +1,3170 @@
+{
+ "note": "Places, case-insensitive, first match wins. store = detail retail code; product = product line id. confidence < 0.6 shows as guessed.",
+ "merchants": [
+  {
+   "name": "Uber Eats",
+   "pattern": "UBER\\s*\\*?\\s*EATS",
+   "confidence": 0.9,
+   "product": "l242"
+  },
+  {
+   "name": "DoorDash",
+   "pattern": "DOORDASH|\\bDD \\*",
+   "confidence": 0.9,
+   "product": "l242"
+  },
+  {
+   "name": "Grubhub",
+   "pattern": "GRUBHUB",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Postmates",
+   "pattern": "POSTMATES",
+   "confidence": 0.9,
+   "product": "l242"
+  },
+  {
+   "name": "Seamless",
+   "pattern": "SEAMLESS",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Caviar",
+   "pattern": "\\bCAVIAR\\b",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Toast (restaurant)",
+   "pattern": "^TST\\s?\\*",
+   "confidence": 0.85,
+   "product": "l243"
+  },
+  {
+   "name": "Instacart",
+   "pattern": "INSTACART",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Shipt",
+   "pattern": "\\bSHIPT\\b",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Gopuff",
+   "pattern": "GOPUFF",
+   "confidence": 0.7,
+   "store": "445000"
+  },
+  {
+   "name": "Starbucks",
+   "pattern": "STARBUCKS",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Dunkin'",
+   "pattern": "DUNKIN",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Peet's Coffee",
+   "pattern": "PEET'?S",
+   "confidence": 0.9,
+   "product": "l242"
+  },
+  {
+   "name": "Dutch Bros",
+   "pattern": "DUTCH BROS",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Tim Hortons",
+   "pattern": "TIM HORTONS",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Blue Bottle",
+   "pattern": "BLUE BOTTLE",
+   "confidence": 0.9,
+   "product": "l242"
+  },
+  {
+   "name": "McDonald's",
+   "pattern": "MCDONALD'?S",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Burger King",
+   "pattern": "BURGER KING",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Wendy's",
+   "pattern": "WENDY'?S",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Taco Bell",
+   "pattern": "TACO BELL",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Chick-fil-A",
+   "pattern": "CHICK-?FIL-?A",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Chipotle",
+   "pattern": "CHIPOTLE",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Subway",
+   "pattern": "\\bSUBWAY\\b(?!.*(MTA|TRANSIT))",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Panera",
+   "pattern": "PANERA",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Domino's",
+   "pattern": "DOMINO'?S",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Pizza Hut",
+   "pattern": "PIZZA HUT",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Papa John's",
+   "pattern": "PAPA JOHN",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Little Caesars",
+   "pattern": "LITTLE CAESAR",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "KFC",
+   "pattern": "\\bKFC\\b",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Popeyes",
+   "pattern": "POPEYES",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Sonic",
+   "pattern": "SONIC DRIVE",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Arby's",
+   "pattern": "ARBY'?S",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Jack in the Box",
+   "pattern": "JACK IN THE BOX",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Five Guys",
+   "pattern": "FIVE GUYS",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Shake Shack",
+   "pattern": "SHAKE SHACK",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "In-N-Out",
+   "pattern": "IN-?N-?OUT",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Whataburger",
+   "pattern": "WHATABURGER",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Culver's",
+   "pattern": "CULVER'?S",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Wingstop",
+   "pattern": "WINGSTOP",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Raising Cane's",
+   "pattern": "RAISING CANE",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Jersey Mike's",
+   "pattern": "JERSEY MIKE",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Jimmy John's",
+   "pattern": "JIMMY JOHN",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Firehouse Subs",
+   "pattern": "FIREHOUSE SUBS",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Qdoba",
+   "pattern": "QDOBA",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Panda Express",
+   "pattern": "PANDA EXPRESS",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Sweetgreen",
+   "pattern": "SWEETGREEN",
+   "confidence": 0.98,
+   "product": "l242"
+  },
+  {
+   "name": "Cava",
+   "pattern": "\\bCAVA\\b",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Dairy Queen",
+   "pattern": "DAIRY QUEEN|\\bDQ\\b",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Baskin-Robbins",
+   "pattern": "BASKIN",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Krispy Kreme",
+   "pattern": "KRISPY KREME",
+   "confidence": 0.95,
+   "product": "l242"
+  },
+  {
+   "name": "Applebee's",
+   "pattern": "APPLEBEE",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Chili's",
+   "pattern": "CHILI'?S",
+   "confidence": 0.95,
+   "product": "l243"
+  },
+  {
+   "name": "Olive Garden",
+   "pattern": "OLIVE GARDEN",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Red Lobster",
+   "pattern": "RED LOBSTER",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Outback",
+   "pattern": "OUTBACK",
+   "confidence": 0.95,
+   "product": "l243"
+  },
+  {
+   "name": "Texas Roadhouse",
+   "pattern": "TEXAS ROADHOUSE",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "IHOP",
+   "pattern": "\\bIHOP\\b",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Denny's",
+   "pattern": "DENNY'?S",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Waffle House",
+   "pattern": "WAFFLE HOUSE",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Cracker Barrel",
+   "pattern": "CRACKER BARREL",
+   "confidence": 0.9,
+   "product": "l243"
+  },
+  {
+   "name": "Buffalo Wild Wings",
+   "pattern": "BUFFALO WILD|\\bBWW\\b",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Cheesecake Factory",
+   "pattern": "CHEESECAKE FACTORY",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "P.F. Chang's",
+   "pattern": "P\\.?F\\.? CHANG",
+   "confidence": 0.98,
+   "product": "l243"
+  },
+  {
+   "name": "Costco Gas",
+   "pattern": "COSTCO\\s*(GAS|FUEL)",
+   "confidence": 0.95,
+   "store": "452000",
+   "product": "l115"
+  },
+  {
+   "name": "Costco",
+   "pattern": "COSTCO",
+   "confidence": 0.5,
+   "store": "452000"
+  },
+  {
+   "name": "Sam's Club Fuel",
+   "pattern": "SAM'?S\\s*CLUB\\s*(GAS|FUEL)|SAMS FUEL",
+   "confidence": 0.95,
+   "store": "452000",
+   "product": "l115"
+  },
+  {
+   "name": "Sam's Club",
+   "pattern": "SAM'?S\\s*CLUB|SAMSCLUB",
+   "confidence": 0.5,
+   "store": "452000"
+  },
+  {
+   "name": "BJ's Gas",
+   "pattern": "BJ'?S\\s*(GAS|FUEL)",
+   "confidence": 0.95,
+   "store": "452000",
+   "product": "l115"
+  },
+  {
+   "name": "BJ's Wholesale",
+   "pattern": "BJ'?S\\s*(WHOLESALE|WHSE)",
+   "confidence": 0.5,
+   "store": "452000"
+  },
+  {
+   "name": "Kroger Fuel",
+   "pattern": "KROGER\\s*FUEL",
+   "confidence": 0.95,
+   "store": "445000",
+   "product": "l115"
+  },
+  {
+   "name": "Kroger",
+   "pattern": "KROGER",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Safeway Fuel",
+   "pattern": "SAFEWAY\\s*FUEL",
+   "confidence": 0.95,
+   "store": "445000",
+   "product": "l115"
+  },
+  {
+   "name": "Safeway",
+   "pattern": "SAFEWAY",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Albertsons",
+   "pattern": "ALBERTSONS",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Vons",
+   "pattern": "\\bVONS\\b",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Jewel-Osco",
+   "pattern": "JEWEL[- ]?OSCO|\\bJEWEL\\b",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Ralphs",
+   "pattern": "RALPHS",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Fred Meyer",
+   "pattern": "FRED MEYER|FRED-MEYER",
+   "confidence": 0.6,
+   "store": "452000"
+  },
+  {
+   "name": "King Soopers",
+   "pattern": "KING SOOPERS",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Harris Teeter",
+   "pattern": "HARRIS TEETER",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Food Lion",
+   "pattern": "FOOD LION",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Publix",
+   "pattern": "PUBLIX",
+   "confidence": 0.88,
+   "store": "445000"
+  },
+  {
+   "name": "Wegmans",
+   "pattern": "WEGMANS",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "H-E-B",
+   "pattern": "\\bH-?E-?B\\b",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Meijer",
+   "pattern": "MEIJER",
+   "confidence": 0.6,
+   "store": "452000"
+  },
+  {
+   "name": "Giant",
+   "pattern": "GIANT (FOOD|EAGLE|\\d)|\\bGIANT \\#",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Stop & Shop",
+   "pattern": "STOP\\s*&?\\s*SHOP",
+   "confidence": 0.88,
+   "store": "445000"
+  },
+  {
+   "name": "ShopRite",
+   "pattern": "SHOPRITE",
+   "confidence": 0.88,
+   "store": "445000"
+  },
+  {
+   "name": "Hannaford",
+   "pattern": "HANNAFORD",
+   "confidence": 0.88,
+   "store": "445000"
+  },
+  {
+   "name": "Winn-Dixie",
+   "pattern": "WINN-?DIXIE",
+   "confidence": 0.88,
+   "store": "445000"
+  },
+  {
+   "name": "Hy-Vee",
+   "pattern": "HY-?VEE",
+   "confidence": 0.85,
+   "store": "445000"
+  },
+  {
+   "name": "Food 4 Less",
+   "pattern": "FOOD\\s*4\\s*LESS",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "WinCo",
+   "pattern": "WINCO",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Sprouts",
+   "pattern": "SPROUTS",
+   "confidence": 0.92,
+   "store": "445000"
+  },
+  {
+   "name": "Whole Foods",
+   "pattern": "WHOLE\\s*FOODS|WHOLEFDS|WFM\\b",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Trader Joe's",
+   "pattern": "TRADER JOE",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Aldi",
+   "pattern": "\\bALDI\\b",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Lidl",
+   "pattern": "\\bLIDL\\b",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Save A Lot",
+   "pattern": "SAVE.A.LOT",
+   "confidence": 0.92,
+   "store": "445000"
+  },
+  {
+   "name": "Grocery Outlet",
+   "pattern": "GROCERY OUTLET",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Fresh Market",
+   "pattern": "FRESH MARKET",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Market Basket",
+   "pattern": "MARKET BASKET",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Piggly Wiggly",
+   "pattern": "PIGGLY WIGGLY",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Weis",
+   "pattern": "WEIS MARKETS|\\bWEIS\\b",
+   "confidence": 0.88,
+   "store": "445000"
+  },
+  {
+   "name": "Smart & Final",
+   "pattern": "SMART\\s*&?\\s*FINAL",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Stater Bros",
+   "pattern": "STATER BROS",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Fiesta Mart",
+   "pattern": "FIESTA MART",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "H Mart",
+   "pattern": "\\bH\\s?MART\\b",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "99 Ranch",
+   "pattern": "99 RANCH",
+   "confidence": 0.9,
+   "store": "445000"
+  },
+  {
+   "name": "Walmart Fuel",
+   "pattern": "(WAL-?MART|WM)\\s*(FUEL|GAS)|MURPHY\\s*(USA|EXPRESS)",
+   "confidence": 0.95,
+   "store": "452000",
+   "product": "l115"
+  },
+  {
+   "name": "Walmart",
+   "pattern": "WAL-?MART|WM SUPERCENTER|WALMART\\.COM|WM\\.COM",
+   "confidence": 0.45,
+   "store": "452000"
+  },
+  {
+   "name": "Target",
+   "pattern": "\\bTARGET\\b",
+   "confidence": 0.35,
+   "store": "452000"
+  },
+  {
+   "name": "Amazon Prime",
+   "pattern": "AMAZON PRIME|PRIME VIDEO|AMZN DIGITAL|KINDLE",
+   "confidence": 0.75,
+   "product": "l223"
+  },
+  {
+   "name": "Amazon Fresh",
+   "pattern": "AMAZON FRESH|AMZN FRESH",
+   "confidence": 0.85,
+   "store": "454000"
+  },
+  {
+   "name": "Amazon",
+   "pattern": "AMAZON|AMZN",
+   "confidence": 0.3,
+   "store": "454000"
+  },
+  {
+   "name": "eBay",
+   "pattern": "\\bEBAY\\b",
+   "confidence": 0.25,
+   "store": "454000"
+  },
+  {
+   "name": "Etsy",
+   "pattern": "\\bETSY\\b",
+   "confidence": 0.3,
+   "store": "454000"
+  },
+  {
+   "name": "Temu",
+   "pattern": "\\bTEMU\\b",
+   "confidence": 0.3,
+   "store": "454000"
+  },
+  {
+   "name": "Shein",
+   "pattern": "\\bSHEIN\\b",
+   "confidence": 0.6,
+   "store": "454000",
+   "product": "l106"
+  },
+  {
+   "name": "Dollar General",
+   "pattern": "DOLLAR GENERAL|DOLLAR-GENERAL|\\bDG \\d",
+   "confidence": 0.4,
+   "store": "452000"
+  },
+  {
+   "name": "Dollar Tree",
+   "pattern": "DOLLAR TREE",
+   "confidence": 0.45,
+   "store": "452000"
+  },
+  {
+   "name": "Family Dollar",
+   "pattern": "FAMILY DOLLAR",
+   "confidence": 0.4,
+   "store": "452000"
+  },
+  {
+   "name": "Five Below",
+   "pattern": "FIVE BELOW",
+   "confidence": 0.45,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "Big Lots",
+   "pattern": "BIG LOTS",
+   "confidence": 0.35,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Kohl's",
+   "pattern": "KOHL'?S",
+   "confidence": 0.45,
+   "store": "448000"
+  },
+  {
+   "name": "Macy's",
+   "pattern": "MACY'?S",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Nordstrom",
+   "pattern": "NORDSTROM",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "JCPenney",
+   "pattern": "J\\.?C\\.?\\s*PENNEY|JCPENNEY",
+   "confidence": 0.45,
+   "store": "448000"
+  },
+  {
+   "name": "Dillard's",
+   "pattern": "DILLARD",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "TJ Maxx",
+   "pattern": "T\\.?J\\.?\\s*MAXX|TJMAXX",
+   "confidence": 0.45,
+   "store": "448000"
+  },
+  {
+   "name": "Marshalls",
+   "pattern": "MARSHALLS",
+   "confidence": 0.45,
+   "store": "448000"
+  },
+  {
+   "name": "HomeGoods",
+   "pattern": "HOMEGOODS|HOME GOODS",
+   "confidence": 0.55,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Ross",
+   "pattern": "\\bROSS STORES|\\bROSS \\#|\\bROSS\\b",
+   "confidence": 0.45,
+   "store": "448000"
+  },
+  {
+   "name": "Burlington",
+   "pattern": "BURLINGTON",
+   "confidence": 0.45,
+   "store": "448000"
+  },
+  {
+   "name": "Old Navy",
+   "pattern": "OLD NAVY",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Gap",
+   "pattern": "\\bGAP\\b|GAP\\.COM",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Banana Republic",
+   "pattern": "BANANA REPUBLIC",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "H&M",
+   "pattern": "\\bH\\s?&\\s?M\\b",
+   "confidence": 0.55,
+   "store": "448000"
+  },
+  {
+   "name": "Zara",
+   "pattern": "\\bZARA\\b",
+   "confidence": 0.6,
+   "store": "448000"
+  },
+  {
+   "name": "Uniqlo",
+   "pattern": "UNIQLO",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Forever 21",
+   "pattern": "FOREVER\\s*21",
+   "confidence": 0.75,
+   "store": "448000"
+  },
+  {
+   "name": "American Eagle",
+   "pattern": "AMERICAN EAGLE|\\bAEO\\b",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Lululemon",
+   "pattern": "LULULEMON",
+   "confidence": 0.65,
+   "store": "448000"
+  },
+  {
+   "name": "Athleta",
+   "pattern": "ATHLETA",
+   "confidence": 0.9,
+   "store": "448000"
+  },
+  {
+   "name": "Victoria's Secret",
+   "pattern": "VICTORIA'?S SECRET",
+   "confidence": 0.85,
+   "store": "448000"
+  },
+  {
+   "name": "Anthropologie",
+   "pattern": "ANTHROPOLOGIE",
+   "confidence": 0.7,
+   "store": "448000"
+  },
+  {
+   "name": "Urban Outfitters",
+   "pattern": "URBAN OUTFITTERS",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "J.Crew",
+   "pattern": "J\\.?\\s?CREW",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Express",
+   "pattern": "\\bEXPRESS\\s*(\\#|\\d|STORE)",
+   "confidence": 0.5,
+   "store": "448000"
+  },
+  {
+   "name": "Men's Wearhouse",
+   "pattern": "MEN'?S WEARHOUSE",
+   "confidence": 0.9,
+   "store": "448000"
+  },
+  {
+   "name": "Jos. A. Bank",
+   "pattern": "JOS\\.? A\\.? BANK",
+   "confidence": 0.9,
+   "store": "448000"
+  },
+  {
+   "name": "Carter's",
+   "pattern": "CARTER'?S|OSHKOSH",
+   "confidence": 0.85,
+   "store": "448000"
+  },
+  {
+   "name": "The Children's Place",
+   "pattern": "CHILDRENS PLACE|CHILDREN'S PLACE",
+   "confidence": 0.9,
+   "store": "448000"
+  },
+  {
+   "name": "Nike",
+   "pattern": "\\bNIKE\\b",
+   "confidence": 0.6,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "Adidas",
+   "pattern": "ADIDAS",
+   "confidence": 0.6,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "Foot Locker",
+   "pattern": "FOOT LOCKER|FOOTLOCKER",
+   "confidence": 0.85,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "DSW",
+   "pattern": "\\bDSW\\b",
+   "confidence": 0.9,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "Famous Footwear",
+   "pattern": "FAMOUS FOOTWEAR",
+   "confidence": 0.95,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "Payless",
+   "pattern": "PAYLESS",
+   "confidence": 0.9,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "Skechers",
+   "pattern": "SKECHERS",
+   "confidence": 0.9,
+   "store": "448000",
+   "product": "l112"
+  },
+  {
+   "name": "Zappos",
+   "pattern": "ZAPPOS",
+   "confidence": 0.85,
+   "store": "454000",
+   "product": "l112"
+  },
+  {
+   "name": "Home Depot",
+   "pattern": "HOME DEPOT|HOMEDEPOT",
+   "confidence": 0.45,
+   "store": "444000"
+  },
+  {
+   "name": "Lowe's",
+   "pattern": "LOWE'?S",
+   "confidence": 0.45,
+   "store": "444000"
+  },
+  {
+   "name": "Menards",
+   "pattern": "MENARDS",
+   "confidence": 0.45,
+   "store": "444000"
+  },
+  {
+   "name": "Ace Hardware",
+   "pattern": "ACE HARDWARE|\\bACE HDWE",
+   "confidence": 0.6,
+   "store": "444000"
+  },
+  {
+   "name": "True Value",
+   "pattern": "TRUE VALUE",
+   "confidence": 0.6,
+   "store": "444000"
+  },
+  {
+   "name": "Harbor Freight",
+   "pattern": "HARBOR FREIGHT",
+   "confidence": 0.85,
+   "store": "444000"
+  },
+  {
+   "name": "IKEA",
+   "pattern": "\\bIKEA\\b",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Wayfair",
+   "pattern": "WAYFAIR",
+   "confidence": 0.8,
+   "store": "454000",
+   "product": "l25"
+  },
+  {
+   "name": "Ashley Furniture",
+   "pattern": "ASHLEY (FURNITURE|HOMESTORE)",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Pottery Barn",
+   "pattern": "POTTERY BARN",
+   "confidence": 0.85,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Crate & Barrel",
+   "pattern": "CRATE\\s*(&|AND)\\s*BARREL",
+   "confidence": 0.6,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "West Elm",
+   "pattern": "WEST ELM",
+   "confidence": 0.9,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Bed Bath & Beyond",
+   "pattern": "BED BATH",
+   "confidence": 0.5,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Williams-Sonoma",
+   "pattern": "WILLIAMS.SONOMA",
+   "confidence": 0.65,
+   "store": "4B0000"
+  },
+  {
+   "name": "Mattress Firm",
+   "pattern": "MATTRESS FIRM",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l25"
+  },
+  {
+   "name": "Best Buy",
+   "pattern": "BEST BUY|BESTBUY",
+   "confidence": 0.75,
+   "store": "4B0000"
+  },
+  {
+   "name": "Apple Store",
+   "pattern": "APPLE STORE|APPLE\\.COM/US|APPLE ONLINE STORE",
+   "confidence": 0.75,
+   "store": "4B0000"
+  },
+  {
+   "name": "Micro Center",
+   "pattern": "MICRO CENTER",
+   "confidence": 0.9,
+   "store": "4B0000"
+  },
+  {
+   "name": "B&H Photo",
+   "pattern": "B\\s?&\\s?H PHOTO",
+   "confidence": 0.9,
+   "store": "4B0000"
+  },
+  {
+   "name": "Newegg",
+   "pattern": "NEWEGG",
+   "confidence": 0.9,
+   "store": "454000"
+  },
+  {
+   "name": "GameStop",
+   "pattern": "GAMESTOP",
+   "confidence": 0.6,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "Netflix",
+   "pattern": "NETFLIX",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Hulu",
+   "pattern": "\\bHULU\\b",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Disney+",
+   "pattern": "DISNEY\\s?(PLUS|\\+)",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Max",
+   "pattern": "\\bHBO\\s?MAX\\b|\\bMAX\\.COM\\b",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Paramount+",
+   "pattern": "PARAMOUNT\\s?(PLUS|\\+)",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Peacock",
+   "pattern": "PEACOCK",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "YouTube",
+   "pattern": "YOUTUBE",
+   "confidence": 0.95,
+   "product": "l223"
+  },
+  {
+   "name": "Spotify",
+   "pattern": "SPOTIFY",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Pandora",
+   "pattern": "PANDORA(?!\\s*JEWEL)",
+   "confidence": 0.9,
+   "product": "l223"
+  },
+  {
+   "name": "SiriusXM",
+   "pattern": "SIRIUS\\s?XM",
+   "confidence": 0.98,
+   "product": "l223"
+  },
+  {
+   "name": "Audible",
+   "pattern": "AUDIBLE",
+   "confidence": 0.85,
+   "store": "454000",
+   "product": "l60"
+  },
+  {
+   "name": "Apple services",
+   "pattern": "APPLE\\.COM/BILL|ITUNES",
+   "confidence": 0.75,
+   "product": "l223"
+  },
+  {
+   "name": "Google Play",
+   "pattern": "GOOGLE\\s*\\*?\\s*(PLAY|STORAGE)|GOOGLE \\*GOOGLE ONE",
+   "confidence": 0.7,
+   "product": "l223"
+  },
+  {
+   "name": "Microsoft",
+   "pattern": "MICROSOFT|MSFT|XBOX",
+   "confidence": 0.6,
+   "store": "454000",
+   "product": "l50"
+  },
+  {
+   "name": "PlayStation",
+   "pattern": "PLAYSTATION|SONY NETWORK",
+   "confidence": 0.75,
+   "store": "454000",
+   "product": "l50"
+  },
+  {
+   "name": "Nintendo",
+   "pattern": "NINTENDO",
+   "confidence": 0.85,
+   "store": "454000",
+   "product": "l50"
+  },
+  {
+   "name": "Steam",
+   "pattern": "\\bSTEAM\\s*(GAMES|POWERED|PURCHASE)|STEAMGAMES",
+   "confidence": 0.85,
+   "store": "454000",
+   "product": "l50"
+  },
+  {
+   "name": "Twitch",
+   "pattern": "TWITCH",
+   "confidence": 0.9,
+   "product": "l223"
+  },
+  {
+   "name": "Patreon",
+   "pattern": "PATREON",
+   "confidence": 0.6,
+   "product": "l223"
+  },
+  {
+   "name": "Substack",
+   "pattern": "SUBSTACK",
+   "confidence": 0.8,
+   "store": "454000",
+   "product": "l143"
+  },
+  {
+   "name": "New York Times",
+   "pattern": "NYTIMES|NEW YORK TIMES|NYT\\b",
+   "confidence": 0.9,
+   "store": "454000",
+   "product": "l143"
+  },
+  {
+   "name": "Wall Street Journal",
+   "pattern": "\\bWSJ\\b|WALL ST(REET)? JOURNAL|DOW JONES",
+   "confidence": 0.9,
+   "store": "454000",
+   "product": "l143"
+  },
+  {
+   "name": "Washington Post",
+   "pattern": "WASHINGTON POST|WASHPOST",
+   "confidence": 0.9,
+   "store": "454000",
+   "product": "l143"
+  },
+  {
+   "name": "Barnes & Noble",
+   "pattern": "BARNES\\s*(&|AND)\\s*NOBLE",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l60"
+  },
+  {
+   "name": "Books-A-Million",
+   "pattern": "BOOKS.A.MILLION",
+   "confidence": 0.8,
+   "store": "4B0000",
+   "product": "l60"
+  },
+  {
+   "name": "Adobe",
+   "pattern": "\\bADOBE\\b",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "Dropbox",
+   "pattern": "DROPBOX",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "OpenAI",
+   "pattern": "OPENAI|CHATGPT",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "Anthropic",
+   "pattern": "ANTHROPIC|CLAUDE\\.AI",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "GitHub",
+   "pattern": "GITHUB",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "Squarespace",
+   "pattern": "SQUARESPACE",
+   "confidence": 0.6,
+   "product": "l303"
+  },
+  {
+   "name": "GoDaddy",
+   "pattern": "GODADDY",
+   "confidence": 0.6,
+   "product": "l303"
+  },
+  {
+   "name": "Zoom",
+   "pattern": "\\bZOOM\\.US|ZOOM VIDEO",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "LinkedIn",
+   "pattern": "LINKEDIN",
+   "confidence": 0.6,
+   "product": "l50",
+   "store": "454000"
+  },
+  {
+   "name": "Duolingo",
+   "pattern": "DUOLINGO",
+   "confidence": 0.6,
+   "product": "l297"
+  },
+  {
+   "name": "Coursera",
+   "pattern": "COURSERA",
+   "confidence": 0.75,
+   "product": "l297"
+  },
+  {
+   "name": "Udemy",
+   "pattern": "UDEMY",
+   "confidence": 0.75,
+   "product": "l297"
+  },
+  {
+   "name": "MasterClass",
+   "pattern": "MASTERCLASS",
+   "confidence": 0.7,
+   "product": "l297"
+  },
+  {
+   "name": "Verizon Wireless",
+   "pattern": "VERIZON\\s*WIRELESS|VZWRLSS|VZ WIRELESS",
+   "confidence": 0.9,
+   "product": "l285"
+  },
+  {
+   "name": "Verizon Fios",
+   "pattern": "VERIZON\\s*FIOS|FIOS",
+   "confidence": 0.6,
+   "product": "l289"
+  },
+  {
+   "name": "Verizon",
+   "pattern": "VERIZON",
+   "confidence": 0.8,
+   "product": "l285"
+  },
+  {
+   "name": "AT&T",
+   "pattern": "\\bAT\\s?&\\s?T\\b|ATT\\*|\\bATT BILL",
+   "confidence": 0.75,
+   "product": "l285"
+  },
+  {
+   "name": "T-Mobile",
+   "pattern": "T-?MOBILE",
+   "confidence": 0.92,
+   "product": "l285"
+  },
+  {
+   "name": "Mint Mobile",
+   "pattern": "MINT MOBILE",
+   "confidence": 0.95,
+   "product": "l285"
+  },
+  {
+   "name": "Visible",
+   "pattern": "\\bVISIBLE\\b",
+   "confidence": 0.9,
+   "product": "l285"
+  },
+  {
+   "name": "Cricket",
+   "pattern": "CRICKET WIRELESS",
+   "confidence": 0.95,
+   "product": "l285"
+  },
+  {
+   "name": "Boost Mobile",
+   "pattern": "BOOST MOBILE",
+   "confidence": 0.95,
+   "product": "l285"
+  },
+  {
+   "name": "Google Fi",
+   "pattern": "GOOGLE\\s*\\*?\\s*FI\\b",
+   "confidence": 0.95,
+   "product": "l285"
+  },
+  {
+   "name": "US Cellular",
+   "pattern": "US CELLULAR|U\\.S\\. CELLULAR",
+   "confidence": 0.95,
+   "product": "l285"
+  },
+  {
+   "name": "Comcast Xfinity",
+   "pattern": "COMCAST|XFINITY",
+   "confidence": 0.6,
+   "product": "l289"
+  },
+  {
+   "name": "Spectrum",
+   "pattern": "SPECTRUM(?!\\s*HEALTH)|CHARTER COMM",
+   "confidence": 0.6,
+   "product": "l289"
+  },
+  {
+   "name": "Cox",
+   "pattern": "\\bCOX\\s*(COMM|CABLE)",
+   "confidence": 0.6,
+   "product": "l289"
+  },
+  {
+   "name": "Optimum",
+   "pattern": "OPTIMUM|ALTICE",
+   "confidence": 0.6,
+   "product": "l289"
+  },
+  {
+   "name": "Frontier",
+   "pattern": "FRONTIER\\s*COMM",
+   "confidence": 0.7,
+   "product": "l289"
+  },
+  {
+   "name": "CenturyLink",
+   "pattern": "CENTURYLINK|LUMEN",
+   "confidence": 0.75,
+   "product": "l289"
+  },
+  {
+   "name": "Starlink",
+   "pattern": "STARLINK",
+   "confidence": 0.98,
+   "product": "l289"
+  },
+  {
+   "name": "DirecTV",
+   "pattern": "DIRECTV",
+   "confidence": 0.95,
+   "product": "l219"
+  },
+  {
+   "name": "Dish",
+   "pattern": "\\bDISH\\s*(NETWORK|NTWK)|\\bSLING\\b",
+   "confidence": 0.95,
+   "product": "l219"
+  },
+  {
+   "name": "PG&E",
+   "pattern": "PG\\s?&\\s?E|PACIFIC GAS",
+   "confidence": 0.65,
+   "product": "l170"
+  },
+  {
+   "name": "Con Edison",
+   "pattern": "CON\\s?ED",
+   "confidence": 0.7,
+   "product": "l170"
+  },
+  {
+   "name": "Duke Energy",
+   "pattern": "DUKE ENERGY",
+   "confidence": 0.95,
+   "product": "l170"
+  },
+  {
+   "name": "Dominion Energy",
+   "pattern": "DOMINION ENERGY",
+   "confidence": 0.8,
+   "product": "l170"
+  },
+  {
+   "name": "Southern California Edison",
+   "pattern": "SO\\.?\\s*CAL\\.? EDISON|\\bSCE\\b",
+   "confidence": 0.95,
+   "product": "l170"
+  },
+  {
+   "name": "Georgia Power",
+   "pattern": "GEORGIA POWER",
+   "confidence": 0.98,
+   "product": "l170"
+  },
+  {
+   "name": "Florida Power & Light",
+   "pattern": "\\bFPL\\b|FLORIDA POWER",
+   "confidence": 0.98,
+   "product": "l170"
+  },
+  {
+   "name": "ComEd",
+   "pattern": "COMED|COMMONWEALTH EDISON",
+   "confidence": 0.98,
+   "product": "l170"
+  },
+  {
+   "name": "PECO",
+   "pattern": "\\bPECO\\b",
+   "confidence": 0.75,
+   "product": "l170"
+  },
+  {
+   "name": "Xcel Energy",
+   "pattern": "XCEL ENERGY",
+   "confidence": 0.8,
+   "product": "l170"
+  },
+  {
+   "name": "National Grid",
+   "pattern": "NATIONAL GRID",
+   "confidence": 0.65,
+   "product": "l170"
+  },
+  {
+   "name": "Eversource",
+   "pattern": "EVERSOURCE",
+   "confidence": 0.75,
+   "product": "l170"
+  },
+  {
+   "name": "Entergy",
+   "pattern": "ENTERGY",
+   "confidence": 0.95,
+   "product": "l170"
+  },
+  {
+   "name": "AEP",
+   "pattern": "\\bAEP\\b|AMERICAN ELECTRIC POWER",
+   "confidence": 0.98,
+   "product": "l170"
+  },
+  {
+   "name": "DTE Energy",
+   "pattern": "\\bDTE\\b",
+   "confidence": 0.7,
+   "product": "l170"
+  },
+  {
+   "name": "Consumers Energy",
+   "pattern": "CONSUMERS ENERGY",
+   "confidence": 0.7,
+   "product": "l170"
+  },
+  {
+   "name": "PSE&G",
+   "pattern": "PSE\\s?&\\s?G",
+   "confidence": 0.7,
+   "product": "l170"
+  },
+  {
+   "name": "Ameren",
+   "pattern": "AMEREN",
+   "confidence": 0.8,
+   "product": "l170"
+  },
+  {
+   "name": "SoCalGas",
+   "pattern": "SOCALGAS|SO CAL GAS|SOUTHERN CALIFORNIA GAS",
+   "confidence": 0.98,
+   "product": "l171"
+  },
+  {
+   "name": "Atmos Energy",
+   "pattern": "ATMOS ENERGY",
+   "confidence": 0.98,
+   "product": "l171"
+  },
+  {
+   "name": "Nicor Gas",
+   "pattern": "NICOR",
+   "confidence": 0.98,
+   "product": "l171"
+  },
+  {
+   "name": "Peoples Gas",
+   "pattern": "PEOPLES GAS",
+   "confidence": 0.98,
+   "product": "l171"
+  },
+  {
+   "name": "Washington Gas",
+   "pattern": "WASHINGTON GAS",
+   "confidence": 0.98,
+   "product": "l171"
+  },
+  {
+   "name": "Waste Management",
+   "pattern": "WASTE MANAGEMENT|\\bWM\\s*(EZPAY|CORPORATE)",
+   "confidence": 0.95,
+   "product": "l168"
+  },
+  {
+   "name": "Republic Services",
+   "pattern": "REPUBLIC SERVICES",
+   "confidence": 0.95,
+   "product": "l168"
+  },
+  {
+   "name": "American Water",
+   "pattern": "AMERICAN WATER|\\b[A-Z]+ AMERICAN WATER",
+   "confidence": 0.95,
+   "product": "l167"
+  },
+  {
+   "name": "Shell",
+   "pattern": "\\bSHELL\\b",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Chevron",
+   "pattern": "CHEVRON",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "ExxonMobil",
+   "pattern": "EXXON|MOBIL\\b",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "BP",
+   "pattern": "\\bBP\\b|\\bBP#",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Texaco",
+   "pattern": "TEXACO",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Marathon",
+   "pattern": "MARATHON PETRO|\\bMARATHON\\b",
+   "confidence": 0.8,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Speedway",
+   "pattern": "SPEEDWAY",
+   "confidence": 0.8,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Sunoco",
+   "pattern": "SUNOCO",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Valero",
+   "pattern": "VALERO",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Phillips 66",
+   "pattern": "PHILLIPS 66",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Conoco",
+   "pattern": "CONOCO",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "76",
+   "pattern": "\\b76\\b\\s*(STATION|FUEL|\\#)|UNION 76",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Citgo",
+   "pattern": "CITGO",
+   "confidence": 0.85,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Arco",
+   "pattern": "\\bARCO\\b|AMPM",
+   "confidence": 0.8,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Circle K",
+   "pattern": "CIRCLE K",
+   "confidence": 0.75,
+   "store": "447000"
+  },
+  {
+   "name": "Wawa",
+   "pattern": "\\bWAWA\\b",
+   "confidence": 0.6,
+   "store": "447000"
+  },
+  {
+   "name": "Sheetz",
+   "pattern": "SHEETZ",
+   "confidence": 0.65,
+   "store": "447000"
+  },
+  {
+   "name": "QuikTrip",
+   "pattern": "QUIKTRIP|\\bQT\\s?\\d",
+   "confidence": 0.7,
+   "store": "447000"
+  },
+  {
+   "name": "RaceTrac",
+   "pattern": "RACETRAC",
+   "confidence": 0.75,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Casey's",
+   "pattern": "CASEY'?S",
+   "confidence": 0.65,
+   "store": "447000"
+  },
+  {
+   "name": "Kwik Trip",
+   "pattern": "KWIK TRIP|KWIK STAR",
+   "confidence": 0.65,
+   "store": "447000"
+  },
+  {
+   "name": "Love's",
+   "pattern": "LOVE'?S TRAVEL|\\bLOVES\\s*\\#",
+   "confidence": 0.8,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Pilot Flying J",
+   "pattern": "PILOT|FLYING J",
+   "confidence": 0.8,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Buc-ee's",
+   "pattern": "BUC-?EE'?S",
+   "confidence": 0.55,
+   "store": "447000"
+  },
+  {
+   "name": "Holiday",
+   "pattern": "HOLIDAY STATION",
+   "confidence": 0.75,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "Cumberland Farms",
+   "pattern": "CUMBERLAND FARMS",
+   "confidence": 0.75,
+   "store": "447000",
+   "product": "l115"
+  },
+  {
+   "name": "7-Eleven",
+   "pattern": "7-?ELEVEN|7 ELEVEN",
+   "confidence": 0.5,
+   "store": "447000"
+  },
+  {
+   "name": "Tesla Supercharger",
+   "pattern": "TESLA\\s*(SUPERCHARGER|CHARGING)",
+   "confidence": 0.9,
+   "product": "l170"
+  },
+  {
+   "name": "ChargePoint",
+   "pattern": "CHARGEPOINT",
+   "confidence": 0.9,
+   "product": "l170"
+  },
+  {
+   "name": "AutoZone",
+   "pattern": "AUTOZONE",
+   "confidence": 0.9,
+   "store": "441000",
+   "product": "l22"
+  },
+  {
+   "name": "O'Reilly Auto Parts",
+   "pattern": "O'?REILLY",
+   "confidence": 0.9,
+   "store": "441000",
+   "product": "l22"
+  },
+  {
+   "name": "Advance Auto Parts",
+   "pattern": "ADVANCE AUTO",
+   "confidence": 0.9,
+   "store": "441000",
+   "product": "l22"
+  },
+  {
+   "name": "NAPA",
+   "pattern": "\\bNAPA\\b",
+   "confidence": 0.85,
+   "store": "441000",
+   "product": "l22"
+  },
+  {
+   "name": "Jiffy Lube",
+   "pattern": "JIFFY LUBE",
+   "confidence": 0.95,
+   "product": "l192"
+  },
+  {
+   "name": "Valvoline",
+   "pattern": "VALVOLINE",
+   "confidence": 0.95,
+   "product": "l192"
+  },
+  {
+   "name": "Midas",
+   "pattern": "\\bMIDAS\\b",
+   "confidence": 0.95,
+   "product": "l192"
+  },
+  {
+   "name": "Meineke",
+   "pattern": "MEINEKE",
+   "confidence": 0.95,
+   "product": "l192"
+  },
+  {
+   "name": "Firestone",
+   "pattern": "FIRESTONE",
+   "confidence": 0.75,
+   "product": "l192"
+  },
+  {
+   "name": "Discount Tire",
+   "pattern": "DISCOUNT TIRE",
+   "confidence": 0.8,
+   "store": "441000",
+   "product": "l21"
+  },
+  {
+   "name": "Pep Boys",
+   "pattern": "PEP BOYS",
+   "confidence": 0.7,
+   "product": "l192"
+  },
+  {
+   "name": "Safelite",
+   "pattern": "SAFELITE",
+   "confidence": 0.95,
+   "product": "l192"
+  },
+  {
+   "name": "Carvana",
+   "pattern": "CARVANA",
+   "confidence": 0.9,
+   "store": "454000",
+   "product": "l13"
+  },
+  {
+   "name": "CarMax",
+   "pattern": "CARMAX",
+   "confidence": 0.9,
+   "store": "441000",
+   "product": "l13"
+  },
+  {
+   "name": "Tesla",
+   "pattern": "\\bTESLA\\b",
+   "confidence": 0.6,
+   "store": "441000",
+   "product": "l7"
+  },
+  {
+   "name": "E-ZPass",
+   "pattern": "E-?Z\\s?PASS|EZPASS",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "FasTrak",
+   "pattern": "FASTRAK",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "SunPass",
+   "pattern": "SUNPASS",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "ParkMobile",
+   "pattern": "PARKMOBILE",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "SpotHero",
+   "pattern": "SPOTHERO",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "ParkWhiz",
+   "pattern": "PARKWHIZ",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "LAZ Parking",
+   "pattern": "LAZ PARKING",
+   "confidence": 0.95,
+   "product": "l198"
+  },
+  {
+   "name": "SP+ Parking",
+   "pattern": "SP\\+|SP PLUS",
+   "confidence": 0.9,
+   "product": "l198"
+  },
+  {
+   "name": "Enterprise",
+   "pattern": "ENTERPRISE RENT",
+   "confidence": 0.95,
+   "product": "l197"
+  },
+  {
+   "name": "Hertz",
+   "pattern": "\\bHERTZ\\b",
+   "confidence": 0.95,
+   "product": "l197"
+  },
+  {
+   "name": "Avis",
+   "pattern": "\\bAVIS\\b",
+   "confidence": 0.95,
+   "product": "l197"
+  },
+  {
+   "name": "Budget",
+   "pattern": "BUDGET RENT",
+   "confidence": 0.95,
+   "product": "l197"
+  },
+  {
+   "name": "National Car Rental",
+   "pattern": "NATIONAL CAR",
+   "confidence": 0.95,
+   "product": "l197"
+  },
+  {
+   "name": "Turo",
+   "pattern": "\\bTURO\\b",
+   "confidence": 0.9,
+   "product": "l197"
+  },
+  {
+   "name": "Zipcar",
+   "pattern": "ZIPCAR",
+   "confidence": 0.95,
+   "product": "l197"
+  },
+  {
+   "name": "Geico",
+   "pattern": "GEICO",
+   "confidence": 0.9,
+   "product": "l279"
+  },
+  {
+   "name": "Progressive",
+   "pattern": "PROGRESSIVE",
+   "confidence": 0.85,
+   "product": "l279"
+  },
+  {
+   "name": "State Farm",
+   "pattern": "STATE FARM",
+   "confidence": 0.7,
+   "product": "l279"
+  },
+  {
+   "name": "Allstate",
+   "pattern": "ALLSTATE",
+   "confidence": 0.75,
+   "product": "l279"
+  },
+  {
+   "name": "Liberty Mutual",
+   "pattern": "LIBERTY MUTUAL",
+   "confidence": 0.7,
+   "product": "l279"
+  },
+  {
+   "name": "USAA",
+   "pattern": "\\bUSAA\\b",
+   "confidence": 0.6,
+   "product": "l279"
+  },
+  {
+   "name": "Farmers Insurance",
+   "pattern": "FARMERS INS",
+   "confidence": 0.7,
+   "product": "l279"
+  },
+  {
+   "name": "Lemonade",
+   "pattern": "LEMONADE",
+   "confidence": 0.85,
+   "product": "l272"
+  },
+  {
+   "name": "Lyft",
+   "pattern": "\\bLYFT\\b",
+   "confidence": 0.95,
+   "product": "l204"
+  },
+  {
+   "name": "Uber",
+   "pattern": "\\bUBER\\b",
+   "confidence": 0.9,
+   "product": "l204"
+  },
+  {
+   "name": "Lime",
+   "pattern": "\\bLIME\\b\\s*\\*|LIME RIDE",
+   "confidence": 0.95,
+   "product": "l206"
+  },
+  {
+   "name": "Citi Bike",
+   "pattern": "CITI\\s?BIKE",
+   "confidence": 0.95,
+   "product": "l206"
+  },
+  {
+   "name": "Amtrak",
+   "pattern": "AMTRAK",
+   "confidence": 0.95,
+   "product": "l201"
+  },
+  {
+   "name": "Greyhound",
+   "pattern": "GREYHOUND",
+   "confidence": 0.95,
+   "product": "l203"
+  },
+  {
+   "name": "FlixBus",
+   "pattern": "FLIXBUS",
+   "confidence": 0.95,
+   "product": "l203"
+  },
+  {
+   "name": "MTA",
+   "pattern": "\\bMTA\\b|OMNY|METROCARD",
+   "confidence": 0.95,
+   "product": "l205"
+  },
+  {
+   "name": "Clipper",
+   "pattern": "CLIPPER",
+   "confidence": 0.95,
+   "product": "l205"
+  },
+  {
+   "name": "BART",
+   "pattern": "\\bBART\\b",
+   "confidence": 0.95,
+   "product": "l205"
+  },
+  {
+   "name": "WMATA",
+   "pattern": "WMATA|SMARTRIP",
+   "confidence": 0.95,
+   "product": "l205"
+  },
+  {
+   "name": "Ventra",
+   "pattern": "VENTRA",
+   "confidence": 0.95,
+   "product": "l205"
+  },
+  {
+   "name": "Delta",
+   "pattern": "DELTA\\s*(AIR|\\d{3})",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "American Airlines",
+   "pattern": "AMERICAN\\s*AIR|\\bAA\\s*\\d{3}",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "United",
+   "pattern": "UNITED\\s*(AIR|\\d{3})|UA INFLT",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Southwest",
+   "pattern": "SOUTHWEST\\s*(AIR|\\d)|SWA\\b",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "JetBlue",
+   "pattern": "JETBLUE",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Alaska Airlines",
+   "pattern": "ALASKA AIR",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Spirit",
+   "pattern": "SPIRIT AIR|SPIRIT AIRL",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Frontier Airlines",
+   "pattern": "FRONTIER AIR|FLYFRONTIER",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Hawaiian Airlines",
+   "pattern": "HAWAIIAN AIR",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Allegiant",
+   "pattern": "ALLEGIANT",
+   "confidence": 0.95,
+   "product": "l207"
+  },
+  {
+   "name": "Carnival",
+   "pattern": "CARNIVAL CRUISE",
+   "confidence": 0.9,
+   "product": "l208"
+  },
+  {
+   "name": "Royal Caribbean",
+   "pattern": "ROYAL CARIBBEAN",
+   "confidence": 0.9,
+   "product": "l208"
+  },
+  {
+   "name": "Norwegian Cruise",
+   "pattern": "NORWEGIAN CRUISE|\\bNCL\\b",
+   "confidence": 0.9,
+   "product": "l208"
+  },
+  {
+   "name": "Airbnb",
+   "pattern": "AIRBNB",
+   "confidence": 0.9,
+   "product": "l250"
+  },
+  {
+   "name": "Vrbo",
+   "pattern": "VRBO|HOMEAWAY",
+   "confidence": 0.9,
+   "product": "l250"
+  },
+  {
+   "name": "Marriott",
+   "pattern": "MARRIOTT|COURTYARD|RESIDENCE INN|SHERATON|WESTIN|FAIRFIELD INN",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "Hilton",
+   "pattern": "HILTON|HAMPTON INN|DOUBLETREE|EMBASSY SUITES|HOMEWOOD",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "Hyatt",
+   "pattern": "HYATT",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "IHG",
+   "pattern": "HOLIDAY INN|\\bIHG\\b|INTERCONTINENTAL|CROWNE PLAZA",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "Wyndham",
+   "pattern": "WYNDHAM|LA QUINTA|DAYS INN|SUPER 8|RAMADA",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "Choice Hotels",
+   "pattern": "COMFORT INN|QUALITY INN|SLEEP INN|CHOICE HOTELS",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "Best Western",
+   "pattern": "BEST WESTERN",
+   "confidence": 0.92,
+   "product": "l250"
+  },
+  {
+   "name": "Motel 6",
+   "pattern": "MOTEL 6",
+   "confidence": 0.95,
+   "product": "l250"
+  },
+  {
+   "name": "Expedia",
+   "pattern": "EXPEDIA",
+   "confidence": 0.5,
+   "product": "l250"
+  },
+  {
+   "name": "Booking.com",
+   "pattern": "BOOKING\\.COM",
+   "confidence": 0.85,
+   "product": "l250"
+  },
+  {
+   "name": "Hotels.com",
+   "pattern": "HOTELS\\.COM",
+   "confidence": 0.9,
+   "product": "l250"
+  },
+  {
+   "name": "Priceline",
+   "pattern": "PRICELINE",
+   "confidence": 0.5,
+   "product": "l250"
+  },
+  {
+   "name": "CVS",
+   "pattern": "\\bCVS\\b",
+   "confidence": 0.55,
+   "store": "446000"
+  },
+  {
+   "name": "Walgreens",
+   "pattern": "WALGREEN",
+   "confidence": 0.55,
+   "store": "446000"
+  },
+  {
+   "name": "Rite Aid",
+   "pattern": "RITE AID",
+   "confidence": 0.55,
+   "store": "446000"
+  },
+  {
+   "name": "Duane Reade",
+   "pattern": "DUANE READE",
+   "confidence": 0.5,
+   "store": "446000"
+  },
+  {
+   "name": "GoodRx",
+   "pattern": "GOODRX",
+   "confidence": 0.9,
+   "store": "446000",
+   "product": "l122"
+  },
+  {
+   "name": "Capsule",
+   "pattern": "CAPSULE PHARM",
+   "confidence": 0.95,
+   "store": "446000",
+   "product": "l122"
+  },
+  {
+   "name": "Hims & Hers",
+   "pattern": "\\bHIMS\\b|FORHIMS|FORHERS",
+   "confidence": 0.7,
+   "store": "454000",
+   "product": "l122"
+  },
+  {
+   "name": "LabCorp",
+   "pattern": "LABCORP",
+   "confidence": 0.95,
+   "product": "l178"
+  },
+  {
+   "name": "Quest Diagnostics",
+   "pattern": "QUEST DIAG",
+   "confidence": 0.95,
+   "product": "l178"
+  },
+  {
+   "name": "One Medical",
+   "pattern": "ONE MEDICAL",
+   "confidence": 0.85,
+   "product": "l174"
+  },
+  {
+   "name": "MinuteClinic",
+   "pattern": "MINUTECLINIC",
+   "confidence": 0.9,
+   "product": "l174"
+  },
+  {
+   "name": "Teladoc",
+   "pattern": "TELADOC",
+   "confidence": 0.9,
+   "product": "l174"
+  },
+  {
+   "name": "Aspen Dental",
+   "pattern": "ASPEN DENTAL",
+   "confidence": 0.98,
+   "product": "l175"
+  },
+  {
+   "name": "Warby Parker",
+   "pattern": "WARBY PARKER",
+   "confidence": 0.85,
+   "store": "454000",
+   "product": "l68"
+  },
+  {
+   "name": "LensCrafters",
+   "pattern": "LENSCRAFTERS",
+   "confidence": 0.8,
+   "store": "4B0000",
+   "product": "l68"
+  },
+  {
+   "name": "1-800 Contacts",
+   "pattern": "1-?800\\s*CONTACTS",
+   "confidence": 0.95,
+   "store": "454000",
+   "product": "l68"
+  },
+  {
+   "name": "Kaiser Permanente",
+   "pattern": "KAISER",
+   "confidence": 0.6,
+   "product": "l276"
+  },
+  {
+   "name": "UnitedHealthcare",
+   "pattern": "UNITEDHEALTH|\\bUHC\\b",
+   "confidence": 0.85,
+   "product": "l276"
+  },
+  {
+   "name": "Blue Cross",
+   "pattern": "BLUE CROSS|BLUESHIELD|BCBS",
+   "confidence": 0.9,
+   "product": "l276"
+  },
+  {
+   "name": "Aetna",
+   "pattern": "AETNA",
+   "confidence": 0.9,
+   "product": "l276"
+  },
+  {
+   "name": "Cigna",
+   "pattern": "CIGNA",
+   "confidence": 0.9,
+   "product": "l276"
+  },
+  {
+   "name": "Humana",
+   "pattern": "HUMANA",
+   "confidence": 0.9,
+   "product": "l276"
+  },
+  {
+   "name": "Sephora",
+   "pattern": "SEPHORA",
+   "confidence": 0.9,
+   "store": "446000",
+   "product": "l139"
+  },
+  {
+   "name": "Ulta",
+   "pattern": "\\bULTA\\b",
+   "confidence": 0.75,
+   "store": "446000",
+   "product": "l139"
+  },
+  {
+   "name": "Bath & Body Works",
+   "pattern": "BATH\\s*(&|AND)\\s*BODY",
+   "confidence": 0.9,
+   "store": "446000",
+   "product": "l139"
+  },
+  {
+   "name": "Sally Beauty",
+   "pattern": "SALLY BEAUTY",
+   "confidence": 0.9,
+   "store": "446000",
+   "product": "l138"
+  },
+  {
+   "name": "Great Clips",
+   "pattern": "GREAT CLIPS",
+   "confidence": 0.98,
+   "product": "l309"
+  },
+  {
+   "name": "Supercuts",
+   "pattern": "SUPERCUTS",
+   "confidence": 0.98,
+   "product": "l309"
+  },
+  {
+   "name": "Sport Clips",
+   "pattern": "SPORT CLIPS",
+   "confidence": 0.98,
+   "product": "l309"
+  },
+  {
+   "name": "European Wax Center",
+   "pattern": "EUROPEAN WAX",
+   "confidence": 0.95,
+   "product": "l310"
+  },
+  {
+   "name": "Massage Envy",
+   "pattern": "MASSAGE ENVY",
+   "confidence": 0.9,
+   "product": "l310"
+  },
+  {
+   "name": "Planet Fitness",
+   "pattern": "PLANET FITNESS|PLNT FITNESS",
+   "confidence": 0.98,
+   "product": "l211"
+  },
+  {
+   "name": "LA Fitness",
+   "pattern": "LA FITNESS",
+   "confidence": 0.98,
+   "product": "l211"
+  },
+  {
+   "name": "24 Hour Fitness",
+   "pattern": "24 HOUR FITNESS",
+   "confidence": 0.98,
+   "product": "l211"
+  },
+  {
+   "name": "Anytime Fitness",
+   "pattern": "ANYTIME FITNESS",
+   "confidence": 0.98,
+   "product": "l211"
+  },
+  {
+   "name": "Equinox",
+   "pattern": "EQUINOX",
+   "confidence": 0.95,
+   "product": "l211"
+  },
+  {
+   "name": "Orangetheory",
+   "pattern": "ORANGETHEORY|ORANGE THEORY",
+   "confidence": 0.98,
+   "product": "l211"
+  },
+  {
+   "name": "Crunch Fitness",
+   "pattern": "CRUNCH FITNESS",
+   "confidence": 0.98,
+   "product": "l211"
+  },
+  {
+   "name": "Life Time",
+   "pattern": "LIFE TIME FITNESS|LIFETIME FITNESS",
+   "confidence": 0.95,
+   "product": "l211"
+  },
+  {
+   "name": "ClassPass",
+   "pattern": "CLASSPASS",
+   "confidence": 0.95,
+   "product": "l211"
+  },
+  {
+   "name": "Peloton",
+   "pattern": "PELOTON",
+   "confidence": 0.6,
+   "product": "l211"
+  },
+  {
+   "name": "YMCA",
+   "pattern": "\\bYMCA\\b",
+   "confidence": 0.85,
+   "product": "l211"
+  },
+  {
+   "name": "AMC Theatres",
+   "pattern": "\\bAMC\\b",
+   "confidence": 0.9,
+   "product": "l214"
+  },
+  {
+   "name": "Regal",
+   "pattern": "REGAL\\s*(CINEMA|THEAT)",
+   "confidence": 0.95,
+   "product": "l214"
+  },
+  {
+   "name": "Cinemark",
+   "pattern": "CINEMARK",
+   "confidence": 0.95,
+   "product": "l214"
+  },
+  {
+   "name": "Fandango",
+   "pattern": "FANDANGO",
+   "confidence": 0.95,
+   "product": "l214"
+  },
+  {
+   "name": "Ticketmaster",
+   "pattern": "TICKETMASTER|LIVE NATION",
+   "confidence": 0.9,
+   "product": "l215"
+  },
+  {
+   "name": "StubHub",
+   "pattern": "STUBHUB",
+   "confidence": 0.9,
+   "product": "l215"
+  },
+  {
+   "name": "SeatGeek",
+   "pattern": "SEATGEEK",
+   "confidence": 0.9,
+   "product": "l215"
+  },
+  {
+   "name": "Eventbrite",
+   "pattern": "EVENTBRITE",
+   "confidence": 0.8,
+   "product": "l215"
+  },
+  {
+   "name": "Disney Parks",
+   "pattern": "WALT DISNEY WORLD|DISNEYLAND|WDW",
+   "confidence": 0.8,
+   "product": "l212"
+  },
+  {
+   "name": "Six Flags",
+   "pattern": "SIX FLAGS",
+   "confidence": 0.9,
+   "product": "l212"
+  },
+  {
+   "name": "Topgolf",
+   "pattern": "TOPGOLF",
+   "confidence": 0.7,
+   "product": "l212"
+  },
+  {
+   "name": "Dave & Buster's",
+   "pattern": "DAVE\\s*(&|AND)\\s*BUSTER",
+   "confidence": 0.6,
+   "product": "l243"
+  },
+  {
+   "name": "National Park Service",
+   "pattern": "NATIONAL PARK|NPS\\b|RECREATION\\.GOV",
+   "confidence": 0.9,
+   "product": "l212"
+  },
+  {
+   "name": "DraftKings",
+   "pattern": "DRAFTKINGS",
+   "confidence": 0.98,
+   "product": "l227"
+  },
+  {
+   "name": "FanDuel",
+   "pattern": "FANDUEL",
+   "confidence": 0.98,
+   "product": "l227"
+  },
+  {
+   "name": "BetMGM",
+   "pattern": "BETMGM",
+   "confidence": 0.98,
+   "product": "l227"
+  },
+  {
+   "name": "Caesars",
+   "pattern": "CAESARS",
+   "confidence": 0.6,
+   "product": "l227"
+  },
+  {
+   "name": "State lottery",
+   "pattern": "LOTTERY|LOTTO",
+   "confidence": 0.95,
+   "product": "l228"
+  },
+  {
+   "name": "Rover",
+   "pattern": "\\bROVER\\.COM|\\bROVER\\b",
+   "confidence": 0.9,
+   "product": "l231"
+  },
+  {
+   "name": "Wag",
+   "pattern": "\\bWAG\\s*(LABS|\\!)",
+   "confidence": 0.9,
+   "product": "l231"
+  },
+  {
+   "name": "Banfield",
+   "pattern": "BANFIELD",
+   "confidence": 0.9,
+   "product": "l231"
+  },
+  {
+   "name": "VCA Animal Hospital",
+   "pattern": "\\bVCA\\b",
+   "confidence": 0.9,
+   "product": "l231"
+  },
+  {
+   "name": "Chewy",
+   "pattern": "CHEWY",
+   "confidence": 0.85,
+   "store": "454000",
+   "product": "l128"
+  },
+  {
+   "name": "Petco",
+   "pattern": "PETCO",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l128"
+  },
+  {
+   "name": "PetSmart",
+   "pattern": "PETSMART",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l128"
+  },
+  {
+   "name": "Michaels",
+   "pattern": "MICHAELS",
+   "confidence": 0.8,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "Hobby Lobby",
+   "pattern": "HOBBY LOBBY",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "Jo-Ann",
+   "pattern": "JO-?ANN",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "LEGO",
+   "pattern": "\\bLEGO\\b",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "Build-A-Bear",
+   "pattern": "BUILD.A.BEAR",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l127"
+  },
+  {
+   "name": "Dick's Sporting Goods",
+   "pattern": "DICK'?S SPORTING|DICKS SPORTING",
+   "confidence": 0.7,
+   "store": "4B0000",
+   "product": "l52"
+  },
+  {
+   "name": "Academy Sports",
+   "pattern": "ACADEMY SPORTS",
+   "confidence": 0.7,
+   "store": "4B0000",
+   "product": "l52"
+  },
+  {
+   "name": "REI",
+   "pattern": "\\bREI\\b",
+   "confidence": 0.75,
+   "store": "4B0000",
+   "product": "l52"
+  },
+  {
+   "name": "Bass Pro Shops",
+   "pattern": "BASS PRO|CABELA",
+   "confidence": 0.8,
+   "store": "4B0000",
+   "product": "l52"
+  },
+  {
+   "name": "Big 5",
+   "pattern": "BIG 5 SPORTING",
+   "confidence": 0.8,
+   "store": "4B0000",
+   "product": "l52"
+  },
+  {
+   "name": "Guitar Center",
+   "pattern": "GUITAR CENTER",
+   "confidence": 0.9,
+   "store": "4B0000",
+   "product": "l61"
+  },
+  {
+   "name": "Sweetwater",
+   "pattern": "SWEETWATER",
+   "confidence": 0.9,
+   "store": "4B0000",
+   "product": "l61"
+  },
+  {
+   "name": "Kay Jewelers",
+   "pattern": "KAY JEWELERS",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l64"
+  },
+  {
+   "name": "Zales",
+   "pattern": "\\bZALES\\b",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l64"
+  },
+  {
+   "name": "Jared",
+   "pattern": "\\bJARED\\b",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l64"
+  },
+  {
+   "name": "Pandora Jewelry",
+   "pattern": "PANDORA JEWEL",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l64"
+  },
+  {
+   "name": "Tiffany",
+   "pattern": "TIFFANY",
+   "confidence": 0.95,
+   "store": "4B0000",
+   "product": "l64"
+  },
+  {
+   "name": "Samsonite",
+   "pattern": "SAMSONITE",
+   "confidence": 0.9,
+   "store": "4B0000",
+   "product": "l70"
+  },
+  {
+   "name": "Away",
+   "pattern": "\\bAWAYTRAVEL|AWAY TRAVEL",
+   "confidence": 0.9,
+   "store": "4B0000",
+   "product": "l70"
+  },
+  {
+   "name": "Total Wine",
+   "pattern": "TOTAL WINE",
+   "confidence": 0.95,
+   "store": "445000",
+   "product": "l100"
+  },
+  {
+   "name": "BevMo",
+   "pattern": "BEVMO",
+   "confidence": 0.95,
+   "store": "445000",
+   "product": "l100"
+  },
+  {
+   "name": "Spec's",
+   "pattern": "SPEC'?S\\s*(WINE|LIQUOR|\\#)",
+   "confidence": 0.92,
+   "store": "445000",
+   "product": "l100"
+  },
+  {
+   "name": "ABC Fine Wine",
+   "pattern": "ABC FINE WINE",
+   "confidence": 0.95,
+   "store": "445000",
+   "product": "l100"
+  },
+  {
+   "name": "Drizly",
+   "pattern": "DRIZLY",
+   "confidence": 0.95,
+   "store": "445000",
+   "product": "l100"
+  },
+  {
+   "name": "Liquor store",
+   "pattern": "LIQUOR|WINE\\s*&\\s*SPIRITS|SPIRITS SHOP",
+   "confidence": 0.85,
+   "store": "445000",
+   "product": "l100"
+  },
+  {
+   "name": "Smoke shop",
+   "pattern": "SMOKE SHOP|TOBACCO|CIGAR|VAPE",
+   "confidence": 0.85,
+   "store": "4B0000",
+   "product": "l141"
+  },
+  {
+   "name": "Interest charge",
+   "pattern": "INTEREST CHARGE|PURCHASE INTEREST|INTEREST CHARGED",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "Late fee",
+   "pattern": "LATE (PAYMENT )?FEE",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "Annual fee",
+   "pattern": "ANNUAL (MEMBERSHIP )?FEE",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "Foreign transaction fee",
+   "pattern": "FOREIGN TRANSACTION FEE|FOREIGN TRANS FEE",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "ATM fee",
+   "pattern": "ATM (FEE|SURCHARGE)|NON-?\\w* ATM FEE",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "Overdraft fee",
+   "pattern": "OVERDRAFT|NSF FEE|INSUFFICIENT FUNDS FEE",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "Monthly service fee",
+   "pattern": "(MONTHLY|MAINTENANCE|SERVICE) (SERVICE )?FEE",
+   "confidence": 0.95,
+   "product": "l259"
+  },
+  {
+   "name": "Wire fee",
+   "pattern": "WIRE (TRANSFER )?FEE",
+   "confidence": 0.98,
+   "product": "l259"
+  },
+  {
+   "name": "Northwestern Mutual",
+   "pattern": "NORTHWESTERN MUTUAL",
+   "confidence": 0.8,
+   "product": "l271"
+  },
+  {
+   "name": "MetLife",
+   "pattern": "METLIFE",
+   "confidence": 0.75,
+   "product": "l271"
+  },
+  {
+   "name": "Prudential",
+   "pattern": "PRUDENTIAL",
+   "confidence": 0.8,
+   "product": "l271"
+  },
+  {
+   "name": "New York Life",
+   "pattern": "NEW YORK LIFE",
+   "confidence": 0.9,
+   "product": "l271"
+  },
+  {
+   "name": "Haven Life",
+   "pattern": "HAVEN LIFE",
+   "confidence": 0.95,
+   "product": "l271"
+  },
+  {
+   "name": "Ladder Life",
+   "pattern": "LADDER LIFE|LADDERLIFE",
+   "confidence": 0.95,
+   "product": "l271"
+  },
+  {
+   "name": "H&R Block",
+   "pattern": "H\\s?&\\s?R BLOCK",
+   "confidence": 0.95,
+   "product": "l301"
+  },
+  {
+   "name": "TurboTax",
+   "pattern": "TURBOTAX|INTUIT",
+   "confidence": 0.85,
+   "product": "l301"
+  },
+  {
+   "name": "LegalZoom",
+   "pattern": "LEGALZOOM",
+   "confidence": 0.95,
+   "product": "l299"
+  },
+  {
+   "name": "UPS",
+   "pattern": "\\bUPS\\b|THE UPS STORE",
+   "confidence": 0.9,
+   "product": "l288"
+  },
+  {
+   "name": "FedEx",
+   "pattern": "FEDEX",
+   "confidence": 0.9,
+   "product": "l288"
+  },
+  {
+   "name": "USPS",
+   "pattern": "\\bUSPS\\b|POSTAL SERVICE|STAMPS\\.COM",
+   "confidence": 0.95,
+   "product": "l287"
+  },
+  {
+   "name": "Staples",
+   "pattern": "STAPLES",
+   "confidence": 0.5,
+   "store": "4B0000"
+  },
+  {
+   "name": "Office Depot",
+   "pattern": "OFFICE DEPOT|OFFICEMAX",
+   "confidence": 0.5,
+   "store": "4B0000"
+  },
+  {
+   "name": "TaskRabbit",
+   "pattern": "TASKRABBIT",
+   "confidence": 0.9,
+   "product": "l332"
+  },
+  {
+   "name": "Angi",
+   "pattern": "\\bANGI\\b|ANGIE'?S LIST|HOMEADVISOR",
+   "confidence": 0.8,
+   "product": "l332"
+  },
+  {
+   "name": "Thumbtack",
+   "pattern": "THUMBTACK",
+   "confidence": 0.7,
+   "product": "l332"
+  },
+  {
+   "name": "Handy",
+   "pattern": "\\bHANDY\\b",
+   "confidence": 0.9,
+   "product": "l332"
+  },
+  {
+   "name": "Terminix",
+   "pattern": "TERMINIX",
+   "confidence": 0.95,
+   "product": "l332"
+  },
+  {
+   "name": "Orkin",
+   "pattern": "ORKIN",
+   "confidence": 0.95,
+   "product": "l332"
+  },
+  {
+   "name": "ADT",
+   "pattern": "\\bADT\\b",
+   "confidence": 0.85,
+   "product": "l332"
+  },
+  {
+   "name": "Ring",
+   "pattern": "\\bRING\\b\\s*(PROTECT|\\.COM|LLC)",
+   "confidence": 0.75,
+   "product": "l332"
+  },
+  {
+   "name": "Public Storage",
+   "pattern": "PUBLIC STORAGE|EXTRA SPACE|CUBESMART|LIFE STORAGE",
+   "confidence": 0.6,
+   "product": "l329"
+  },
+  {
+   "name": "U-Haul",
+   "pattern": "U-?HAUL",
+   "confidence": 0.7,
+   "product": "l329"
+  },
+  {
+   "name": "Care.com",
+   "pattern": "CARE\\.COM",
+   "confidence": 0.8,
+   "product": "l316"
+  },
+  {
+   "name": "KinderCare",
+   "pattern": "KINDERCARE",
+   "confidence": 0.95,
+   "product": "l296"
+  },
+  {
+   "name": "Bright Horizons",
+   "pattern": "BRIGHT HORIZONS",
+   "confidence": 0.95,
+   "product": "l296"
+  },
+  {
+   "name": "GoFundMe",
+   "pattern": "GOFUNDME",
+   "confidence": 0.8,
+   "product": "l324"
+  },
+  {
+   "name": "Red Cross",
+   "pattern": "RED CROSS",
+   "confidence": 0.9,
+   "product": "l324"
+  },
+  {
+   "name": "ActBlue",
+   "pattern": "ACTBLUE|WINRED",
+   "confidence": 0.6,
+   "product": "l324"
+  },
+  {
+   "name": "Tithe.ly",
+   "pattern": "TITHE\\.?LY|PUSHPAY",
+   "confidence": 0.9,
+   "product": "l325"
+  },
+  {
+   "name": "Salvation Army",
+   "pattern": "SALVATION ARMY",
+   "confidence": 0.6,
+   "product": "l324"
+  },
+  {
+   "name": "Goodwill",
+   "pattern": "GOODWILL",
+   "confidence": 0.4,
+   "store": "4B0000"
+  },
+  {
+   "name": "University tuition",
+   "pattern": "BURSAR|TUITION|UNIVERSITY",
+   "confidence": 0.5,
+   "product": "l292"
+  },
+  {
+   "name": "Student loan",
+   "pattern": "NAVIENT|NELNET|MOHELA|AIDVANTAGE|SALLIE MAE",
+   "confidence": 0.6,
+   "product": "l259"
+  },
+  {
+   "name": "Rent payment",
+   "pattern": "\\bRENT\\b|RENTPAYMENT|BILT|ZILLOW RENT|APPFOLIO|BUILDIUM|YARDI|RENTCAFE|AVAIL\\.CO",
+   "confidence": 0.85,
+   "product": "l156"
+  }
+ ]
+}

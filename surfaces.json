@@ -1,7 +1,7 @@
 {
  "lexicon": "city.opposite.surface",
  "generated": "2026-07-11",
- "published": "2026-10-21",
+ "published": "2026-11-03",
  "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
  "front": [],
  "districts": [
@@ -452,6 +452,22 @@
    ],
    "blurb": "Typing as playing. Every letter sounds three ways at once: as a mouth shape (vowel formants, consonant noise), as a pitch, and as a pull on the letters still ringing beside it. Underneath the instrument is a code. Letters fall into seven families, each with its own timbre, and each letter is a step within its family, so a word played as beeps can be learned and decoded by ear. A written notation is the third face (don't is P5 V4 N2 ' P2), and a learning ladder runs from moon to punctuated sentences.",
    "url": "https://opposite.city/language-instrument/"
+  },
+  {
+   "slug": "margin-walker",
+   "name": "MARGIN WALKER",
+   "district": "civic",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "profit",
+    "input-output",
+    "bea",
+    "barcode",
+    "supply chain"
+   ],
+   "blurb": "Type or scan what you bought, what you paid and where, and see how much of the price became profit for owners, gross and after depreciation, beside what went to wages, taxes and imports. The dollar is walked upstream through the Bureau of Economic Analysis input-output tables, 194 product lines at their finest detail, so the receipt also shows which industries along the way kept the profit. Industry averages, not any one firm's books; nothing you type leaves the page except a barcode number.",
+   "url": "https://opposite.city/margin-walker/"
   }
  ]
 }

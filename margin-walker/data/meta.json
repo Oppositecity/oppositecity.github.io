@@ -1,0 +1,138 @@
+{
+ "release_year": 2026,
+ "data_year": 2025,
+ "benchmark_year": 2017,
+ "state_year": 2025,
+ "built": "2026-10-25",
+ "release_page": "https://www.bea.gov/itable/input-output",
+ "regional_page": "https://apps.bea.gov/regional/downloadzip.htm",
+ "tables": [
+  "Make, Use (producers' prices) and Import tables, before redefinitions: detail (2017) and summary",
+  "PCE Bridge tables, detail (2017) and summary",
+  "NIPA Table 1.10 lines 9 and 21 (net operating surplus, consumption of fixed capital)",
+  "SAGDP3, SAGDP4, SAGDP7: state taxes on production less subsidies, compensation, gross operating surplus by industry"
+ ],
+ "downloads": [
+  {
+   "file": "bea-io-2026_SUPPLY_USE.zip",
+   "url": "https://apps.bea.gov/industry/release/zip/SUPPLY-USE.zip",
+   "last_modified": "Wed, 30 Sep 2026 12:30:08 GMT",
+   "downloaded": "2026-10-25"
+  },
+  {
+   "file": "bea-io-2026_MAKE_USE_IMPORTS_BEFORE_REDEFINITIONS_.zip",
+   "url": "https://apps.bea.gov/industry/release/zip/MAKE-USE-IMPORTS%20%28BEFORE%20REDEFINITIONS%29.zip",
+   "last_modified": "Wed, 30 Sep 2026 12:30:07 GMT",
+   "downloaded": "2026-10-25"
+  },
+  {
+   "file": "bea-io-2026_TOTAL_AND_DOMESTIC_REQUIREMENTS.zip",
+   "url": "https://apps.bea.gov/industry/release/zip/TOTAL%20AND%20DOMESTIC%20REQUIREMENTS.zip",
+   "last_modified": "Wed, 30 Sep 2026 12:30:11 GMT",
+   "downloaded": "2026-10-25"
+  },
+  {
+   "file": "bea-io-2026_PCEBridge_Summary.xlsx",
+   "url": "https://apps.bea.gov/industry/release/xlsx/PCEBridge_Summary.xlsx",
+   "last_modified": "Wed, 30 Sep 2026 12:30:11 GMT",
+   "downloaded": "2026-10-25"
+  },
+  {
+   "file": "bea-io-2026_NipaDataA.txt",
+   "url": "https://apps.bea.gov/national/Release/TXT/NipaDataA.txt",
+   "last_modified": "Wed, 30 Sep 2026 12:30:02 GMT",
+   "downloaded": "2026-10-25"
+  }
+ ],
+ "depreciation_ratio": 0.3866,
+ "depreciation_ratio_inputs": {
+  "consumption_of_fixed_capital": 5055456.0,
+  "net_operating_surplus": 8022241.0,
+  "units": "millions of dollars"
+ },
+ "excluded_pce_lines": [
+  {
+   "nipa_line": 103,
+   "label": "Food produced and consumed on farms"
+  },
+  {
+   "nipa_line": 111,
+   "label": "Standard clothing issued to military personnel"
+  },
+  {
+   "nipa_line": 147,
+   "label": "Government employees' expenditures abroad"
+  },
+  {
+   "nipa_line": 148,
+   "label": "Private employees' expenditures abroad"
+  },
+  {
+   "nipa_line": 149,
+   "label": "Less: Personal remittances in kind to nonresidents"
+  },
+  {
+   "nipa_line": 161,
+   "label": "Owner-occupied mobile homes"
+  },
+  {
+   "nipa_line": 162,
+   "label": "Owner-occupied stationary homes"
+  },
+  {
+   "nipa_line": 163,
+   "label": "Rental value of farm dwellings"
+  },
+  {
+   "nipa_line": 246,
+   "label": "Food furnished to employees (including military)"
+  },
+  {
+   "nipa_line": 255,
+   "label": "Commercial banks"
+  },
+  {
+   "nipa_line": 256,
+   "label": "Other depository institutions and regulated investment companies"
+  },
+  {
+   "nipa_line": 257,
+   "label": "Pension funds"
+  },
+  {
+   "nipa_line": 262,
+   "label": "Exchange-listed equities"
+  },
+  {
+   "nipa_line": 263,
+   "label": "Other direct commissions"
+  },
+  {
+   "nipa_line": 265,
+   "label": "Over-the-counter equity securities"
+  },
+  {
+   "nipa_line": 266,
+   "label": "Other imputed commissions"
+  },
+  {
+   "nipa_line": 267,
+   "label": "Mutual fund sales charges"
+  },
+  {
+   "nipa_line": 338,
+   "label": "Less: Expenditures in the United States by nonresidents"
+  },
+  {
+   "nipa_line": 342,
+   "label": "Final consumption expenditures of nonprofit institutions serving households (NPISH)"
+  }
+ ],
+ "notes": [
+  "Detail lines follow the 2017 benchmark tables, shifted by the 2017-to-latest change in the summary tables for the same commodity mix, then renormalised.",
+  "profit_net removes an economy-wide depreciation ratio from gross operating surplus.",
+  "Transport costs go to truck transportation. With no place given, a product's retail margin goes to the store type that typically sells it (TYPICAL_STORE in build.py); products not listed use the household mix of store types.",
+  "State shares re-split only the seller's own value added; upstream industries stay national.",
+  "Negative scrap and used-goods rows in the PCE bridge (household sales, netted) are dropped from each line; their dealers' margins stay."
+ ]
+}

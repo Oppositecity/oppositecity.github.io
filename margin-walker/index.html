@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Margin Walker</title>
+<meta name="description" content="Of the price of anything you buy, how much becomes profit for owners.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://world.openfoodfacts.org https://world.openbeautyfacts.org https://world.openproductsfacts.org; base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root {
+    --bg: #000;
+    --fg: #fff;
+    --soft: #e6e6e6;
+    --profit: #ffd24d;
+    --box: #fff;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 17px/1.5 "Courier Prime", "Courier New", monospace;
+  }
+  main { max-width: 40rem; margin: 0 auto; padding: 2rem 16px 4rem; }
+  h1 { font-size: 1.1rem; font-weight: 700; margin: 0 0 .25rem; letter-spacing: .02em; }
+  p { margin: 0 0 1rem; }
+  .lede { color: var(--soft); margin-bottom: 2rem; }
+  label { display: block; color: var(--soft); margin: 0 0 .25rem; }
+  .field { margin: 0 0 1.25rem; }
+  .row { display: flex; gap: .75rem; align-items: stretch; }
+  .row > * { min-width: 0; }
+  .row > .grow { display: flex; flex-direction: column; justify-content: flex-end; }
+  @media (max-width: 440px) {
+    .row.field { flex-direction: column; gap: 1.25rem; }
+  }
+  .grow { flex: 1; }
+  input, select, button {
+    font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--box); border-radius: 0; padding: .55rem .6rem;
+  }
+  input, select { width: 100%; }
+  select { appearance: none; -webkit-appearance: none; }
+  button { cursor: pointer; padding: .55rem .9rem; }
+  button.word {
+    border: 0; padding: 0; background: none; text-decoration: underline;
+    text-underline-offset: .2em; color: var(--fg);
+  }
+  :focus-visible { outline: 2px solid var(--profit); outline-offset: 2px; }
+  .picks { margin: .5rem 0 0; color: var(--soft); }
+  .picks button { margin: 0 .9rem .35rem 0; }
+  .result { margin-top: 2.75rem; }
+  .big { font-size: 1.45rem; line-height: 1.3; margin-bottom: .5rem; }
+  .profit { color: var(--profit); font-weight: 700; }
+  .split { margin: 1rem 0 1.5rem; }
+  .split div { display: flex; justify-content: space-between; gap: 1rem; }
+  .split span:last-child { white-space: nowrap; }
+  h2 { font-size: 1rem; font-weight: 700; margin: 2.25rem 0 .5rem; }
+  .trail div { display: flex; gap: 1rem; }
+  .trail .amt { min-width: 5.5em; text-align: right; white-space: nowrap; }
+  .what { color: var(--soft); }
+  .tag { font-style: italic; }
+  .note { color: var(--soft); }
+  .hidden { display: none !important; }
+  #camera {
+    position: fixed; inset: 0; background: var(--bg); z-index: 10;
+    display: flex; flex-direction: column; padding: 16px; gap: 1rem;
+  }
+  #camera video { flex: 1; width: 100%; min-height: 0; object-fit: cover; background: #000; }
+  footer { margin-top: 3.5rem; color: var(--soft); }
+  a { color: var(--fg); text-underline-offset: .2em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>margin walker</h1>
+  <p class="lede">Of the price of anything you buy, how much becomes profit for owners?</p>
+
+  <form id="ask" autocomplete="off">
+    <div class="field">
+      <label for="product">what you bought</label>
+      <div class="row">
+        <input id="product" class="grow" type="text" placeholder="latte, rent, tv, dog food, a barcode number" enterkeyhint="search">
+        <button id="scan" type="button">scan</button>
+      </div>
+      <div id="picks" class="picks hidden"></div>
+      <p id="scanned" class="note hidden"></p>
+    </div>
+    <div class="row field">
+      <div class="grow">
+        <label for="price">price ($)</label>
+        <input id="price" type="text" inputmode="decimal" placeholder="1.00">
+      </div>
+      <div class="grow">
+        <label for="place">where</label>
+        <input id="place" type="text" placeholder="Starbucks, Costco">
+      </div>
+    </div>
+    <div class="row field">
+      <div class="grow">
+        <label for="state">state</label>
+        <select id="state"><option value="">US average</option></select>
+      </div>
+      <div class="grow">
+        <label for="wage">your hourly pay ($, optional)</label>
+        <input id="wage" type="text" inputmode="decimal">
+      </div>
+    </div>
+  </form>
+
+  <section id="result" class="result hidden" aria-live="polite"></section>
+
+  <footer>
+    <p>Industry averages from the U.S. Bureau of Economic Analysis
+      <a href="https://www.bea.gov/itable/input-output">input-output accounts</a> and
+      <a href="https://apps.bea.gov/regional/downloadzip.htm">state accounts</a>.
+      Barcodes are looked up in <a href="https://world.openfoodfacts.org">Open Food Facts</a>
+      and its sister databases; only the barcode number is sent.</p>
+    <p><button id="forget" class="word" type="button">forget everything</button>
+      <span id="forgot" class="note hidden"> &mdash; done.</span></p>
+  </footer>
+</main>
+
+<div id="camera" class="hidden" role="dialog" aria-label="Scan a barcode">
+  <p id="camera-msg">Point the camera at a barcode.</p>
+  <video id="video" playsinline muted></video>
+  <button id="camera-close" type="button">close</button>
+</div>
+
+<script src="search.js"></script>
+<script src="compute.js"></script>
+<script src="scan.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
