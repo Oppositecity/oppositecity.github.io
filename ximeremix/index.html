@@ -24,6 +24,8 @@
   .wr{display:flex;flex-wrap:wrap;align-items:center}
   .w{font:inherit;font-size:14px;letter-spacing:.14em;color:#fff;background:#000;border:0;padding:9px 10px;cursor:pointer}
   .w.on{background:#fff;color:#000}
+  .w.on.lp{background:#4ddcff}
+  .w.on.dw{background:#ff6ad5}
   .row{display:flex;align-items:center;gap:10px;height:30px;padding:0 4px}
   .l{width:78px;letter-spacing:.1em;padding:2px 0}
   .v{width:74px;text-align:right;cursor:pointer;padding:2px 0}
@@ -116,10 +118,12 @@
                    the box thickens toward the way it is travelling, so
                    a grain running backwards leans the other way.
      the head      one column of dither, where the take is being read.
-     the loop      the stretch of take being worked is drawn inverted,
-                   live while you drag it out. a grain reading inside it
-                   inverts back, so it shows as the plain picture moving
-                   through the dark block: two scales, two inversions.
+     the loop      the stretch of take being worked is drawn inverted
+                   in blue; while you drag it out it is pink. a grain
+                   reading inside it inverts back, so it shows as the
+                   picture moving through the block. a loop that is
+                   kept but switched off stays blue on the lit picture
+                   only. the colour of each is the colour of its word.
      ticks (chop)  along the top edge, one for every attack the take
                    was found to contain, taller when struck harder.
 
@@ -393,11 +397,11 @@ function reverseBuf(b){
 
 /* ---------- the settings ---------------------------------------------------- */
 
-const P = { sp:1, pt:0, rv:0, lk:1,           // tape: speed (negative = backwards), pitch, flip chance, pitch follows speed
+const P = { sp:1, pt:0, rv:0, lk:1, tn:0,     // tape: speed (negative = backwards), pitch, flip chance, pitch follows speed, tone
             gs:0.16, dn:12.5, sc:0, sw:0,     // grain: size, density, scatter, spread. at these, the grains add back up to the take exactly
             md:0, cs:4, cl:1, co:0,           // engine (0 grains, 1 slices); slices: steps/s, length, order
             gp:1, th:0, tm:0,                 // slices: rests kept (x1 = as played), thinning, timing (0 grid, 1 the take's own spacing)
-            ec:0, rm:0, lv:0.9 };             // space: echo, room, level
+            ec:0, et:0.375, rm:0, dr:1, wt:1 }; // space: echo, echo time, room, dry, wet (wet is the echo and room only)
 const DEF = Object.assign({}, P);
 
 const pc = v => Math.round(v*100) + "%";
@@ -405,6 +409,7 @@ const DEFS = [
   { k:"sp", tab:"tape",  label:"speed",   lo:-4,   hi:4,   c:"speed", fmt:v => "×" + v.toFixed(2).replace("-","−") },
   { k:"pt", tab:"tape",  label:"pitch",   lo:-24,  hi:24,  c:"lin", step:1, fmt:v => (v>0?"+":v<0?"−":"") + Math.abs(v) + " st" },
   { k:"rv", tab:"tape",  label:"flip",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"tn", tab:"tape",  label:"tone",    lo:-1,   hi:1,   c:"lin", fmt:v => Math.abs(v) < 0.03 ? "open" : (v < 0 ? "dark " : "thin ") + pc(Math.abs(v)) },
   { k:"gs", tab:"grain", label:"size",    lo:.02,  hi:.8,  c:"log", fmt:v => Math.round(v*1000) + "ms" },
   { k:"dn", tab:"grain", label:"density", lo:1,    hi:80,  c:"log", fmt:v => v.toFixed(v<10?1:0) + "/s" },
   { k:"sc", tab:"grain", label:"scatter", lo:0,    hi:1.5, c:"sq",  fmt:v => v.toFixed(2) + "s" },
@@ -414,8 +419,10 @@ const DEFS = [
   { k:"gp", tab:"chop",  label:"gap",     lo:0,    hi:2,   c:"lin", fmt:v => "×" + v.toFixed(2) },
   { k:"th", tab:"chop",  label:"thin",    lo:0,    hi:1,   c:"lin", fmt:pc },
   { k:"ec", tab:"space", label:"echo",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"et", tab:"space", label:"time",    lo:.03,  hi:1.4, c:"log", fmt:v => Math.round(v*1000) + "ms" },
   { k:"rm", tab:"space", label:"room",    lo:0,    hi:1,   c:"lin", fmt:pc },
-  { k:"lv", tab:"space", label:"level",   lo:0,    hi:1.2, c:"lin", fmt:pc }
+  { k:"dr", tab:"space", label:"dry",     lo:0,    hi:1.2, c:"lin", fmt:pc },
+  { k:"wt", tab:"space", label:"wet",     lo:0,    hi:1.5, c:"lin", fmt:pc }
 ];
 const ORDERS = ["in sequence","shuffled","backwards","drunk","stuck"];
 
@@ -442,7 +449,7 @@ function toF(d, v){
 
 /* ---------- audio ------------------------------------------------------------ */
 
-let ac = null, bus, dry, echoSend, dly, dlp, fbg, roomSend, conv, master, comp, recDest;
+let ac = null, bus, dry, echoSend, dly, dlp, fbg, roomSend, conv, master, comp, recDest, wet, tlp, thp;
 let buf = null, revBuf = null, TL = null, base = null;
 let pos = 0, playing = false, holding = false, loopOn = false, reg = { a:0, b:1 };
 let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
@@ -471,9 +478,14 @@ function buildGraph(){
   const n = Math.floor(ac.sampleRate*2.4), ir = ac.createBuffer(2, n, ac.sampleRate);
   for(let c=0;c<2;c++){ const d = ir.getChannelData(c); for(let i=0;i<n;i++) d[i] = (Math.random()*2-1)*Math.pow(1 - i/n, 3); }
   conv.buffer = ir;
-  bus.connect(dry); dry.connect(master);
-  bus.connect(echoSend); echoSend.connect(dly); dly.connect(dlp); dlp.connect(fbg); fbg.connect(dly); dlp.connect(master);
-  bus.connect(roomSend); roomSend.connect(conv); conv.connect(master);
+  wet = ac.createGain();
+  tlp = ac.createBiquadFilter(); tlp.type = "lowpass";  tlp.frequency.value = 20000; tlp.Q.value = 1.1;
+  thp = ac.createBiquadFilter(); thp.type = "highpass"; thp.frequency.value = 10;    thp.Q.value = 1.1;
+  bus.connect(tlp); tlp.connect(thp);
+  thp.connect(dry); dry.connect(master);
+  thp.connect(echoSend); echoSend.connect(dly); dly.connect(dlp); dlp.connect(fbg); fbg.connect(dly); dlp.connect(wet);
+  thp.connect(roomSend); roomSend.connect(conv); conv.connect(wet);
+  wet.connect(master); master.gain.value = 0.9;
   master.connect(comp); comp.connect(ac.destination); comp.connect(recDest);
   sync();
 }
@@ -484,7 +496,12 @@ function sync(){
   echoSend.gain.setTargetAtTime(P.ec*0.9, t, 0.03);
   fbg.gain.setTargetAtTime(0.25 + 0.55*P.ec, t, 0.03);
   roomSend.gain.setTargetAtTime(P.rm*0.8, t, 0.03);
-  master.gain.setTargetAtTime(P.lv, t, 0.03);
+  dry.gain.setTargetAtTime(P.dr, t, 0.03);
+  wet.gain.setTargetAtTime(P.wt, t, 0.03);
+  dly.delayTime.setTargetAtTime(P.et, t, 0.06);          // moving it while it rings bends the repeats, like tape
+  const x = P.tn;
+  tlp.frequency.setTargetAtTime(x < -0.03 ? 18000*Math.pow(180/18000, -x) : 20000, t, 0.03);
+  thp.frequency.setTargetAtTime(x >  0.03 ? 20*Math.pow(3500/20, x)        : 10,    t, 0.03);
   const g = P.md ? 0.9 : 1/Math.pow(Math.max(1, 0.5*P.dn*P.gs), 0.75);
   bus.gain.setTargetAtTime(g, t, 0.05);
 }
@@ -704,7 +721,10 @@ function draw(){
   const ra = Math.min(reg.a, reg.b), rb = Math.max(reg.a, reg.b);
   const a = ra/D*W, b = rb/D*W;
   const whole = ra <= 0.001 && rb >= D - 0.001;
-  const inside = buf && !clean && !whole && (loopOn || (regionMode && dragging));
+  const drawing = regionMode && dragging;
+  const inside = buf && !clean && !whole && (loopOn || drawing);
+  const zoned = buf && !clean && !whole;
+  const zc = drawing ? ZDRAW : ZLOOP;
   for(let y=0;y<H;y++){
     const row = (y&7)*8, row2 = ((y+3)&7)*8;
     for(let x=0;x<W;x++){
@@ -731,12 +751,17 @@ function draw(){
     for(let y=0;y<H;y+=2) lit[y*W + hx] ^= 1;
   }
   const dd = img.data;
-  for(let i=0, o=0;i<lit.length;i++, o+=4){ const v = lit[i] ? 255 : 0; dd[o] = v; dd[o+1] = v; dd[o+2] = v; }
+  for(let i=0, o=0;i<lit.length;i++, o+=4){
+    let c = lit[i] ? WHITE : BLACK;
+    if(lit[i] && zoned){ const x = i % W; if(x >= a && x <= b) c = zc; }
+    dd[o] = c[0]; dd[o+1] = c[1]; dd[o+2] = c[2];
+  }
   gridCtx.putImageData(img, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(gridCv, 0, 0, cv.width, cv.height);
 }
 
+const WHITE = [255,255,255], BLACK = [0,0,0], ZLOOP = [77,220,255], ZDRAW = [255,106,213];
 const fmtT = s => Math.floor(s/60) + ":" + (s%60 < 10 ? "0" : "") + (s%60).toFixed(1);
 let hudLast = "";
 function hud(){
@@ -931,8 +956,12 @@ function panel(){
   const w1 = $("#w1"), w2 = $("#w2"), sl = $("#sl"), w3 = $("#w3");
   W1.play = word(w1, "play", () => toggle());
   W1.rev  = word(w1, "reverse", () => { remember(); P.sp = -P.sp || -1; syncSliders(); changed(); words(); });
-  W1.loop = word(w1, "loop", () => { remember(); loopOn = !loopOn; words(); changed(); });
-  W1.reg  = word(w1, "region", () => { regionMode = !regionMode; say(regionMode ? "drag across the take" : ""); words(); });
+  W1.loop = word(w1, "loop", () => {
+    remember(); loopOn = !loopOn; words(); changed();
+    if(loopOn && buf && reg.a <= 0.001 && reg.b >= buf.duration - 0.001) say("looping the whole take. region to choose a stretch");
+  });
+  W1.reg  = word(w1, "region", () => { regionMode = !regionMode; say(regionMode ? "drag across the take to draw the loop" : ""); words(); });
+  W1.loop.classList.add("lp"); W1.reg.classList.add("dw");
   W1.undo = word(w1, "undo", () => undo());
   W1.orig = word(w1, "original", () => original());
   for(const t of ["tape","grain","chop","space"]){
@@ -1012,7 +1041,7 @@ function say(s, html){
 
 /* ---------- the link is the remix ------------------------------------------------------ */
 
-const KEYS = ["sp","pt","rv","lk","gs","dn","sc","sw","md","cs","cl","co","gp","th","tm","ec","rm","lv"];
+const KEYS = ["sp","pt","rv","lk","tn","gs","dn","sc","sw","md","cs","cl","co","gp","th","tm","ec","et","rm","dr","wt"];
 let hashTimer = 0;
 function paramString(){
   const q = new URLSearchParams();
