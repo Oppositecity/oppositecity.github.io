@@ -70,6 +70,12 @@
     font-family:inherit; font-size:12px; padding:9px 10px;
   }
   textarea{min-height:26vh; resize:vertical; line-height:1.6}
+  /* the writing box wraps at exactly the playback line: same face, same size,
+     same 36ch measure as #stage, so a line breaks where it will break on playback */
+  #wr{box-sizing:content-box; width:36ch; max-width:calc(100% - 22px);
+      font-size:clamp(17px,4.4vw,22px); line-height:1.7; white-space:pre-wrap;
+      word-break:break-word; scrollbar-width:none}
+  #wr::-webkit-scrollbar{display:none}
   select:focus,input:focus,textarea:focus{outline:none; border-color:#fff}
   input[type=range]{width:100%; accent-color:#fff; background:transparent}
   input[type=color]{padding:2px; height:34px}
