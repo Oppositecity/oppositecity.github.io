@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>wake</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:#000;color:#fff}
+  body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:16px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;max-width:620px;margin:0 auto;
+    padding:calc(22px + env(safe-area-inset-top)) 18px calc(48px + env(safe-area-inset-bottom))}
+  h1{font-size:16px;font-weight:700;letter-spacing:.7em;margin:0}
+  p{margin:4px 0 0}
+  .sub{margin:4px 0 26px}
+  button{font:inherit;color:#fff;background:#000;border:0;border-radius:0;padding:10px 0;margin:0 22px 0 0;
+    cursor:pointer;letter-spacing:.08em;appearance:none;-webkit-appearance:none}
+  button:focus-visible{outline:2px solid #fff;outline-offset:3px}
+  button[disabled]{color:#bdbdbd;cursor:default}
+  .main{background:#fff;color:#000;padding:13px 16px;width:100%;text-align:left;margin:0;letter-spacing:.1em}
+  .main[disabled]{background:#9a9a9a;color:#000}
+  #drop.over .main{background:#000;color:#fff;box-shadow:inset 0 0 0 2px #fff}
+  .stage{margin:22px 0 6px;position:relative;aspect-ratio:1/1;width:100%;background:#000}
+  #cv{width:100%;height:100%;display:block;image-rendering:pixelated}
+  .row{margin:6px 0 0}
+  #status{min-height:1.5em;margin:10px 0 0;letter-spacing:.06em}
+  video{width:100%;display:block;background:#000;margin:18px 0 6px}
+  .hide{display:none}
+  input[type=file]{display:none}
+  @media (prefers-reduced-motion: reduce){ #cv{opacity:.95} }
+</style>
+</head>
+<body>
+
+<h1>wake</h1>
+<p class="sub">a recording goes in untouched. the picture is what it leaves behind.</p>
+
+<div id="drop">
+  <button class="main" id="pick">choose a recording</button>
+  <input type="file" id="file" accept="audio/*,video/mp4,.m4a,.mp4,.aac,.wav,.mp3,.ogg,.opus,.flac">
+</div>
+
+<div id="work" class="hide">
+  <div class="stage"><canvas id="cv" width="1080" height="1080"></canvas></div>
+  <div class="row">
+    <button id="play">play</button>
+    <button id="reroll">another variation</button>
+  </div>
+  <button class="main" id="make">make video</button>
+  <p id="status"></p>
+  <video id="out" class="hide" controls playsinline></video>
+  <div class="row hide" id="outRow">
+    <button id="share">share</button>
+    <button id="save">save</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.3/dist/mp4box.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.js"></script>
+<script>
+"use strict";
+/* =====================================================================
+   WAKE
+   Sound in, its wake out. The present moment of the recording is drawn
+   at the rim; everything already heard is carried inward by feedback and
+   falls toward the vanishing point. Colour says which band made a mark
+   (low, mid, high, attack). Motion is locked to the recording's own
+   pulse: zoom per beat, folds turn per bar, the look changes per phrase.
+   Attacks tear the past forward along a motion field, the way a damaged
+   codec drags old pixels into new frames. When the sound ends, the
+   tunnel drains.
+
+   Pipeline rules (fixed):
+   - the audio track is never re-encoded when the file is AAC (m4a/mp4):
+     its packets are copied straight into the output
+   - no metadata carried over; container timestamps zeroed
+   - no text in the picture; nothing posts anywhere on its own
+   - same file + same variation = same video, frame for frame
+   ===================================================================== */
+
+const $ = s => document.querySelector(s);
+const S = 270, OUT = 1080, FPS = 30, AFPS = 60, N2 = S*S;
+
+/* FALL's inks, plus two. index 0 is the void; 1 = high, 2/3 = mid, 4 = low, 5 = attack */
+const PALETTES = [
+  ["#000000","#ffffff","#c9c9c9","#8e8e8e","#5a5a5a","#ff4d2e"],
+  ["#000000","#eafff6","#3ff0b4","#12a377","#0b5f52","#ffe94a"],
+  ["#000000","#ffffff","#4dd2ff","#2a6cff","#123ba8","#ff2fb4"],
+  ["#000000","#fff0e0","#ff8b3d","#c23b12","#5e1a08","#7be0ff"],
+  ["#000000","#f5eaff","#c07bff","#7a2ff0","#33128a","#8dff5a"],
+  ["#000000","#fffbe0","#ff5ad1","#00b8ff","#2b1f9e","#d6ff2e"],
+  ["#000000","#e8fbff","#7dffea","#ff6b9e","#3a0f6e","#ffffff"]
+].map(p => p.map(h => [parseInt(h.slice(1,3),16)/255, parseInt(h.slice(3,5),16)/255, parseInt(h.slice(5,7),16)/255]));
+
+/* ---------- seeded randomness ---------- */
+function mulberry(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* ---------- state ---------- */
+let fileObj = null, fileBytes = null, buf = null, mono = null, sr = 48000, dur = 0;
+let A = null;              // analysis
+let baseSeed = 0, variation = 0;
+let playing = false, actx = null, src = null, raf = 0;
+let lastBlob = null, lastName = "wake.mp4";
+
+/* ---------- FFT ---------- */
+function fft(re, im){
+  const n = re.length;
+  for(let i=1,j=0;i<n;i++){ let b=n>>1; for(;j&b;b>>=1) j^=b; j^=b;
+    if(i<j){ let t=re[i];re[i]=re[j];re[j]=t; t=im[i];im[i]=im[j];im[j]=t; } }
+  for(let len=2;len<=n;len<<=1){
+    const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang);
+    for(let i=0;i<n;i+=len){ let cr=1,ci=0;
+      for(let k=0;k<len/2;k++){
+        const a=i+k,b=a+len/2, xr=re[b]*cr-im[b]*ci, xi=re[b]*ci+im[b]*cr;
+        re[b]=re[a]-xr; im[b]=im[a]-xi; re[a]+=xr; im[a]+=xi;
+        const t=cr*wr-ci*wi; ci=cr*wi+ci*wr; cr=t; } } }
+}
+
+function pct(arr, q){ const s = Float32Array.from(arr).sort(); return s[Math.min(s.length-1, Math.floor(q*s.length))] || 1e-9; }
+
+/* ---------- analysis: loudness, bands, attacks, pulse ---------- */
+function analyse(){
+  const hop = sr / AFPS, M = Math.ceil(dur * AFPS), W = 1024;
+  const rms = new Float32Array(M), lo = new Float32Array(M), mi = new Float32Array(M),
+        hi = new Float32Array(M), flux = new Float32Array(M), cen = new Float32Array(M);
+  const re = new Float32Array(W), im = new Float32Array(W), prevMag = new Float32Array(W/2);
+  const win = new Float32Array(W); for(let i=0;i<W;i++) win[i] = 0.5-0.5*Math.cos(2*Math.PI*i/(W-1));
+  const binHz = sr / W;
+  for(let f=0; f<M; f++){
+    const c = Math.floor(f*hop);
+    let s2 = 0; const h0 = c, h1 = Math.min(mono.length, Math.floor(c+hop));
+    for(let i=h0;i<h1;i++) s2 += mono[i]*mono[i];
+    rms[f] = Math.sqrt(s2/Math.max(1,h1-h0));
+    for(let i=0;i<W;i++){ const k = c - W/2 + i; re[i] = (k>=0 && k<mono.length ? mono[k] : 0)*win[i]; im[i]=0; }
+    fft(re, im);
+    let L=0,Mi=0,H=0,fl=0,cw=0,ct=0;
+    for(let k=1;k<W/2;k++){
+      const m = Math.log1p(Math.hypot(re[k],im[k])*8), hz = k*binHz;
+      if(hz<250) L+=m; else if(hz<2000) Mi+=m; else H+=m;
+      const d = m - prevMag[k]; if(d>0) fl += d; prevMag[k] = m;
+      cw += m*k; ct += m;
+    }
+    lo[f]=L; mi[f]=Mi; hi[f]=H; flux[f]=fl; cen[f]= ct ? cw/ct/(W/2) : 0;
+  }
+  const norm = a => { const p = pct(a,.97); for(let i=0;i<a.length;i++) a[i]=Math.min(1.4,a[i]/p); };
+  [rms,lo,mi,hi].forEach(norm);
+  // attacks: flux above its own moving median
+  const on = new Float32Array(M), R = 20;
+  for(let f=0;f<M;f++){
+    const a = Math.max(0,f-R), b = Math.min(M,f+R), w = Array.from(flux.subarray(a,b)).sort((x,y)=>x-y);
+    on[f] = Math.max(0, flux[f] - w[w.length>>1]);
+  }
+  norm(on);
+  // pulse: autocorrelate attacks over 60–180 bpm
+  let best = 0, bestLag = 30, sum = 0, cnt = 0;
+  const ac = [];
+  for(let lag=20; lag<=60; lag++){
+    let s=0; for(let f=0; f+lag<M; f++) s += on[f]*on[f+lag];
+    s /= Math.max(1, M-lag);
+    const bpm = 60*AFPS/lag, pref = Math.exp(-0.5*Math.pow(Math.log2(bpm/110)/0.9,2));
+    ac[lag] = s*pref; sum += ac[lag]; cnt++;
+    if(ac[lag] > best){ best = ac[lag]; bestLag = lag; }
+  }
+  let P = bestLag;
+  if(bestLag>20 && bestLag<60){ const a=ac[bestLag-1], b=ac[bestLag], c=ac[bestLag+1], d=a-2*b+c;
+    if(d) P = bestLag + 0.5*(a-c)/d; }
+  const conf = best / (sum/cnt + 1e-9);
+  const pulsed = conf > 1.35 && M > P*6;
+  if(!pulsed) P = AFPS * 2.2;            // no beat: breathe slowly instead
+  let phi = 0, bs = -1;
+  for(let o=0; o<P; o++){ let s=0; for(let t=o; t<M; t+=P) s += on[Math.floor(t)]; if(s>bs){ bs=s; phi=o; } }
+  // smoothed loudness for the slow layer
+  const env = new Float32Array(M); let e = 0;
+  for(let f=0; f<M; f++){ e += (rms[f]-e)*(rms[f]>e ? 0.35 : 0.06); env[f]=e; }
+  return { M, rms, env, lo, mi, hi, on, cen, P, phi, pulsed };
+}
+
+/* ---------- the engine ---------- */
+function Engine(seed){
+  const rnd = mulberry(seed*2654435761 ^ 0x9e3779b9);
+  const R = new Float32Array(N2), G = new Float32Array(N2), B = new Float32Array(N2);
+  const tR = new Float32Array(N2), tG = new Float32Array(N2), tB = new Float32Array(N2);
+  const mR = new Float32Array(N2), mG = new Float32Array(N2), mB = new Float32Array(N2);
+  const small = document.createElement("canvas"); small.width = small.height = S;
+  const sctx = small.getContext("2d"); const img = sctx.createImageData(S, S); const px = img.data;
+  const bayer = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v => v/16 - 0.47);
+  const cx = S/2, cy = S/2;
+  const RAD = new Float32Array(N2); for(let i=0;i<N2;i++) RAD[i] = Math.hypot((i%S)-cx, ((i/S)|0)-cy);
+  const pal = PALETTES[Math.floor(rnd()*PALETTES.length)];
+  const pal2 = PALETTES[Math.floor(rnd()*PALETTES.length)];
+  const fieldA = rnd()*6.28, fieldB = 0.15 + rnd()*0.3;
+  const GLYPHS = ["ring","bars","spiral","ring","bars"];
+  const phraseLook = [];          // one look per phrase, drawn from the seed
+  for(let i=0;i<64;i++) phraseLook.push({
+    fold: [3,4,5,6,8,2][Math.floor(rnd()*6)],
+    glyph: GLYPHS[Math.floor(rnd()*GLYPHS.length)],
+    out: rnd() < 0.55 ? "ink" : "spectrum",
+    pal: rnd() < 0.7 ? pal : pal2,
+    dir: rnd() < 0.82 ? 1 : -1,     // -1: the past swells back out
+    spin: (rnd()-0.5)*0.05,
+    mosh: 0.6 + rnd()*0.9,
+    hueKick: 0.08 + rnd()*0.35
+  });
+  let frame = 0;
+
+  function plot(x, y, r, g, b, k){
+    const xi = x|0, yi = y|0;
+    for(let dy=0; dy<2; dy++) for(let dx=0; dx<2; dx++){
+      const X = xi+dx, Y = yi+dy; if(X<0||Y<0||X>=S||Y>=S) continue;
+      const i = Y*S+X;
+      R[i] = Math.max(R[i], r*k); G[i] = Math.max(G[i], g*k); B[i] = Math.max(B[i], b*k);
+    }
+  }
+
+  function step(){
+    const t = frame / FPS, af = Math.min(A.M-1, Math.floor(t*AFPS));
+    const env = A.env[af], on = A.on[af], lo = A.lo[af], mi = A.mi[af], hi = A.hi[af];
+    // pulse position
+    const bpos = (t*AFPS - A.phi) / A.P, beat = Math.floor(bpos), ph = bpos - beat;
+    const pulse = Math.exp(-ph*(A.pulsed ? 5 : 2.2));
+    const beatsPerPhrase = A.pulsed ? 16 : 6;
+    const phrase = Math.max(0, Math.floor(beat / beatsPerPhrase));
+    const L = phraseLook[phrase % phraseLook.length];
+    const bar = Math.floor(beat/4);
+    const tail = Math.max(0, Math.min(1, (t - (dur - 1.4)) / 1.4));   // the drain
+
+    /* 1. carry the past inward: zoom per beat, turn per bar */
+    const zBase = 1 - (A.pulsed ? 0.018 : 0.010) - 0.02*pulse*env;
+    const z = L.dir > 0 ? zBase - 0.06*tail : 1/zBase;
+    const rot = L.spin + 0.012*Math.sin(bar*1.7 + fieldA) * (0.5 + pulse);
+    const cr = Math.cos(rot)/z, sn = Math.sin(rot)/z;
+    const hue = 0.02 + L.hueKick*pulse*(0.3+env);
+    const c = Math.cos(hue), s = Math.sin(hue);
+    const m00=.299+.701*c+.168*s, m01=.587-.587*c+.330*s, m02=.114-.114*c-.497*s,
+          m10=.299-.299*c-.328*s, m11=.587+.413*c+.035*s, m12=.114-.114*c+.292*s,
+          m20=.299-.300*c+1.25*s, m21=.587-.588*c-1.05*s, m22=.114+.886*c-.203*s;
+    const decay = (0.93 + 0.035*env) - 0.05*tail;   // loud passages linger, quiet ones clear to black
+    const wob = 2.2*pulse*env;
+    for(let y=0;y<S;y++){
+      const dy = y - cy;
+      for(let x=0;x<S;x++){
+        const dx = x - cx;
+        let sx = cx + dx*cr - dy*sn + Math.sin(y*0.05 + t*1.3)*wob;
+        let sy = cy + dx*sn + dy*cr;
+        const i = y*S+x;
+        let xi = sx|0, yi = sy|0;
+        if(xi<0) xi = -xi; if(yi<0) yi = -yi;
+        if(xi>=S) xi = 2*S-2-xi; if(yi>=S) yi = 2*S-2-yi;
+        xi = Math.max(0,Math.min(S-1,xi)); yi = Math.max(0,Math.min(S-1,yi));
+        const j = yi*S+xi, r=R[j], g=G[j], b=B[j];
+        tR[i] = Math.min(1.15,(m00*r+m01*g+m02*b)*decay);
+        tG[i] = Math.min(1.15,(m10*r+m11*g+m12*b)*decay);
+        tB[i] = Math.min(1.15,(m20*r+m21*g+m22*b)*decay);
+      }
+    }
+    R.set(tR); G.set(tG); B.set(tB);
+
+    /* 1b. the low end: rings leave the centre on every beat */
+    if(tail < 0.9){
+      const Pl = L.pal[4], Pm = L.pal[3], amt = (0.015 + 0.09*lo*lo) * (0.3 + pulse);
+      const wave = bpos * 6.2832;
+      for(let i=0;i<N2;i++){
+        const v = Math.sin(RAD[i]*0.11 - wave) ; if(v < 0.55) continue;
+        const k = (v-0.55)*2.2*amt;
+        R[i] += (Pl[0]+Pm[0])*k; G[i] += (Pl[1]+Pm[1])*k; B[i] += (Pl[2]+Pm[2])*k;
+      }
+    }
+
+    /* 2. draw the present at the rim, folded */
+    if(tail < 0.9){
+      const a0 = Math.floor(t*sr), span = Math.floor(sr/FPS), K = 120;
+      const wave = new Float32Array(K);
+      for(let k=0;k<K;k++){
+        let pk = 0; const s0 = a0 + Math.floor(k*span/K), s1 = a0 + Math.floor((k+1)*span/K);
+        for(let q=s0;q<s1 && q<mono.length;q++) if(Math.abs(mono[q])>Math.abs(pk)) pk = mono[q];
+        wave[k] = pk;
+      }
+      const peak = A.rmsPeak;
+      const P = L.pal, tot = lo+mi+hi+1e-6;
+      const col = [0,1,2].map(ch => (lo*P[4][ch] + mi*(P[2][ch]+P[3][ch])*0.5 + hi*P[1][ch])/tot*1.25 + on*P[5][ch]*0.9);
+      const k = Math.min(1.25, 0.35 + env*0.9 + on*0.5) * (1-tail);
+      const fold = L.fold, wedge = 2*Math.PI/fold, turn = (bar % fold) * wedge * 0.5 + t*0.05;
+      const pts = [];
+      const R0 = S*0.43, amp = S*0.16/peak;
+      if(L.glyph === "ring"){
+        for(const rr of [0.42, 0.72, 1.0, 1.32]) for(let q=0;q<K*2;q++){ const w = wave[(q*3+(rr*40|0))%K]; pts.push([ (q/(K*2))*wedge, R0*rr + w*amp*rr ]); }
+      } else if(L.glyph === "spiral"){
+        for(let arm=0; arm<3; arm++) for(let q=0;q<K;q++){ const w = wave[q]; pts.push([ (q/K)*wedge + arm*0.7, S*0.05 + (q/K)*S*0.62 + w*amp*0.9 ]); }
+      } else {   // bars, like the recorder's, standing on a radius
+        for(let q=0;q<K;q+=1){ const h = Math.abs(wave[q])*amp*1.3 + 1;
+          for(let u=-h; u<=h; u+=1.5) pts.push([ (q/K)*wedge, S*0.04 + (q/K)*S*0.66 + u*0.25, u ]); }
+      }
+      for(const [a, r] of pts){
+        for(let f=0; f<fold; f++){
+          const aa = f*wedge + ((f&1) ? wedge - a : a) + turn;
+          plot(cx + Math.cos(aa)*r, cy + Math.sin(aa)*r, col[0], col[1], col[2], k);
+        }
+      }
+    }
+
+    /* 3. attacks tear the past forward (datamosh) */
+    const bs = 9, nb = S/bs, hold = (0.04 + 0.8*on*on) * L.mosh;
+    if(hold > 0.05){
+      for(let by=0; by<nb; by++) for(let bx=0; bx<nb; bx++){
+        if(rnd() > hold) continue;
+        const ang = fieldA + Math.sin(bx*fieldB + t*0.7)*2.4 + Math.cos(by*fieldB - t*0.4)*2 + A.cen[af]*6;
+        const mag = 2 + on*14;
+        const vx = Math.round(Math.cos(ang)*mag), vy = Math.round(Math.sin(ang)*mag);
+        const flat = on > 0.55 && rnd() < 0.35;
+        let ar=0, ag=0, ab=0;
+        if(flat){ for(let y=0;y<bs;y++) for(let x=0;x<bs;x++){ const i=(by*bs+y)*S+bx*bs+x; ar+=mR[i]; ag+=mG[i]; ab+=mB[i]; }
+                  ar/=81; ag/=81; ab/=81; }
+        for(let y=0;y<bs;y++) for(let x=0;x<bs;x++){
+          const Y = by*bs+y, X = bx*bs+x, i = Y*S+X;
+          if(flat){ R[i]=ar; G[i]=ag; B[i]=ab; continue; }
+          const sy = (Y - vy + S) % S, sx = (X - vx + S) % S, j = sy*S+sx;
+          R[i]=mR[j]; G[i]=mG[j]; B[i]=mB[j];
+        }
+      }
+    }
+    if(on > 0.7 && ph < 0.15){         // a hard hit drags a whole old frame through
+      const ox = Math.round(on*10), oy = Math.round(-on*6);
+      for(let i=0;i<N2;i++){ const y=(i/S)|0, x=i%S, j=((y-oy+S)%S)*S+((x-ox+S)%S);
+        R[i]=0.55*R[i]+0.45*mR[j]; G[i]=0.55*G[i]+0.45*mG[j]; B[i]=0.55*B[i]+0.45*mB[j]; }
+    }
+    const keep = on > 0.5 ? 0.98 : 0.84;   // memory freezes on attacks so the smear holds
+    for(let i=0;i<N2;i++){ mR[i]=mR[i]*keep+R[i]*(1-keep); mG[i]=mG[i]*keep+G[i]*(1-keep); mB[i]=mB[i]*keep+B[i]*(1-keep); }
+
+    /* 4. scanline tears on the beat */
+    if(ph < 0.12 && env > 0.3){
+      for(let y=0;y<S;y++){
+        if(rnd() > 0.1*env) continue;
+        const sh = Math.round((rnd()-0.5)*40*env), row = y*S;
+        const r = R.slice(row,row+S), g = G.slice(row,row+S), b = B.slice(row,row+S);
+        for(let x=0;x<S;x++){ const q=((x-sh)%S+S)%S; R[row+x]=r[q]; G[row+x]=g[q]; B[row+x]=b[q]; }
+      }
+    }
+
+    /* 5. out: FALL's grain — ordered dither into the inks, or into a coarse spectrum */
+    const split = Math.round(1 + 4*pulse*env);
+    const P = L.pal;
+    for(let y=0;y<S;y++) for(let x=0;x<S;x++){
+      const i = y*S+x, o = i*4, d = bayer[(y&3)*4+(x&3)];
+      const ir = y*S + Math.min(S-1, x+split), ib = Math.max(0, y-split)*S + x;
+      let r = (R[ir]-0.12)*1.25, g = (G[i]-0.12)*1.25, b = (B[ib]-0.12)*1.25;   // let the dark be dark
+      if(L.out === "ink"){
+        let bi = 0, bd = 1e9; const rr=r+d*0.32, gg=g+d*0.32, bb=b+d*0.32;
+        for(let p=0;p<6;p++){ const e=(P[p][0]-rr)**2+(P[p][1]-gg)**2+(P[p][2]-bb)**2; if(e<bd){bd=e;bi=p;} }
+        px[o]=P[bi][0]*255; px[o+1]=P[bi][1]*255; px[o+2]=P[bi][2]*255;
+      } else {
+        const m = (r+g+b)/3; r = (m+(r-m)*2.4)*1.15; g = (m+(g-m)*2.4)*1.15; b = (m+(b-m)*2.4)*1.15;
+        px[o]  = Math.max(0,Math.min(3,Math.floor(r*3.2+d+0.5)))*85;
+        px[o+1]= Math.max(0,Math.min(3,Math.floor(g*3.2+d+0.5)))*85;
+        px[o+2]= Math.max(0,Math.min(3,Math.floor(b*3.2+d+0.5)))*85;
+      }
+      px[o+3]=255;
+    }
+    sctx.putImageData(img, 0, 0);
+    frame++;
+    return small;
+  }
+  return { step, get frame(){ return frame; } };
+}
+
+/* ---------- drawing ---------- */
+const cv = $("#cv"), ctx = cv.getContext("2d");
+function blit(small){ ctx.imageSmoothingEnabled = false; ctx.drawImage(small, 0, 0, OUT, OUT); }
+function clear(){ ctx.fillStyle = "#000"; ctx.fillRect(0,0,OUT,OUT); }
+function seed(){ return (baseSeed + variation*7919) >>> 0; }
+function say(m){ $("#status").textContent = m; }
+
+/* ---------- loading ---------- */
+async function load(file){
+  stop();
+  fileObj = file; lastBlob = null;
+  $("#out").classList.add("hide"); $("#outRow").classList.add("hide");
+  say("reading " + file.name);
+  fileBytes = new Uint8Array(await file.arrayBuffer());
+  const h = new Uint8Array(await crypto.subtle.digest("SHA-256", fileBytes));
+  baseSeed = (h[0]<<24 | h[1]<<16 | h[2]<<8 | h[3]) >>> 0; variation = 0;
+  try{
+    const dctx = new (window.AudioContext||window.webkitAudioContext)();
+    buf = await dctx.decodeAudioData(fileBytes.slice().buffer);
+    dctx.close();
+  }catch(e){ say("this file has no sound this browser can read. try the m4a straight from the recorder."); return; }
+  sr = buf.sampleRate; dur = buf.duration;
+  mono = new Float32Array(buf.length);
+  for(let c=0;c<buf.numberOfChannels;c++){ const d = buf.getChannelData(c); for(let i=0;i<d.length;i++) mono[i] += d[i]/buf.numberOfChannels; }
+  say("listening for its pulse");
+  await new Promise(r => setTimeout(r, 30));
+  A = analyse();
+  let pk = 0; for(let i=0;i<mono.length;i+=7) pk = Math.max(pk, Math.abs(mono[i])); A.rmsPeak = Math.max(0.05, pk);
+  $("#work").classList.remove("hide");
+  clear();
+  const bpm = Math.round(60*AFPS/A.P);
+  say((A.pulsed ? "pulse " + bpm + " bpm. " : "no steady beat; it will breathe instead. ") + fmt(dur) + ". variation 1.");
+  $("#pick").textContent = "choose another recording";
+}
+function fmt(s){ const m = Math.floor(s/60), r = Math.round(s%60); return m + ":" + String(r).padStart(2,"0"); }
+
+/* ---------- live preview: the same engine, frame for frame ---------- */
+function stop(){
+  playing = false; cancelAnimationFrame(raf);
+  if(src){ try{ src.stop(); }catch(e){} src = null; }
+  $("#play").textContent = "play";
+}
+function play(){
+  if(playing){ stop(); return; }
+  actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+  actx.resume();
+  const eng = Engine(seed());
+  src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+  const t0 = actx.currentTime + 0.05; src.start(t0);
+  src.onended = () => { if(playing) stop(); };
+  playing = true; $("#play").textContent = "stop";
+  const loop = () => {
+    if(!playing) return;
+    const want = Math.min(Math.ceil(dur*FPS), Math.floor((actx.currentTime - t0)*FPS));
+    let last = null, n = 0;
+    while(eng.frame <= want && n < 6){ last = eng.step(); n++; }
+    if(last) blit(last);
+    raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+/* ---------- audio for the file: copy AAC packets as they are ---------- */
+function aacPackets(bytes){
+  return new Promise(resolve => {
+    let done = false; const fin = v => { if(!done){ done = true; resolve(v); } };
+    try{
+      const f = MP4Box.createFile();
+      const out = { samples: [] };
+      f.onError = () => fin(null);
+      f.onReady = info => {
+        const tr = info.audioTracks && info.audioTracks[0];
+        if(!tr || !/^mp4a/.test(tr.codec)){ fin(null); return; }
+        const trak = f.getTrackById(tr.id);
+        const entry = trak.mdia.minf.stbl.stsd.entries[0];
+        let asc = null;
+        try{
+          const dcd = entry.esds.esd.descs.find(d => d.tag === 4);
+          const dsi = dcd && dcd.descs.find(d => d.tag === 5);
+          asc = dsi && dsi.data;
+        }catch(e){}
+        if(!asc){ fin(null); return; }
+        out.codec = tr.codec; out.sampleRate = tr.audio.sample_rate; out.channels = tr.audio.channel_count;
+        out.asc = new Uint8Array(asc);
+        out.total = tr.nb_samples;
+        f.setExtractionOptions(tr.id, null, { nbSamples: 1e7 });
+        f.start();
+      };
+      f.onSamples = (id, user, samples) => {
+        for(const s of samples) out.samples.push({ data: new Uint8Array(s.data), ts: Math.round(s.cts*1e6/s.timescale),
+          dur: Math.round(s.duration*1e6/s.timescale), key: s.is_sync });
+        if(out.samples.length >= out.total) fin(out);
+      };
+      const ab = bytes.slice().buffer; ab.fileStart = 0;
+      f.appendBuffer(ab); f.flush();
+      setTimeout(() => fin(out.samples.length ? out : null), 1500);
+    }catch(e){ fin(null); }
+  });
+}
+
+/* fallback for wav/mp3/ogg: encode once to AAC (the only time the sound is touched) */
+async function encodeAAC(){
+  const ch = Math.min(2, buf.numberOfChannels), rate = buf.sampleRate;
+  const cfg = { codec:"mp4a.40.2", sampleRate:rate, numberOfChannels:ch, bitrate:256000 };
+  if(!window.AudioEncoder || !(await AudioEncoder.isConfigSupported(cfg)).supported) return null;
+  const chunks = []; let meta0 = null;
+  const enc = new AudioEncoder({ output:(c,m)=>{ const d=new Uint8Array(c.byteLength); c.copyTo(d);
+      chunks.push({data:d, ts:c.timestamp, dur:c.duration||0, key:c.type==="key"}); if(m && m.decoderConfig) meta0 = m.decoderConfig; },
+    error:e=>console.error(e) });
+  enc.configure(cfg);
+  const step = 4096;
+  for(let i=0;i<buf.length;i+=step){
+    const n = Math.min(step, buf.length-i), planes = new Float32Array(n*ch);
+    for(let c=0;c<ch;c++) planes.set(buf.getChannelData(c).subarray(i,i+n), c*n);
+    enc.encode(new AudioData({ format:"f32-planar", sampleRate:rate, numberOfFrames:n, numberOfChannels:ch,
+      timestamp: Math.round(i*1e6/rate), data: planes }));
+  }
+  await enc.flush(); enc.close();
+  return { reencoded:true, sampleRate:rate, channels:ch, samples:chunks,
+    asc: meta0 && meta0.description ? new Uint8Array(meta0.description) : null, codec:"mp4a.40.2" };
+}
+
+/* zero the creation/modification times the muxer stamps into the header */
+function scrubTimes(u8){
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  let moov = -1, moovEnd = 0;
+  for(let p=0; p+8<=u8.length;){ const size = dv.getUint32(p), type = String.fromCharCode(u8[p+4],u8[p+5],u8[p+6],u8[p+7]);
+    if(type === "moov"){ moov = p; moovEnd = p+size; break; } if(size < 8) break; p += size; }
+  if(moov < 0) return;
+  for(let p=moov+8; p<moovEnd-12; p++){
+    const t = String.fromCharCode(u8[p],u8[p+1],u8[p+2],u8[p+3]);
+    if(t==="mvhd"||t==="tkhd"||t==="mdhd"){
+      const v = u8[p+4], n = v===1 ? 16 : 8;
+      for(let q=0;q<n;q++) u8[p+8+q] = 0;
+    }
+  }
+}
+
+/* ---------- make the video ---------- */
+async function make(){
+  if(!window.VideoEncoder){ say("this browser can't make video files. use chrome on the phone or a computer."); return; }
+  stop();
+  $("#make").disabled = $("#play").disabled = $("#reroll").disabled = true;
+  try{
+    say("gathering the sound");
+    let aud = /mp4|m4a|aac|quicktime/i.test(fileObj.type + fileObj.name) ? await aacPackets(fileBytes) : null;
+    if(!aud){ say("this file isn't aac, so the sound gets encoded once"); aud = await encodeAAC(); }
+    if(!aud){ say("this browser can't write aac sound from this kind of file. try the m4a straight from the recorder."); return; }
+
+    const frames = Math.ceil(dur*FPS);
+    const bitrate = Math.min(6e6, Math.floor(85e6*8/Math.max(1,dur)));   // stays under bluesky's 100 mb
+    let vcfg = null;
+    for(const codec of ["avc1.640028","avc1.4d0028","avc1.42e028"]){
+      const c = { codec, width:OUT, height:OUT, bitrate, framerate:FPS, avc:{format:"avc"}, latencyMode:"quality" };
+      try{ if((await VideoEncoder.isConfigSupported(c)).supported){ vcfg = c; break; } }catch(e){}
+    }
+    if(!vcfg){ say("this device can't encode h.264 video."); return; }
+
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: { codec:"avc", width:OUT, height:OUT, frameRate:FPS },
+      audio: { codec:"aac", numberOfChannels:aud.channels, sampleRate:aud.sampleRate },
+      fastStart: "in-memory", firstTimestampBehavior: "offset"
+    });
+    const ameta = { decoderConfig: { codec: aud.codec || "mp4a.40.2", sampleRate:aud.sampleRate,
+      numberOfChannels:aud.channels, description: aud.asc } };
+    aud.samples.forEach((s,i) => muxer.addAudioChunkRaw(s.data, "key", s.ts, s.dur, i===0 ? ameta : undefined));
+
+    let err = null;
+    const venc = new VideoEncoder({ output:(c,m)=>muxer.addVideoChunk(c,m), error:e=>{ err = e; } });
+    venc.configure(vcfg);
+    const eng = Engine(seed());
+    const t0 = performance.now();
+    for(let f=0; f<frames; f++){
+      if(err) throw err;
+      blit(eng.step());
+      const vf = new VideoFrame(cv, { timestamp: Math.round(f*1e6/FPS), duration: Math.round(1e6/FPS) });
+      venc.encode(vf, { keyFrame: f % (FPS*2) === 0 });
+      vf.close();
+      while(venc.encodeQueueSize > 6) await new Promise(r => setTimeout(r, 2));
+      if(f % 15 === 0){
+        const el = (performance.now()-t0)/1000, eta = el/(f+1)*(frames-f-1);
+        say("rendering " + Math.round(100*f/frames) + "%  about " + Math.ceil(eta) + "s left");
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    await venc.flush(); venc.close();
+    muxer.finalize();
+    const out = new Uint8Array(muxer.target.buffer);
+    scrubTimes(out);
+    lastBlob = new Blob([out], { type:"video/mp4" });
+    lastName = "wake-" + seed().toString(36) + ".mp4";
+    const v = $("#out"); v.src = URL.createObjectURL(lastBlob); v.classList.remove("hide");
+    $("#outRow").classList.remove("hide");
+    say("done. " + (out.length/1e6).toFixed(1) + " mb, " + fmt(dur) + (aud.reencoded ? ". sound encoded once from the original." : ". sound copied exactly."));
+  }catch(e){
+    console.error(e); say("rendering stopped: " + (e && e.message ? e.message : e));
+  }finally{
+    $("#make").disabled = $("#play").disabled = $("#reroll").disabled = false;
+  }
+}
+
+/* ---------- wiring ---------- */
+$("#pick").onclick = () => $("#file").click();
+$("#file").onchange = e => { const f = e.target.files[0]; if(f) load(f); e.target.value = ""; };
+const drop = document.body;
+drop.addEventListener("dragover", e => { e.preventDefault(); $("#drop").classList.add("over"); });
+drop.addEventListener("dragleave", () => $("#drop").classList.remove("over"));
+drop.addEventListener("drop", e => { e.preventDefault(); $("#drop").classList.remove("over");
+  const f = e.dataTransfer.files[0]; if(f) load(f); });
+$("#play").onclick = play;
+$("#reroll").onclick = () => { variation++; const was = playing; stop(); clear();
+  say("variation " + (variation+1) + ". play to see it."); if(was) play(); };
+$("#make").onclick = make;
+$("#save").onclick = () => { if(!lastBlob) return; const a = document.createElement("a");
+  a.href = URL.createObjectURL(lastBlob); a.download = lastName; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 30000); };
+$("#share").onclick = async () => {
+  if(!lastBlob) return;
+  const file = new File([lastBlob], lastName, { type:"video/mp4" });
+  if(navigator.canShare && navigator.canShare({ files:[file] })){ try{ await navigator.share({ files:[file] }); }catch(e){} }
+  else $("#save").click();
+};
+</script>
+</body>
+</html>
