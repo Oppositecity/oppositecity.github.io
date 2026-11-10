@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>OPPOSITE CITY · senses</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root{
+    --bg:#000; --fg:#fff;
+    --words:#0000ff; --sound:#ff0000; --vision:#00ff00;
+    --mix:.5;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--fg);}
+  body{
+    font-family:'Courier Prime','Courier New',Courier,monospace;
+    font-size:15px; line-height:1.45;
+    padding:max(14px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
+  }
+  a{color:var(--fg);}
+  :focus-visible{outline:2px dotted #fff; outline-offset:3px;}
+
+  .wrap{max-width:1180px; margin:0 auto;}
+  header{margin-bottom:10px;}
+  header h1{font-size:clamp(28px, 7vw, 54px); line-height:1; font-weight:700;}
+  header p{margin-top:8px; max-width:56ch;}
+  header .back{display:inline-block; margin-top:8px; text-decoration:underline;}
+
+  .stage{display:grid; gap:18px;}
+  @media (min-width:900px){
+    .stage{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); align-items:start;}
+    .fig{position:sticky; top:16px;}
+  }
+
+  svg{display:block; width:100%; height:auto; touch-action:manipulation; cursor:pointer;}
+  .set{mix-blend-mode:screen; opacity:var(--mix);}
+  .setname{font-size:26px; font-weight:700; fill:#fff;}
+  .n{font-size:40px; font-weight:700; fill:#fff; text-anchor:middle; dominant-baseline:central; pointer-events:none;}
+  .n.on{fill:#000;}
+  .n.zero{font-size:24px;}
+
+  .now{font-size:20px; font-weight:700; margin-bottom:4px; min-height:1.45em;}
+  .hint{margin-bottom:14px;}
+  .clear{font:inherit; color:#000; background:#fff; border:0; padding:6px 10px; cursor:pointer; margin-left:8px; font-size:13px; vertical-align:middle;}
+
+  ul{list-style:none;}
+  li{margin:0 0 16px;}
+  li a.name{font-weight:700; font-size:17px;}
+  .senses{display:inline-flex; gap:4px; margin-left:8px; vertical-align:middle;}
+  .senses i{display:inline-block; width:10px; height:10px;}
+  li p{margin-top:2px; max-width:62ch;}
+  .empty{margin-top:6px;}
+
+  @media (prefers-reduced-motion:no-preference){ .sel{transition:opacity .15s;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Opposite City</h1>
+    <p>Every surface placed by the senses it works in: words, sound, vision. Where the circles cross, a piece works in more than one. Tap a region to see what lives there.</p>
+    <a class="back" href="/">Back to the grid</a>
+  </header>
+
+  <div class="stage">
+    <div class="fig">
+      <svg id="venn" viewBox="0 0 600 560" role="img" aria-label="Three overlapping circles for words, sound and vision, with the number of surfaces in each region">
+        <defs>
+          <clipPath id="cW"><circle cx="220" cy="210" r="170"/></clipPath>
+          <clipPath id="cS"><circle cx="380" cy="210" r="170"/></clipPath>
+          <clipPath id="cV"><circle cx="300" cy="348" r="170"/></clipPath>
+          <mask id="mx" maskUnits="userSpaceOnUse" x="0" y="0" width="600" height="560">
+            <rect width="600" height="560" fill="#fff"/>
+            <g id="mxCut"></g>
+          </mask>
+        </defs>
+        <circle class="set" cx="220" cy="210" r="170" fill="var(--words)"/>
+        <circle class="set" cx="380" cy="210" r="170" fill="var(--sound)"/>
+        <circle class="set" cx="300" cy="348" r="170" fill="var(--vision)"/>
+        <g id="selLayer"></g>
+        <text class="setname" x="56" y="58">Words</text>
+        <text class="setname" x="544" y="58" text-anchor="end">Sound</text>
+        <text class="setname" x="300" y="552" text-anchor="middle">Vision</text>
+        <g id="counts"></g>
+      </svg>
+    </div>
+
+    <section aria-live="polite">
+      <div class="now" id="now">Everything</div>
+      <div class="hint" id="hint"></div>
+      <ul id="list"></ul>
+    </section>
+  </div>
+</div>
+
+<script>
+/* which senses each surface works in. experiment: lives here until it earns a
+   place in surfaces.json as a `senses` field. */
+const SENSES = {
+  'room':['w'], 'pentimento':['w','v'], 'apophasis':['w','v'], 'semantic-voyage':['w','v'],
+  'aureole':['w'], 'dof':['w'], 'language-instrument':['w','s'], 'ambiguity':['w'],
+  'syllababbler':['w'], 'titivillus':['w','v'], 'signgularity':['w','v'], 'split':['w','v'],
+  'slopflag':['s'], 'idiophone':['s'], 'kelp':['s','v'], 'polyrhythm':['s','v'], 'shellac':['s'],
+  'bz':['v'], 'somesets':['v'], 'wind':['v'],
+  'descent':['w','v'], 'margin-walker':['w'], 'agentic-entropy':['w','v'], 'clef':['w','v'],
+  'ephemeris':['v'], 'circlefornia':['v'], 'sortition-congress':['w'],
+  'ximeremix':['s','v']
+};
+const DIST_TO_SENSE = {words:'w', language:'w', sound:'s', band:'s', vision:'v', ambient:'v'};
+
+const C = { w:{x:220,y:210}, s:{x:380,y:210}, v:{x:300,y:348} }, R = 170;
+const HEX = { w:'#0000ff', s:'#ff0000', v:'#00ff00' };
+const NAME = { w:'words', s:'sound', v:'vision' };
+/* one label point inside each of the seven regions */
+const REGIONS = [
+  {k:'w',   x:150, y:160}, {k:'s',   x:450, y:160}, {k:'v',   x:300, y:440},
+  {k:'ws',  x:300, y:150}, {k:'wv',  x:210, y:320}, {k:'sv',  x:390, y:320},
+  {k:'wsv', x:300, y:258}
+];
+const ORDER = ['w','s','v'];
+const key = arr => ORDER.filter(c=>arr.includes(c)).join('');
+
+let surfaces = [], sel = null;
+const $ = id => document.getElementById(id);
+const esc = t => String(t??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const firstSentence = t => { const m = String(t||'').match(/^.*?[.!?](\s|$)/); return m ? m[0].trim() : String(t||''); };
+
+function senseOf(s){
+  return SENSES[s.slug] || [DIST_TO_SENSE[s.district] || 'w'];
+}
+
+function regionColour(k){
+  /* additive light: the region's colour is the sum of its senses */
+  const r = k.includes('s') ? 255 : 0, g = k.includes('v') ? 255 : 0, b = k.includes('w') ? 255 : 0;
+  return `rgb(${r},${g},${b})`;
+}
+function darkTextOn(k){ return k !== 'w'; } /* only pure blue is dark enough for white text */
+
+function drawCounts(){
+  const g = $('counts'); g.innerHTML = '';
+  REGIONS.forEach(r=>{
+    const n = surfaces.filter(s=>s.k===r.k).length;
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', r.x); t.setAttribute('y', r.y);
+    t.setAttribute('class', 'n' + (n ? '' : ' zero') + (sel===r.k && darkTextOn(r.k) ? ' on' : ''));
+    t.textContent = n ? n : '0';
+    g.appendChild(t);
+  });
+}
+
+function drawSelection(){
+  const layer = $('selLayer'); layer.innerHTML = '';
+  const cut = $('mxCut'); cut.innerHTML = '';
+  if(!sel) return;
+  ORDER.filter(c=>!sel.includes(c)).forEach(c=>{
+    cut.insertAdjacentHTML('beforeend', `<circle cx="${C[c].x}" cy="${C[c].y}" r="${R}" fill="#000"/>`);
+  });
+  /* nest one clip per included circle: the region is their intersection,
+     minus every circle it is not in (the mask) */
+  let inner = `<rect class="sel" width="600" height="560" fill="${regionColour(sel)}"/>`;
+  sel.split('').forEach(c=>{ inner = `<g clip-path="url(#c${c.toUpperCase()})">${inner}</g>`; });
+  layer.innerHTML = `<g mask="url(#mx)">${inner}</g>`;
+}
+
+function regionName(k){
+  return k.split('').map(c=>NAME[c]).join(' + ');
+}
+
+function drawList(){
+  const rows = sel ? surfaces.filter(s=>s.k===sel) : surfaces.slice().sort((a,b)=>a.k.length-b.k.length || ORDER.indexOf(a.k[0])-ORDER.indexOf(b.k[0]));
+  $('now').innerHTML = sel
+    ? `${esc(regionName(sel))} <button class="clear" type="button" id="clr">Show everything</button>`
+    : 'Everything';
+  if(sel) $('clr').onclick = ()=>select(null);
+  $('hint').textContent = sel
+    ? (rows.length ? `${rows.length} ${rows.length===1?'surface works':'surfaces work'} in exactly ${sel.length===1?'this sense':'these senses'}.` : 'Nothing works in exactly these senses yet.')
+    : `${surfaces.length} surfaces. Tap a region to narrow it down.`;
+  $('list').innerHTML = rows.map(s=>`
+    <li>
+      <a class="name" href="${esc(s.url)}">${esc(s.name)}</a><span class="senses" aria-label="${esc(regionName(s.k))}">${s.k.split('').map(c=>`<i style="background:${HEX[c]}"></i>`).join('')}</span>
+      <p>${esc(firstSentence(s.blurb))}</p>
+    </li>`).join('');
+}
+
+function select(k){
+  sel = (k && k !== sel) ? k : null;
+  drawSelection(); drawCounts(); drawList();
+}
+
+/* tap anywhere: work out which circles the point falls inside */
+$('venn').addEventListener('click', e=>{
+  const svg = $('venn'), pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const inside = ORDER.filter(c=>Math.hypot(p.x-C[c].x, p.y-C[c].y) <= R);
+  select(inside.length ? key(inside) : null);
+});
+/* keyboard: arrow keys walk the seven regions */
+$('venn').setAttribute('tabindex','0');
+$('venn').addEventListener('keydown', e=>{
+  if(!['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Escape'].includes(e.key)) return;
+  e.preventDefault();
+  if(e.key==='Escape'){ select(null); return; }
+  const ks = REGIONS.map(r=>r.k), i = sel ? ks.indexOf(sel) : -1;
+  const step = (e.key==='ArrowRight'||e.key==='ArrowDown') ? 1 : -1;
+  sel = null; select(ks[(i + step + ks.length) % ks.length]);
+});
+
+async function boot(){
+  let reg = null;
+  try{ const r = await fetch('/surfaces.json', {cache:'no-store'}); if(r.ok) reg = await r.json(); }catch(e){}
+  if(!reg){ $('hint').textContent = 'The list of surfaces did not load. Reload the page, or go back to the grid.'; return; }
+  surfaces = reg.surfaces.filter(s=>/^https?:\/\//.test(s.url||'')).map(s=>({...s, k:key(senseOf(s))}));
+  drawCounts(); drawList();
+}
+boot();
+</script>
+</body>
+</html>
