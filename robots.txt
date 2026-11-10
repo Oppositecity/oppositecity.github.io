@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /windows.html
+Disallow: /poemstream/
 Disallow: /syllababbler/syllababbler-9.html
 
 Sitemap: https://opposite.city/sitemap.xml
