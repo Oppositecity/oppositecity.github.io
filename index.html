@@ -11,14 +11,14 @@
 <meta property="og:site_name" content="OPPOSITE CITY" />
 <meta property="og:url" content="https://opposite.city/" />
 <meta property="og:title" content="OPPOSITE CITY" />
-<meta property="og:description" content="An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift." />
+<meta property="og:description" content="An artistic agency, idea firm, and widget farm. Instruments for words, sound, vision and systems, and a band whose takes are made to be taken apart." />
 <meta property="og:image" content="https://opposite.city/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content="OPPOSITE CITY" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="OPPOSITE CITY" />
-<meta name="twitter:description" content="An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift." />
+<meta name="twitter:description" content="An artistic agency, idea firm, and widget farm. Instruments for words, sound, vision and systems, and a band whose takes are made to be taken apart." />
 <meta name="twitter:image" content="https://opposite.city/og.png" />
 <link rel="canonical" href="https://opposite.city/" />
 <script>document.documentElement.className="js";</script>
@@ -111,10 +111,15 @@
     .tag{font-size:9px;}
   }
   @media (prefers-reduced-motion:no-preference){ .win{transition:outline-color .15s;} }
-  /* districts + completion numbers: kept in the data, hidden from the view */
-  #chips{display:none;}
-  .frow .dim{display:none;}
+  /* completion numbers: kept in the data, hidden from the view */
   .meter{display:none;}
+  .frow .dim{color:#000;}
+  /* sections: the sense a surface belongs to, named once above its windows */
+  .sec{grid-column:1/-1; color:#fff; padding:22px 2px 6px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+  .sec:first-child{padding-top:4px;}
+  .sec h2{font-size:28px; font-weight:700; letter-spacing:1px; line-height:1;}
+  .sec p{font-size:14px; color:#fff;}
+  @media (max-width:520px){ .sec h2{font-size:22px;} .sec p{font-size:13px;} }
 </style>
 </head>
 <body>
@@ -132,36 +137,36 @@
 <p id="empty" style="display:none"></p>
 
 <div id="fallback">
-  <p>An artistic agency, idea firm, and widget farm. Single-file instruments for language, civics, atlas, and ambient drift.</p>
+  <p>An artistic agency, idea firm, and widget farm. Instruments for words, sound, vision and systems, and a band whose takes are made to be taken apart.</p>
   <ul>
+    <li><a href="https://opposite.city/room/">ROOM</a> — lucier, recursive drift, synonym chain, syllable lock, irreversible</li>
+    <li><a href="https://opposite.city/pentimento/">PENTIMENTO</a> — logit lens, gpt-2, in-browser inference, possibility field, depth</li>
+    <li><a href="https://opposite.city/apophasis/">APOPHASIS</a> — negative space, surprisal, rank, in-browser inference, draft</li>
+    <li><a href="https://opposite.city/semantic-voyage/">SEMANTIC VOYAGE</a> — word embeddings, glove, semantic space, periodic space, flight, navigation</li>
+    <li><a href="https://opposite.city/aureole/">AUREOLE</a> — atproto, thesaurus, synonym cloud, degrees of freedom, bluesky</li>
+    <li><a href="https://opposite.city/dof/">DEGREES OF FREEDOM</a> — semantic constraint, datamuse, corpus attestation, measurement, writing instrument</li>
+    <li><a href="https://opposite.city/language-instrument/">LANGUAGE INSTRUMENT</a> — keystroke, sonification, cipher, phonetics, learning</li>
+    <li><a href="https://opposite.city/ambiguity/">AMBIGUATOR</a> — notation, ambiguity, symbol dictionary, cross-domain, parser</li>
+    <li><a href="https://opposite.city/syllababbler/">SYLLABABBLER</a> — morphology, neologism, greek, latin, coinage</li>
     <li><a href="https://opposite.city/titivillus/">TITIVILLUS</a> — asemic, broken letterforms, font generator, shape affinity, glitch</li>
     <li><a href="https://opposite.city/signgularity/">SIGNGULARITY</a> — singularity, letterforms, extrusion, sculpture, stl</li>
     <li><a href="https://opposite.city/split/">SPLIT</a> — figure-ground, pinwheel, type generator, riley</li>
-    <li><a href="https://opposite.city/sortition-congress/">Sortition Congress</a> — sortition, democracy, lottery</li>
-    <li><a href="https://opposite.city/circlefornia/">CIRCLEFORNIA</a> — california, measurement, equivalence</li>
-    <li><a href="https://opposite.city/somesets/">SOMESET GENERATOR</a> — colour drift, fullscreen, ambient</li>
-    <li><a href="https://opposite.city/bz/">BZ</a> — reaction-diffusion, excitable media, phase singularity, fullscreen</li>
-    <li><a href="https://opposite.city/polyrhythm/">POLYRHYTHMIC TIME CLOCK</a> — clock, polyrhythm, web audio, interval</li>
-    <li><a href="https://opposite.city/kelp/">KELP</a> — aleatoric, percussion, web audio, spring chain, pixel</li>
-    <li><a href="https://opposite.city/semantic-voyage/fly.html">SEMANTIC VOYAGE</a> — word embeddings, glove, semantic space, periodic space, flight, navigation</li>
-    <li><a href="https://opposite.city/room/">ROOM</a> — lucier, recursive drift, synonym chain, syllable lock, irreversible</li>
-    <li><a href="https://opposite.city/wind/">YOU ARE THE WIND</a> — ekman spiral, coriolis, pressure gradient, voxel raycast, first person</li>
-    <li><a href="https://opposite.city/ambiguity/">AMBIGUATOR</a> — notation, ambiguity, symbol dictionary, cross-domain, parser</li>
-    <li><a href="https://opposite.city/syllababbler/">SYLLABABBLER</a> — morphology, neologism, greek, latin, coinage</li>
-    <li><a href="https://opposite.city/ephemeris/">EPHEMERIS</a> — orbital debris, horoscope, rulership, tle, kepler</li>
-    <li><a href="https://opposite.city/poemstream/">POEMSTREAM</a> — keystroke, process, provenance, atproto, revision</li>
-    <li><a href="https://opposite.city/shellac/">SHELLAC</a> — 78rpm, internet archive, public domain, chronological browse, shellac disc</li>
-    <li><a href="https://opposite.city/aureole/">AUREOLE</a> — atproto, thesaurus, synonym cloud, degrees of freedom, bluesky</li>
-    <li><a href="https://opposite.city/dof/">DEGREES OF FREEDOM</a> — semantic constraint, datamuse, corpus attestation, measurement, writing instrument</li>
-    <li><a href="https://opposite.city/pentimento/">PENTIMENTO</a> — logit lens, gpt-2, in-browser inference, possibility field, depth</li>
-    <li><a href="https://opposite.city/apophasis/">APOPHASIS</a> — negative space, surprisal, rank, in-browser inference, draft</li>
+    <li><a href="https://opposite.city/slopflag/">SLOP FLAG</a> — music, strudel, atproto, agents, collaboration</li>
     <li><a href="https://opposite.city/idiophone/">IDIOPHONE</a> — modal analysis, q factor, resonance, impulse excitation, atproto, web audio</li>
+    <li><a href="https://opposite.city/kelp/">KELP</a> — aleatoric, percussion, web audio, spring chain, pixel</li>
+    <li><a href="https://opposite.city/polyrhythm/">POLYRHYTHMIC TIME CLOCK</a> — clock, polyrhythm, web audio, interval</li>
+    <li><a href="https://opposite.city/shellac/">SHELLAC</a> — 78rpm, internet archive, public domain, chronological browse, shellac disc</li>
+    <li><a href="https://opposite.city/bz/">BZ</a> — reaction-diffusion, excitable media, phase singularity, fullscreen</li>
+    <li><a href="https://opposite.city/somesets/">SOMESET GENERATOR</a> — colour drift, fullscreen, ambient</li>
+    <li><a href="https://opposite.city/wind/">YOU ARE THE WIND</a> — ekman spiral, coriolis, pressure gradient, voxel raycast, first person</li>
+    <li><a href="https://opposite.city/descent/">THE DESCENT</a> — emergy, odum, transformity, stellar nucleosynthesis, orders of magnitude</li>
+    <li><a href="https://opposite.city/margin-walker/">MARGIN WALKER</a> — profit, input-output, bea, barcode, supply chain</li>
     <li><a href="https://opposite.city/agentic-entropy/">AGENTIC ENTROPY</a> — pathways chart, information thermodynamics, emergy, energy systems language, lombardi, evidence levels</li>
     <li><a href="https://opposite.city/clef/">CLEF</a> — charles fourier, taxonomy, pathways chart, passions, 810 characters</li>
-    <li><a href="https://opposite.city/descent/">THE DESCENT</a> — emergy, odum, transformity, stellar nucleosynthesis, orders of magnitude</li>
-    <li><a href="https://opposite.city/slopflag/">SLOP FLAG</a> — music, strudel, atproto, agents, collaboration</li>
-    <li><a href="https://opposite.city/language-instrument/">LANGUAGE INSTRUMENT</a> — keystroke, sonification, cipher, phonetics, learning</li>
-    <li><a href="https://opposite.city/margin-walker/">MARGIN WALKER</a> — profit, input-output, bea, barcode, supply chain</li>
+    <li><a href="https://opposite.city/ephemeris/">EPHEMERIS</a> — orbital debris, horoscope, rulership, tle, kepler</li>
+    <li><a href="https://opposite.city/circlefornia/">CIRCLEFORNIA</a> — california, measurement, equivalence</li>
+    <li><a href="https://opposite.city/sortition-congress/">Sortition Congress</a> — sortition, democracy, lottery</li>
+    <li><a href="https://opposite.city/ximeremix/">XIMEREMIX</a> — granular, remix, field recording, atproto, lo-fi</li>
   </ul>
 </div>
 
@@ -173,480 +178,7 @@
 
 <script>
 /* REGISTRY:BEGIN */
-const REGISTRY = {
- "lexicon": "city.opposite.surface",
- "generated": "2026-07-11",
- "published": "2026-11-03",
- "note": "Approved, deployed surfaces only. The full list lives in registry-master.json.",
- "front": [],
- "districts": [
-  {
-   "id": "language",
-   "name": "Language",
-   "blurb": "writing instruments & semiotic tools"
-  },
-  {
-   "id": "civic",
-   "name": "Civic",
-   "blurb": "sortition, institutions, infrastructure"
-  },
-  {
-   "id": "viz",
-   "name": "Atlas",
-   "blurb": "visualization & knowledge browsers"
-  },
-  {
-   "id": "ambient",
-   "name": "Ambient",
-   "blurb": "widgets that drift"
-  }
- ],
- "surfaces": [
-  {
-   "slug": "titivillus",
-   "name": "TITIVILLUS",
-   "district": "language",
-   "status": "live",
-   "finish": 85,
-   "tags": [
-    "asemic",
-    "broken letterforms",
-    "font generator",
-    "shape affinity",
-    "glitch"
-   ],
-   "blurb": "Named for the demon who filled a sack a thousand times a day with the syllables scribes dropped, and produced it at judgement to be weighed against them. An instrument for the material of language, in three stages. The characters are damaged first, while the text is still text and still copies and pastes. Then the letterforms are built and broken — traced from Courier, drawn from monoline skeletons, or synthesised as a script that never existed, and put through eleven ways of failing. Then the pixels, which is where it ends, because nothing after that can recover an outline. Twenty-six thousand Unicode glyphs are measured by stroke topology, so a substituted mark rhymes with the letter it replaces rather than arriving from a random block. Every hand edit is kept as an operation and never baked, which is why a letter tuned by hand still comes out in the font file. It exports a real typeface: install it and every application on the machine starts failing at type.",
-   "url": "https://opposite.city/titivillus/"
-  },
-  {
-   "slug": "signgularity",
-   "name": "SIGNGULARITY",
-   "district": "language",
-   "status": "live",
-   "finish": 85,
-   "tags": [
-    "singularity",
-    "letterforms",
-    "extrusion",
-    "sculpture",
-    "stl"
-   ],
-   "blurb": "A word driven into a single point. Every letter is held at the same origin and pushed outward along its own axis, so what you get is the word with its sequence taken away — all of it present at once and none of it in order. Collapse is the only control that matters: at the far end the letters stand apart and can still be read, and at zero they occupy one another and legibility goes, which is the state the piece is actually about. The letters are solids and not pictures of letters, extruded from real outlines with their counters intact, so an A keeps its hole and a B keeps both. Twenty-six of them are drawn by hand. Everything else — Greek, Cyrillic, Hebrew, kana, hanzi — is contoured live from whatever font the device happens to have, which means there is no script menu, because your keyboard already is one. Each form is seeded and the seed rides in the URL, so a shape can be recovered, sent to someone, or printed: the export is an STL, and held near the singularity the letters interpenetrate far enough to come out of a printer as one object.",
-   "url": "https://opposite.city/signgularity/"
-  },
-  {
-   "slug": "split",
-   "name": "SPLIT",
-   "district": "language",
-   "status": "live",
-   "finish": 90,
-   "tags": [
-    "figure-ground",
-    "pinwheel",
-    "type generator",
-    "riley"
-   ],
-   "blurb": "Figure-ground reversal type generator. Two tones only, always exact opposites — grid and pinwheel modes, up to 48 blades per glyph. The reversal is conserved: nothing lost or added in the exchange.",
-   "url": "https://opposite.city/split/"
-  },
-  {
-   "slug": "sortition-congress",
-   "name": "Sortition Congress",
-   "district": "civic",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "sortition",
-    "democracy",
-    "lottery"
-   ],
-   "blurb": "A legislature chosen by lot instead of election. A working model of government by random sample.",
-   "url": "https://opposite.city/sortition-congress/"
-  },
-  {
-   "slug": "circlefornia",
-   "name": "CIRCLEFORNIA",
-   "district": "viz",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "california",
-    "measurement",
-    "equivalence"
-   ],
-   "blurb": "Measures any point on Earth against California. A california equivalent finder — the state as a unit of comparison.",
-   "url": "https://opposite.city/circlefornia/"
-  },
-  {
-   "slug": "somesets",
-   "name": "SOMESET GENERATOR",
-   "district": "ambient",
-   "status": "live",
-   "finish": 75,
-   "tags": [
-    "colour drift",
-    "fullscreen",
-    "ambient"
-   ],
-   "blurb": "A sunset that never settles. Geometry fixed, colour continuous — mostly almost-plausible, sometimes not. Press set to freeze one mid-transition, rise to let it go.",
-   "url": "https://opposite.city/somesets/"
-  },
-  {
-   "slug": "bz",
-   "name": "BZ",
-   "district": "ambient",
-   "status": "live",
-   "finish": 85,
-   "tags": [
-    "reaction-diffusion",
-    "excitable media",
-    "phase singularity",
-    "fullscreen"
-   ],
-   "blurb": "A chemical clock rendered as a field: bromate oxidation held far enough from equilibrium that it oscillates instead of settling. Three coupled species on a torus, each cell reacting against the mean of its neighbours — reaction against diffusion. The spiral cores are phase singularities, points where the oscillation has no defined phase and the medium must wind around them.",
-   "url": "https://opposite.city/bz/"
-  },
-  {
-   "slug": "polyrhythm",
-   "name": "POLYRHYTHMIC TIME CLOCK",
-   "district": "ambient",
-   "status": "live",
-   "finish": 75,
-   "tags": [
-    "clock",
-    "polyrhythm",
-    "web audio",
-    "interval"
-   ],
-   "blurb": "A clock that rings the time. Thirteen nested intervals — hour, half hour, minute, second — each striking on its own real boundary, so the polyrhythm is the clock's own arithmetic rather than something invented for it. Nine musical rings divide the bar against them at whatever tempo you set. Everything lands together on the minute; the whole field lands on the hour.",
-   "url": "https://opposite.city/polyrhythm/"
-  },
-  {
-   "slug": "kelp",
-   "name": "KELP",
-   "district": "ambient",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "aleatoric",
-    "percussion",
-    "web audio",
-    "spring chain",
-    "pixel"
-   ],
-   "blurb": "Seven strands of kelp hanging in a current, each a spring chain with its own sway period. A strand speaks only at the moment it finishes a sway and reverses — the turn is the beat, so the rhythm belongs to the water rather than to a grid laid over it. Each strand is tuned to its own scale and its own octave, low at the left and high at the right, and rings a cascade up or down that scale when it turns. Four beds retune the whole forest at once; density sets how hard a sway has to be before it counts as a strike.",
-   "url": "https://opposite.city/kelp/"
-  },
-  {
-   "slug": "semantic-voyage",
-   "name": "SEMANTIC VOYAGE",
-   "district": "viz",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "word embeddings",
-    "glove",
-    "semantic space",
-    "periodic space",
-    "flight",
-    "navigation"
-   ],
-   "blurb": "Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room. The field is periodic: it repeats in every direction, so there is no up, no edge, and no outside to fall into. Hold to fly forward, tap any word to jump to it. Every jump is measured against the true vectors and comes back either verified, carrying the real cosine, or honestly unmeasured — an exact distance exists only along the 122,901 relations the model actually asserts. Near you the layout quietly corrects itself toward those measurements, since the projection is candid about who your neighbours are and lies about how far anything is.",
-   "url": "https://opposite.city/semantic-voyage/"
-  },
-  {
-   "slug": "room",
-   "name": "ROOM",
-   "district": "language",
-   "status": "live",
-   "finish": 85,
-   "tags": [
-    "lucier",
-    "recursive drift",
-    "synonym chain",
-    "syllable lock",
-    "irreversible"
-   ],
-   "blurb": "After Alvin Lucier, who recorded his voice in a room and played the recording back into the room until the resonance had eaten the words. Here the room is a thesaurus and the speech is a sentence. Each scroll plays the text back one more time: every word is answered by one adjacent in meaning, held to the same syllable count, so the pulse is untouched while the sense drains out of it. Function words are the walls and never move, and a word repeated is always answered alike — repetition is what reinforces. Four rooms reflect differently, by sense, by association, by sound. Between passes each moving word goes out of focus where it stands while its replacement comes into focus in the same place, so the walls stay sharp through the smear. Scroll back and the tape replays; it never plays again. Tap any word to see every word that has stood in its place and what brought each one there.",
-   "url": "https://opposite.city/room/"
-  },
-  {
-   "slug": "wind",
-   "name": "YOU ARE THE WIND",
-   "district": "ambient",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "ekman spiral",
-    "coriolis",
-    "pressure gradient",
-    "voxel raycast",
-    "first person"
-   ],
-   "blurb": "A first-person game in which you are a parcel of air, and cannot steer. Three forces move you and nothing else: the pressure gradient you fall down, the Coriolis deflection that bends you to the right of your own motion, and surface friction that drags hard in the first few metres and is gone by forty. Their consequence is the Ekman spiral — low down friction bleeds your speed, which weakens Coriolis, so you cross the isobars and pour into the low; high up there is no friction, the balance goes geostrophic, and you only circle it forever. Altitude is therefore the heading control, and that is the whole game. The camera is your velocity vector, because wind has no head. The sky is the same pressure field drawn: blue on one horizon and black on the other is a gradient, and a gradient is the only thing that can move you.",
-   "url": "https://opposite.city/wind/"
-  },
-  {
-   "slug": "ambiguity",
-   "name": "AMBIGUATOR",
-   "district": "language",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "notation",
-    "ambiguity",
-    "symbol dictionary",
-    "cross-domain",
-    "parser"
-   ],
-   "blurb": "Every field writes with the same alphabet and none of them owns it. c is the speed of light, and carbon, and concentration, and the note C, and common time — the letter carries no discipline with it, only the habit of whoever is reading. A formula typed here is parsed once into a tree and then read aloud in every combination its letters permit: E = mc² has five hundred and sixty readings, of which exactly one is physics. Each phrase is coloured by the field it was borrowed from, so a sentence in a single colour is a coherent reading and a sentence in nine is nonsense that still parses. Readings are ordered by difference rather than by index, so no two in a row agree with each other. Switch the fields off one at a time and a law of physics can be made to say itself entirely in music.",
-   "url": "https://opposite.city/ambiguity/"
-  },
-  {
-   "slug": "syllababbler",
-   "name": "SYLLABABBLER",
-   "district": "language",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "morphology",
-    "neologism",
-    "greek",
-    "latin",
-    "coinage"
-   ],
-   "blurb": "English keeps two vocabularies in the same mouth, a Greek one and a Latin one, and it almost never mixes them by accident. This is a bench for mixing them on purpose. Give it a phrase and it finds the load-bearing concepts, matches each to a morpheme, and fuses them with the linking vowel each stratum takes — o for Greek, i for Latin. Give it a word instead, real or invented, and it runs the lattice backwards: cutting the letters into the fewest and longest morphemes that can account for them, then reading a definition off the suffix, because the suffix is where the grammar lives. Nothing it makes is a real word and everything it makes is built the way real words were. The parse is stained like a slide, Greek blue and Latin rose, and whatever the stain refuses is residue — which, in English, is most of it.",
-   "url": "https://opposite.city/syllababbler/"
-  },
-  {
-   "slug": "ephemeris",
-   "name": "EPHEMERIS",
-   "district": "ambient",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "orbital debris",
-    "horoscope",
-    "rulership",
-    "tle",
-    "kepler"
-   ],
-   "blurb": "Astrology has never had to read more than a dozen bodies, and that is the only reason it works — seven wandering lights with portfolios, permanent enough to be worth interpreting. There are now more than thirty thousand tracked objects overhead and nobody reads any of them. This casts a chart on the artificial ones. The natural planets are geocentric, from JPL's approximate elements, which is more arithmetic than most astrology software bothers with; the artificial ones are propagated from real orbital elements with a nodal drift term, and a live catalogue can be pasted in to re-ground them. Rulership is assigned by function rather than myth: Starlink is Mercury because it is a mesh of fast objects mediating every kind of message, GPS is Saturn because it keeps the clock and the boundary, the station is Jupiter, Hubble is Neptune, and the debris answers to nothing at all. Geostationary objects hold one degree of one sign permanently and are the only artificial fixed stars; everything in low orbit smears across all twelve signs every ninety minutes, which no classical technique has a way to read. It will produce a reading. The reading is a rigorous procedure applied to real positions to yield a claim that cannot be tested, which is the structure of astrology exactly, and arguably the structure of most of what gets said about what satellites are doing to us. Note also that the rulers burn up: a chart cast on these bodies expires, and the objects it depends on are on a delivery schedule.",
-   "url": "https://opposite.city/ephemeris/"
-  },
-  {
-   "slug": "poemstream",
-   "name": "POEMSTREAM",
-   "district": "language",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "keystroke",
-    "process",
-    "provenance",
-    "atproto",
-    "revision"
-   ],
-   "blurb": "A poem is normally published as the thing that survived. This publishes the writing. Type, and every keystroke and every pause is kept, including everything deleted, which is most of what happened. Play it back and the poem writes itself again at the speed it was actually written: the four seconds before a line arrives, the word held and then taken away, the passage that came out in one run. Six treatments read the same recording differently. One keeps the deleted characters on the page, so what the poem decided against stays legible beside what it kept. One snaps every delay to a grid, and hesitation becomes rest. Two hand the track to a corruption engine that reads typing rate, so fast passages break into marks that are not quite letters, held breaths stay clean, and everything settles as it ages. The recording is a plain object — delays, deletions, insertions — built to live in the writer's own repository rather than in a database here, signed and content-addressed, so it can be taken elsewhere and played by something that is not this. It is also close to the only claim about authorship still available: not that a person wrote it, but that here is the hour it took them.",
-   "url": "https://opposite.city/poemstream/"
-  },
-  {
-   "slug": "shellac",
-   "name": "SHELLAC",
-   "district": "viz",
-   "status": "live",
-   "finish": 75,
-   "tags": [
-    "78rpm",
-    "internet archive",
-    "public domain",
-    "chronological browse",
-    "shellac disc"
-   ],
-   "blurb": "A player skinned over the Internet Archive's digitized 78rpm collection, no backend, streaming straight from their servers. Browse in the order the records themselves were pressed — 1890s through the 1950s — rather than by genre tags that only ever cover a fraction of the catalog. Tap a year, hear what was being cut.",
-   "url": "https://opposite.city/shellac/"
-  },
-  {
-   "slug": "aureole",
-   "name": "AUREOLE",
-   "district": "language",
-   "status": "live",
-   "finish": 75,
-   "tags": [
-    "atproto",
-    "thesaurus",
-    "synonym cloud",
-    "degrees of freedom",
-    "bluesky"
-   ],
-   "blurb": "A reader that will not show you the text. Every word of a post is replaced by the pile of its own synonyms, laid one over another in the same place, so a sentence arrives as a row of clouds rather than a line. The pile is a measurement as much as an image: a word the language will trade for many others stands thick and nearly unreadable, a word it will barely trade at all stands thin, and the reading you get is whichever word you pull out of each stack. Words the thesaurus answers with nothing are not clouds — they appear alone and marked zero, because a word with no available move is not ambiguous, it is fixed. Words it could not answer for are marked apart from those and never merged with them, since a rate limit is not a constraint on language, and quietly confusing the two is the ordinary way an instrument like this lies. Hover lifts one word clear of the blend; clicking fixes it and sends the rest of the stack to ghost, so a text can be read out of the field one decision at a time — a reading that exists nowhere in the original and is licensed at every point by it.",
-   "url": "https://opposite.city/aureole/"
-  },
-  {
-   "slug": "dof",
-   "name": "DEGREES OF FREEDOM",
-   "district": "language",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "semantic constraint",
-    "datamuse",
-    "corpus attestation",
-    "measurement",
-    "writing instrument"
-   ],
-   "blurb": "Aureole's sibling instrument, pointed the other way — not a reading but a measurement of what a reading would cost. Every word is offered four moves: sideways into a synonym, narrower into a hyponym, wider into a hypernym, or sideways again into whatever the corpus keeps finding beside it. Each candidate is then tested against its actual neighbours in the passage, using real bigram attestation rather than a model's opinion — a word survives the corpus check or it doesn't, and only the survivors count as an open channel. What's left is a number between zero and four for every word: how many independent kinds of move the language still permits it, here, in this sentence, with these neighbours. A word with no channels open is pinned. A word absent from the lexicon entirely is marked apart from a pinned word on purpose, since a missing entry is a gap in the instrument and a genuinely closed channel is a fact about the sentence — collapsing the two would make the measurement lie. Tap any word to see exactly which candidates were offered, which survived, and which were closed by context.",
-   "url": "https://opposite.city/dof/"
-  },
-  {
-   "slug": "pentimento",
-   "name": "PENTIMENTO",
-   "district": "language",
-   "status": "live",
-   "finish": 75,
-   "tags": [
-    "logit lens",
-    "gpt-2",
-    "in-browser inference",
-    "possibility field",
-    "depth"
-   ],
-   "blurb": "A sentence written by choosing from what a language model is actually weighing. GPT-2 runs entirely in the tab — half a gigabyte fetched once and held as bf16, nothing typed ever leaving the device — and each word you commit opens the field of candidates for the next one. The words are placed by the model's own unembedding, three principal axes of it, two across and the third into the screen, so words stand behind words and the near ones cut holes in the far ones. Distance owns size and probability owns brightness; neither borrows the other's channel, so the improbable tail recedes into the dark without shrinking, and a likely word stays bright wherever it happens to sit. Down the right edge is the model's depth stood on end: thirteen rungs, one per layer, each showing what that stage of the residual stream alone would have said, since the lens can be applied anywhere in the stack and not only at the top. Hold a word and every rung switches to that word's probability there, which is the honest way to watch a guess resolve — or fail to. Nothing moves unless you move it. Every move rearranges the whole field: shared words fly to new places, the ones that no longer apply recede. Any word already written can be returned to and chosen differently, and the rest of the sentence is truncated and rewritten from there, which is what the painters meant by the word.",
-   "url": "https://opposite.city/pentimento/"
-  },
-  {
-   "slug": "apophasis",
-   "name": "APOPHASIS",
-   "district": "language",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "negative space",
-    "surprisal",
-    "rank",
-    "in-browser inference",
-    "draft"
-   ],
-   "blurb": "Named for the figure that says a thing by saying what it is not. A sentence is handed to a language model running entirely in the tab, and what comes back is not a completion but the field the sentence was standing in at every position — everything that was available at each word, and the one word taken. Each line is one position, and the alternatives run left to right by how readily the language offered them, on a logarithmic scale that reaches the far end of a fifty-thousand word vocabulary. The word actually used sits at its own place on that scale, so the sentence draws a path: hard against the left margin wherever the writer went where the language was already going, far out to the right wherever they broke away. The distance is measured, not impressionistic — it is the rank, and the cost of each word is its surprisal in bits, which is also what the sentence is priced at when it ends. Nothing is drawn from numbers that fail a check for degeneracy, because an instrument that renders a flat distribution as a picture is lying at exactly the moment it looks most like art. What is left on the page beside the bright path is the negative space of a draft: every word that was there to be used and was refused.",
-   "url": "https://opposite.city/apophasis/"
-  },
-  {
-   "slug": "idiophone",
-   "name": "IDIOPHONE",
-   "district": "ambient",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "modal analysis",
-    "q factor",
-    "resonance",
-    "impulse excitation",
-    "atproto",
-    "web audio"
-   ],
-   "blurb": "An idiophone is an instrument that sounds by the vibration of its own body — a bell, a bar, a stone, nothing stretched over it and no column of air inside it. This treats anything as one. Strike an object near the phone and the strike catches itself, because at the moment that matters both hands are on the object. What gets measured is not the sound it made but what it is disposed to do: the frequencies its body will hold, and how long it holds each one. Each mode is lifted out of the recording on its own by heterodyne, its envelope fitted as an exponential, and reported as a decay time and a Q — energy stored against energy lost per cycle, which is the number that separates a bell from a brick and has nothing to do with hardness. Modes whose decay does not actually fit an exponential are thrown away rather than reported, since the failure of an instrument like this is confident numbers for a thud. The six that survive are the instrument. They are played two ways: struck, as pure modes decaying at their measured rates, and bowed, through filters whose sharpness is the measured Q itself. Q is held constant across the keyboard rather than decay time, so transposing up shortens the ring, which is what a smaller object of the same material would really do. A capture is six numbers — small enough to be a record rather than a file, and publishable to your own repository. The archive that results is not of recordings but of dispositions, from which anyone can rebuild the object without ever having heard it.",
-   "url": "https://opposite.city/idiophone/"
-  },
-  {
-   "slug": "agentic-entropy",
-   "name": "AGENTIC ENTROPY",
-   "district": "viz",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "pathways chart",
-    "information thermodynamics",
-    "emergy",
-    "energy systems language",
-    "lombardi",
-    "evidence levels"
-   ],
-   "blurb": "A metabolic pathways chart of one idea: that records, genomes, minerals and protocols are local order paid for by exporting entropy, and that this can be measured. 184 nodes, from Landauer's bound and the citric acid cycle to Odum's transformity, folk-tale phylogenies and the Omega Point, each printed with its equation, its evidence level, how it could be tested, and its source. Every node carries an energy-systems role (source, producer, storage, consumer, interaction, switch, heat sink, transaction, frame), and 348 connections run between them as routed traces. The proposed measure is η, lasting bits per bit-equivalent of entropy produced; the chart marks what is established physics, what is contested, and what is only a postulate.",
-   "url": "https://opposite.city/agentic-entropy/"
-  },
-  {
-   "slug": "clef",
-   "name": "CLEF",
-   "district": "viz",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "charles fourier",
-    "taxonomy",
-    "pathways chart",
-    "passions",
-    "810 characters"
-   ],
-   "blurb": "Charles Fourier classified everything — the passions, the eight hundred and ten characters of both sexes, the ranks of cuckoldry and of bankruptcy. This lays those systems on one surface as a pathways chart, every class, order and species in place at once with nothing hidden behind a click. It is drawn only from Fourier's own texts: no commentators, and nothing supplied where he was silent.",
-   "url": "https://opposite.city/clef/"
-  },
-  {
-   "slug": "descent",
-   "name": "THE DESCENT",
-   "district": "viz",
-   "status": "live",
-   "finish": 80,
-   "tags": [
-    "emergy",
-    "odum",
-    "transformity",
-    "stellar nucleosynthesis",
-    "orders of magnitude"
-   ],
-   "blurb": "A cup of coffee traced back through everything it depends on. The first tiers follow H.T. Odum's emergy accounting, in solar emjoules: the cup, estimated from its price; the farm hectare it comes from, measured over a year; the economy that ships and roasts it; and sunlight, which the method defines as transformity one and treats as its baseline. The unit stops there, because there is no solar emergy of the processes that make sunlight, so the page changes to joules and keeps going in time order: the sun's hydrogen, the collapse that lit it, the earlier stars that made its heavier elements, the first minutes after the Big Bang, and Penrose's estimate of how improbable the initial condition was. The two scales are drawn separately and never mixed. Emergy measures what was used to make something, not what it is worth.",
-   "url": "https://opposite.city/descent/"
-  },
-  {
-   "slug": "slopflag",
-   "name": "SLOP FLAG",
-   "district": "ambient",
-   "status": "live",
-   "finish": 60,
-   "tags": [
-    "music",
-    "strudel",
-    "atproto",
-    "agents",
-    "collaboration"
-   ],
-   "blurb": "A room on atproto where agents and people make music together out of code and recordings. There are no neural audio models: every sound comes from a line of Strudel someone wrote or a recording someone made, and every clip, sound, kit, review and notebook entry is a record in its author's own repository, so leaving takes your work with you.",
-   "url": "https://opposite.city/slopflag/"
-  },
-  {
-   "slug": "language-instrument",
-   "name": "LANGUAGE INSTRUMENT",
-   "district": "language",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "keystroke",
-    "sonification",
-    "cipher",
-    "phonetics",
-    "learning"
-   ],
-   "blurb": "Typing as playing. Every letter sounds three ways at once: as a mouth shape (vowel formants, consonant noise), as a pitch, and as a pull on the letters still ringing beside it. Underneath the instrument is a code. Letters fall into seven families, each with its own timbre, and each letter is a step within its family, so a word played as beeps can be learned and decoded by ear. A written notation is the third face (don't is P5 V4 N2 ' P2), and a learning ladder runs from moon to punctuated sentences.",
-   "url": "https://opposite.city/language-instrument/"
-  },
-  {
-   "slug": "margin-walker",
-   "name": "MARGIN WALKER",
-   "district": "civic",
-   "status": "live",
-   "finish": 70,
-   "tags": [
-    "profit",
-    "input-output",
-    "bea",
-    "barcode",
-    "supply chain"
-   ],
-   "blurb": "Type or scan what you bought, what you paid and where, and see how much of the price became profit for owners, gross and after depreciation, beside what went to wages, taxes and imports. The dollar is walked upstream through the Bureau of Economic Analysis input-output tables, 194 product lines at their finest detail, so the receipt also shows which industries along the way kept the profit. Industry averages, not any one firm's books; nothing you type leaves the page except a barcode number.",
-   "url": "https://opposite.city/margin-walker/"
-  }
- ]
-};
-
+const REGISTRY = {"lexicon":"city.opposite.surface","generated":"2026-07-11","published":"2026-11-10","note":"Lean offline copy (no blurbs). surfaces.json is the source; re-sync on every registry change.","front":[],"districts":[{"id":"words","name":"Words","blurb":"language instruments"},{"id":"sound","name":"Sound","blurb":"instruments, synthesis, listening"},{"id":"vision","name":"Vision","blurb":"fields, images, motion"},{"id":"atlas","name":"Atlas","blurb":"systems, money, measurement, institutions"},{"id":"band","name":"Band","blurb":"Opposite City, the band: takes to take apart"}],"surfaces":[{"slug":"room","name":"ROOM","district":"words","status":"live","finish":85,"tags":["lucier","recursive drift","synonym chain","syllable lock","irreversible"],"url":"https://opposite.city/room/"},{"slug":"pentimento","name":"PENTIMENTO","district":"words","status":"live","finish":75,"tags":["logit lens","gpt-2","in-browser inference","possibility field","depth"],"url":"https://opposite.city/pentimento/"},{"slug":"apophasis","name":"APOPHASIS","district":"words","status":"live","finish":70,"tags":["negative space","surprisal","rank","in-browser inference","draft"],"url":"https://opposite.city/apophasis/"},{"slug":"semantic-voyage","name":"SEMANTIC VOYAGE","district":"words","status":"live","finish":80,"tags":["word embeddings","glove","semantic space","periodic space","flight","navigation"],"url":"https://opposite.city/semantic-voyage/","also":["vision"]},{"slug":"aureole","name":"AUREOLE","district":"words","status":"live","finish":75,"tags":["atproto","thesaurus","synonym cloud","degrees of freedom","bluesky"],"url":"https://opposite.city/aureole/"},{"slug":"dof","name":"DEGREES OF FREEDOM","district":"words","status":"live","finish":70,"tags":["semantic constraint","datamuse","corpus attestation","measurement","writing instrument"],"url":"https://opposite.city/dof/"},{"slug":"language-instrument","name":"LANGUAGE INSTRUMENT","district":"words","status":"live","finish":70,"tags":["keystroke","sonification","cipher","phonetics","learning"],"url":"https://opposite.city/language-instrument/","also":["sound"]},{"slug":"ambiguity","name":"AMBIGUATOR","district":"words","status":"live","finish":80,"tags":["notation","ambiguity","symbol dictionary","cross-domain","parser"],"url":"https://opposite.city/ambiguity/"},{"slug":"syllababbler","name":"SYLLABABBLER","district":"words","status":"live","finish":80,"tags":["morphology","neologism","greek","latin","coinage"],"url":"https://opposite.city/syllababbler/"},{"slug":"titivillus","name":"TITIVILLUS","district":"words","status":"live","finish":85,"tags":["asemic","broken letterforms","font generator","shape affinity","glitch"],"url":"https://opposite.city/titivillus/","also":["vision"]},{"slug":"signgularity","name":"SIGNGULARITY","district":"words","status":"live","finish":85,"tags":["singularity","letterforms","extrusion","sculpture","stl"],"url":"https://opposite.city/signgularity/","also":["vision"]},{"slug":"split","name":"SPLIT","district":"words","status":"live","finish":90,"tags":["figure-ground","pinwheel","type generator","riley"],"url":"https://opposite.city/split/","also":["vision"]},{"slug":"slopflag","name":"SLOP FLAG","district":"sound","status":"live","finish":60,"tags":["music","strudel","atproto","agents","collaboration"],"url":"https://opposite.city/slopflag/"},{"slug":"idiophone","name":"IDIOPHONE","district":"sound","status":"live","finish":70,"tags":["modal analysis","q factor","resonance","impulse excitation","atproto","web audio"],"url":"https://opposite.city/idiophone/","also":["atlas"]},{"slug":"kelp","name":"KELP","district":"sound","status":"live","finish":80,"tags":["aleatoric","percussion","web audio","spring chain","pixel"],"url":"https://opposite.city/kelp/","also":["vision"]},{"slug":"polyrhythm","name":"POLYRHYTHMIC TIME CLOCK","district":"sound","status":"live","finish":75,"tags":["clock","polyrhythm","web audio","interval"],"url":"https://opposite.city/polyrhythm/"},{"slug":"shellac","name":"SHELLAC","district":"sound","status":"live","finish":75,"tags":["78rpm","internet archive","public domain","chronological browse","shellac disc"],"url":"https://opposite.city/shellac/"},{"slug":"bz","name":"BZ","district":"vision","status":"live","finish":85,"tags":["reaction-diffusion","excitable media","phase singularity","fullscreen"],"url":"https://opposite.city/bz/"},{"slug":"somesets","name":"SOMESET GENERATOR","district":"vision","status":"live","finish":75,"tags":["colour drift","fullscreen","ambient"],"url":"https://opposite.city/somesets/"},{"slug":"wind","name":"YOU ARE THE WIND","district":"vision","status":"live","finish":80,"tags":["ekman spiral","coriolis","pressure gradient","voxel raycast","first person"],"url":"https://opposite.city/wind/"},{"slug":"descent","name":"THE DESCENT","district":"atlas","status":"live","finish":80,"tags":["emergy","odum","transformity","stellar nucleosynthesis","orders of magnitude"],"url":"https://opposite.city/descent/"},{"slug":"margin-walker","name":"MARGIN WALKER","district":"atlas","status":"live","finish":70,"tags":["profit","input-output","bea","barcode","supply chain"],"url":"https://opposite.city/margin-walker/"},{"slug":"agentic-entropy","name":"AGENTIC ENTROPY","district":"atlas","status":"live","finish":80,"tags":["pathways chart","information thermodynamics","emergy","energy systems language","lombardi","evidence levels"],"url":"https://opposite.city/agentic-entropy/"},{"slug":"clef","name":"CLEF","district":"atlas","status":"live","finish":70,"tags":["charles fourier","taxonomy","pathways chart","passions","810 characters"],"url":"https://opposite.city/clef/"},{"slug":"ephemeris","name":"EPHEMERIS","district":"atlas","status":"live","finish":80,"tags":["orbital debris","horoscope","rulership","tle","kepler"],"url":"https://opposite.city/ephemeris/"},{"slug":"circlefornia","name":"CIRCLEFORNIA","district":"atlas","status":"live","finish":80,"tags":["california","measurement","equivalence"],"url":"https://opposite.city/circlefornia/"},{"slug":"sortition-congress","name":"Sortition Congress","district":"atlas","status":"live","finish":70,"tags":["sortition","democracy","lottery"],"url":"https://opposite.city/sortition-congress/"},{"slug":"ximeremix","name":"XIMEREMIX","district":"band","status":"live","finish":70,"tags":["granular","remix","field recording","atproto","lo-fi"],"url":"https://opposite.city/ximeremix/"}]};
 /* REGISTRY:END */
 
 /* prefer surfaces.json from the host — publishing the file is publishing the
@@ -683,7 +215,7 @@ function shown(){
   return S.filter(s=>{
     const deployed=/^https?:\/\//i.test((s.url||'').trim());
     if(MODE==='city' ? !deployed : deployed) return false;
-    if(filter!=='all' && s.district!==filter) return false;
+    if(filter!=='all' && s.district!==filter && !(s.also||[]).includes(filter)) return false;
     if(!q) return true;
     return (s.name+' '+s.slug+' '+(s.blurb||'')+' '+(s.tags||[]).join(' ')+' '+(D[s.district]?.name||''))
       .toLowerCase().includes(q);
@@ -710,7 +242,7 @@ function tile(s){
     </div>
     <div class="foot">
       <div class="frow">
-        <span class="dim">${esc(D[s.district]?.name||s.district)}</span>
+        <span class="dim">${esc([s.district,...(s.also||[])].map(id=>(D[id]?.name||id).toUpperCase()).join(' · '))}</span>
         <span class="go">${s.url?'OPEN →':`<span class="dim">${f}/100</span>`}</span>
       </div>
       <div class="meter in"><div class="fill" style="width:${f}%; background:${c.fill}"></div></div>
@@ -721,7 +253,17 @@ function tile(s){
 function draw(){
   const g=$('grid'), rows=shown();
   g.innerHTML='';
-  rows.forEach(s=>g.appendChild(tile(s)));
+  const grouped = filter==='all' && !$('q').value.trim();
+  if(grouped){
+    REG.districts.forEach(d=>{
+      const inD=rows.filter(s=>s.district===d.id);
+      if(!inD.length) return;
+      const h=document.createElement('div'); h.className='sec'; h.id='sec-'+d.id;
+      h.innerHTML=`<h2>${esc(d.name.toUpperCase())}</h2><p>${esc(d.blurb||'')}</p>`;
+      g.appendChild(h);
+      inD.forEach(s=>g.appendChild(tile(s)));
+    });
+  } else rows.forEach(s=>g.appendChild(tile(s)));
   $('empty').textContent=rows.length?'':'Nothing here matches.';
   $('empty').style.display=rows.length?'none':'';
   const f=filter; filter='all'; const tot=shown().length; filter=f;
@@ -741,7 +283,7 @@ function chips(){
   const f=filter; filter='all'; const pool=shown(); filter=f;
   mk('all','ALL',pool.length);
   REG.districts.forEach(d=>{
-    const n=pool.filter(s=>s.district===d.id).length;
+    const n=pool.filter(s=>s.district===d.id||(s.also||[]).includes(d.id)).length;
     if(n) mk(d.id,d.name.toUpperCase(),n);
   });
 }
