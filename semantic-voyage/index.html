@@ -156,8 +156,9 @@ setTimeout(function(){
   </div>
 </div>
 
+<style>@media (min-width:641px){ #hint .ph{display:none} }</style>
 <div id="hint">
-  hold to fly &middot; tap a word to jump &middot; drag to turn<br>
+  hold to fly &middot; tap a word to jump &middot; drag to turn<span class="ph"> or tip the phone</span><br>
   no up, no edge, no end<br>
   search nothing to be dropped elsewhere<br>
   <span class="b">build 19</span>
@@ -1246,6 +1247,46 @@ function bindInput(){
   });
   /* a key released in another window never sends keyup here */
   addEventListener('blur', () => { keyThrust = thrust = keyTurn = keyTilt = 0; });
+
+  /* THE PHONE IS A WINDOW. Tip it, turn it, raise it overhead, and the
+     view turns with it, so on a phone tilt needs no gesture at all.
+     Only the change since the last reading is applied, about the
+     camera's own axes like a drag, so the two add up and neither one
+     snaps the view to where the phone happens to point. iOS asks the
+     viewer first, and can only ask from inside a touch. */
+  if (MOBILE && 'DeviceOrientationEvent' in window){
+    const _de = new THREE.Euler(), _dn = new THREE.Quaternion(), _dp = new THREE.Quaternion();
+    const BACK = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+    const AX_Z = new THREE.Vector3(0,0,1), _do = new THREE.Quaternion();
+    const RAD = Math.PI / 180;
+    let have = false;
+    const screenAngle = () => ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * RAD;
+    const onTurn = e => {
+      if (e.alpha == null || e.beta == null || e.gamma == null) return;
+      _de.set(e.beta * RAD, e.alpha * RAD, -e.gamma * RAD, 'YXZ');
+      _dn.setFromEuler(_de).multiply(BACK).multiply(_do.setFromAxisAngle(AX_Z, -screenAngle()));
+      /* a reading that leaps (the sensor waking, the screen rotating)
+         is a restart, not a turn */
+      if (have && !jump.on && _dp.angleTo(_dn) < 0.5){
+        _dq.copy(_dp).invert().multiply(_dn);
+        cam.quat.multiply(_dq).normalize();
+      }
+      _dp.copy(_dn); have = true;
+    };
+    const listen = () => addEventListener('deviceorientation', onTurn);
+    const reset = () => { have = false; };
+    addEventListener('orientationchange', reset);
+    if (screen.orientation) screen.orientation.addEventListener('change', reset);
+    if (typeof DeviceOrientationEvent.requestPermission === 'function'){
+      const ask = () => {
+        removeEventListener('touchend', ask);
+        DeviceOrientationEvent.requestPermission()
+          .then(s => { if (s === 'granted') listen(); })
+          .catch(() => {});
+      };
+      addEventListener('touchend', ask);
+    } else listen();
+  }
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth/innerHeight;

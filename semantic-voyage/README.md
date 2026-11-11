@@ -27,6 +27,7 @@ Words never move. The viewer moves only while steering, and stops on release.
 - ← →: turn
 - Shift + ↑ ↓: tilt
 - drag: turn and tilt
+- on a phone, tip and turn the phone: the view turns with it
 - tap a word: jump to it
 - N, or an empty search: drop in somewhere else
 

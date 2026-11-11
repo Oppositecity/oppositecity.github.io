@@ -88,8 +88,9 @@ deciding it.
 - [x] `semantic-voyage/`: make flight and drift much slower. Stop the layout
   rearranging words around the viewer (the near-field correction toward
   measured distances). Words stay where they are.
-  - [ ] Revisit: a better way to tilt up and down. Today it is drag, or
+  - [x] Revisit: a better way to tilt up and down. Today it is drag, or
     Shift + up/down on a keyboard; there is nothing on a phone besides drag.
+    On a phone the view now also turns as the phone itself is tipped.
 - [x] `apophasis/`: fix page margins and the spacing of the word field so
   alternatives do not crowd or collide, on phone and on laptop.
 - [x] `room/`: desktop and laptop layout pass. It was built for a phone;
