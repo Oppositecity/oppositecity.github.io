@@ -460,7 +460,7 @@ var FONT='"Courier Prime","Courier New",monospace';
 var worker=null,ready=false,cfg=null,map=null,names=null;
 var steps=[],toks=[],promptLen=0,busy=false,runId=0,aim=null,pendingId=-1,hinted=false;
 var view=0,trans=null,dirty=true,readKey='',ladKey='',lineKey='';
-var K=4200,N=coarse?1500:2200,HOLD=4;
+var K=4200,N=2000,HOLD=4;
 var W=0,H=0,DPR=1,SDPR=1,CX=0,CY=0;
 
 // ---- the band ----
@@ -468,10 +468,13 @@ var W=0,H=0,DPR=1,SDPR=1,CX=0,CY=0;
 // axes of the unembedding give each word a bearing — one all the way round, one
 // a little above to a little below the eyeline — and the third sets how far off
 // it stands. A sphere has poles, and a pole is both a fixed point you rotate
-// around and the place a lat/long layout falls apart; a band has neither. The
-// band is sized to the screen so every word in it can be reached by turning.
+// around and the place a lat/long layout falls apart; a band has neither.
+// The band is the same on every device: one height, one angular size per word,
+// one count, so a phone and a laptop lay out the same field. The screen is a
+// window onto it, scaled so the band fills the height; a narrow screen shows a
+// narrower slice and you turn to see the rest.
 var RNEAR=480,RFAR=1500,RREF=Math.sqrt(RNEAR*RFAR);
-var HFOV=1.05,ELMAX=0.5,FOC=1,WS=1,BASEF=coarse?15:17;
+var ELMAX=0.42,FOC=1,BASEF=16,FOCREF=860,WS=BASEF*RREF/FOCREF;
 var yaw=0,vyaw=0,glide=false;
 
 // ---- the layer axis ----
@@ -511,9 +514,10 @@ function begin(){
 
 function measure(){
   CX=W/2;CY=H/2;
-  FOC=W/(4*Math.tan(HFOV/4));
-  ELMAX=Math.min(0.72,2*Math.atan(H/(4*FOC))*0.90);
-  WS=BASEF*RREF/FOC;
+  // stereographic: the band's edge sits at 2*FOC*tan(ELMAX/2) from centre;
+  // fit it to 90% of the height, within limits that keep words readable
+  FOC=H*0.9/(4*Math.tan(ELMAX/2));
+  if(FOC<700)FOC=700;if(FOC>1100)FOC=1100;
   PERLAYER=Math.max(38,H/14);
   if(hintEl)hintEl.style.bottom=((document.getElementById('line').offsetHeight||44)+34)+'px';
 }
@@ -1008,9 +1012,9 @@ cv.addEventListener('pointermove',function(e){
     aim=null;drag=down;ladKey='';
   }
   if(down.axis===1){
-    yaw=down.yaw-dx*(HFOV/W);wrapYaw();
+    yaw=down.yaw-dx/FOC;wrapYaw();
     var now=performance.now(),ddt=Math.max(8,now-down.lt);
-    vyaw=-(e.clientX-down.lx)/ddt*1000*(HFOV/W);
+    vyaw=-(e.clientX-down.lx)/ddt*1000/FOC;
     down.lx=e.clientX;down.lt=now;
   }else if(down.axis===2){
     depth=down.depth+(down.y-e.clientY)/PERLAYER;
