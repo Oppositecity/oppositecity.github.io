@@ -20,8 +20,9 @@
   html,body{margin:0;background:var(--bg);color:var(--taken)}
   body{
     font-family:'Courier Prime','Courier New',Courier,monospace;
-    font-size:15px;line-height:1.5;padding:20px 14px 48px;
-    max-width:900px;margin:0 auto;overflow-x:hidden;
+    font-size:15px;line-height:1.5;
+    padding:32px max(clamp(16px, 5vw, 56px), env(safe-area-inset-right)) 56px max(clamp(16px, 5vw, 56px), env(safe-area-inset-left));
+    max-width:1000px;margin:0 auto;overflow-x:hidden;
   }
   h1{font-size:15px;font-weight:700;letter-spacing:.6em;margin:0 0 6px}
   .sub{margin:0 0 8px;color:var(--quiet);font-size:13px;max-width:50ch}
@@ -41,8 +42,8 @@
   #status{min-height:20px;color:var(--quiet);font-size:13px}
 
   #sheet{margin:18px 0 10px;position:relative}
-  .row{position:relative;height:58px}
-  .w{position:absolute;white-space:nowrap;color:var(--declined);transition:opacity .5s ease}
+  .row{position:relative;margin-bottom:22px}
+  .w{position:absolute;white-space:nowrap;line-height:1;color:var(--declined);transition:opacity .5s ease}
   .w.far{color:var(--far)}
   .w.taken{font-weight:700;color:var(--taken)}
   .row.enter .w{opacity:0}
@@ -52,9 +53,8 @@
   .hidden{display:none}
   @media (prefers-reduced-motion:reduce){ .w{transition:none!important} }
   @media (max-width:420px){
-    body{padding:16px 11px 40px}
+    body{padding-top:20px;padding-bottom:40px}
     h1{letter-spacing:.46em}
-    .row{height:54px}
   }
 </style>
 </head>
@@ -62,7 +62,7 @@
 
 <h1>APOPHASIS</h1>
 <p class="sub">A sentence shown as the words it declined.</p>
-<p class="axis">Each line is one position. The alternatives run left to right by how readily the language offered them — nearest the left margin is what it wanted most. The bright word is the one taken. Read the bright words downward and you are reading the sentence; read how far right they sit and you are reading how far it departed.</p>
+<p class="axis">Each line is one position. The bright word is the one taken; around it, the words the language offered instead, the likeliest closest. Read the bright words downward and you are reading the sentence; read how far right they sit and you are reading how far it departed.</p>
 
 <textarea id="src" spellcheck="false">The river remembers a shape the water has already forgotten.</textarea>
 <button id="go">Reconstruct</button>
@@ -216,23 +216,75 @@ function drawRow(i){
   if (hit) hit.rank = st.rank;
   else items.push({ id: st.actual, text: st.word, rank: st.rank, p: Math.pow(2, -st.bits), taken:true });
 
-  const lanes = [8, 30, 72, 90];
+  /* The taken word sits where its rank puts it, left to right, so the
+     bright path still reads as how far the sentence departed. Its
+     alternatives cloud around it: the likeliest are placed first and
+     take the spots nearest the word, the rest spread outward until
+     there is no room, and the faintest are left out rather than drawn
+     on top of one another. Nearness to the word is how readily the
+     language offered the alternative. */
+  const W = sheet.clientWidth, narrow = W < 520;
+  const LANES = narrow ? 5 : 7, LH = narrow ? 21 : 22, GAP = narrow ? 7 : 10;
+  const mid = LANES >> 1;
+  const R = Math.min(W * (narrow ? 0.34 : 0.26), 300);   // how far a cloud reaches
+  const SQUASH = 2.2;                                    // lanes are short; clouds read wide
+  row.style.height = (LANES * LH) + 'px';
+  sheet.appendChild(row);
+
+  items.sort((a, b) => (b.taken - a.taken) || (a.rank - b.rank));
+  const used = Array.from({ length: LANES }, () => []);
+  const free = (lane, x) => (w => used[lane].every(([a, b]) => x + w + GAP <= a || x >= b + GAP));
+
+  /* the nearest place on a lane where a word of width w fits, aiming
+     for left edge x0: the aim itself, or just beside something already there */
+  const nearestOnLane = (lane, x0, w) => {
+    const opts = [x0];
+    for (const [a, b] of used[lane]) opts.push(b + GAP, a - GAP - w);
+    let best = null;
+    for (const x of opts){
+      if (x < 0 || x + w > W || !free(lane, x)(w)) continue;
+      if (best === null || Math.abs(x - x0) < Math.abs(best - x0)) best = x;
+    }
+    return best;
+  };
+
+  let cx = 0;
   for (const c of items){
     const el = document.createElement('span');
     el.className = 'w' + (c.taken ? ' taken' : c.rank > 16 ? ' far' : '');
     el.textContent = show(c.text);
-    el.style.left = (atRank(c.rank) * 93).toFixed(2) + '%';
-    el.style.top = (c.taken ? 50 : lanes[(c.id*7 + c.rank*3) % lanes.length]) + '%';
-    el.style.fontSize = (c.taken ? 17 : 11 + 8*Math.pow(c.p,.3)).toFixed(1) + 'px';
+    el.style.fontSize = (c.taken ? (narrow ? 16 : 17) : (narrow ? 10 + 6*Math.pow(c.p,.3) : 11 + 8*Math.pow(c.p,.3))).toFixed(1) + 'px';
     if (c.taken) el.style.color = heat(st.bits);
     else el.style.opacity = (0.45 + 0.55*Math.pow(c.p,.25)).toFixed(2);
     el.title = c.taken
       ? show(c.text) + ' — taken at rank ' + c.rank.toLocaleString() + ', ' + st.bits.toFixed(1) + ' bits'
       : show(c.text) + ' — rank ' + c.rank + ', ' + (c.p*100).toFixed(1) + '%';
     row.appendChild(el);
+
+    const w = el.offsetWidth;
+    let lane, x;
+    if (c.taken){
+      /* rank sets the centre, inset so the cloud has room on both sides */
+      const span = Math.max(W - 2*R, 0);
+      cx = Math.min(Math.max(R + atRank(c.rank) * span, w/2), W - w/2);
+      lane = mid; x = cx - w/2;
+    } else {
+      let bestD = Infinity;
+      lane = -1;
+      for (let l = 0; l < LANES; l++){
+        const xl = nearestOnLane(l, cx - w/2, w);
+        if (xl === null) continue;
+        const dx = Math.abs(xl + w/2 - cx), dy = Math.abs(l - mid) * LH * SQUASH;
+        const d = Math.hypot(dx, dy);
+        if (d < bestD){ bestD = d; lane = l; x = xl; }
+      }
+      if (lane < 0 || bestD > R + w/2){ el.remove(); continue; }
+    }
+    used[lane].push([x, x + w]);
+    el.style.left = x.toFixed(1) + 'px';
+    el.style.top = (lane * LH + (LH - el.offsetHeight) / 2).toFixed(1) + 'px';
   }
 
-  sheet.appendChild(row);
   requestAnimationFrame(() => row.classList.remove('enter'));
   row.scrollIntoView({ block:'nearest', behavior:'smooth' });
 }
@@ -247,7 +299,7 @@ function coda(){
     total.toFixed(0) + ' bits to say. ' + first + ' of ' + seq.length +
     ' words were the one the language wanted first. The furthest departure was <b>' +
     show(worst.word) + '</b>, ranked ' + worst.rank.toLocaleString() +
-    '. Everything to the right of the bright path was available and refused.';
+    '. Everything around the bright path was available and refused.';
 }
 
 /* ---------------- transport ---------------- */
@@ -280,6 +332,16 @@ $('#go').addEventListener('click', () => {
   sheet.innerHTML = ''; codaEl.textContent = ''; seq = null;
   controls.classList.add('hidden');
   ensureWorker().postMessage({ text });
+});
+
+/* positions are in pixels, so a new width lays the drawn rows out again */
+let resizeT = 0, lastW = sheet.clientWidth;
+addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    if (!seq || sheet.clientWidth === lastW) return;
+    lastW = sheet.clientWidth; redraw(idx);
+  }, 150);
 });
 
 addEventListener('keydown', e => {
