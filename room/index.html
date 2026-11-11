@@ -366,14 +366,14 @@ function fresh(text){
 // letters, all in the same face, so every one is the width of a letter
 const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
 const SHIMMER = 10;  // glyph changes per second
-const CROSS = 0.17;  // half-width of a word's crossing, as a share of a pass
-const BLUR = 0.18;   // em, at the height of the crossing
+const CROSS = 0.3;   // half-width of a word's crossing, as a share of a pass
+const BLUR = 0.32;   // em, at the height of the crossing
 // What does not change settles into one faint softness and stays there:
 // the walls over the first few passes, and a drifting word the room
 // cannot answer while it waits. A word the room answers arrives sharp,
 // so sharpness always means just answered.
-const PULSE = 0.025; // em, how far an unchanged word blurs as a pass goes by
-const WEAR = 0.045;  // em, the one level of softness everything still settles at
+const PULSE = 0.06;  // em, how far an unchanged word blurs as a pass goes by
+const WEAR = 0.08;   // em, the one level of softness everything still settles at
 const WEAR_TAU = 2;  // passes to settle most of the way there
 const wearOf = n => WEAR * (1 - Math.exp(-n / WEAR_TAU));
 let fixed = [];      // per slot: a wall or punctuation, which never changes
@@ -478,7 +478,7 @@ function render(){
     // each word crosses in its own short window of the pass, so it reads
     // as itself, then as its replacement, for most of the pass, and the
     // words of a pass do not all dissolve at once
-    const c = 0.3 + 0.4 * hash(i, 3, 3);
+    const c = CROSS + (1 - 2 * CROSS) * hash(i, 3, 3);
     const k = clamp01(1 - Math.abs(f - c) / CROSS);
     const veil = REDUCED ? 0 : smooth(Math.min(1, k * 1.25));
     const s = slotEls[i], w = f < c ? A[i] : B[i];
@@ -501,9 +501,9 @@ function render(){
 // Anything the viewer does — moving, scrolling, touching, clicking,
 // typing — feeds the room a little. The room spends it slowly, and when
 // the viewer is still it finishes the crossing it is in and rests.
-const PACE = 0.9;     // passes per second, at most
+const PACE = 0.33;    // passes per second, at most
 const DRAIN = 0.8;    // seconds for the feed to fall by about two thirds
-const SETTLE = 0.5;   // passes per second, finishing a crossing alone
+const SETTLE = PACE;  // passes per second, finishing a crossing alone
 const BEGIN = 0.15;   // feed needed to start a new crossing
 
 function loop(t){
