@@ -366,18 +366,18 @@ function fresh(text){
 // letters, all in the same face, so every one is the width of a letter
 const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
 const SHIMMER = 10;  // glyph changes per second
-const BLUR = 0.45;   // em, at the height of the crossing
+const BLUR = 0.28;   // em, at the height of the crossing
 // Every pass blurs every word. A word the room answers comes back sharp
 // as its new self; a drifting word that comes back unchanged keeps some
 // of the blur, and congeals a little further out of focus each time.
-const PULSE = 0.2;   // em, how far an unchanged word blurs as a pass goes by
-const WEAR = 0.42;   // em, the blur a word that never changes approaches
+const PULSE = 0.08;  // em, how far an unchanged word blurs as a pass goes by
+const WEAR = 0.2;    // em, the blur a stuck word approaches
 const WEAR_TAU = 24; // unchanged passes to get about two thirds of the way
 const wearOf = n => WEAR * (1 - Math.exp(-n / WEAR_TAU));
 // The walls do not congeal. Each one floats in and out of sight on its
 // own slow tide, a few passes long, so the sentence's joints come and go.
-const TIDE = 0.5;    // em, the blur at the low point of a wall's tide
-const TIDE_FADE = 0.75;  // how far a wall fades at its low point
+const TIDE = 0.22;   // em, the blur at the low point of a wall's tide
+const TIDE_FADE = 0.5;   // how far a wall fades at its low point
 let fixed = [];      // per slot: a wall or punctuation, which never changes
 let still = [];      // per slot: passes in a row it has come back unchanged
 let moved = new Set();
@@ -501,7 +501,7 @@ function render(){
     const b = (f < .5 ? wearOf(still[i] || 0) : 0) + (REDUCED ? 0 : BLUR * smooth(k));
     s.style.filter = b < .004 ? '' : 'blur(' + b.toFixed(3) + 'em)';
     if(REDUCED) continue;
-    s.style.opacity = (1 - .45 * smooth(k)).toFixed(3);
+    s.style.opacity = (1 - .3 * smooth(k)).toFixed(3);
   }
 }
 
