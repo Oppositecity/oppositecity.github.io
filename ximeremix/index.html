@@ -126,6 +126,13 @@
                    only. the colour of each is the colour of its word.
      ticks (chop)  along the top edge, one for every attack the take
                    was found to contain, taller when struck harder.
+     a freeze      a bar rising from the bottom edge where a moment was
+                   caught and is being held, as tall as it is loud.
+     strings       short runs from the left edge at the height of each
+                   pitch the sympathetic strings are tuned to, as long
+                   as they are being driven.
+     age           where the tape has flaked away the picture goes dark,
+                   in the same places every pass, more of it each pass.
 
    Nothing here is decoration: if a mark is lit it is telling you where
    something is, how fast, or which way.
@@ -401,7 +408,11 @@ const P = { sp:1, pt:0, rv:0, lk:1, tn:0,     // tape: speed (negative = backwar
             gs:0.16, dn:12.5, sc:0, sw:0,     // grain: size, density, scatter, spread. at these, the grains add back up to the take exactly
             md:0, cs:4, cl:1, co:0,           // engine (0 grains, 1 slices); slices: steps/s, length, order
             gp:1, th:0, tm:0,                 // slices: rests kept (x1 = as played), thinning, timing (0 grid, 1 the take's own spacing)
-            ec:0, et:0.375, rm:0, dr:1, wt:1 }; // space: echo, echo time, room, dry, wet (wet is the echo and room only)
+            ec:0, et:0.375, rm:0, dr:1, wt:1,   // space: echo, echo time, room, dry, wet (wet is the echo, room and inside)
+            st:1,                             // tape: stretch (the take slowed without lowering it)
+            fz:0, ss:0, sr:0.6, fs:0,         // hold: freeze level, sympathetic strings, how long they ring, frequency shift (Hz)
+            ag:0, ai:0,                       // hold: age (passes the tape has made), aging on its own
+            si:0 };                           // space: the take inside itself
 const DEF = Object.assign({}, P);
 
 const pc = v => Math.round(v*100) + "%";
@@ -410,6 +421,7 @@ const DEFS = [
   { k:"pt", tab:"tape",  label:"pitch",   lo:-24,  hi:24,  c:"lin", step:1, fmt:v => (v>0?"+":v<0?"−":"") + Math.abs(v) + " st" },
   { k:"rv", tab:"tape",  label:"flip",    lo:0,    hi:1,   c:"lin", fmt:pc },
   { k:"tn", tab:"tape",  label:"tone",    lo:-1,   hi:1,   c:"lin", fmt:v => Math.abs(v) < 0.03 ? "open" : (v < 0 ? "dark " : "thin ") + pc(Math.abs(v)) },
+  { k:"st", tab:"tape",  label:"stretch", lo:1,    hi:64,  c:"log", fmt:v => v < 1.005 ? "none" : "×" + v.toFixed(v < 10 ? 1 : 0) },
   { k:"gs", tab:"grain", label:"size",    lo:.02,  hi:.8,  c:"log", fmt:v => Math.round(v*1000) + "ms" },
   { k:"dn", tab:"grain", label:"density", lo:1,    hi:80,  c:"log", fmt:v => v.toFixed(v<10?1:0) + "/s" },
   { k:"sc", tab:"grain", label:"scatter", lo:0,    hi:1.5, c:"sq",  fmt:v => v.toFixed(2) + "s" },
@@ -418,10 +430,16 @@ const DEFS = [
   { k:"cl", tab:"chop",  label:"length",  lo:.1,   hi:2,   c:"log", fmt:v => "×" + v.toFixed(2) },
   { k:"gp", tab:"chop",  label:"gap",     lo:0,    hi:2,   c:"lin", fmt:v => "×" + v.toFixed(2) },
   { k:"th", tab:"chop",  label:"thin",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"fz", tab:"hold",  label:"freeze",  lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"ss", tab:"hold",  label:"strings", lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"sr", tab:"hold",  label:"ring",    lo:0,    hi:1,   c:"lin", fmt:pc },
+  { k:"fs", tab:"hold",  label:"shift",   lo:-800, hi:800, c:"bip", fmt:v => Math.abs(v) < 0.05 ? "none" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(Math.abs(v) < 10 ? 1 : 0) + " Hz" },
+  { k:"ag", tab:"hold",  label:"age",     lo:0,    hi:300, c:"sq",  fmt:v => v < 0.5 ? "new" : "pass " + Math.round(v) },
   { k:"ec", tab:"space", label:"echo",    lo:0,    hi:1,   c:"lin", fmt:pc },
   { k:"et", tab:"space", label:"time",    lo:.03,  hi:1.4, c:"log", fmt:v => Math.round(v*1000) + "ms" },
   { k:"rm", tab:"space", label:"room",    lo:0,    hi:1,   c:"lin", fmt:pc },
   { k:"dr", tab:"space", label:"dry",     lo:0,    hi:1.2, c:"lin", fmt:pc },
+  { k:"si", tab:"space", label:"inside",  lo:0,    hi:1,   c:"lin", fmt:pc },
   { k:"wt", tab:"space", label:"wet",     lo:0,    hi:1.5, c:"lin", fmt:pc }
 ];
 const ORDERS = ["in sequence","shuffled","backwards","drunk","stuck"];
@@ -431,6 +449,7 @@ function fromF(d, f, raw){
   if(d.c === "lin") v = d.lo + f*(d.hi - d.lo);
   else if(d.c === "log") v = d.lo*Math.pow(d.hi/d.lo, f);
   else if(d.c === "sq") v = d.lo + (d.hi - d.lo)*f*f;
+  else if(d.c === "bip"){ const x = f*2 - 1; v = Math.abs(x) < 0.02 ? 0 : Math.sign(x)*d.hi*Math.pow((Math.abs(x) - 0.02)/0.98, 3); }
   else {
     const x = f*2 - 1, a = Math.abs(x);
     v = Math.sign(x)*4*(Math.pow(4, a) - 1)/3;
@@ -443,6 +462,7 @@ function toF(d, v){
   if(d.c === "lin") return (v - d.lo)/(d.hi - d.lo);
   if(d.c === "log") return Math.log(v/d.lo)/Math.log(d.hi/d.lo);
   if(d.c === "sq") return Math.sqrt(Math.max(0, (v - d.lo)/(d.hi - d.lo)));
+  if(d.c === "bip"){ if(Math.abs(v) < 1e-9) return 0.5; const a = 0.02 + 0.98*Math.cbrt(Math.min(1, Math.abs(v)/d.hi)); return (Math.sign(v)*a + 1)/2; }
   const a = Math.log(1 + 3*Math.abs(v)/4)/Math.log(4);
   return (Math.sign(v)*a + 1)/2;
 }
@@ -450,6 +470,9 @@ function toF(d, v){
 /* ---------- audio ------------------------------------------------------------ */
 
 let ac = null, bus, dry, echoSend, dly, dlp, fbg, roomSend, conv, master, comp, recDest, wet, tlp, thp;
+let pre, fzBus, strIn, strOut, combs = [], shiftNode = null, agDly, agLfoG, agFlG, agWs, agLP, siSend, selfConv, wsA = -1;
+let sbuf = null, srev = null, sk = 1, stretchJob = 0, stretchTimer = 0, stretchPend = 0;
+let fzp = [], fzLayers = [], strF = [], flake = null, lastAgeT = 0, ageHash = 0;
 let buf = null, revBuf = null, TL = null, base = null;
 let pos = 0, playing = false, holding = false, loopOn = false, reg = { a:0, b:1 };
 let regionMode = false, nextT = 0, nextS = 0, ci = 0, ciHere = false, slices = [];
@@ -483,10 +506,35 @@ function buildGraph(){
   wet = ac.createGain();
   tlp = ac.createBiquadFilter(); tlp.type = "lowpass";  tlp.frequency.value = 20000; tlp.Q.value = 1.1;
   thp = ac.createBiquadFilter(); thp.type = "highpass"; thp.frequency.value = 10;    thp.Q.value = 1.1;
-  bus.connect(tlp); tlp.connect(thp);
+  /* after the engine and before tone: freezes join the grains, then shift, then
+     the tape's age; sympathetic strings listen there and ring back into tone */
+  pre = ac.createGain(); fzBus = ac.createGain(); fzBus.gain.value = 0;
+  agDly = ac.createDelay(0.1); agDly.delayTime.value = 0.006;
+  const lfo = ac.createOscillator(), fl = ac.createOscillator();
+  lfo.frequency.value = 0.31; fl.frequency.value = 5.7;
+  agLfoG = ac.createGain(); agFlG = ac.createGain(); agLfoG.gain.value = 0; agFlG.gain.value = 0;
+  lfo.connect(agLfoG); agLfoG.connect(agDly.delayTime); fl.connect(agFlG); agFlG.connect(agDly.delayTime);
+  lfo.start(); fl.start();
+  agWs = ac.createWaveShaper();
+  agLP = ac.createBiquadFilter(); agLP.type = "lowpass"; agLP.Q.value = -3; agLP.frequency.value = Math.min(22000, ac.sampleRate*0.49);
+  strIn = ac.createGain(); strIn.gain.value = 0; strOut = ac.createGain(); strOut.gain.value = 0.6;
+  for(let i=0;i<6;i++){
+    const d = ac.createDelay(0.05), lp = ac.createBiquadFilter(), fb = ac.createGain();
+    lp.type = "lowpass"; lp.Q.value = -20; lp.frequency.value = 3000; fb.gain.value = 0;   // Q is in dB here: well under 0 so the loop never gains
+    d.delayTime.value = 1/(110 + 30*i);
+    strIn.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(strOut);
+    combs.push({ d, lp, fb });
+  }
+  bus.connect(pre); fzBus.connect(pre);
+  pre.connect(agDly); agDly.connect(agWs); agWs.connect(agLP); agLP.connect(tlp);
+  agLP.connect(strIn); strOut.connect(tlp);
+  tlp.connect(thp);
+  loadShifter();
   thp.connect(dry); dry.connect(master);
   thp.connect(echoSend); echoSend.connect(dly); dly.connect(dlp); dlp.connect(fbg); fbg.connect(dly); dlp.connect(wet);
   thp.connect(roomSend); roomSend.connect(conv); conv.connect(wet);
+  siSend = ac.createGain(); siSend.gain.value = 0; selfConv = ac.createConvolver();
+  thp.connect(siSend); siSend.connect(selfConv); selfConv.connect(wet);
   wet.connect(master); master.gain.value = 0.9;
   master.connect(comp); comp.connect(ac.destination); comp.connect(recDest);
   sync();
@@ -506,19 +554,51 @@ function sync(){
   thp.frequency.setTargetAtTime(x >  0.03 ? 20*Math.pow(3500/20, x)        : 10,    t, 0.03);
   const g = P.md ? 0.9 : 1/Math.pow(Math.max(1, 0.5*P.dn*P.gs), 0.75);
   bus.gain.setTargetAtTime(g, t, 0.05);
+  // hold
+  if(P.fz > 0.001 && !fzp.length && buf && !clean){ fzp.push(Math.round(headNow()*100)/100); }
+  syncFreeze();
+  fzBus.gain.setTargetAtTime(P.fz*P.fz*1.4, t, 0.08);
+  const fr = Math.pow(2, P.pt/12);
+  for(const l of fzLayers) if(l.s) l.s.playbackRate.setTargetAtTime(fr, t, 0.05);
+  const fb = P.ss > 0.001 ? 0.88 + 0.115*P.sr : 0;
+  strIn.gain.setTargetAtTime(P.ss*1.1*Math.sqrt(1 - fb*fb + 0.0001), t, 0.05);
+  for(const c of combs){ c.fb.gain.setTargetAtTime(fb, t, 0.05); c.lp.frequency.setTargetAtTime(1600 + 4200*P.sr, t, 0.05); }
+  if(shiftNode) shiftNode.parameters.get("shift").setValueAtTime(P.fs, t);
+  syncAge(t);
+  siSend.gain.setTargetAtTime(P.si*0.2, t, 0.05);
+  wantStretch();
+}
+function syncAge(t){
+  const A = ageA();
+  agLfoG.gain.setTargetAtTime(A*0.0035, t, 0.2);
+  agFlG.gain.setTargetAtTime(A*0.0005, t, 0.2);
+  agLP.frequency.setTargetAtTime(Math.min(22000, ac.sampleRate*0.49)*Math.pow(650/20000, A), t, 0.2);
+  if(Math.abs(A - wsA) > 0.02 || (A < 0.001) !== (wsA < 0.001)){
+    wsA = A;
+    if(A < 0.001) agWs.curve = null;
+    else { const n = 1024, c = new Float32Array(n), k = 1 + 3*A; for(let i=0;i<n;i++){ const x = i/(n-1)*2 - 1; c[i] = Math.tanh(k*x)/Math.tanh(k); } agWs.curve = c; }
+  }
 }
 
 /* one grain: play `dur` seconds of output, reading the take at rate `rate`
    from p (forwards) or back from p (rev). */
 function fire(t, p, dur, rate, rev, kind){
-  const D = buf.duration;
-  let off, avail;
-  if(rev){ const end = Math.min(D, Math.max(0, p)); off = D - end; avail = end; }
-  else   { const st  = Math.min(D, Math.max(0, p)); off = st;     avail = D - st; }
+  const D = buf.duration, k = sbuf ? sk : 1;       // p is a place in the take; the stretched take is k times as long
+  let off, avail, p0;
+  if(rev){ const end = Math.min(D, Math.max(0, p)); off = (D - end)*k; avail = end*k; p0 = end; }
+  else   { const st  = Math.min(D, Math.max(0, p)); off = st*k;       avail = (D - st)*k; p0 = st; }
   const dd = Math.min(dur, avail/rate);
   if(!(dd >= 0.012)) return;
+  let curve = kind === "slice" ? CUR_T : CUR_H;
+  const A = ageA();
+  if(A > 0.001 && flake){
+    const c = new Float32Array(64), len = dd*rate/k; let mx = 0;
+    for(let i=0;i<64;i++){ const u = i/63; c[i] = curve[Math.round(u*127)]*live(rev ? p0 - u*len : p0 + u*len); if(c[i] > mx) mx = c[i]; }
+    if(mx < 0.01) return;                      // this stretch of tape is gone
+    curve = c;
+  }
   t = Math.max(t, ac.currentTime + 0.005);
-  const s = ac.createBufferSource(); s.buffer = rev ? revBuf : buf; s.playbackRate.value = rate;
+  const s = ac.createBufferSource(); s.buffer = rev ? (sbuf ? srev : revBuf) : (sbuf || buf); s.playbackRate.value = rate;
   const e = ac.createGain(); e.gain.value = 0;
   s.connect(e);
   let out = e;
@@ -526,10 +606,10 @@ function fire(t, p, dur, rate, rev, kind){
     const pn = ac.createStereoPanner(); pn.pan.value = (Math.random()*2-1)*P.sw; e.connect(pn); out = pn;
   }
   out.connect(bus);
-  e.gain.setValueCurveAtTime(kind === "slice" ? CUR_T : CUR_H, t, dd);
+  e.gain.setValueCurveAtTime(curve, t, dd);
   s.start(t, off); s.stop(t + dd + 0.02);
   s.onended = () => { try{ s.disconnect(); e.disconnect(); if(out !== e) out.disconnect(); }catch(_){} };
-  grains.push({ t, dur:dd, p, len:dd*rate, rev, rate, kind, hd:curHead });
+  grains.push({ t, dur:dd, p, len:dd*rate/k, rev, rate, kind, hd:curHead });
 }
 
 function advance(dp){
@@ -555,7 +635,7 @@ function grainStep(t, iv){
     curHead = pos;
     fire(t, pos + (Math.random()*2-1)*P.sc, P.gs, rate, rev, "grain");
   }
-  if(!holding) advance(sp*iv);
+  if(!holding) advance(sp*iv/(sbuf ? sk : 1));
 }
 
 function activeSlices(){
@@ -592,17 +672,17 @@ function chopStep(t, ivGrid){
   const rate = Math.max(0.02, Math.min(16, sliceRate()));
   const body = s.eb - s.s, rest = Math.max(0, s.e - s.eb);
   const span = body + Math.min(P.gp, 1)*rest;
-  const own = P.tm === 1;
-  const iv = own ? Math.max(0.03, (body + P.gp*rest)/rate) : ivGrid;
+  const own = P.tm === 1, k = sbuf ? sk : 1;
+  const iv = own ? Math.max(0.03, (body + P.gp*rest)*k/rate) : ivGrid;
   pos = s.s;
   if(Math.random() >= thinP(s.q)){
     /* on the grid a hit rings until the next step, reading on past its own
        slice the way a pad does, so slices shorter than a step do not leave
        a hole after each one. length shortens it. */
-    const dur = own ? span/rate*Math.min(P.cl, 1) : ivGrid*P.cl;
+    const dur = own ? span*k/rate*Math.min(P.cl, 1) : ivGrid*P.cl;
     const rev = (P.sp < 0) !== (Math.random() < P.rv);
     curHead = s.s;
-    fire(t, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
+    fire(t, rev ? s.s + dur*rate/k : s.s, dur, rate, rev, "slice");
   }
   return iv;
 }
@@ -620,17 +700,26 @@ function tapFire(i){
   const s = slices[i];
   if(P.lk && Math.abs(P.sp) < 0.02) return;
   const rate = Math.max(0.02, Math.min(16, sliceRate()));
-  const span = (s.eb - s.s) + Math.min(P.gp, 1)*Math.max(0, s.e - s.eb);
-  const dur = span/rate*Math.min(P.cl, 1);
+  const span = (s.eb - s.s) + Math.min(P.gp, 1)*Math.max(0, s.e - s.eb), k = sbuf ? sk : 1;
+  const dur = span*k/rate*Math.min(P.cl, 1);
   const rev = (P.sp < 0) !== (Math.random() < P.rv);
   curHead = s.s;
-  fire(ac.currentTime + 0.005, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
+  fire(ac.currentTime + 0.005, rev ? s.s + dur*rate/k : s.s, dur, rate, rev, "slice");
   pos = s.s;
 }
 
 function tick(){
   if(!buf || !ac) return;
   const now = ac.currentTime;
+  const dt = lastAgeT ? Math.min(0.5, now - lastAgeT) : 0; lastAgeT = now;
+  if(P.ai && playing && !clean && dt > 0){
+    /* a pass is once through what is being played: the loop, or the whole take, at this speed and stretch */
+    const span = (loopOn ? Math.max(0.05, reg.b - reg.a) : buf.duration)*(sbuf ? sk : 1)/Math.max(0.05, Math.abs(P.sp));
+    P.ag = Math.min(300, P.ag + dt/span);
+    syncAge(now);
+    const d = DEFS.find(x => x.k === "ag"); if(d && d.upd && tab === "hold") d.upd();
+    if(now - ageHash > 2){ ageHash = now; clearTimeout(hashTimer); hashTimer = setTimeout(writeHash, 50); }
+  }
   if(!(playing || holding)){ nextT = 0; nextS = 0; return; }
   const horizon = now + 0.25;
   if(!P.md){
@@ -647,6 +736,237 @@ function tick(){
   }
 }
 setInterval(tick, 30);
+
+/* ---------- hold: stretch, freeze, strings, shift, age, inside ----------------------- */
+
+const FFTS = {};
+const fftN = n => FFTS[n] || (FFTS[n] = makeFFT(n));
+function pow2(x){ let n = 1024; while(n < x) n <<= 1; return n; }
+function hannW(n){ const w = new Float32Array(n); for(let i=0;i<n;i++) w[i] = 0.5 - 0.5*Math.cos(2*Math.PI*i/n); return w; }
+function rng(seed){ let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; }; }
+/* keep a window's magnitudes, draw its phases at random, and turn it back into sound (left in re) */
+function smear(mag, N, re, im, fft, rnd){
+  re[0] = mag[0]; im[0] = 0; re[N/2] = mag[N/2]; im[N/2] = 0;
+  for(let k=1;k<N/2;k++){ const ph = rnd()*2*Math.PI; re[k] = mag[k]*Math.cos(ph); im[k] = mag[k]*Math.sin(ph); re[N-k] = re[k]; im[N-k] = -im[k]; }
+  for(let k=0;k<N;k++) im[k] = -im[k];
+  fft(re, im);
+  for(let k=0;k<N;k++) re[k] /= N;
+}
+function magAt(src, start, N, win, re, im, fft, mag, w){
+  for(let i=0;i<N;i++){ const j = start + i; re[i] = (j >= 0 && j < src.length ? src[j] : 0)*win[i]; im[i] = 0; }
+  fft(re, im);
+  for(let k=0;k<=N/2;k++) mag[k] = (w == null ? 0 : mag[k]) + Math.hypot(re[k], im[k])*(w == null ? 1 : w);
+}
+function fitLevel(out, n, target){
+  let e = 0, pk = 0; for(let i=0;i<n;i++){ e += out[i]*out[i]; const a = Math.abs(out[i]); if(a > pk) pk = a; }
+  const r = Math.sqrt(e/Math.max(1, n)) + 1e-12, g = Math.min(target/r, 0.98/(pk + 1e-12));
+  for(let i=0;i<n;i++) out[i] *= g;
+}
+function rmsOf(a, i0, i1){ let e = 0, n = 0; for(let i=Math.max(0,i0); i<Math.min(a.length,i1); i++){ e += a[i]*a[i]; n++; } return Math.sqrt(e/Math.max(1, n)); }
+
+/* stretch: the take slowed down without going down in pitch. every window of it is
+   kept as its colour and smeared out in time (paulstretch); at the top a few
+   seconds become minutes. the head walks the take that many times slower. */
+const STRETCH_MAX = 180;
+function stretchWanted(){ return buf ? Math.max(1, Math.min(P.st, STRETCH_MAX/buf.duration)) : 1; }
+function wantStretch(){
+  if(!buf || !ac) return;
+  const k = stretchWanted();
+  if(k < 1.005){ if(sbuf || stretchPend){ stretchJob++; stretchPend = 0; sbuf = srev = null; sk = 1; } return; }
+  if(sbuf && Math.abs(k - sk) < 0.01*sk) { if(stretchPend){ stretchJob++; stretchPend = 0; } return; }
+  if(stretchPend && Math.abs(k - stretchPend) < 0.01*stretchPend) return;
+  stretchPend = k; stretchJob++;
+  clearTimeout(stretchTimer);
+  stretchTimer = setTimeout(() => renderStretch(k), 350);
+  if(P.st > k + 0.01) say("stretch stops at three minutes for a take this long");
+}
+async function renderStretch(k){
+  const mine = ++stretchJob, b0 = buf;
+  const src = mono(buf), sr = buf.sampleRate;
+  const N = pow2(sr*(k < 1.6 ? 0.07 : k < 4 ? 0.14 : 0.25)), H = N/2;
+  const outLen = Math.round(src.length*k), out = new Float32Array(outLen), nrm = new Float32Array(outLen);
+  const win = hannW(N), re = new Float32Array(N), im = new Float32Array(N), mag = new Float32Array(N/2 + 1), fft = fftN(N), rnd = rng(src.length + Math.round(k*1000));
+  const frames = Math.ceil(outLen/H) + 2;
+  for(let f=0; f<frames; f++){
+    const os = f*H - N/2;
+    magAt(src, Math.round(f*H/k) - N/2, N, win, re, im, fft, mag);
+    smear(mag, N, re, im, fft, rnd);
+    for(let i=0;i<N;i++){ const j = os + i; if(j < 0 || j >= outLen) continue; out[j] += re[i]*win[i]; nrm[j] += win[i]*win[i]; }
+    if(f % 24 === 23){
+      say("stretching " + Math.round(f/frames*100) + "%");
+      await new Promise(r => setTimeout(r, 0));
+      if(mine !== stretchJob || buf !== b0) return;
+    }
+  }
+  for(let j=0;j<outLen;j++) out[j] = nrm[j] > 1e-4 ? out[j]/Math.sqrt(nrm[j]) : 0;
+  fitLevel(out, outLen, rmsOf(src, 0, src.length));
+  const b = ac.createBuffer(1, outLen, sr); b.getChannelData(0).set(out);
+  if(mine !== stretchJob || buf !== b0) return;
+  sbuf = b; srev = reverseBuf(b); sk = k; stretchPend = 0;
+  say("stretched ×" + k.toFixed(k < 10 ? 1 : 0));
+}
+
+/* freeze: one moment of the take held for as long as you like. its colour is kept
+   and its phases redrawn over and over, looped so the join is not heard. up to
+   three can be held at once; catching a fourth lets the oldest go. */
+const FZ_LEN = 8, FZ_MAX = 3;
+function headNow(){ return playing ? shownPos : pos; }
+async function freezeBuffer(p){
+  const b0 = buf, src = mono(buf), sr = buf.sampleRate, N = pow2(sr*0.25), H = N/2;
+  const L = Math.round(FZ_LEN*sr/H)*H, out = new Float32Array(L);
+  const win = hannW(N), re = new Float32Array(N), im = new Float32Array(N), mag = new Float32Array(N/2 + 1), fft = fftN(N), rnd = rng(Math.round(p*1000) + src.length);
+  const c = Math.round(p*sr);
+  magAt(src, c - N/2 - N/4, N, win, re, im, fft, mag);
+  for(let k=0;k<=N/2;k++) mag[k] /= 3;
+  magAt(src, c - N/2, N, win, re, im, fft, mag, 1/3);
+  magAt(src, c - N/2 + N/4, N, win, re, im, fft, mag, 1/3);
+  for(let f=0; f<L/H; f++){
+    smear(mag, N, re, im, fft, rnd);
+    for(let i=0;i<N;i++) out[(f*H + i) % L] += re[i]*win[i];
+    if(f % 12 === 11){ await new Promise(r => setTimeout(r, 0)); if(buf !== b0) return null; }
+  }
+  fitLevel(out, L, rmsOf(src, c - N/2, c + N/2));
+  const b = ac.createBuffer(1, L, sr); b.getChannelData(0).set(out);
+  return b;
+}
+function syncFreeze(){
+  if(!ac) return;
+  const now = ac.currentTime;
+  for(const l of fzLayers) if(!l.dead && (!buf || l.b0 !== buf || !fzp.includes(l.p))){
+    l.dead = true;
+    if(!l.g) continue;
+    l.g.gain.cancelScheduledValues(now); l.g.gain.setValueAtTime(l.g.gain.value, now); l.g.gain.setTargetAtTime(0, now, 0.8);
+    try{ l.s.stop(now + 5); }catch(_){}
+  }
+  if(!buf) return;
+  for(const p of fzp) if(!fzLayers.some(l => !l.dead && l.p === p)){
+    const l = { p, s:null, g:null, b0:buf, dead:false };
+    fzLayers.push(l);
+    freezeBuffer(p).then(b => {
+      if(!b || l.dead || l.b0 !== buf){ fzLayers = fzLayers.filter(x => x !== l); return; }
+      const t0 = ac.currentTime;
+      const s = ac.createBufferSource(); s.buffer = b; s.loop = true; s.playbackRate.value = Math.pow(2, P.pt/12);
+      const g = ac.createGain(); g.gain.value = 0; g.gain.setTargetAtTime(1, t0, 0.8);
+      s.connect(g); g.connect(fzBus); s.start(t0, Math.random()*b.duration);
+      s.onended = () => { try{ g.disconnect(); }catch(_){} fzLayers = fzLayers.filter(x => x !== l); };
+      l.s = s; l.g = g;
+    });
+  }
+}
+function catchHere(){
+  if(!buf) return;
+  handoff(); remember();
+  const p = Math.round(headNow()*100)/100;
+  fzp = fzp.filter(x => x !== p); fzp.push(p);
+  while(fzp.length > FZ_MAX) fzp.shift();
+  if(P.fz < 0.01){ P.fz = 0.6; syncSliders(); }
+  changed(); words();
+  say("held at " + fmtT(p) + (fzp.length > 1 ? ". " + fzp.length + " held" : ""));
+}
+function letGo(){ if(!fzp.length) return; remember(); fzp = []; changed(); words(); say("let go"); }
+
+/* sympathetic strings: six resonators tuned to the strongest pitches in the take,
+   folded down into the low strings' range. whatever is playing sets them ringing. */
+function tuneStrings(){
+  if(!buf || !ac) return;
+  const src = mono(buf), sr = buf.sampleRate, N = pow2(sr*0.2);
+  const win = hannW(N), re = new Float32Array(N), im = new Float32Array(N), mag = new Float32Array(N/2 + 1), fft = fftN(N);
+  const nF = Math.max(1, Math.min(60, Math.floor(src.length/(N/2))));
+  for(let f=0; f<nF; f++) magAt(src, Math.round((src.length - N)*f/Math.max(1, nF - 1)), N, win, re, im, fft, mag, f ? 1 : null);
+  const hz = sr/N, peaks = [];
+  for(let k=Math.ceil(70/hz); k<Math.min(N/2 - 1, 1500/hz); k++) if(mag[k] > mag[k-1] && mag[k] >= mag[k+1]) peaks.push([k*hz, mag[k]]);
+  peaks.sort((a,b) => b[1] - a[1]);
+  const top = Math.min(330, ac.sampleRate/128*0.92), fold = f => { while(f >= top) f /= 2; while(f < 55) f *= 2; return f; };
+  const out = [];
+  for(const [f] of peaks){
+    const g = fold(f);
+    if(out.every(x => Math.abs(1200*Math.log2(g/x)) > 30)) out.push(g);
+    if(out.length === 6) break;
+  }
+  const root = out[0] || 110;
+  for(const r of [1.5, 2, 1.25, 3, 1.875]) if(out.length < 6){ const g = fold(root*r); if(out.every(x => Math.abs(1200*Math.log2(g/x)) > 30)) out.push(g); }
+  while(out.length < 6) out.push(fold(root*(out.length + 1)));
+  strF = out;
+  out.forEach((f, i) => combs[i].d.delayTime.setValueAtTime(1/f, ac.currentTime));
+}
+
+/* the take inside itself: its own first seconds used as the room it plays in */
+function selfRoom(){
+  if(!buf || !ac) return;
+  const src = mono(buf), sr = buf.sampleRate, R = ac.sampleRate;
+  const n = Math.max(64, Math.round(Math.min(buf.duration, 5)*R)), d = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const x = i*sr/R, j = Math.floor(x), fr = x - j;
+    d[i] = (src[j] || 0)*(1 - fr) + (src[j+1] || 0)*fr;
+  }
+  for(let i=0;i<n;i++){ const u = i/n; d[i] *= Math.min(1, i/(0.005*R))*(u > 0.7 ? Math.pow((1 - u)/0.3, 2) : 1); }
+  const b = ac.createBuffer(1, n, R); b.getChannelData(0).set(d);
+  try{ selfConv.buffer = b; }catch(_){}
+}
+
+/* frequency shift: every partial moved by the same number of hertz, so a string
+   turns to bell metal. a few hertz is a slow phasing; a pair of allpass chains
+   splits the sound into two copies a quarter turn apart and spins them. */
+const SHIFT_SRC = `
+const A=[0.6923878,0.9360654322959,0.9882295226860,0.9987488452737], B=[0.4021921162426,0.8561710882420,0.9722909545651,0.9952884791278];
+function mk(c){ return c.map(() => new Float64Array(4)); }
+function run(st, co, x){ for(let k=0;k<co.length;k++){ const s = st[k], a2 = co[k]*co[k]; const y = a2*(x + s[3]) - s[1]; s[1] = s[0]; s[0] = x; s[3] = s[2]; s[2] = y; x = y; } return x; }
+class Shift extends AudioWorkletProcessor{
+  static get parameterDescriptors(){ return [{ name:"shift", defaultValue:0, automationRate:"k-rate" }]; }
+  constructor(){ super(); this.ch = []; this.ph = 0; this.m = 0; }
+  process(ins, outs, params){
+    const i = ins[0], o = outs[0], f = params.shift[0];
+    if(!i || !i.length){ for(const c of o) c.fill(0); return true; }
+    while(this.ch.length < i.length) this.ch.push({ a:mk(A), b:mk(B), pa:0 });
+    const n = i[0].length, dp = 2*Math.PI*f/sampleRate, tgt = Math.abs(f) > 0.04 ? 1 : 0;
+    for(let s=0;s<n;s++){
+      this.ph += dp; if(this.ph > Math.PI) this.ph -= 2*Math.PI; else if(this.ph < -Math.PI) this.ph += 2*Math.PI;
+      this.m += (tgt - this.m)*0.002;
+      const cs = Math.cos(this.ph), sn = Math.sin(this.ph);
+      for(let c=0;c<i.length;c++){
+        const st = this.ch[c], x = i[c][s];
+        const ia = run(st.a, A, x), I = st.pa; st.pa = ia;
+        const Q = run(st.b, B, x);
+        o[c][s] = x*(1 - this.m) + (I*cs + Q*sn)*this.m;
+      }
+    }
+    for(let c=i.length;c<o.length;c++) o[c].set(o[0]);
+    return true;
+  }
+}
+registerProcessor("oc-shift", Shift);`;
+async function loadShifter(){
+  try{
+    if(!ac.audioWorklet) throw 0;
+    const url = URL.createObjectURL(new Blob([SHIFT_SRC], { type:"application/javascript" }));
+    await ac.audioWorklet.addModule(url);
+    const n = new AudioWorkletNode(ac, "oc-shift", { numberOfInputs:1, numberOfOutputs:1, outputChannelCount:[2] });
+    pre.disconnect(agDly); pre.connect(n); n.connect(agDly);
+    shiftNode = n; sync();
+  }catch(err){ console.warn("shift unavailable", err); const d = DEFS.find(x => x.k === "fs"); if(d && d.row) d.row.style.opacity = "0.5"; }
+}
+
+/* age: the tape played over and over until it flakes. the same places go first
+   every time, as on a real loop, and the rest wows, saturates and dulls. */
+const ageA = () => 1 - Math.exp(-P.ag/40);
+function makeFlakes(){
+  if(!buf) return;
+  const n = Math.ceil(buf.duration/0.01) + 2, v = new Float32Array(n), rnd = rng(buf.length*7 + 3);
+  for(const [cell, w] of [[5, 0.3], [30, 0.4], [150, 0.3]]){
+    const m = Math.ceil(n/cell) + 2, pts = new Float32Array(m);
+    for(let i=0;i<m;i++) pts[i] = rnd();
+    for(let i=0;i<n;i++){ const x = i/cell, j = Math.floor(x), u = x - j, s = u*u*(3 - 2*u); v[i] += w*(pts[j]*(1 - s) + pts[j+1]*s); }
+  }
+  const idx = Array.from(v.keys()).sort((a,b) => v[a] - v[b]);
+  flake = new Float32Array(n);
+  idx.forEach((i, r) => { flake[i] = r/(n - 1); });
+}
+function live(t){
+  const A = ageA();
+  if(A <= 0.001 || !flake) return 1;
+  const f = flake[Math.max(0, Math.min(flake.length - 1, Math.round(t/0.01)))];
+  return Math.max(0, Math.min(1, (f - (A*0.97 - 0.05))/0.05));
+}
 
 /* ---------- the take, as a picture --------------------------------------------- */
 
@@ -733,11 +1053,13 @@ function draw(){
   const inside = buf && !clean && !whole && (loopOn || drawing);
   const zoned = buf && !clean && !whole;
   const zc = drawing ? ZDRAW : ZLOOP;
+  let lx = null;
+  if(buf && !clean && ageA() > 0.001 && flake){ lx = new Float32Array(W); for(let x=0;x<W;x++) lx[x] = live((x + 0.5)/W*D); }
   for(let y=0;y<H;y++){
     const row = (y&7)*8, row2 = ((y+3)&7)*8;
     for(let x=0;x<W;x++){
       const i = y*W + x;
-      let v = base ? base[i] > BAYER[row + (x&7)] : false;
+      let v = base ? base[i]*(lx ? lx[x] : 1) > BAYER[row + (x&7)] : false;
       if(ov[i] > BAYER[row2 + ((x+5)&7)]) v = !v;
       if(inside && x >= a && x <= b) v = !v;
       lit[i] = v ? 1 : 0;
@@ -753,6 +1075,20 @@ function draw(){
       for(const e of TL.events){
         const x = Math.min(W-1, Math.floor(e.t/D*W)), hh = Math.max(2, Math.round(e.s*H*0.12));
         for(let y=0;y<hh;y++) lit[y*W + x] ^= 1;
+      }
+    }
+    if(!clean){
+      for(const l of fzLayers){
+        if(l.b0 !== buf || !l.g) continue;
+        const x = Math.min(W-1, Math.floor(l.p/D*W)), hh = Math.round(Math.min(1, l.g.gain.value*P.fz)*H*0.3);
+        for(let y=H-1; y>=H-hh; y--){ lit[y*W + x] ^= 1; if(x + 1 < W) lit[y*W + x + 1] ^= 1; }
+      }
+      if(P.ss > 0.001 && strF.length){
+        const hiF = Math.min(AN.HI, buf.sampleRate/2*0.95), wl = Math.max(2, Math.round(P.ss*W*0.08));
+        for(const f of strF){
+          const y = Math.round((H-1) - Math.log(f/AN.LO)/Math.log(hiF/AN.LO)*(H-1));
+          if(y >= 0 && y < H) for(let x=0; x<wl; x++) lit[y*W + x] ^= 1;
+        }
       }
     }
     const hx = Math.min(W-1, Math.max(0, Math.floor(shownPos/D*W)));
@@ -778,7 +1114,8 @@ function hud(){
   else if(clean) s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   as played";
   else s = (takeLabel ? takeLabel + "\n" : "") + fmtT(shownPos) + " / " + fmtT(buf.duration) + "   ×" +
            P.sp.toFixed(2).replace("-","−") + "   " + (P.md ? "slices" : "grains") +
-           (playing ? "" : "   stopped") + (loopOn ? "   loop" : "");
+           (playing ? "" : "   stopped") + (loopOn ? "   loop" : "") +
+           (sbuf ? "   stretched ×" + sk.toFixed(sk < 10 ? 1 : 0) : "") + (P.ag >= 0.5 ? "   pass " + Math.round(P.ag) : "");
   if(s !== hudLast){ $("#hud").textContent = s; hudLast = s; }
 }
 
@@ -900,14 +1237,14 @@ cv.addEventListener("pointercancel", release);
 
 const undoStack = [];
 function remember(){
-  undoStack.push(JSON.stringify({ P, loopOn, reg }));
+  undoStack.push(JSON.stringify({ P, loopOn, reg, fzp }));
   if(undoStack.length > 60) undoStack.shift();
 }
 function undo(){
   const s = undoStack.pop();
   if(!s){ say("nothing to undo"); return; }
   const o = JSON.parse(s);
-  Object.assign(P, o.P); loopOn = o.loopOn; reg = o.reg;
+  Object.assign(P, o.P); loopOn = o.loopOn; reg = o.reg; fzp = o.fzp || [];
   if(P.md && tab === "grain") tab = "chop";
   if(!P.md && tab === "chop") tab = "grain";
   syncSliders(); showTab(); words(); changed();
@@ -923,7 +1260,7 @@ function mkSlider(d){
   bar.append(fill); row.append(l, v, bar);
   d.upd = () => {
     const f = Math.min(1, Math.max(0, toF(d, P[d.k])));
-    if(d.c === "speed"){ const a = Math.min(f, .5), b = Math.max(f, .5); fill.style.left = a*100 + "%"; fill.style.width = (b-a)*100 + "%"; }
+    if(d.c === "speed" || d.c === "bip"){ const a = Math.min(f, .5), b = Math.max(f, .5); fill.style.left = a*100 + "%"; fill.style.width = (b-a)*100 + "%"; }
     else { fill.style.left = "0"; fill.style.width = f*100 + "%"; }
     v.textContent = d.fmt(P[d.k]);
   };
@@ -972,7 +1309,7 @@ function panel(){
   W1.loop.classList.add("lp"); W1.reg.classList.add("dw");
   W1.undo = word(w1, "undo", () => undo());
   W1.orig = word(w1, "original", () => original());
-  for(const t of ["tape","grain","chop","space"]){
+  for(const t of ["tape","grain","chop","hold","space"]){
     W2[t] = word(w2, t, () => {
       tab = t;
       if(t === "grain" && P.md){ remember(); P.md = 0; sync(); changed(); }
@@ -994,6 +1331,11 @@ function panel(){
   W3.order  = word(ow, "", () => { remember(); P.co = (P.co + 1) % ORDERS.length; words(); changed(); });
   W3.timing = word(ow, "", () => { remember(); P.tm = P.tm ? 0 : 1; words(); changed(); });
   sl.append(ow);
+  const hw = el("div","wr"); hw.id = "holdwrap";
+  W3.catch = word(hw, "catch", () => catchHere());
+  W3.letgo = word(hw, "let go", () => letGo());
+  W3.aging = word(hw, "", () => { handoff(); remember(); P.ai = P.ai ? 0 : 1; words(); changed(); if(P.ai) say("it ages a pass each time through"); });
+  sl.append(hw);
   W3.bounce = word(w3, "bounce", () => bounce());
   W3.share  = word(w3, "share", () => share());
   W3.post   = word(w3, "post", () => openSheet());
@@ -1005,6 +1347,7 @@ function showTab(){
   $("#quick").style.display = tab === "tape" ? "flex" : "none";
   $("#lockwrap").style.display = tab === "tape" ? "flex" : "none";
   $("#orderwrap").style.display = tab === "chop" ? "flex" : "none";
+  $("#holdwrap").style.display = tab === "hold" ? "flex" : "none";
 }
 function syncSliders(){ for(const d of DEFS) d.upd(); }
 function words(){
@@ -1016,6 +1359,10 @@ function words(){
   W3.lock.textContent = "pitch follows speed: " + (P.lk ? "yes" : "no");
   W3.order.textContent = "order: " + ORDERS[P.co];
   W3.timing.textContent = "timing: " + (P.tm ? "own spacing" : "grid");
+  W3.aging.textContent = "aging: " + (P.ai ? "on its own" : "by hand");
+  W3.aging.classList.toggle("on", !!P.ai);
+  W3.catch.textContent = fzp.length ? "catch another" : "catch";
+  W3.letgo.style.display = fzp.length ? "" : "none";
   for(const b of $("#quick").children) b.classList.toggle("on", Math.abs(P.sp - parseFloat(b.dataset.v)) < 0.001);
   W3.bounce.textContent = rec ? "stop bounce" : "bounce";
   W3.bounce.classList.toggle("on", !!rec);
@@ -1050,7 +1397,7 @@ function say(s, html){
 
 /* ---------- the link is the remix ------------------------------------------------------ */
 
-const KEYS = ["sp","pt","rv","lk","tn","gs","dn","sc","sw","md","cs","cl","co","gp","th","tm","ec","et","rm","dr","wt"];
+const KEYS = ["sp","pt","rv","lk","tn","gs","dn","sc","sw","md","cs","cl","co","gp","th","tm","ec","et","rm","dr","wt","st","fz","ss","sr","fs","ag","ai","si"];
 let hashTimer = 0;
 function paramString(){
   const q = new URLSearchParams();
@@ -1059,6 +1406,7 @@ function paramString(){
     q.set("la", (Math.round(reg.a*100)/100).toString()); q.set("lb", (Math.round(reg.b*100)/100).toString());
   }
   if(loopOn) q.set("lo", "1");
+  if(fzp.length) q.set("fp", fzp.join("_"));
   return q.toString();
 }
 function writeHash(){
@@ -1075,7 +1423,7 @@ function original(){
   if(!paramString()){ say("this is the original"); return; }
   remember();
   Object.assign(P, DEF);
-  loopOn = false; reg = { a:0, b:buf.duration }; regionMode = false;
+  loopOn = false; reg = { a:0, b:buf.duration }; regionMode = false; fzp = [];
   if(tab === "chop") tab = "grain";
   syncSliders(); showTab(); words(); changed();
   say("the original. undo for the remix");
@@ -1091,7 +1439,7 @@ function parseHash(){
 /* a take starts from the plain settings. the only settings that arrive with a
    take are the ones written into its link. */
 function resetSettings(){
-  Object.assign(P, DEF);
+  Object.assign(P, DEF); fzp = [];
   undoStack.length = 0;
   tab = "tape";
   syncSliders(); showTab(); sync(); words();
@@ -1100,7 +1448,8 @@ function applyParams(q){
   Object.assign(P, DEF);
   undoStack.length = 0;
   for(const k of KEYS) if(q.has(k)){ const v = parseFloat(q.get(k)); if(isFinite(v)) P[k] = v; }
-  P.md = P.md ? 1 : 0; P.lk = P.lk ? 1 : 0; P.tm = P.tm ? 1 : 0;
+  P.md = P.md ? 1 : 0; P.lk = P.lk ? 1 : 0; P.tm = P.tm ? 1 : 0; P.ai = P.ai ? 1 : 0;
+  fzp = (q.get("fp") || "").split("_").map(parseFloat).filter(x => isFinite(x) && x >= 0).slice(-FZ_MAX);
   pending = { la:q.has("la") ? parseFloat(q.get("la")) : null, lb:q.has("lb") ? parseFloat(q.get("lb")) : null, lo:q.has("lo") ? q.get("lo") !== "0" : (q.has("la") && q.has("lb")) };
   syncSliders();
   tab = P.md ? "chop" : "tape"; showTab();
@@ -1327,6 +1676,7 @@ async function loadBuffer(abuf, label, t){
   stopListen(); clean = false; listenEnded = false;
   playing = false; holding = false; grains.length = 0;
   buf = null; TL = null; base = null; take = t || null; takeLabel = label || "";
+  flake = null; syncFreeze();
   words();
   say("listening");
   const rb = reverseBuf(abuf);
@@ -1340,6 +1690,11 @@ async function loadBuffer(abuf, label, t){
   if(mine !== job) return;
   buf = abuf; revBuf = rb; TL = tl;
   slices = makeSlices(); ci = 0;
+  stretchJob++; stretchPend = 0; sbuf = srev = null; sk = 1;
+  makeFlakes(); tuneStrings(); selfRoom();
+  if(fzp.length && P.fz < 0.001) fzp = [];
+  fzp = fzp.filter(x => x <= abuf.duration);
+  sync();
   const D = buf.duration;
   reg = { a:0, b:D }; loopOn = false;
   if(pending){
