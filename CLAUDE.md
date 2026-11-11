@@ -16,6 +16,9 @@ Every push to `main` is a deploy. Read this file before changing anything.
 - Never put the owner's personal name in any page, file or commit message.
 - Do not rewrite a piece's copy or concept. Fix what is asked.
 - Pages caches hard. Tell the owner to check with `?v=2` on the URL.
+- Delegate simpler tasks (searches, mechanical edits, local checks) to
+  subagents on cheaper models (Sonnet, Haiku). Use Fable only when it is
+  needed: design, planning and hard problems.
 
 ## Repo layout
 
@@ -78,9 +81,11 @@ deciding it.
 
 ### 1. Small fixes to live pieces
 
-- [ ] `semantic-voyage/`: make flight and drift much slower. Stop the layout
+- [x] `semantic-voyage/`: make flight and drift much slower. Stop the layout
   rearranging words around the viewer (the near-field correction toward
   measured distances). Words stay where they are.
+  - [ ] Revisit: a better way to tilt up and down. Today it is drag, or
+    Shift + up/down on a keyboard; there is nothing on a phone besides drag.
 - [ ] `apophasis/`: fix page margins and the spacing of the word field so
   alternatives do not crowd or collide, on phone and on laptop.
 - [ ] `room/`: desktop and laptop layout pass. It was built for a phone;
