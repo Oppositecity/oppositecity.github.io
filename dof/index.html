@@ -103,6 +103,39 @@
   .moves s{display:block;text-decoration:none;color:var(--pinned);opacity:.75}
   .moves em{font-style:normal;color:var(--quiet)}
 
+  /* passage view shows a few moves under each word; the list shows them all */
+  body:not(.listview) .moves u:nth-of-type(n+7){display:none}
+
+  /* ---------- list view: one row per word, the main view ---------- */
+  body.listview #passage{font-size:20px;word-spacing:0}
+  body.listview .lit{display:none}
+  body.listview button.w{
+    display:grid;width:100%;
+    grid-template-columns:minmax(7ch,13ch) 9ch 1fr;
+    grid-template-areas:"wt bits moves" "pix bits moves";
+    column-gap:16px;align-items:start;
+    padding:10px 0;margin:0;
+    border-top:1px solid var(--cell);
+  }
+  body.listview button.w:last-of-type{border-bottom:1px solid var(--cell)}
+  body.listview .wt{grid-area:wt;overflow-wrap:anywhere}
+  body.listview .pix{grid-area:pix}
+  body.listview .w .bits{grid-area:bits;display:block;font-size:12px;margin-top:5px;color:var(--base)}
+  body.listview .w:not(.done) .bits::before{content:"—";color:var(--quiet)}
+  body.listview .w .moves,body.listview .w.done .moves{
+    grid-area:moves;display:flex;flex-wrap:wrap;gap:2px 14px;
+    white-space:normal;font-size:13px;margin-top:4px;
+  }
+  body.listview .moves u,body.listview .moves s{display:inline}
+  body.listview #mov,body.listview #num{display:none}
+  @media (max-width:560px){
+    body.listview button.w{
+      grid-template-columns:1fr auto;
+      grid-template-areas:"wt bits" "pix pix" "moves moves";
+    }
+    body.listview .w .moves{margin-top:8px}
+  }
+
   /* ---------- controls ---------- */
   textarea{
     width:100%;
@@ -194,6 +227,7 @@
 <textarea id="input" spellcheck="false" aria-label="Passage to measure">A word is only as free as the sentence lets it be.</textarea>
 <div class="row">
   <button id="go">Measure</button>
+  <button class="tog" id="view" aria-pressed="true">List view</button>
   <button class="tog" id="pos" aria-pressed="true">Match part of speech</button>
   <button class="tog" id="syl" aria-pressed="false">Lock syllable count</button>
   <button class="tog" id="mov" aria-pressed="true">Show moves</button>
@@ -340,7 +374,7 @@ async function measure(word, prev, next, opts){
       label: CHANNELS[i].label,
       bare: filtered.length,
       ctx: kept.length,
-      sample: kept.slice(0, 7).map(c => c.word),
+      sample: kept.slice(0, 10).map(c => c.word),
       closed: filtered.filter(c => !attested(c.word.toLowerCase())).slice(0, 7).map(c => c.word)
     });
   });
@@ -421,7 +455,7 @@ function paint(i, m){
       for (const c of live){ if (c[field][d] && out.length < n) out.push(c[field][d]); }
     return out;
   };
-  const picked = pick(m.chans, "sample", 6);
+  const picked = pick(m.chans, "sample", 24);   // the passage view shows the first six
 
   const mv = el.querySelector(".moves");
   if (picked.length){
@@ -557,8 +591,9 @@ toggle("pos", v => { opts.pos = v; });
 toggle("syl", v => { opts.syl = v; });
 toggle("num", v => { document.body.classList.toggle("shownum", v); });
 toggle("mov", v => { document.body.classList.toggle("showmoves", v); });
+toggle("view", v => { document.body.classList.toggle("listview", v); });
 
-document.body.classList.add("showmoves");
+document.body.classList.add("showmoves", "listview");
 build(tokenize($("input").value));
 </script>
 </body>
