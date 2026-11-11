@@ -71,10 +71,9 @@
    at the rim; everything already heard is carried inward by feedback and
    falls toward the vanishing point. Colour says which band made a mark
    (low, mid, high, attack). Motion is locked to the recording's own
-   pulse: zoom per beat, folds turn per bar, the look changes per phrase.
-   Attacks tear the past forward along a motion field, the way a damaged
-   codec drags old pixels into new frames. When the sound ends, the
-   tunnel drains.
+   pulse: it breathes per beat, folds turn per bar, the look changes per
+   phrase. The past softens as it falls, and attacks bloom it wider, a
+   swell rather than a cut. When the sound ends, the tunnel drains.
 
    Pipeline rules (fixed):
    - the audio track is never re-encoded when the file is AAC (m4a/mp4):
@@ -205,7 +204,6 @@ function Engine(seed){
     pal: rnd() < 0.7 ? pal : pal2,
     dir: rnd() < 0.82 ? 1 : -1,     // -1: the past swells back out
     spin: (rnd()-0.5)*0.05,
-    mosh: 0.6 + rnd()*0.9,
     hueKick: 0.08 + rnd()*0.35
   });
   let frame = 0;
@@ -219,12 +217,27 @@ function Engine(seed){
     }
   }
 
+  /* box blur of radius rad on the torus-free field, mixed in by amt */
+  const bT = new Float32Array(N2);
+  function blurCh(F, rad, amt){
+    const w = 2*rad+1;
+    for(let y=0;y<S;y++){ const row=y*S; let acc=0;
+      for(let x=-rad;x<=rad;x++) acc += F[row+Math.min(S-1,Math.max(0,x))];
+      for(let x=0;x<S;x++){ bT[row+x]=acc/w;
+        acc += F[row+Math.min(S-1,x+rad+1)] - F[row+Math.max(0,x-rad)]; } }
+    for(let x=0;x<S;x++){ let acc=0;
+      for(let y=-rad;y<=rad;y++) acc += bT[Math.min(S-1,Math.max(0,y))*S+x];
+      for(let y=0;y<S;y++){ const i=y*S+x; F[i] += (acc/w - F[i])*amt;
+        acc += bT[Math.min(S-1,y+rad+1)*S+x] - bT[Math.max(0,y-rad)*S+x]; } }
+  }
+  function soften(rad, amt){ blurCh(R,rad,amt); blurCh(G,rad,amt); blurCh(B,rad,amt); }
+
   function step(){
     const t = frame / FPS, af = Math.min(A.M-1, Math.floor(t*AFPS));
     const env = A.env[af], on = A.on[af], lo = A.lo[af], mi = A.mi[af], hi = A.hi[af];
     // pulse position
     const bpos = (t*AFPS - A.phi) / A.P, beat = Math.floor(bpos), ph = bpos - beat;
-    const pulse = Math.exp(-ph*(A.pulsed ? 5 : 2.2));
+    const pulse = Math.exp(-ph*(A.pulsed ? 3 : 2.2));
     const beatsPerPhrase = A.pulsed ? 16 : 6;
     const phrase = Math.max(0, Math.floor(beat / beatsPerPhrase));
     const L = phraseLook[phrase % phraseLook.length];
@@ -232,17 +245,17 @@ function Engine(seed){
     const tail = Math.max(0, Math.min(1, (t - (dur - 1.4)) / 1.4));   // the drain
 
     /* 1. carry the past inward: zoom per beat, turn per bar */
-    const zBase = 1 - (A.pulsed ? 0.018 : 0.010) - 0.02*pulse*env;
+    const zBase = 1 - (A.pulsed ? 0.014 : 0.010) - 0.006*pulse*env;   // the beat breathes, it does not punch
     const z = L.dir > 0 ? zBase - 0.06*tail : 1/zBase;
     const rot = L.spin + 0.012*Math.sin(bar*1.7 + fieldA) * (0.5 + pulse);
     const cr = Math.cos(rot)/z, sn = Math.sin(rot)/z;
-    const hue = 0.02 + L.hueKick*pulse*(0.3+env);
+    const hue = 0.02 + 0.4*L.hueKick*pulse*(0.3+env);
     const c = Math.cos(hue), s = Math.sin(hue);
     const m00=.299+.701*c+.168*s, m01=.587-.587*c+.330*s, m02=.114-.114*c-.497*s,
           m10=.299-.299*c-.328*s, m11=.587+.413*c+.035*s, m12=.114-.114*c+.292*s,
           m20=.299-.300*c+1.25*s, m21=.587-.588*c-1.05*s, m22=.114+.886*c-.203*s;
     const decay = (0.93 + 0.035*env) - 0.05*tail;   // loud passages linger, quiet ones clear to black
-    const wob = 2.2*pulse*env;
+    const wob = 0.8*pulse*env;
     for(let y=0;y<S;y++){
       const dy = y - cy;
       for(let x=0;x<S;x++){
@@ -262,9 +275,9 @@ function Engine(seed){
     }
     R.set(tR); G.set(tG); B.set(tB);
 
-    /* 1b. the low end: rings leave the centre on every beat */
+    /* 1b. the low end: rings leave the centre, swelling with the beat */
     if(tail < 0.9){
-      const Pl = L.pal[4], Pm = L.pal[3], amt = (0.015 + 0.09*lo*lo) * (0.3 + pulse);
+      const Pl = L.pal[4], Pm = L.pal[3], amt = (0.015 + 0.09*lo*lo) * (0.6 + 0.4*pulse);
       const wave = bpos * 6.2832;
       for(let i=0;i<N2;i++){
         const v = Math.sin(RAD[i]*0.11 - wave) ; if(v < 0.55) continue;
@@ -284,8 +297,8 @@ function Engine(seed){
       }
       const peak = A.rmsPeak;
       const P = L.pal, tot = lo+mi+hi+1e-6;
-      const col = [0,1,2].map(ch => (lo*P[4][ch] + mi*(P[2][ch]+P[3][ch])*0.5 + hi*P[1][ch])/tot*1.25 + on*P[5][ch]*0.9);
-      const k = Math.min(1.25, 0.35 + env*0.9 + on*0.5) * (1-tail);
+      const col = [0,1,2].map(ch => (lo*P[4][ch] + mi*(P[2][ch]+P[3][ch])*0.5 + hi*P[1][ch])/tot*1.25 + on*P[5][ch]*0.5);
+      const k = Math.min(1.1, 0.35 + env*0.9 + on*0.2) * (1-tail);
       const fold = L.fold, wedge = 2*Math.PI/fold, turn = (bar % fold) * wedge * 0.5 + t*0.05;
       const pts = [];
       const R0 = S*0.43, amp = S*0.16/peak;
@@ -305,46 +318,22 @@ function Engine(seed){
       }
     }
 
-    /* 3. attacks tear the past forward (datamosh) */
-    const bs = 9, nb = S/bs, hold = (0.04 + 0.8*on*on) * L.mosh;
-    if(hold > 0.05){
-      for(let by=0; by<nb; by++) for(let bx=0; bx<nb; bx++){
-        if(rnd() > hold) continue;
-        const ang = fieldA + Math.sin(bx*fieldB + t*0.7)*2.4 + Math.cos(by*fieldB - t*0.4)*2 + A.cen[af]*6;
-        const mag = 2 + on*14;
-        const vx = Math.round(Math.cos(ang)*mag), vy = Math.round(Math.sin(ang)*mag);
-        const flat = on > 0.55 && rnd() < 0.35;
-        let ar=0, ag=0, ab=0;
-        if(flat){ for(let y=0;y<bs;y++) for(let x=0;x<bs;x++){ const i=(by*bs+y)*S+bx*bs+x; ar+=mR[i]; ag+=mG[i]; ab+=mB[i]; }
-                  ar/=81; ag/=81; ab/=81; }
-        for(let y=0;y<bs;y++) for(let x=0;x<bs;x++){
-          const Y = by*bs+y, X = bx*bs+x, i = Y*S+X;
-          if(flat){ R[i]=ar; G[i]=ag; B[i]=ab; continue; }
-          const sy = (Y - vy + S) % S, sx = (X - vx + S) % S, j = sy*S+sx;
-          R[i]=mR[j]; G[i]=mG[j]; B[i]=mB[j];
-        }
-      }
+    /* 3. attacks bloom. A hit no longer tears blocks of the past
+       about; it softens it, the way a loud sound fills a room. Every
+       frame the past is blurred a little as it falls inward, and an
+       attack blurs it wider and lets the held memory seep back in, so
+       a hard hit reads as a swell, not a cut. */
+    soften(1, 0.3);
+    if(on > 0.15){
+      soften(Math.round(1 + 4*on), 0.25 + 0.5*on);
+      const seep = 0.25*on*on;
+      for(let i=0;i<N2;i++){ R[i]+= (mR[i]-R[i])*seep; G[i]+= (mG[i]-G[i])*seep; B[i]+= (mB[i]-B[i])*seep; }
     }
-    if(on > 0.7 && ph < 0.15){         // a hard hit drags a whole old frame through
-      const ox = Math.round(on*10), oy = Math.round(-on*6);
-      for(let i=0;i<N2;i++){ const y=(i/S)|0, x=i%S, j=((y-oy+S)%S)*S+((x-ox+S)%S);
-        R[i]=0.55*R[i]+0.45*mR[j]; G[i]=0.55*G[i]+0.45*mG[j]; B[i]=0.55*B[i]+0.45*mB[j]; }
-    }
-    const keep = on > 0.5 ? 0.98 : 0.84;   // memory freezes on attacks so the smear holds
+    const keep = on > 0.5 ? 0.97 : 0.86;   // memory holds a little longer through a hit
     for(let i=0;i<N2;i++){ mR[i]=mR[i]*keep+R[i]*(1-keep); mG[i]=mG[i]*keep+G[i]*(1-keep); mB[i]=mB[i]*keep+B[i]*(1-keep); }
 
-    /* 4. scanline tears on the beat */
-    if(ph < 0.12 && env > 0.3){
-      for(let y=0;y<S;y++){
-        if(rnd() > 0.1*env) continue;
-        const sh = Math.round((rnd()-0.5)*40*env), row = y*S;
-        const r = R.slice(row,row+S), g = G.slice(row,row+S), b = B.slice(row,row+S);
-        for(let x=0;x<S;x++){ const q=((x-sh)%S+S)%S; R[row+x]=r[q]; G[row+x]=g[q]; B[row+x]=b[q]; }
-      }
-    }
-
     /* 5. out: FALL's grain — ordered dither into the inks, or into a coarse spectrum */
-    const split = Math.round(1 + 4*pulse*env);
+    const split = Math.round(1 + 1.5*pulse*env);
     const P = L.pal;
     for(let y=0;y<S;y++) for(let x=0;x<S;x++){
       const i = y*S+x, o = i*4, d = bayer[(y&3)*4+(x&3)];
