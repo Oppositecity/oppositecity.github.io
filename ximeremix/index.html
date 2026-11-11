@@ -452,7 +452,9 @@ function toF(d, v){
 let ac = null, bus, dry, echoSend, dly, dlp, fbg, roomSend, conv, master, comp, recDest, wet, tlp, thp;
 let buf = null, revBuf = null, TL = null, base = null;
 let pos = 0, playing = false, holding = false, loopOn = false, reg = { a:0, b:1 };
-let regionMode = false, nextT = 0, nextS = 0, ci = 0, slices = [];
+let regionMode = false, nextT = 0, nextS = 0, ci = 0, ciHere = false, slices = [];
+/* the sequence picks up at the slice under the head, not back at the first one */
+function chopFromHead(){ if(!buf || !slices.length) return; const sl = activeSlices(); let i = 0; for(let k=0;k<sl.length;k++) if(sl[k].s <= pos + 1e-6) i = k; ci = i; ciHere = true; }
 const grains = [];
 let shownPos = 0, take = null, takeLabel = "", job = 0, started = false;
 let rigOpen = false, clean = false, listenEnded = false, lnode = null, lstart = 0, loff = 0;
@@ -564,8 +566,10 @@ function activeSlices(){
 /* an event is its body (the attack and the ring, until it has sunk back toward the
    floor) and then its rest (the silence, and the hiss, until the next attack). gap
    scales the rest: x1 is as played, 0 packs the attacks together, 2 doubles the
-   silences. thin drops events, the quietest first. */
-const thinP = str => Math.min(1, 2*P.th*(1 - 0.5*str));
+   silences. thin drops events, the quietest first: an event goes once thin has
+   passed its rank among the take's attacks. the loudest tenth always stays, so
+   thin all the way up leaves the strongest hits, never silence. */
+const thinP = q => P.th < 0.005 ? 0 : Math.max(0, Math.min(1, (P.th*0.9 - q)/0.08 + 0.5));
 function sliceRate(){
   let rate = Math.pow(2, P.pt/12);
   if(P.lk) rate *= Math.abs(P.sp);
@@ -575,7 +579,8 @@ function chopStep(t, ivGrid){
   const sl = activeSlices(), n = sl.length;
   if(!n) return ivGrid;
   ci = Math.min(ci, n-1);
-  switch(P.co){
+  if(ciHere){ ciHere = false; }
+  else switch(P.co){
     case 0: ci = (ci + 1) % n; break;
     case 1: ci = (Math.random()*n)|0; break;
     case 2: ci = (ci - 1 + n) % n; break;
@@ -590,8 +595,11 @@ function chopStep(t, ivGrid){
   const own = P.tm === 1;
   const iv = own ? Math.max(0.03, (body + P.gp*rest)/rate) : ivGrid;
   pos = s.s;
-  if(Math.random() >= thinP(s.str)){
-    const dur = own ? span/rate*Math.min(P.cl, 1) : Math.min(span/rate, ivGrid*P.cl);
+  if(Math.random() >= thinP(s.q)){
+    /* on the grid a hit rings until the next step, reading on past its own
+       slice the way a pad does, so slices shorter than a step do not leave
+       a hole after each one. length shortens it. */
+    const dur = own ? span/rate*Math.min(P.cl, 1) : ivGrid*P.cl;
     const rev = (P.sp < 0) !== (Math.random() < P.rv);
     curHead = s.s;
     fire(t, rev ? s.s + dur*rate : s.s, dur, rate, rev, "slice");
@@ -835,7 +843,7 @@ function handoff(){
   const D = buf.duration, p = listenPos();
   stopListen(0.1); clean = false; listenEnded = false; rigOpen = true;
   pos = p >= D - 0.05 ? reg.a : p;
-  playing = true; nextT = 0; nextS = 0;
+  playing = true; nextT = 0; nextS = 0; chopFromHead();
   $("#note").textContent = "";
   words();
 }
@@ -1022,6 +1030,7 @@ function toggle(){
     if(P.sp < 0 && pos <= 0.01) pos = buf.duration;
   }
   playing = !playing; nextT = 0; nextS = 0;
+  if(playing) chopFromHead();
   words();
 }
 addEventListener("keydown", e => {
@@ -1300,10 +1309,15 @@ function makeSlices(){
       const s = Math.max(0, ev[i].t - 0.04), e = i+1 < ev.length ? Math.max(s + 0.05, ev[i+1].t - 0.04) : D;
       if(e - s > 0.03) out.push({ s, e, eb:bodyEnd(ev[i].t, s, e), a:ev[i].t, str:ev[i].s });
     }
-    if(ev[0].t > 0.3){ const e = Math.max(0.05, ev[0].t - 0.04); out.unshift({ s:0, e, eb:e, str:0.1 }); }
+    const vs = out.map(x => ev.find(v => v.t === x.a).v).sort((a,b) => a-b);
+    for(const x of out){ const v = ev.find(y => y.t === x.a).v; let k = 0; while(k < vs.length && vs[k] < v) k++; x.q = vs.length > 1 ? k/(vs.length - 1) : 1; }
+    if(ev[0].t > 0.3){ const e = Math.max(0.05, ev[0].t - 0.04); out.unshift({ s:0, e, eb:e, str:0.1, q:0 }); }
   } else {
     const n = Math.max(2, Math.min(16, Math.round(D/0.5)));
     for(let i=0;i<n;i++){ const s = D*i/n, e = D*(i+1)/n; out.push({ s, e, eb:e, str:0.5 }); }
+    const pk = out.map(x => { let m = 0; for(let f=Math.floor(x.s*r/hop); f<Math.min(lv.length, Math.ceil(x.e*r/hop)); f++) if(lv[f] > m) m = lv[f]; return m; });
+    const so = pk.slice().sort((a,b) => a-b);
+    out.forEach((x, i) => { x.q = so.indexOf(pk[i])/(n - 1); });
   }
   return out;
 }
