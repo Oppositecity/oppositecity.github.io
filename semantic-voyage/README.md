@@ -1,7 +1,9 @@
 # semantic voyage
 
-`index.html` is 988 KB, but the engine inside it is only ~15 KB. The rest is
-five `<script type="text/plain">` data blobs:
+`index.html` is the engine. The word data is not in this folder: it is read
+from `./data.html` if one exists, otherwise from the commit that still holds
+it on raw.githubusercontent (see `DATA_SOURCES` in `index.html`). That data
+is five `<script type="text/plain">` blobs:
 
 | id | size | contents |
 |---|---|---|
@@ -14,16 +16,27 @@ five `<script type="text/plain">` data blobs:
 There are no 300d vectors here. Anything needing real embedding arithmetic
 means regenerating from GloVe.
 
-`fly.html` is the free-flight build. It carries no data of its own — it fetches
-`data.html`, then falls back to `index.html`.
+`fly.html` is only a redirect to `./`.
 
-To promote it: rename `index.html` to `data.html`, then rename `fly.html` to
-`index.html`. GitHub's rename field holds the whole path, so type
-`semantic-voyage/data.html`, not `data.html`.
+## moving
+
+Words never move. The viewer moves only while steering, and stops on release.
+
+- hold (finger or mouse), W or ↑: fly forward
+- ↓: fly backward
+- ← →: turn
+- Shift + ↑ ↓: tilt
+- drag: turn and tilt
+- tap a word: jump to it
+- N, or an empty search: drop in somewhere else
 
 ## measured
 
 Correlation between projected 3D distance and true cosine distance, over the
 163,840 real edges: **0.334**. True neighbours land anywhere from 0.34 to 989
 units apart. The projection is honest about who your neighbours are and lies
-about how far anything is. `fly.html` corrects this locally as you travel.
+about how far anything is.
+
+A local truing pass that pulled nearby words toward their measured distances
+is still in `index.html`, switched off (`RELAX_ON`), because it moved words
+around the viewer.

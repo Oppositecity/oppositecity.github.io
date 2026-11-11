@@ -391,6 +391,10 @@ const DW = 256, DH = 80;                       // 256 * 80 == 20480
 const DISP = new Float32Array(DW*DH*4);
 const POS  = new Float32Array(N*3);            // POS0 + DISP, cpu side
 let dispTex = null, dispDirty = true, TRUING = true;
+/* Words stay where they are. The truing pass moved them around the
+   viewer as they travelled, which read as the field rearranging itself
+   uninvited. It is kept here, switched off, not deleted. */
+const RELAX_ON = false;
 
 const ACTIVE = new Int32Array(4096);
 const CAND = new Int32Array(4096), CANDD = new Float32Array(4096);
@@ -559,7 +563,7 @@ const wordStart = new Int32Array(N), wordLen = new Int32Array(N);
 
 /* states: 0 field, 1 neighbour of selection, 2 selected, 3 nearest, 5 aim */
 let here = 0, selected = -1, lastWord = -1, aim = -1, aimLabel = '';
-let calm = 1, diagOn = false;
+let diagOn = false;
 const BUILD = 'build 19';
 
 async function init(){
@@ -641,8 +645,7 @@ async function init(){
       uFar:{value: Math.min(PER.x, PER.y, PER.z) * 0.92},
       uPeriod:{value:new THREE.Vector3(PER.x, PER.y, PER.z)},
       uCamPos:{value:new THREE.Vector3()},
-      uCalm:{value:1}, uN:{value:N}, uTrue:{value: TRUING ? 1 : 0},
-      uPulse:{value: REDUCED ? 0 : 1}
+      uN:{value:N}, uTrue:{value: TRUING ? 1 : 0}
     },
     vertexShader:`
       attribute vec3 aWordPos;
@@ -653,7 +656,7 @@ async function init(){
       uniform sampler2D uDisp;
       uniform vec2 uDispSize, uGrid;
       uniform vec3 uPeriod, uCamPos;
-      uniform float uUnit, uRef, uTime, uFar, uPulse, uCalm, uN, uTrue;
+      uniform float uUnit, uRef, uTime, uFar, uN, uTrue;
       varying vec2 vUv;
       varying float vA;
       void main(){
@@ -672,28 +675,28 @@ async function init(){
         // Nothing is culled. The entire lexicon is on screen at once,
         // so rarity sets WEIGHT rather than admission — common words
         // burn brighter, rare ones recede but never leave.
-        bool lit = aState > 0.5;
         float mag = 1.0 - aRank / uN;
 
         /* DISTANCE OWNS SIZE, RARITY OWNS BRIGHTNESS. Previously both
            variables fought over both channels, so a rare word up close
            and a common word far away came out the same size and the
            whole field flattened into one wall at one scale. */
-        float bright = 0.45 + 0.55 * pow(mag, 1.2);
+        /* close to uniform: rarity is a light touch, not a grey wall
+           that only turns white when you are on top of it */
+        float bright = 0.82 + 0.18 * mag;
         float size   = 1.0;
-        if (!lit) bright *= mix(0.62, 1.0, max(uCalm, pow(mag, 2.0)));
         if (aState > 4.5){                       // aiming at it right now
           bright = 1.0; size = 1.5;
         } else if (aState > 3.5){                // target
-          bright = 0.78 + 0.22 * sin(uTime * 2.0) * uPulse;
-          size = 1.8;
+          bright = 1.0; size = 1.8;
         } else if (aState > 2.5){                // nearest word
-          bright = 1.0; size = 1.9;
+          /* no boost. it is already the closest, so the distance
+             gradient below makes it the brightest without a snap
+             every time the nearest word changes hands */
         } else if (aState > 1.5){                // selected
           bright = 1.0; size = 1.75;
         } else if (aState > 0.5){                // true neighbour of selection
-          bright = 0.90 + 0.10 * sin(uTime * 1.6 + aRank * 0.13) * uPulse;
-          size = 1.4;
+          bright = 1.0; size = 1.4;
         }
 
         /* near-true perspective. the exponents still sum to 1, so uRef
@@ -708,7 +711,9 @@ async function init(){
         vUv = (vec2(mod(gi, uGrid.x), floor(gi / uGrid.x)) + vec2(uv.x, 1.0 - uv.y)) / uGrid;
 
         float fade = clamp(1.0 - dist / uFar, 0.0, 1.0);
-        vA = bright * (0.12 + 0.88 * pow(fade, 1.3));
+        /* a smooth gradient through the whole depth, so words brighten
+           steadily as you come toward them instead of snapping at the end */
+        vA = bright * (0.26 + 0.74 * smoothstep(0.0, 0.92, fade));
       }
     `,
     fragmentShader:`
@@ -733,6 +738,7 @@ async function init(){
   field = new THREE.Mesh(geo, mat);
   field.frustumCulled = false;
   scene.add(field);
+
   sizeUnit();
 
   bindInput();
@@ -767,11 +773,18 @@ const STANDOFF = 30;
    had no natural stopping point — you would sail out of the cloud into
    empty space with nothing on screen to steer back by. That failure is
    gone: the field is periodic now, so there is no outside to reach.
-   Heavy drag means releasing stops you in about half a second, and a
-   tap still jumps, so the throttle can never swallow a click. */
-let thrust = 0;
-const vel = new THREE.Vector3(), _f = new THREE.Vector3();
-const FLY_ACC = 280, FLY_DRAG = 0.02;
+   A tap still jumps, so the throttle can never swallow a click.
+
+   No coasting. You move only while you hold, along wherever you are
+   facing. Speed changes at a constant rate both ways: an exponential
+   ease lurched forward and then crept, which read as jumpy. Releasing
+   brakes four times faster than holding accelerates, so you stop in a
+   short, even glide. Nothing carries you anywhere you did not ask. */
+let thrust = 0, keyThrust = 0, keyTurn = 0, keyTilt = 0;
+const vel = new THREE.Vector3();
+let speed = 0;                                          // signed, along forward
+const FLY_SPEED = 32, ACCEL = 20, BRAKE = 80;           // u/s, u/s²
+const TURN_RATE = 0.7;                                  // rad/s, arrow keys
 
 const jump = {
   on:false, t:0, dur:1,
@@ -816,7 +829,7 @@ function jumpTo(i){
   const d = _dir.length();
   if (d < 1e-3) _dir.set(0,0,1); else _dir.normalize();
 
-  vel.set(0,0,0);            // a jump takes the wheel from the throttle
+  vel.set(0,0,0); speed = 0; // a jump takes the wheel from the throttle
   jump.from.copy(cam.pos);
   jump.to.copy(_to).addScaledVector(_dir, -STANDOFF);
   jump.q0.copy(cam.quat);
@@ -825,8 +838,9 @@ function jumpTo(i){
   _up.set(0,1,0).applyQuaternion(cam.quat);
   _m.lookAt(jump.to, _to, _up);
   jump.q1.setFromRotationMatrix(_m);
-  /* far words take longer, but never long enough that you wait on it */
-  jump.dur = REDUCED ? 0.001 : Math.min(1.9, 0.42 + Math.min(d, 900)/900 * 1.3);
+  /* far words take longer. slow enough to watch the field go by on
+     the way, which is the point of travelling rather than arriving */
+  jump.dur = REDUCED ? 0.001 : Math.min(4.2, 1.3 + Math.min(d, 900)/900 * 2.9);
   jump.t = 0;
   jump.on = true;
   autopilot = i;
@@ -835,12 +849,20 @@ function jumpTo(i){
 
 function travel(dt){
   if (!jump.on){
-    if (thrust){
-      _f.set(0, 0, -1).applyQuaternion(cam.quat);
-      vel.addScaledVector(_f, FLY_ACC * dt);
+    /* arrow keys turn about the camera's own vertical, like dragging,
+       and stop turning the moment the key is released */
+    if (keyTurn){
+      _dq.setFromAxisAngle(AX_Y, -keyTurn * TURN_RATE * dt);
+      cam.quat.multiply(_dq).normalize();
     }
-    vel.multiplyScalar(Math.pow(FLY_DRAG, dt));
-    if (vel.lengthSq() > 4){
+    if (keyTilt){
+      _dq.setFromAxisAngle(AX_X, keyTilt * TURN_RATE * dt);
+      cam.quat.multiply(_dq).normalize();
+    }
+    const want = thrust * FLY_SPEED, step = (thrust ? ACCEL : BRAKE) * dt;
+    speed = Math.abs(want - speed) <= step ? want : speed + Math.sign(want - speed) * step;
+    vel.set(0, 0, -1).applyQuaternion(cam.quat).multiplyScalar(speed);
+    if (speed !== 0){
       cam.pos.addScaledVector(vel, dt);
       foldCamera();
       settle = 1;                    // new ground for the truing pass
@@ -1022,7 +1044,7 @@ function say(head, sub){
 
 function dropIn(){
   selected = -1; autopilot = -1; jump.on = false;
-  vel.set(0,0,0);
+  vel.set(0,0,0); speed = 0;
 
   const at = (Math.random()*N)|0;
   cam.pos.set(POS[at*3], POS[at*3+1], POS[at*3+2] + 34);
@@ -1056,15 +1078,18 @@ function bindInput(){
   addEventListener('keydown', hideHint);
 
   let down = false, lx = 0, ly = 0, sx0 = 0, sy0 = 0, held = false;
-  let id = null, touch = false, pressAt = 0;
+  let id = null, touch = false, pressAt = 0, longPress = false;
   const SENS = 0.0032, TAP_MS = 350, HOLD_MS = 360, DEADZONE = 3;
 
   const travelled = (x, y) => Math.hypot(x - sx0, y - sy0);
   const beginPress = (x, y) => {
-    if (!pressAt) pressAt = performance.now();
+    if (!pressAt){ pressAt = performance.now(); longPress = false; }
     lx = sx0 = x; ly = sy0 = y;
   };
-  const endPress = () => { pressAt = 0; held = false; thrust = 0; };
+  const endPress = () => {
+    if (held || (pressAt && performance.now() - pressAt >= TAP_MS)) longPress = true;
+    pressAt = 0; held = false; thrust = 0;
+  };
 
   el.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -1133,14 +1158,17 @@ function bindInput(){
       held = true;
       if (aim >= 0){ aim = -1; aimLabel = ''; paint(); }
     }
-    thrust = (pressAt && held) ? 1 : 0;
+    /* the key has its own flag, or this tick would cancel it every 30ms */
+    thrust = (pressAt && held) ? 1 : keyThrust;
   }, 30);
 
   /* the browser's own tap synthesis is better tuned than anything I can
      hand-roll, and it is the one path that cannot be broken by my own
      slop maths. tryPick debounces so this and pointerup do not double. */
   el.addEventListener('click', e => {
-    if (travelled(e.clientX, e.clientY) > 30) return;
+    /* the browser clicks on release however long you held, so without
+       this every flight ended in a jump to whatever word was nearby */
+    if (longPress || travelled(e.clientX, e.clientY) > 30) return;
     tryPick(e.clientX, e.clientY, MOBILE ? 80 : 44);
   });
 
@@ -1159,12 +1187,23 @@ function bindInput(){
       dg.classList.toggle('on', diagOn);
       if (!diagOn) dg.textContent = '';
     }
-    if (k === 'w' || k === 'arrowup'){ e.preventDefault(); thrust = 1; }
+    /* shift turns up and down into tilt instead of flight */
+    if (e.shiftKey && (k === 'arrowup' || k === 'arrowdown')){
+      e.preventDefault(); keyTilt = k === 'arrowup' ? 1 : -1;
+    }
+    else if (k === 'w' || k === 'arrowup'){ e.preventDefault(); keyThrust = thrust = 1; }
+    else if (k === 'arrowdown'){ e.preventDefault(); keyThrust = thrust = -1; }
+    if (k === 'arrowleft'){ e.preventDefault(); keyTurn = -1; }
+    if (k === 'arrowright'){ e.preventDefault(); keyTurn = 1; }
   });
   addEventListener('keyup', e => {
     const k = e.key.toLowerCase();
-    if (k === 'w' || k === 'arrowup') thrust = 0;
+    if (k === 'w' || k === 'arrowup' || k === 'arrowdown'){ keyThrust = thrust = 0; keyTilt = 0; }
+    if (k === 'shift') keyTilt = 0;
+    if (k === 'arrowleft' || k === 'arrowright') keyTurn = 0;
   });
+  /* a key released in another window never sends keyup here */
+  addEventListener('blur', () => { keyThrust = thrust = keyTurn = keyTilt = 0; });
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth/innerHeight;
@@ -1223,16 +1262,11 @@ function frameBody(){
   travel(dt);
   field.material.uniforms.uCamPos.value.copy(cam.pos);
 
-  /* everything stays on screen; stillness just lets the rare ones rise,
-     and standing still is now the normal state rather than the rare one */
-  const want = jump.on ? 0.15 : 1;
-  calm += (want - calm) * Math.min(1, dt * 2.2);
-  field.material.uniforms.uCalm.value = calm;
 
   /* local truing, a few hundred words at a time.
      once the neighbourhood around a stationary camera has converged
      there is nothing left to correct, so stop burning frames on it */
-  if (TRUING && !safeMode && settle > 2e-4 && frame % RELAX_EVERY === 0){
+  if (RELAX_ON && TRUING && !safeMode && settle > 2e-4 && frame % RELAX_EVERY === 0){
     gatherActive(cam.pos.x, cam.pos.y, cam.pos.z);
     const m = relax();
     settle = settle * 0.9 + m * 0.1;
@@ -1251,7 +1285,7 @@ function frameBody(){
         BUILD + ' \u00b7 f' + frame + ' \u00b7 ' + fps + ' fps'
         + (TRUING ? '' : ' \u00b7 flat') + ' \u00b7 '
         + (jump.on ? 'jumping'
-           : vel.lengthSq() > 4 ? Math.round(vel.length()) + ' u/s' : 'holding');
+           : speed !== 0 ? Math.round(Math.abs(speed)) + ' u/s' : 'holding');
     }
   }
 
