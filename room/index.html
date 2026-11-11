@@ -42,7 +42,7 @@ body{
   line-height:1.95;
 }
 .chunk{white-space:nowrap}
-.slot{white-space:pre;will-change:filter,opacity}
+.slot{white-space:pre;will-change:filter,opacity;filter:blur(var(--wear,0em))}
 
 /* Laptop and up. The phone layout above is untouched. Type grows with
    the screen while the measure stays a readable line. */
@@ -367,6 +367,12 @@ function fresh(text){
 const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
 const SHIMMER = 10;  // glyph changes per second
 const BLUR = 0.45;   // em, at the height of the crossing
+// Everything the room plays back wears. Even the words that never change
+// go slowly out of focus the longer it plays: a little at first, then
+// more, never quite gone.
+const WEAR = 0.34;   // em, the blur it approaches
+const WEAR_TAU = 90; // passes to get about two thirds of the way there
+let wearNow = -1;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let pos = 0, raf = null, last = 0, energy = 0;
@@ -440,7 +446,10 @@ function render(){
     lastA = a; lastB = B;
   }
 
-  // Only the words that move this pass are touched. The walls stay sharp.
+  const wear = WEAR * (1 - Math.exp(-pos / WEAR_TAU));
+  if(Math.abs(wear - wearNow) > .002){ wearNow = wear; textEl.style.setProperty('--wear', wear.toFixed(3) + 'em'); }
+
+  // Only the words that move this pass are touched; the rest only wear.
   // A moving word goes out of focus where it stands while its letters
   // turn, under the blur, into marks that are not letters; at the height
   // of the crossing it becomes its replacement, which comes back into
@@ -459,8 +468,8 @@ function render(){
     }
     if(s.textContent !== out) s.textContent = out;
     if(REDUCED) continue;
-    const b = BLUR * smooth(k);
-    s.style.filter = b < .005 ? 'none' : 'blur(' + b.toFixed(3) + 'em)';
+    const b = wear + BLUR * smooth(k);
+    s.style.filter = 'blur(' + b.toFixed(3) + 'em)';
     s.style.opacity = (1 - .45 * smooth(k)).toFixed(3);
   }
 }
@@ -471,7 +480,7 @@ function render(){
 // the viewer is still it finishes the crossing it is in and rests.
 const PACE = 0.9;     // passes per second, at most
 const DRAIN = 0.8;    // seconds for the feed to fall by about two thirds
-const SETTLE = 0.12;  // passes per second, finishing a crossing alone
+const SETTLE = 0.5;   // passes per second, finishing a crossing alone
 const BEGIN = 0.15;   // feed needed to start a new crossing
 
 function loop(t){
