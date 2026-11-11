@@ -96,34 +96,40 @@ deciding it.
   make the measure, type size and controls sit properly on a wide screen.
   Became a rework at the owner's direction: no controls or text, driven by
   any activity, endless drift tethered to each spoken word.
-- [ ] `dof/`: make the full list view with bits per word the main view.
-- [ ] `pentimento/`: reconcile the laptop and phone layouts of the word field.
+- [x] `dof/`: make the full list view with bits per word the main view.
+- [x] `pentimento/`: reconcile the laptop and phone layouts of the word field.
+  One field on every device; the screen is a window scaled to the band's height.
 
 ### 2. Deploy backlog
 
 - [ ] `aureole/`: the live page is still the old synonym-cloud build. The
   etymology rebuild was chosen and never deployed. Ask the owner for that
-  build; do not reconstruct it.
+  build; do not reconstruct it. (Still waiting on the build.)
 - [ ] Accursed Share: canonical build exists, never deployed. One figure
   (DRAM gross margin) is unverified and must be checked or cut first.
-- [ ] `clef/`: needs its text.
+  (The build is not in this repo; waiting on it.)
+- [ ] `clef/`: needs its text. (The owner's to write.)
 - [ ] Folklore classifiers (Thompson motif index, ATU tale types): finish and
-  deploy. Ask for the current builds.
+  deploy. Ask for the current builds. (Not in this repo; waiting on them.)
 
 ### 3. Band and sound
 
-- [ ] `shellac/`: add a clip control that sends a chosen stretch of a record
+- [x] `shellac/`: add a clip control that sends a chosen stretch of a record
   to `clipper/`, which already hands off to `ximeremix/`.
-- [ ] A proper Band section page: the takes, the remix page, how to take a
-  take apart and repost it.
+- [x] A proper Band section page: the takes, the remix page, how to take a
+  take apart and repost it. At `/band/`, linked from the hub's Band heading.
 
 ### 4. Shared code, then new work
 
-- [ ] After the fixes in part 1, pull out whatever device-handling code
+- [x] After the fixes in part 1, pull out whatever device-handling code
   actually repeated (input, viewport, motion) into one shared file. Do not
   build it ahead of the evidence.
-- [ ] New piece: floating language drawn from Wikipedia articles, clouding
-  around the subject each describes.
+  Checked 2026-11-11 across the five part 1 pieces: only the one-line
+  reduced-motion query and safe-area CSS repeat; input handling differs in
+  every piece. Not worth a shared file yet. Look again after more work.
+- [x] New piece: floating language drawn from Wikipedia articles, clouding
+  around the subject each describes. First build at `/nimbus/` (working
+  title), unlisted and noindex until the owner decides to publish it.
 
 ### Later, only if needed
 
@@ -133,5 +139,7 @@ deciding it.
 ## Open questions for the owner
 
 - The Venn view did not match what was pictured. What should it look like?
-- Should WAKE and the take pages be listed under Band?
+- Should WAKE and the take pages be listed under Band? (`/band/` leaves them
+  off for now.)
+- `/nimbus/`: keep the name, and publish it to the hub?
 - `somesets/` and `bz/`: rework, fold into Vision, or retire?
