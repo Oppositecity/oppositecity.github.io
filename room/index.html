@@ -366,18 +366,19 @@ function fresh(text){
 // letters, all in the same face, so every one is the width of a letter
 const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
 const SHIMMER = 10;  // glyph changes per second
-const BLUR = 0.28;   // em, at the height of the crossing
+const CROSS = 0.17;  // half-width of a word's crossing, as a share of a pass
+const BLUR = 0.18;   // em, at the height of the crossing
 // Every pass blurs every word. A word the room answers comes back sharp
 // as its new self; a drifting word that comes back unchanged keeps some
 // of the blur, and congeals a little further out of focus each time.
-const PULSE = 0.08;  // em, how far an unchanged word blurs as a pass goes by
-const WEAR = 0.2;    // em, the blur a stuck word approaches
+const PULSE = 0.025; // em, how far an unchanged word blurs as a pass goes by
+const WEAR = 0.12;   // em, the blur a stuck word approaches
 const WEAR_TAU = 24; // unchanged passes to get about two thirds of the way
 const wearOf = n => WEAR * (1 - Math.exp(-n / WEAR_TAU));
 // The walls do not congeal. Each one floats in and out of sight on its
 // own slow tide, a few passes long, so the sentence's joints come and go.
-const TIDE = 0.22;   // em, the blur at the low point of a wall's tide
-const TIDE_FADE = 0.5;   // how far a wall fades at its low point
+const TIDE = 0.16;   // em, the blur at the low point of a wall's tide
+const TIDE_FADE = 0.4;   // how far a wall fades at its low point
 let fixed = [];      // per slot: a wall or punctuation, which never changes
 let still = [];      // per slot: passes in a row it has come back unchanged
 let moved = new Set();
@@ -469,7 +470,8 @@ function render(){
       // its own period of five to nine passes, from its own starting point
       const period = 5 + 4 * hash(i, 1, 1), phase = hash(i, 2, 2);
       const t = 0.5 - 0.5 * Math.cos(2 * Math.PI * (pos / period + phase));
-      const low = smooth(t);
+      // clear for most of the tide, dipping only near its low point
+      const low = Math.pow(t, 4);
       b += TIDE * low;
       o = 1 - TIDE_FADE * low;
     } else {
@@ -487,9 +489,14 @@ function render(){
   // focus as the new word. The line only reflows at that moment, so
   // nothing spills over its neighbours and no gaps open.
   const tick = Math.floor(performance.now() / (1000 / SHIMMER));
-  const veil = REDUCED ? 0 : smooth(Math.min(1, k * 1.25));
   for(const i of changed){
-    const s = slotEls[i], w = f < .5 ? A[i] : B[i];
+    // each word crosses in its own short window of the pass, so it reads
+    // as itself, then as its replacement, for most of the pass, and the
+    // words of a pass do not all dissolve at once
+    const c = 0.3 + 0.4 * hash(i, 3, 3);
+    const k = clamp01(1 - Math.abs(f - c) / CROSS);
+    const veil = REDUCED ? 0 : smooth(Math.min(1, k * 1.25));
+    const s = slotEls[i], w = f < c ? A[i] : B[i];
     let out = '';
     for(let j = 0; j < w.length; j++){
       // each letter has its own threshold, so they go and return unevenly
@@ -498,7 +505,7 @@ function render(){
     }
     if(s.textContent !== out) s.textContent = out;
     // it leaves with the wear it had, and arrives sharp as a new word
-    const b = (f < .5 ? wearOf(still[i] || 0) : 0) + (REDUCED ? 0 : BLUR * smooth(k));
+    const b = (f < c ? wearOf(still[i] || 0) : 0) + (REDUCED ? 0 : BLUR * smooth(k));
     s.style.filter = b < .004 ? '' : 'blur(' + b.toFixed(3) + 'em)';
     if(REDUCED) continue;
     s.style.opacity = (1 - .3 * smooth(k)).toFixed(3);
