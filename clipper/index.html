@@ -252,11 +252,13 @@ addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('drop').style.displ
 /* ---------- clips ---------- */
 let clips=[],cur=-1,serial=0;
 const C=()=>clips[cur];
-function addClip(buf,a,b,srcT,name){
+function addClip(buf,a,b,srcT,name,handed){
   serial++;
   const c={buf,selA:a,selB:b,bpm:'',name:name||(title+'-'+stamp(srcT)),n:serial};
   buildEnv(c);clips.push(c);select(clips.length-1);
-  if($('auto').checked)autoClip(c);else msg('Clip '+c.n+' captured. Trim it, then save.');
+  // a clip handed over from another page is not saved unasked
+  if(handed)msg('Clip '+c.n+' arrived from '+handed+', with your in and out selected. Trim it, play it, save it or send it to ximeremix.');
+  else if($('auto').checked)autoClip(c);else msg('Clip '+c.n+' captured. Trim it, then save.');
   listClips();render();
 }
 function select(i){
@@ -428,6 +430,21 @@ async function toXmx(c){
   }catch(e){if(w)w.close();msg('Could not hand the clip over: '+(e.message||e))}
 }
 $('xmx').onclick=()=>toXmx(C());
+/* a clip handed over from another page on this site, such as shellac:
+   ?clip=key names it in this device's storage, never a server */
+(async()=>{
+  const key=new URLSearchParams(location.search).get('clip');if(!key)return;
+  try{
+    const db=await new Promise((ok,no)=>{const r=indexedDB.open('clipper',1);r.onupgradeneeded=()=>r.result.createObjectStore('clips');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+    const rec=await new Promise((ok,no)=>{const g=db.transaction('clips').objectStore('clips').get(key);g.onsuccess=()=>ok(g.result);g.onerror=()=>no(g.error)});
+    if(!rec)return msg('That clip is no longer on this device. Clip it again.');
+    ensureCtx();
+    const buf=await ctx.decodeAudioData(await rec.wav.arrayBuffer());
+    const a=Math.max(0,Math.min(buf.duration,+rec.a||0)),b=Math.min(buf.duration,+rec.b||buf.duration);
+    addClip(buf,a,b>a?b:buf.duration,0,slug(rec.name),'shellac');
+    history.replaceState(null,'',location.pathname);
+  }catch(e){msg('Could not open the clip that was handed over: '+(e.message||e))}
+})();
 $('savefull').onclick=()=>{if(C()){saveFull(C());msg('Saved '+C().name+'.wav')}};
 $('savepiko').onclick=()=>{if(C()){savePiko(C());msg('Saved the pikocore file for clip '+C().n+'.')}};
 </script>

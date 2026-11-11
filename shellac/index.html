@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src https://archive.org https://*.archive.org">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SHELLAC</title>
@@ -159,6 +159,13 @@
   .np-play { font-size: 1.1rem; border: 1px solid #fff !important; width: 3.4rem; height: 3.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
   .np-skip { font-size: 1.3rem; }
   .np-error { font-size: 0.74rem; color: #fff; margin-top: 0.9rem; text-align: center; min-height: 1rem; }
+  /* the stretch you mean to clip: marked on the bar, set with in and out */
+  .np-sel { position: absolute; top: -4px; height: 11px; background: rgba(255,255,255,0.4); pointer-events: none; display: none; }
+  .np-clip { display: flex; gap: 0.9rem; justify-content: center; margin-top: 1.3rem; flex-wrap: wrap; }
+  .np-clip button { background: transparent; border: 1px solid #fff; color: #fff; font: inherit; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.5rem 0.8rem; cursor: pointer; }
+  .np-clip button:disabled { opacity: 0.45; cursor: default; }
+  .np-clip button:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  .np-clip-span { font-size: 0.7rem; color: #dcdcdc; letter-spacing: 0.04em; margin-top: 0.6rem; text-align: center; min-height: 1rem; }
 
   /* ---------- mini player ---------- */
   #mini { position: fixed; left: 0; right: 0; bottom: 0; display: none; align-items: center; gap: 0.75rem; padding: 0.7rem 1.1rem 1rem; background: #000; z-index: 10; }
@@ -232,7 +239,7 @@
     <div class="np-year" id="np-year"></div>
 
     <div class="np-progress">
-      <div class="np-bar" id="np-bar"><div class="np-bar-fill" id="np-bar-fill"></div></div>
+      <div class="np-bar" id="np-bar"><div class="np-bar-fill" id="np-bar-fill"></div><div class="np-sel" id="np-sel"></div></div>
       <div class="np-times"><span id="np-elapsed">0:00</span><span id="np-duration">0:00</span></div>
     </div>
 
@@ -241,6 +248,12 @@
       <button class="np-play" id="np-play">&#9654;</button>
       <button class="np-skip" id="np-next">&#10219;&#10219;</button>
     </div>
+    <div class="np-clip">
+      <button id="clip-in">set in</button>
+      <button id="clip-out">set out</button>
+      <button id="clip-go" disabled>clip</button>
+    </div>
+    <div class="np-clip-span" id="clip-span">set in and out while it plays, then clip</div>
     <div class="np-error" id="np-error"></div>
   </div>
 </div>
@@ -339,7 +352,7 @@
    "mini-play","mini-title","mini-creator","mini-time","mini-info","now-playing",
    "np-label","np-close","np-title","np-creator","np-year","np-play","np-prev",
    "np-next","np-bar","np-bar-fill","np-elapsed","np-duration","np-error","disc",
-   "audio"].forEach(function (id) { el[id] = document.getElementById(id); });
+   "np-sel","clip-in","clip-out","clip-go","clip-span","audio"].forEach(function (id) { el[id] = document.getElementById(id); });
 
   function commas(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
   function firstOf(v) { return Array.isArray(v) ? v[0] : v; }
@@ -904,6 +917,7 @@
     markRow(i, "playing");
 
     el["np-error"].textContent = "";
+    clip.a = clip.b = NaN; clip.url = null; paintClip();
     openNowPlaying(t);
     if (state.mode === "radio") maybeRefill();
 
@@ -912,6 +926,7 @@
       if (token !== state.token || state.index !== want) return;
       if (!url) { skipDead("no playable file for this item"); return; }
       deadStreak = 0;
+      clip.url = url; clip.title = cleanTitle(t.title); paintClip();
       el["audio"].src = url;
       el["audio"].play().catch(function () {});
     }).catch(function () {
@@ -1046,6 +1061,93 @@
     var rect = el["np-bar"].getBoundingClientRect();
     var pct = (e.clientX - rect.left) / rect.width;
     if (el["audio"].duration) el["audio"].currentTime = pct * el["audio"].duration;
+  });
+
+  /* ===============================================================
+     Clip: a stretch of the record, handed to the clipper
+     The Archive's download servers allow reading the audio, so the
+     stretch is cut here and passed through this device's storage to
+     /clipper/, which can trim it and send it on to /ximeremix/.
+  =============================================================== */
+  var clip = { a: NaN, b: NaN, url: null, title: "" };
+  function paintClip() {
+    var ok = clip.url && clip.a < clip.b, d = el["audio"].duration || 0;
+    el["clip-go"].disabled = !ok;
+    var parts = [];
+    if (isFinite(clip.a)) parts.push("in " + formatTime(clip.a));
+    if (isFinite(clip.b)) parts.push("out " + formatTime(clip.b));
+    if (ok) parts.push(Math.round(clip.b - clip.a) + "s");
+    el["clip-span"].textContent = parts.length ? parts.join("  \u00b7  ") : "set in and out while it plays, then clip";
+    if (d && (isFinite(clip.a) || isFinite(clip.b))) {
+      var a = isFinite(clip.a) ? clip.a : clip.b, b = isFinite(clip.b) ? clip.b : clip.a;
+      el["np-sel"].style.display = "block";
+      el["np-sel"].style.left = (a / d * 100) + "%";
+      el["np-sel"].style.width = Math.max(0.4, (b - a) / d * 100) + "%";
+    } else el["np-sel"].style.display = "none";
+  }
+  el["clip-in"].addEventListener("click", function () {
+    clip.a = el["audio"].currentTime || 0;
+    if (clip.b <= clip.a) clip.b = NaN;
+    paintClip();
+  });
+  el["clip-out"].addEventListener("click", function () {
+    clip.b = el["audio"].currentTime || 0;
+    if (clip.a >= clip.b) clip.a = NaN;
+    paintClip();
+  });
+
+  function wav(chs, sr) {
+    var n = chs[0].length, nc = chs.length, bytes = 44 + n * nc * 2, v = new DataView(new ArrayBuffer(bytes)), o = 44, i, c;
+    function w(at, s) { for (var k = 0; k < s.length; k++) v.setUint8(at + k, s.charCodeAt(k)); }
+    w(0, "RIFF"); v.setUint32(4, bytes - 8, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, nc, true); v.setUint32(24, sr, true); v.setUint32(28, sr * nc * 2, true); v.setUint16(32, nc * 2, true); v.setUint16(34, 16, true);
+    w(36, "data"); v.setUint32(40, n * nc * 2, true);
+    for (i = 0; i < n; i++) for (c = 0; c < nc; c++) { var x = Math.max(-1, Math.min(1, chs[c][i])); v.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true); o += 2; }
+    return new Blob([v], { type: "audio/wav" });
+  }
+  function clipDB() {
+    return new Promise(function (ok, no) {
+      var r = indexedDB.open("clipper", 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore("clips"); };
+      r.onsuccess = function () { ok(r.result); };
+      r.onerror = function () { no(r.error); };
+    });
+  }
+  var PAD = 2;   // seconds kept either side, so the clipper can still trim
+  el["clip-go"].addEventListener("click", function () {
+    if (!(clip.url && clip.a < clip.b)) return;
+    var win = window.open("about:blank", "_blank");
+    var a = clip.a, b = clip.b, name = (clip.title + "-" + Math.floor(a / 60) + "m" + Math.floor(a % 60) + "s").toLowerCase();
+    el["clip-go"].disabled = true; el["clip-go"].textContent = "fetching";
+    fetch(clip.url).then(function (r) {
+      if (!r.ok) throw new Error("the Archive answered " + r.status);
+      return r.arrayBuffer();
+    }).then(function (data) {
+      el["clip-go"].textContent = "cutting";
+      var ac = new (window.AudioContext || window.webkitAudioContext)();
+      return ac.decodeAudioData(data).then(function (buf) { ac.close(); return buf; });
+    }).then(function (buf) {
+      var sr = buf.sampleRate, s = Math.floor(Math.max(0, a - PAD) * sr), e = Math.floor(Math.min(buf.duration, b + PAD) * sr), chs = [];
+      for (var k = 0; k < buf.numberOfChannels; k++) chs.push(buf.getChannelData(k).slice(s, e));
+      var off = s / sr;
+      return clipDB().then(function (db) {
+        var key = Date.now().toString(36);
+        return new Promise(function (ok, no) {
+          var st = db.transaction("clips", "readwrite").objectStore("clips");
+          st.put({ wav: wav(chs, sr), name: name, a: a - off, b: b - off }, key);
+          var ks = st.getAllKeys();
+          ks.onsuccess = function () { ks.result.sort().slice(0, -6).forEach(function (x) { st.delete(x); }); };
+          st.transaction.oncomplete = function () { ok(key); };
+          st.transaction.onerror = function () { no(st.transaction.error); };
+        });
+      });
+    }).then(function (key) {
+      var url = "/clipper/?clip=" + key;
+      if (win) win.location = url; else location.href = url;
+    }).catch(function (err) {
+      if (win) win.close();
+      el["np-error"].textContent = "couldn't clip this recording: " + (err && err.message || err);
+    }).then(function () { el["clip-go"].textContent = "clip"; paintClip(); });
   });
 
   /* ===============================================================
