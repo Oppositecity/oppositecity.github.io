@@ -511,6 +511,26 @@
    ],
    "blurb": "The band releases nothing finished. Each take is a lo-fi field recording posted as it was played, and this is where it opens: it plays clean until the first touch, then every control is yours. Stretch it, reverse it, scatter it into grains, thin it to its attacks, snap back to the original or undo at any point. Take it apart and repost.",
    "url": "https://opposite.city/ximeremix/"
+  },
+  {
+   "slug": "wake",
+   "name": "WAKE",
+   "district": "band",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "audio-reactive",
+    "video",
+    "feedback tunnel",
+    "mp4",
+    "band"
+   ],
+   "blurb": "Sound in, its wake out. A recording goes in untouched and what comes out is a video of what it leaves behind: the present moment is drawn at the rim, and everything already heard is carried inward by feedback and falls toward the vanishing point. Colour says which band of the sound made a mark (low, mid, high, or an attack). The motion is locked to the recording's own pulse, zooming per beat, turning per bar, changing its look per phrase, and attacks tear the past forward the way a damaged codec drags old pixels into new frames. When the sound ends, the tunnel drains. An AAC recording keeps its sound exactly, packet for packet; nothing else from the file is carried over, there is no text in the picture, and nothing is posted anywhere. The same file and the same variation always make the same video, frame for frame.",
+   "url": "https://opposite.city/wake/",
+   "also": [
+    "sound",
+    "vision"
+   ]
   }
  ]
 }

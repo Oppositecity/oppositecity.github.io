@@ -119,6 +119,8 @@ deciding it.
   to `clipper/`, which already hands off to `ximeremix/`.
 - [x] A proper Band section page: the takes, the remix page, how to take a
   take apart and repost it. At `/band/`, linked from the hub's Band heading.
+  WAKE is listed under Band and on that page. `/take/` only forwards a take
+  to the remix page, so it is not listed.
 
 ### 4. Shared code, then new work
 
@@ -130,7 +132,7 @@ deciding it.
   every piece. Not worth a shared file yet. Look again after more work.
 - [x] New piece: floating language drawn from Wikipedia articles, clouding
   around the subject each describes. First build at `/nimbus/` (working
-  title), unlisted and noindex until the owner decides to publish it.
+  title). Published to the hub under Words, 2026-11-11.
 
 ### Later, only if needed
 
@@ -140,7 +142,4 @@ deciding it.
 ## Open questions for the owner
 
 - The Venn view did not match what was pictured. What should it look like?
-- Should WAKE and the take pages be listed under Band? (`/band/` leaves them
-  off for now.)
-- `/nimbus/`: keep the name, and publish it to the hub?
 - `somesets/` and `bz/`: rework, fold into Vision, or retire?
