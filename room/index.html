@@ -33,8 +33,7 @@ body{
 }
 
 /* One text, one slot per token. A slot holds the word it was, then the
-   word it is becoming, in the same place, through a blur of marks that
-   are neither. */
+   word it is becoming, in the same place, through a slow blur. */
 #text{
   width:100%;
   max-width:36em;
@@ -362,10 +361,6 @@ function fresh(text){
   return { states:[first], disp:[display(first)], top:0, rnd:mulberry32(seed), pending:null, retry:0 };
 }
 
-// what a word passes through on its way to another: marks that are not
-// letters, all in the same face, so every one is the width of a letter
-const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
-const SHIMMER = 10;  // glyph changes per second
 const CROSS = 0.3;   // half-width of a word's crossing, as a share of a pass
 const BLUR = 0.32;   // em, at the height of the crossing
 // What does not change settles into one faint softness and stays there:
@@ -468,32 +463,24 @@ function render(){
     if(s.style.filter !== v) s.style.filter = v;
   });
 
-  // A moving word goes out of focus where it stands while its letters
-  // turn, under the blur, into marks that are not letters; at the height
-  // of the crossing it becomes its replacement, which comes back into
-  // focus as the new word. The line only reflows at that moment, so
-  // nothing spills over its neighbours and no gaps open.
-  const tick = Math.floor(performance.now() / (1000 / SHIMMER));
+  // A moving word slowly goes out of focus where it stands; at the
+  // height of the crossing, where it cannot be read, it becomes its
+  // replacement, which slowly comes back into focus as the new word.
+  // The line only reflows at that moment, so nothing spills over its
+  // neighbours and no gaps open.
   for(const i of changed){
     // each word crosses in its own short window of the pass, so it reads
     // as itself, then as its replacement, for most of the pass, and the
     // words of a pass do not all dissolve at once
     const c = CROSS + (1 - 2 * CROSS) * hash(i, 3, 3);
     const k = clamp01(1 - Math.abs(f - c) / CROSS);
-    const veil = REDUCED ? 0 : smooth(Math.min(1, k * 1.25));
     const s = slotEls[i], w = f < c ? A[i] : B[i];
-    let out = '';
-    for(let j = 0; j < w.length; j++){
-      // each letter has its own threshold, so they go and return unevenly
-      if(veil > 0 && hash(i, j, 0) < veil) out += GLYPHS[Math.floor(hash(i, j, tick) * GLYPHS.length)];
-      else out += w[j];
-    }
-    if(s.textContent !== out) s.textContent = out;
+    if(s.textContent !== w) s.textContent = w;
     // it leaves with the wear it had, and arrives sharp as a new word
     const b = (f < c ? wearOf(still[i] || 0) : 0) + (REDUCED ? 0 : BLUR * smooth(k));
     s.style.filter = b < .004 ? '' : 'blur(' + b.toFixed(3) + 'em)';
     if(REDUCED) continue;
-    s.style.opacity = (1 - .3 * smooth(k)).toFixed(3);
+    s.style.opacity = (1 - .45 * smooth(k)).toFixed(3);
   }
 }
 
