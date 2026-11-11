@@ -531,6 +531,41 @@
     "sound",
     "vision"
    ]
+  },
+  {
+   "slug": "clipper",
+   "name": "CLIPPER",
+   "district": "band",
+   "status": "live",
+   "finish": 65,
+   "tags": [
+    "sampler",
+    "tab capture",
+    "tempo",
+    "downbeat",
+    "bars"
+   ],
+   "blurb": "A sampler for whatever is playing. Press once to start recording the sound this tab is making, press again to stop: a video playing here, a file, or a stretch of a 78 sent over from SHELLAC. Each clip is listened to for its tempo, its downbeat and its bars, and cut to whole bars when it is long enough to tell; when it is not, it says so rather than guess. Trim it by eye against its waveform, preview the loop, save it, or hand it straight to XIMEREMIX to take apart. Nothing leaves the device: the handoff goes through this browser's own storage, never a server.",
+   "url": "https://opposite.city/clipper/",
+   "also": [
+    "sound"
+   ]
+  },
+  {
+   "slug": "give",
+   "name": "GIVE A TAKE",
+   "district": "band",
+   "status": "live",
+   "finish": 70,
+   "tags": [
+    "takes",
+    "bluesky",
+    "atproto",
+    "recorder",
+    "adpcm"
+   ],
+   "blurb": "The band's own way in. Record on the phone or choose a file, listen back, add words if there are any, and post it to Bluesky as a take. Before it leaves, the sound is turned into the recorder's own small format, one channel at a low rate, so every take sounds like the others and plays in any browser through the remix page's own decoder; what you hear when you listen back is exactly what goes up. Sign in with an app password, never the account password. Takes posted from the band's account join the list in XIMEREMIX; from any other account, they go to that account.",
+   "url": "https://opposite.city/remix/give/"
   }
  ]
 }
