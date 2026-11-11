@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src https://en.wikipedia.org">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>nimbus</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root{
+    --sky:#081723;
+    --ink:#ffffff;
+    --box:#ffffff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--sky);color:var(--ink);overflow:hidden}
+  body{font-family:"Courier Prime","Courier New",Courier,monospace;-webkit-font-smoothing:antialiased}
+
+  #bar{
+    position:fixed;top:0;left:0;right:0;z-index:5;
+    display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+    padding:max(14px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  }
+  #q{
+    font:inherit;font-size:16px;color:var(--ink);background:var(--sky);
+    border:1px solid var(--box);border-radius:0;padding:8px 10px;width:min(22rem, 100%);flex:1 1 12rem;
+  }
+  #q:focus{outline:2px solid var(--ink);outline-offset:2px}
+  button{font:inherit;font-size:15px;color:var(--sky);background:var(--ink);border:0;border-radius:0;padding:9px 14px;cursor:pointer}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+  #field{position:fixed;inset:0}
+  /* the subject, at the centre of everything said about it */
+  #subject{
+    position:absolute;transform:translate(-50%,-50%);
+    font-weight:700;text-align:center;max-width:60vw;line-height:1.1;
+    pointer-events:none;
+  }
+  .w{
+    position:absolute;transform:translate(-50%,-50%);
+    font:inherit;line-height:1;white-space:nowrap;
+    background:none;border:0;padding:3px 4px;cursor:pointer;color:var(--ink);
+  }
+  .w span{display:inline-block;animation:float var(--t,8s) ease-in-out var(--d,0s) infinite alternate}
+  .w.link span{text-decoration:underline;text-underline-offset:.18em;text-decoration-thickness:1px}
+  .w.on{background:var(--ink)}
+  .w.on span{color:var(--sky)!important}
+  .w:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  @keyframes float{from{transform:translate(0,-3px)}to{transform:translate(0,3px)}}
+  @media (prefers-reduced-motion:reduce){ .w span{animation:none} }
+
+  #say{
+    position:fixed;left:0;right:0;bottom:0;z-index:5;
+    padding:12px max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    font-size:15px;line-height:1.5;background:var(--sky);
+    min-height:calc(6.2em + env(safe-area-inset-bottom));
+  }
+  #say p{margin:0 0 8px;max-width:46rem}
+  #say b{background:var(--ink);color:var(--sky);font-weight:400;padding:0 2px}
+  #credit{font-size:12px}
+  #credit a,#say a{color:var(--ink)}
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <input id="q" type="text" placeholder="a subject" aria-label="a subject" autocomplete="off" spellcheck="false">
+  <button id="go">cloud</button>
+  <button id="rnd">any</button>
+</div>
+
+<div id="field" aria-live="polite"><div id="subject"></div></div>
+
+<div id="say">
+  <p id="line"></p>
+  <p id="credit"></p>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   NIMBUS. The words an encyclopedia article uses, floating around the
+   thing it describes. Every mark is a reading of the article:
+     distance from the centre  how early the article first says the word,
+                               so what defines the subject clouds closest
+     colour                    the section it first appears in
+     size                      how often the article says it
+     underline                 the word is also an article you can go to
+   ===================================================================== */
+const API = 'https://en.wikipedia.org/w/api.php?format=json&formatversion=2&origin=*&';
+const N = 130;   // words in a cloud
+
+const STOP = new Set(('about above after again against also although among another anyone anything around because been before being below between both cannot could does doing done down during each either else even ever every first from further have having here hers herself himself however into itself just least less made make many might more most much must neither never often once only other others otherwise over same several should since some such than that their theirs them themselves then there these they this those though through thus under until upon very what whatever when where whether which while whom whose will with within without would your yours also known used including include includes included called became become becomes'
+  + ' first second third early later part parts many much number numbers form forms term terms well within while three four five years year time times like large small often usually'
+  + ' were what when have this that from with which their there they been more such these other than into some only would could also most over after about between where those under while during many').split(' '));
+
+const $ = id => document.getElementById(id);
+const field = $('field'), subj = $('subject'), line = $('line'), credit = $('credit');
+let current = null, sel = null;
+
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function fetchArticle(title){
+  const r = await fetch(API + 'action=query&redirects=1&prop=extracts|links&explaintext=1&pllimit=max&plnamespace=0&titles=' + encodeURIComponent(title));
+  if(!r.ok) throw new Error('Wikipedia answered ' + r.status);
+  const d = await r.json(), p = d.query && d.query.pages && d.query.pages[0];
+  if(!p || p.missing || !p.extract) return null;
+  return { title:p.title, text:p.extract, links:(p.links || []).map(l => l.title) };
+}
+async function randomTitle(){
+  const r = await fetch(API + 'action=query&list=random&rnnamespace=0&rnlimit=1');
+  const d = await r.json();
+  return d.query.random[0].title;
+}
+
+/* the article as sections, and every word with where it first appears */
+function read(a){
+  const parts = a.text.split(/\n\s*={2,}\s*(.+?)\s*={2,}\s*\n/);
+  const sections = [{ name:'introduction', body:parts[0] }];
+  for(let i = 1; i < parts.length; i += 2){
+    const name = parts[i].trim();
+    if(/^(see also|references|notes|further reading|external links|bibliography|sources|citations|footnotes)$/i.test(name)) continue;
+    sections.push({ name, body:parts[i+1] || '' });
+  }
+  const total = sections.reduce((n, s) => n + s.body.length, 0) || 1;
+  const own = new Set(a.title.toLowerCase().split(/[^a-z]+/));
+  const links = new Map(a.links.map(t => [t.toLowerCase(), t]));
+  const words = new Map();
+  let at = 0;
+  sections.forEach((s, si) => {
+    const re = /[A-Za-z][A-Za-z'-]{3,}/g;
+    let m;
+    while((m = re.exec(s.body))){
+      const raw = m[0].replace(/['-]+$/, ''), w = raw.toLowerCase();
+      if(STOP.has(w) || own.has(w) || w.length < 4) continue;
+      let e = words.get(w);
+      if(!e){ e = { w, show:raw, n:0, first:(at + m.index) / total, sec:si, link:links.get(w) || null }; words.set(w, e); }
+      e.n++;
+    }
+    at += s.body.length;
+  });
+  const top = [...words.values()].sort((x, y) => y.n - x.n).slice(0, N);
+  return { sections, top, max: top.length ? top[0].n : 1 };
+}
+
+/* a hue per section, around the wheel, light enough to stay readable on the night */
+function hue(si, S){ return 'hsl(' + Math.round(si / Math.max(1, S) * 330 + 190) % 360 + ',85%,80%)'; }
+
+function layout(r){
+  field.querySelectorAll('.w').forEach(e => e.remove());
+  const W = innerWidth, top = $('bar').getBoundingClientRect().bottom, bot = $('say').getBoundingClientRect().top;
+  const H = Math.max(200, bot - top), cx = W / 2, cy = top + H / 2;
+  const R0 = Math.min(W, H) * 0.12, R1 = Math.min(W * 0.5, H * 0.5) * 0.94;
+  subj.style.left = cx + 'px'; subj.style.top = cy + 'px';
+  subj.style.fontSize = Math.max(22, Math.min(46, W / 16)) + 'px';
+  subj.textContent = current.title;
+
+  const S = r.sections.length;
+  // in the order the article first says them, spiralling out from the
+  // subject like seeds in a flower head: even everywhere, earliest closest
+  // as many words as the screen can hold without crowding
+  const n = Math.max(40, Math.min(r.top.length, Math.round(W * H / 4600)));
+  const order = r.top.slice(0, n).sort((x, y) => x.first - y.first);
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  // the cloud takes the shape of the screen: wider on a laptop, taller on a phone
+  const sx = W > H ? Math.min(1.7, W / H) : 1, sy = H > W ? Math.min(1.5, H / W) : 1;
+  const items = order.map((e, k) => {
+    const rad = R0 + (R1 - R0) * Math.sqrt((k + 0.5) / order.length);
+    const ang = k * GOLD - Math.PI / 2;
+    const size = Math.round(12 + 13 * Math.sqrt(e.n / r.max));
+    return { e, x:cx + Math.cos(ang) * rad * sx, y:cy + Math.sin(ang) * rad * sy, size, si:e.sec };
+  });
+
+  // measure, then nudge apart anything that overlaps, keeping inside the field
+  const els = items.map(it => {
+    const b = document.createElement('button');
+    b.className = 'w' + (it.e.link ? ' link' : '');
+    b.style.fontSize = it.size + 'px';
+    const s = document.createElement('span');
+    s.textContent = it.e.show;
+    s.style.color = hue(it.si, S);
+    s.style.setProperty('--t', (6 + (it.e.w.length * 7 % 5)) + 's');
+    s.style.setProperty('--d', (-(it.e.w.charCodeAt(0) % 7)) + 's');
+    b.appendChild(s);
+    b.onclick = () => pick(b, it.e);
+    field.appendChild(b);
+    it.w = b.offsetWidth; it.h = b.offsetHeight;
+    return b;
+  });
+  const sw = subj.offsetWidth + 16, sh = subj.offsetHeight + 12;
+  for(let pass = 0; pass < 240; pass++){
+    let moved = 0;
+    for(let i = 0; i < items.length; i++){
+      const a = items[i];
+      // keep clear of the subject
+      const ox = (a.w + sw) / 2 - Math.abs(a.x - cx), oy = (a.h + sh) / 2 - Math.abs(a.y - cy);
+      if(ox > 0 && oy > 0){ if(ox < oy) a.x += (a.x < cx ? -ox : ox); else a.y += (a.y < cy ? -oy : oy); moved++; }
+      for(let j = i + 1; j < items.length; j++){
+        const b = items[j];
+        const dx = (a.w + b.w) / 2 + 4 - Math.abs(a.x - b.x), dy = (a.h + b.h) / 2 + 2 - Math.abs(a.y - b.y);
+        if(dx > 0 && dy > 0){
+          moved++;
+          if(dx < dy){ const s = (a.x < b.x ? -1 : 1) * dx / 2; a.x += s; b.x -= s; }
+          else { const s = (a.y < b.y ? -1 : 1) * dy / 2; a.y += s; b.y -= s; }
+        }
+      }
+      a.x = Math.max(a.w / 2 + 8, Math.min(W - a.w / 2 - 8, a.x));
+      a.y = Math.max(top + a.h / 2 + 4, Math.min(bot - a.h / 2 - 4, a.y));
+    }
+    if(!moved) break;
+  }
+  items.forEach((it, i) => { els[i].style.left = it.x + 'px'; els[i].style.top = it.y + 'px'; });
+}
+
+/* a word answers with the sentence it was first said in */
+function pick(b, e){
+  if(sel) sel.classList.remove('on');
+  sel = b; b.classList.add('on');
+  const sec = current.read.sections[e.sec];
+  const re = new RegExp('[^.!?\\n]*\\b' + e.w.replace(/[-']/g, '.') + '\\b[^.!?\\n]*[.!?]?', 'i');
+  const m = sec.body.match(re) || current.text.match(re);
+  const s = m ? m[0].trim() : e.show;
+  const hit = new RegExp('\\b(' + e.w.replace(/[-']/g, '.') + ')\\b', 'i');
+  line.innerHTML = '<span style="color:' + hue(e.sec, current.read.sections.length) + '">' + esc(sec.name) + '</span> &nbsp; '
+    + esc(s).replace(hit, '<b>$1</b>')
+    + (e.link ? ' &nbsp; <button id="follow">' + esc(e.link) + ' →</button>' : '');
+  const f = $('follow');
+  if(f) f.onclick = () => load(e.link);
+}
+
+async function load(title){
+  line.textContent = 'reading ' + title;
+  try{
+    const a = await fetchArticle(title);
+    if(!a){ line.textContent = 'Wikipedia has no article called ' + title + '.'; return; }
+    current = a; a.read = read(a); sel = null;
+    $('q').value = a.title;
+    // the caption first, so the cloud is laid out around the space it takes
+    line.textContent = 'Tap a word for the sentence it came from. Underlined words are articles too.';
+    credit.innerHTML = 'From <a href="https://en.wikipedia.org/wiki/' + encodeURIComponent(a.title.replace(/ /g, '_')) + '" target="_blank" rel="noopener">' + esc(a.title) + '</a>, Wikipedia, CC BY-SA 4.0.';
+    layout(a.read);
+    history.replaceState(null, '', '#' + encodeURIComponent(a.title));
+  }catch(err){
+    line.textContent = 'Could not reach Wikipedia: ' + (err.message || err);
+  }
+}
+
+$('go').onclick = () => { const v = $('q').value.trim(); if(v) load(v); };
+$('q').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $('go').click(); $('q').blur(); } });
+$('rnd').onclick = async () => { try{ load(await randomTitle()); }catch(e){ line.textContent = 'Could not reach Wikipedia.'; } };
+let rt = 0;
+addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if(current) layout(current.read); }, 200); });
+addEventListener('keydown', e => { if(e.key === 'Escape' && sel){ sel.classList.remove('on'); sel = null; } });
+
+load(decodeURIComponent(location.hash.slice(1)) || 'Cloud');
+</script>
+</body>
+</html>
