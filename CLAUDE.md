@@ -17,7 +17,7 @@ Every push to `main` is a deploy. Read this file before changing anything.
 - Do not rewrite a piece's copy or concept. Fix what is asked.
 - Pages caches hard. Tell the owner to check with `?v=2` on the URL.
 - Delegate simpler tasks (searches, mechanical edits, local checks) to
-  subagents on cheaper models (Sonnet, Haiku). Use Fable only when it is
+  subagents on Sonnet. Never delegate to Haiku. Use Fable only when it is
   needed: design, planning and hard problems.
 
 ## Repo layout
