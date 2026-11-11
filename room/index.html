@@ -42,7 +42,7 @@ body{
   line-height:1.95;
 }
 .chunk{white-space:nowrap}
-.slot{white-space:pre;will-change:filter,opacity;filter:blur(var(--wear,0em))}
+.slot{white-space:pre;will-change:filter,opacity}
 
 /* Laptop and up. The phone layout above is untouched. Type grows with
    the screen while the measure stays a readable line. */
@@ -367,12 +367,15 @@ function fresh(text){
 const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
 const SHIMMER = 10;  // glyph changes per second
 const BLUR = 0.45;   // em, at the height of the crossing
-// Everything the room plays back wears. Even the words that never change
-// go slowly out of focus the longer it plays: a little at first, then
-// more, never quite gone.
-const WEAR = 0.34;   // em, the blur it approaches
-const WEAR_TAU = 90; // passes to get about two thirds of the way there
-let wearNow = -1;
+// Every pass blurs every word. A word the room answers comes back sharp
+// as its new self; a word that comes back unchanged keeps some of the
+// blur, and congeals a little further out of focus each time.
+const PULSE = 0.2;   // em, how far an unchanged word blurs as a pass goes by
+const WEAR = 0.42;   // em, the blur a word that never changes approaches
+const WEAR_TAU = 24; // unchanged passes to get about two thirds of the way
+const wearOf = n => WEAR * (1 - Math.exp(-n / WEAR_TAU));
+let still = [];      // per slot: passes in a row it has come back unchanged
+let moved = new Set();
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let pos = 0, raf = null, last = 0, energy = 0;
@@ -436,6 +439,8 @@ function render(){
   const A = S.disp[a], B = S.disp[a+1] || A;
 
   if(a !== lastA || B !== lastB){
+    // a pass has landed: what did not move congeals one step further
+    if(a === lastA + 1) slotEls.forEach((s, i) => { if(s) still[i] = moved.has(i) ? 0 : (still[i] || 0) + 1; });
     changed = [];
     slotEls.forEach((s, i) => {
       if(!s) return;
@@ -443,19 +448,27 @@ function render(){
       s.style.cssText = '';
       if(A[i] !== B[i]) changed.push(i);
     });
+    moved = new Set(changed);
     lastA = a; lastB = B;
   }
 
-  const wear = WEAR * (1 - Math.exp(-pos / WEAR_TAU));
-  if(Math.abs(wear - wearNow) > .002){ wearNow = wear; textEl.style.setProperty('--wear', wear.toFixed(3) + 'em'); }
+  // Every word blurs as the pass goes by. One that stays the same slides
+  // from its old wear to the next, so it congeals through the crossing.
+  const k = 1 - Math.abs(2 * f - 1);          // 0 at rest, 1 at the crossing
+  const crossing = a < S.top;
+  slotEls.forEach((s, i) => {
+    if(!s || moved.has(i)) return;
+    const n = (still[i] || 0) + (crossing ? f : 0);
+    const b = wearOf(n) + (REDUCED ? 0 : PULSE * smooth(k));
+    const v = b < .004 ? '' : 'blur(' + b.toFixed(3) + 'em)';
+    if(s.style.filter !== v) s.style.filter = v;
+  });
 
-  // Only the words that move this pass are touched; the rest only wear.
   // A moving word goes out of focus where it stands while its letters
   // turn, under the blur, into marks that are not letters; at the height
   // of the crossing it becomes its replacement, which comes back into
   // focus as the new word. The line only reflows at that moment, so
   // nothing spills over its neighbours and no gaps open.
-  const k = 1 - Math.abs(2 * f - 1);          // 0 at rest, 1 at the crossing
   const tick = Math.floor(performance.now() / (1000 / SHIMMER));
   const veil = REDUCED ? 0 : smooth(Math.min(1, k * 1.25));
   for(const i of changed){
@@ -467,9 +480,10 @@ function render(){
       else out += w[j];
     }
     if(s.textContent !== out) s.textContent = out;
+    // it leaves with the wear it had, and arrives sharp as a new word
+    const b = (f < .5 ? wearOf(still[i] || 0) : 0) + (REDUCED ? 0 : BLUR * smooth(k));
+    s.style.filter = b < .004 ? '' : 'blur(' + b.toFixed(3) + 'em)';
     if(REDUCED) continue;
-    const b = wear + BLUR * smooth(k);
-    s.style.filter = 'blur(' + b.toFixed(3) + 'em)';
     s.style.opacity = (1 - .45 * smooth(k)).toFixed(3);
   }
 }
