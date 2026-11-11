@@ -368,12 +368,17 @@ const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
 const SHIMMER = 10;  // glyph changes per second
 const BLUR = 0.45;   // em, at the height of the crossing
 // Every pass blurs every word. A word the room answers comes back sharp
-// as its new self; a word that comes back unchanged keeps some of the
-// blur, and congeals a little further out of focus each time.
+// as its new self; a drifting word that comes back unchanged keeps some
+// of the blur, and congeals a little further out of focus each time.
 const PULSE = 0.2;   // em, how far an unchanged word blurs as a pass goes by
 const WEAR = 0.42;   // em, the blur a word that never changes approaches
 const WEAR_TAU = 24; // unchanged passes to get about two thirds of the way
 const wearOf = n => WEAR * (1 - Math.exp(-n / WEAR_TAU));
+// The walls do not congeal. Each one floats in and out of sight on its
+// own slow tide, a few passes long, so the sentence's joints come and go.
+const TIDE = 0.5;    // em, the blur at the low point of a wall's tide
+const TIDE_FADE = 0.75;  // how far a wall fades at its low point
+let fixed = [];      // per slot: a wall or punctuation, which never changes
 let still = [];      // per slot: passes in a row it has come back unchanged
 let moved = new Set();
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -424,6 +429,7 @@ function build(){
     }
     // a word and the punctuation touching it never break across lines
     if(!chunk){ chunk = document.createElement('span'); chunk.className = 'chunk'; textEl.appendChild(chunk); }
+    fixed[i] = x.k === 'p' || !!x.wall;
     const s = document.createElement('span');
     s.className = 'slot';
     chunk.appendChild(s);
@@ -458,10 +464,21 @@ function render(){
   const crossing = a < S.top;
   slotEls.forEach((s, i) => {
     if(!s || moved.has(i)) return;
-    const n = (still[i] || 0) + (crossing ? f : 0);
-    const b = wearOf(n) + (REDUCED ? 0 : PULSE * smooth(k));
+    let b = REDUCED ? 0 : PULSE * smooth(k), o = 1;
+    if(fixed[i]){
+      // its own period of five to nine passes, from its own starting point
+      const period = 5 + 4 * hash(i, 1, 1), phase = hash(i, 2, 2);
+      const t = 0.5 - 0.5 * Math.cos(2 * Math.PI * (pos / period + phase));
+      const low = smooth(t);
+      b += TIDE * low;
+      o = 1 - TIDE_FADE * low;
+    } else {
+      b += wearOf((still[i] || 0) + (crossing ? f : 0));
+    }
     const v = b < .004 ? '' : 'blur(' + b.toFixed(3) + 'em)';
     if(s.style.filter !== v) s.style.filter = v;
+    const ov = o > .995 ? '' : o.toFixed(3);
+    if(s.style.opacity !== ov) s.style.opacity = ov;
   });
 
   // A moving word goes out of focus where it stands while its letters
