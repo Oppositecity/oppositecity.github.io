@@ -118,6 +118,7 @@
   .sec{grid-column:1/-1; color:#fff; padding:22px 2px 6px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
   .sec:first-child{padding-top:4px;}
   .sec h2{font-size:28px; font-weight:700; letter-spacing:1px; line-height:1;}
+  .sec p a{color:inherit; text-decoration:underline;}
   .sec p{font-size:14px; color:#fff;}
   @media (max-width:520px){ .sec h2{font-size:22px;} .sec p{font-size:13px;} }
 </style>
@@ -259,7 +260,8 @@ function draw(){
       const inD=rows.filter(s=>s.district===d.id);
       if(!inD.length) return;
       const h=document.createElement('div'); h.className='sec'; h.id='sec-'+d.id;
-      h.innerHTML=`<h2>${esc(d.name.toUpperCase())}</h2><p>${esc(d.blurb||'')}</p>`;
+      // the band has a page of its own: the takes, and how to take one apart
+      h.innerHTML=`<h2>${esc(d.name.toUpperCase())}</h2><p>${esc(d.blurb||'')}${d.id==='band'?' · <a href="/band/">how to take a take apart</a>':''}</p>`;
       g.appendChild(h);
       inD.forEach(s=>g.appendChild(tile(s)));
     });
