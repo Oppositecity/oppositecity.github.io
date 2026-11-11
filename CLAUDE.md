@@ -142,4 +142,5 @@ deciding it.
 ## Open questions for the owner
 
 - The Venn view did not match what was pictured. What should it look like?
-- `somesets/` and `bz/`: rework, fold into Vision, or retire?
+- `somesets/` and `bz/`: rework, fold into Vision, or retire? bz now also
+  lives inside WAKE (every other variation); its own page is still up.
