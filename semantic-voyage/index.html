@@ -546,7 +546,25 @@ async function buildAtlas(){
     const x = (i%COLS)*CELL + CELL/2, y = Math.floor(i/COLS)*CELL + CELL/2;
     g.fillText(GLYPHS[i], x, y);
   }
-  const tex = new THREE.CanvasTexture(c);
+  /* a soft halo around each glyph, kept in the red channel while the
+     glyph itself stays in alpha. near words draw it in black behind
+     themselves, so they stay readable against a crowded field. */
+  const hc = document.createElement('canvas');
+  hc.width = c.width; hc.height = c.height;
+  const h = hc.getContext('2d');
+  h.font = g.font; h.textAlign = 'center'; h.textBaseline = 'middle';
+  h.fillStyle = h.strokeStyle = h.shadowColor = '#fff';
+  h.lineWidth = 12; h.lineJoin = 'round'; h.shadowBlur = 8;
+  for (let i=0;i<GLYPHS.length;i++){
+    const x = (i%COLS)*CELL + CELL/2, y = Math.floor(i/COLS)*CELL + CELL/2;
+    h.strokeText(GLYPHS[i], x, y); h.fillText(GLYPHS[i], x, y);
+  }
+  const fa = g.getImageData(0, 0, c.width, c.height).data;
+  const ha = h.getImageData(0, 0, c.width, c.height).data;
+  const px = new Uint8Array(fa.length);
+  for (let k=0;k<px.length;k+=4){ px[k] = ha[k+3]; px[k+3] = fa[k+3]; }
+  const tex = new THREE.DataTexture(px, c.width, c.height, THREE.RGBAFormat);
+  tex.needsUpdate = true;
   tex.flipY = false;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.magFilter = THREE.LinearFilter;
@@ -635,8 +653,7 @@ async function init(){
   geo.instanceCount = total;
   geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), SCALE*4);
 
-  const mat = new THREE.ShaderMaterial({
-    uniforms:{
+  const U = {
       uAtlas:{value:atlas},
       uDisp:{value:dispTex},
       uDispSize:{value:new THREE.Vector2(DW,DH)},
@@ -646,8 +663,8 @@ async function init(){
       uPeriod:{value:new THREE.Vector3(PER.x, PER.y, PER.z)},
       uCamPos:{value:new THREE.Vector3()},
       uN:{value:N}, uTrue:{value: TRUING ? 1 : 0}
-    },
-    vertexShader:`
+  };
+  const VS = `
       attribute vec3 aWordPos;
       attribute vec2 aChar;
       attribute float aState;
@@ -658,7 +675,7 @@ async function init(){
       uniform vec3 uPeriod, uCamPos;
       uniform float uUnit, uRef, uTime, uFar, uN, uTrue;
       varying vec2 vUv;
-      varying float vA;
+      varying float vA, vNear;
       void main(){
         vec3 wp = aWordPos;
         if (uTrue > 0.5){
@@ -705,7 +722,11 @@ async function init(){
         float s = uUnit * pow(dist, 0.15) * pow(uRef, 0.85) * size;
         vec2 corner = uv - 0.5;
         mv.xy += vec2(aChar.x + corner.x, corner.y) * s;
+        #ifdef HALO
+        mv.xyz *= 1.003;   // a hair further along the same ray: behind its own word
+        #endif
         gl_Position = projectionMatrix * mv;
+        vNear = 1.0 - smoothstep(40.0, 220.0, dist);
 
         float gi = aChar.y;
         vUv = (vec2(mod(gi, uGrid.x), floor(gi / uGrid.x)) + vec2(uv.x, 1.0 - uv.y)) / uGrid;
@@ -715,7 +736,9 @@ async function init(){
            steadily as you come toward them instead of snapping at the end */
         vA = bright * (0.26 + 0.74 * smoothstep(0.0, 0.92, fade));
       }
-    `,
+    `;
+  const mat = new THREE.ShaderMaterial({
+    uniforms:U, vertexShader:VS,
     fragmentShader:`
       uniform sampler2D uAtlas;
       varying vec2 vUv;
@@ -739,6 +762,25 @@ async function init(){
   field.frustumCulled = false;
   scene.add(field);
 
+  /* the halo pass shares every uniform with the field, so it follows
+     the camera for free. it grows in smoothly as a word comes near
+     and is absent in the distance, where it would only blot. */
+  const halo = new THREE.Mesh(geo, new THREE.ShaderMaterial({
+    uniforms:U, vertexShader:VS, defines:{HALO:1},
+    fragmentShader:`
+      uniform sampler2D uAtlas;
+      varying vec2 vUv;
+      varying float vNear;
+      void main(){
+        float h = texture2D(uAtlas, vUv).r;
+        if (vNear < 0.01 || h < mix(1.0, 0.3, vNear)) discard;
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      }
+    `,
+    transparent:false, depthTest:true, depthWrite:true
+  }));
+  halo.frustumCulled = false;
+  scene.add(halo);
   sizeUnit();
 
   bindInput();
