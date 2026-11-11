@@ -11,8 +11,6 @@
 :root{
   --void:#0a0e13;
   --air:#f6f9fb;
-  --soft:#dde8ed;
-  --sig:#a6e1f7;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
@@ -31,11 +29,12 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:3rem 1.5rem 12rem;
+  padding:3rem 1.5rem;
 }
 
-/* One text, one slot per token. A slot holds the word it was and the word
-   it is becoming in the same place; the two blur into each other there. */
+/* One text, one slot per token. A slot holds the word it was, then the
+   word it is becoming, in the same place, through a blur of marks that
+   are neither. */
 #text{
   width:100%;
   max-width:36em;
@@ -43,96 +42,22 @@ body{
   line-height:1.95;
 }
 .chunk{white-space:nowrap}
-.slot{
-  display:inline-grid;
-  justify-items:center;
-  cursor:pointer;
+.slot{white-space:pre;will-change:filter,opacity}
+
+/* Laptop and up. The phone layout above is untouched. Type grows with
+   the screen while the measure stays a readable line. */
+@media (min-width:720px){
+  :root{
+    --fs:clamp(1.3rem, .55rem + 1.15vw, 1.7rem);
+    --col:min(calc(100vw - 6rem), calc(var(--fs) * 34));
+  }
+  #stage{padding:3rem}
+  #text{font-size:var(--fs);max-width:var(--col);line-height:1.9}
 }
-.slot>span{grid-area:1/1;white-space:pre;will-change:filter,opacity}
-.slot>.b{opacity:0}
-.slot.sel{color:var(--sig)}
-
-#panel{
-  position:fixed;
-  left:1.5rem;right:1.5rem;
-  bottom:1.5rem;
-  z-index:5;
-  display:flex;
-  flex-direction:column;
-  gap:.8rem;
-  font-size:.82rem;
-  letter-spacing:.06em;
-  color:var(--soft);
+@media (min-width:720px) and (max-height:800px){
+  :root{--fs:clamp(1.15rem, .5rem + 1vw, 1.45rem)}
+  #text{line-height:1.8}
 }
-#line{display:flex;gap:1.3rem;align-items:baseline;flex-wrap:wrap;row-gap:.3rem}
-#count{color:var(--sig);white-space:nowrap}
-#status{color:var(--air);opacity:0;transition:opacity .4s ease}
-#status.show{opacity:1}
-#rooms,#deck{display:flex;gap:1.3rem;flex-wrap:wrap;row-gap:.6rem}
-
-.act{cursor:pointer;color:var(--soft);background:none;border:0;font:inherit;letter-spacing:inherit;padding:0}
-.act:hover,.act:focus-visible{color:var(--air)}
-.act.on{color:var(--sig)}
-.act:focus-visible,.step:focus-visible{outline:2px solid var(--sig);outline-offset:4px}
-
-/* the lineage of one word, pass by pass */
-#trace{
-  display:none;
-  flex-wrap:wrap;
-  align-items:baseline;
-  gap:.35rem .7rem;
-  max-height:8.5em;
-  overflow-y:auto;
-  touch-action:pan-y;
-  font-size:.95rem;
-  letter-spacing:0;
-  line-height:1.6;
-  color:var(--air);
-}
-#trace.open{display:flex}
-.step{background:none;border:0;font:inherit;color:var(--air);cursor:pointer;padding:0;text-align:left}
-.step small{font-size:.78em;color:var(--soft);margin-left:.5em}
-.step.now,.step.now small{color:var(--sig)}
-.to{color:var(--soft)}
-.note{color:var(--air)}
-
-.sheet{
-  position:fixed;
-  inset:0;
-  background:var(--void);
-  z-index:20;
-  display:none;
-  flex-direction:column;
-  padding:2rem 1.5rem;
-  gap:1.5rem;
-}
-.sheet.open{display:flex}
-
-#editor textarea{
-  flex:1;
-  width:100%;
-  max-width:36em;
-  margin:0 auto;
-  padding:1rem;
-  background:transparent;
-  border:1px solid var(--soft);
-  outline:0;
-  resize:none;
-  color:var(--air);
-  font-family:inherit;
-  font-size:clamp(1rem,2.7vw,1.18rem);
-  line-height:1.9;
-  touch-action:auto;
-}
-#editor textarea:focus{border-color:var(--sig)}
-#editor textarea::placeholder{color:var(--soft)}
-.sheetcontrols{display:flex;gap:1.6rem;justify-content:center;font-size:.9rem}
-
-#how{overflow-y:auto;touch-action:pan-y}
-#how .body{max-width:34em;margin:0 auto;font-size:1rem;line-height:1.75}
-#how p{margin-bottom:1.25em}
-#how .room{color:var(--sig)}
-#how .wall{color:var(--air)}
 </style>
 </head>
 <body>
@@ -141,70 +66,10 @@ body{
   <div id="text"></div>
 </div>
 
-<div id="panel">
-  <div id="trace" aria-live="polite"></div>
-  <div id="line">
-    <span id="count">pass 00 of 24</span>
-    <span id="status"></span>
-  </div>
-  <div id="rooms"></div>
-  <div id="deck">
-    <button class="act" id="editBtn">text</button>
-    <button class="act" id="againBtn">again</button>
-    <button class="act" id="copyBtn">copy</button>
-    <button class="act" id="howBtn">how it works</button>
-  </div>
-</div>
-
-<div class="sheet" id="editor">
-  <textarea id="ta" spellcheck="false" placeholder="speak into the room"></textarea>
-  <div class="sheetcontrols">
-    <button class="act on" id="applyBtn">record</button>
-    <button class="act" id="cancelBtn">cancel</button>
-  </div>
-</div>
-
-<div class="sheet" id="how">
-  <div class="body">
-    <p>After Alvin Lucier, who recorded himself speaking in a room and played the recording back into the room until the room's resonance had eaten the words. Here the room is a thesaurus.</p>
-    <p>Each scroll plays the text back into the room one more time. Every word is answered by a neighbour, and the neighbour takes its place.</p>
-    <p>Small words are walls: the, of, I, is, and, in. They never drift. They are the shape the drifting happens inside.</p>
-    <p>A replacement keeps the ending of the word it replaces (-ing, -ed, -s, -ly) and close to its syllable count, so the rhythm holds while the sense drains.</p>
-    <p>A word that appears twice is answered the same way both times. Repetition is what reinforces.</p>
-    <p>Early passes keep to common words. Rarer ones are let in as the tape goes on.</p>
-    <p>From pass 6 the punctuation wears away, from pass 10 the capitals, and from pass 16 neighbouring words begin to trade places.</p>
-    <p>The rooms answer differently.<br>
-      <span class="room">close</span> answers with synonyms first.<br>
-      <span class="room">large</span> with words that mean something like it.<br>
-      <span class="room">hall</span> with words it calls up.<br>
-      <span class="room">tiled</span> by sound, not sense.</p>
-    <p>Scrolling back replays the tape. It never plays it again. Changing rooms keeps what has been played so far and erases the rest. Again records a new tape.</p>
-    <p>Tap any word to see every word that stood in its place, which relation brought each one, and on which pass. Tap a step to go back to it.</p>
-    <p>The answers come from Datamuse, a free word-relation service, so the room needs a connection.</p>
-  </div>
-  <div class="sheetcontrols">
-    <button class="act on" id="howClose">close</button>
-  </div>
-</div>
-
 <script>
 'use strict';
 
 const SOURCE = "I am sitting in a room different from the one you are in now. I am recording the sound of my speaking voice and I am going to play it back into the room again and again until the resonant frequencies of the room reinforce themselves so that any semblance of my speech, with perhaps the exception of rhythm, is destroyed. What you will hear, then, are the natural resonant frequencies of the room articulated by speech. I regard this activity not so much as a demonstration of a physical fact, but more as a way to smooth out any irregularities my speech might have.";
-
-const PASSES = 24;
-const CHARGE = 480;
-
-// The room is the transform. Each room reflects a different property of
-// the word back at it: sense, association, or bare sound.
-const ROOMS = {
-  close: { probes:['rel_syn','ml','rel_trg'] },
-  large: { probes:['ml','rel_trg','rel_syn'] },
-  hall:  { probes:['rel_trg','ml','rel_syn'] },
-  tiled: { probes:['sl','rel_hom','rel_cns'] }
-};
-
-function local(){ return null; }
 
 // Structure is the room, not the speech. Function words are the walls:
 // they do not drift, they are what the drifting happens inside of.
@@ -213,12 +78,8 @@ const WALLS = new Set(('a an the this that these those i me my myself you your w
 'of in on at to for from by with without into onto out up down over under again and or but so than then as if not no yes ' +
 'what which who whom whose when where why how there here now').split(' '));
 
-const el = id => document.getElementById(id);
-const textEl=el('text'), traceEl=el('trace'), countEl=el('count'), statusEl=el('status'),
-      roomsEl=el('rooms'), editor=el('editor'), how=el('how'), ta=el('ta');
-
+const textEl = document.getElementById('text');
 let S = null;
-let hinted = false;
 
 // ── seeded noise so a session is stable and repeatable ──────────────
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -231,31 +92,6 @@ function syllables(w){
   const m = w.match(/[aeiouy]{1,2}/g);
   return m ? m.length : 1;
 }
-
-function tokenize(text){
-  const out=[], re=/(\s+)|([A-Za-z][A-Za-z']*)|([^\sA-Za-z]+)/g;
-  let m;
-  while((m=re.exec(text))){
-    if(m[1]) out.push({k:'sp', v:' '});
-    else if(m[2]){
-      const v=m[2];
-      out.push({
-        k:'w', v,
-        cap: v[0]===v[0].toUpperCase(),
-        syll: syllables(v),
-        wall: WALLS.has(v.toLowerCase()),
-        hist: new Set([v.toLowerCase()])
-      });
-    }
-    else out.push({k:'p', v:m[3]});
-  }
-  return out;
-}
-
-// ── the room's reply ───────────────────────────────────────────────
-const cache = new Map(), posCache = new Map();
-let heard = 0, silence = 0, offline = false;
-const POS = new Set(['n','v','adj','adv']);
 
 // Inflection is grammar, not meaning — it survives the substitution.
 // The stem drifts; the ending is re-applied to whatever comes back.
@@ -277,8 +113,7 @@ const ENDING_POS = { ing:'v', ed:'v', ly:'adj', s:'n', es:'n', ies:'n' };
 function inflect(w, tag){
   if(!tag) return w;
   const l = w.toLowerCase();
-  const has = { ing:/ing$/, ed:/ed$/, s:/s$/, es:/s$/, ies:/s$/, ly:/ly$/ }[tag];
-  if(has && has.test(l)) return w;
+  if(wears(l, tag) || (/^(s|es|ies)$/.test(tag) && /s$/.test(l))) return w;
   const dbl = /[^aeiou][aeiou][^aeiouwxysz]$/.test(l) && syllables(l) === 1;
   switch(tag){
     case 'ing': return /e$/.test(l) && !/ee$/.test(l) ? w.slice(0,-1)+'ing' : dbl ? w+w.slice(-1)+'ing' : w+'ing';
@@ -287,6 +122,33 @@ function inflect(w, tag){
     default:    return /[^aeiou]y$/.test(l) ? w.slice(0,-1)+'ies' : /(s|x|z|ch|sh)$/.test(l) ? w+'es' : w+'s';
   }
 }
+
+function tokenize(text){
+  const out=[], re=/(\s+)|([A-Za-z][A-Za-z']*)|([^\sA-Za-z]+)/g;
+  let m;
+  while((m=re.exec(text))){
+    if(m[1]) out.push({k:'sp', v:' '});
+    else if(m[2]){
+      const v=m[2], l=v.toLowerCase();
+      out.push({
+        k:'w', v,
+        cap: v[0]===v[0].toUpperCase(),
+        wall: WALLS.has(l),
+        origin: l,                 // the word it is tethered to, forever
+        spoken: v,                 // exactly as Lucier said it
+        tag: endingOf(v),          // the ending it keeps, forever
+        r: -1,                     // how far out in the origin's neighbourhood it stands
+        recent: [l]                // what it has lately been, so it does not circle
+      });
+    }
+    else out.push({k:'p', v:m[3]});
+  }
+  return out;
+}
+
+// ── the room's reply ───────────────────────────────────────────────
+const cache = new Map();
+const POS = new Set(['n','v','adj','adv']);
 
 let throttled = 0;
 const nap = ms => new Promise(r => setTimeout(r, ms));
@@ -299,99 +161,136 @@ async function ask(url){
     if(throttled > Date.now()) await nap(throttled - Date.now());
     try{
       const r = await fetch(url);
-      if(r.ok){ heard++; return await r.json(); }
+      if(r.ok) return await r.json();
       if(r.status === 429 || r.status >= 500){
         throttled = Date.now() + 900 * (tryN + 1);
         continue;
       }
       return null;
     }catch(e){
-      silence++;
-      if(heard === 0 && silence >= 3){ offline = true; return null; }
       await nap(400 * (tryN + 1));
     }
   }
   return null;
 }
 
-async function probe(word, param){
-  const key = param+':'+word.toLowerCase();
-  if(cache.has(key)) return cache.get(key);
-  const data = await ask('https://api.datamuse.com/words?'+param+'='+encodeURIComponent(word)+'&md=spf&max=80');
+async function probe(query, max){
+  if(cache.has(query)) return cache.get(query);
+  const data = await ask('https://api.datamuse.com/words?' + query + '&md=pf&max=' + max);
   if(data === null) return null;          // refused — do not cache
   const clean = (Array.isArray(data)?data:[])
     .filter(d => typeof d.word==='string' && /^[a-z][a-z\']*$/i.test(d.word))
     .map(d => {
       const tags = d.tags || [];
       const f = tags.find(t => t.startsWith('f:'));
-      return { w:d.word, p:tags.filter(t => POS.has(t)), f: f ? parseFloat(f.slice(2)) : 0 };
+      return { w:d.word.toLowerCase(), p:tags.filter(t => POS.has(t)), f: f ? parseFloat(f.slice(2)) : 0 };
     });
-  cache.set(key, clean);
+  cache.set(query, clean);
   return clean;
 }
 
-// A word can only be replaced by something that can stand in its place.
-async function posOf(word){
-  const k = word.toLowerCase();
-  if(posCache.has(k)) return posCache.get(k);
-  const d = await ask('https://api.datamuse.com/words?sp='+encodeURIComponent(k)+'&md=p&max=1');
-  if(d === null) return [];               // unknown, not "no part of speech"
-  const tags = (d[0] && d[0].word.toLowerCase() === k)
-    ? (d[0].tags||[]).filter(t => POS.has(t)) : [];
-  posCache.set(k, tags);
-  return tags;
+// ── the tether ─────────────────────────────────────────────────────
+// Every word that drifts is tied to the word it was spoken as. Its
+// neighbourhood is everything the language holds near that first word,
+// nearest first. A word may only become something inside it, and each
+// pass it steps further out, so it keeps going without ever leaving.
+const tethers = new Map();
+async function tether(origin){
+  if(tethers.has(origin)) return tethers.get(origin);
+  const [near, called, kind] = await Promise.all([
+    probe('ml=' + encodeURIComponent(origin), 1000),
+    probe('rel_trg=' + encodeURIComponent(origin), 200),
+    probe('sp=' + encodeURIComponent(origin), 1)
+  ]);
+  if(near === null) return null;
+  const rank = new Map();
+  for(const c of near) if(!rank.has(c.w)) rank.set(c.w, { r:rank.size, p:c.p, f:c.f });
+  for(const c of called || []) if(!rank.has(c.w)) rank.set(c.w, { r:rank.size, p:c.p, f:c.f });
+  const pos = kind && kind[0] && kind[0].w === origin ? kind[0].p : [];
+  const t = { rank, list:[...rank.keys()], pos };
+  tethers.set(origin, t);
+  return t;
 }
 
-// Rhythm is the last thing to go — Lucier says so. The syllable count is
-// checked after the ending goes back on, so the pulse is what is locked.
-async function reply(tok, room, rnd, used, pass){
-  const tag = endingOf(tok.v);
-  const need = tag ? ENDING_POS[tag] : null;
+// An ending put back on by rule has to come out as a word the language
+// actually has: session is a verb somewhere, but sessioning is nowhere.
+async function real(w){
+  const d = await probe('sp=' + encodeURIComponent(w), 1);
+  // the bar is commonness, not existence: catched and lossing exist as typos
+  return !!(d && d[0] && d[0].w === w.toLowerCase() && d[0].f >= 1);
+}
 
-  // Early passes stay in common English; the rarities are let in slowly,
-  // so the text is still a text long after it stops being the same text.
-  const floorF = Math.max(0, 3.5 * (1 - (pass - 1) / 8));
+// Ends in the ending and is built on a stem: bring and string end in
+// -ing but are not anything-ing, and speed is not a past tense.
+function wears(w, tag){
+  if(endingOf(w) !== tag) return false;
+  const stem = w.slice(0, w.length - (tag === 'ies' ? 3 : tag.length));
+  if(!/[aeiouy]/.test(stem)) return false;
+  if(tag === 'ed' && /eed$/.test(w)) return false;
+  return true;
+}
 
-  if(!offline){
-    const mine = await posOf(tok.v);
-    for(const param of ROOMS[room].probes){
-      const list = await probe(tok.v, param);
-      if(list === null) return null;      // the room is busy; do not pretend
-      if(!list.length) continue;
+function fits(tok, T, w, info){
+  const need = tok.tag ? ENDING_POS[tok.tag] : null;
+  // a relative that already wears the ending is already the right form:
+  // destroyed can become wrecked, whatever the dictionary calls wrecked
+  if(tok.tag && wears(w, tok.tag)) return true;
+  // otherwise an ending may only go on a word that is mainly that kind:
+  // session can be a verb, but sessioning is not English
+  if(need && info.p[0] !== need) return false;
+  // a word can only be replaced by something that can stand in its place
+  if(T.pos.length && info.p.length && !info.p.some(t => T.pos.includes(t))) return false;
+  return true;
+}
 
-      const shaped = [];
-      for(const c of list){
-        // an ending may only go on a word that can carry it
-        if(tag && c.w.toLowerCase() !== tok.v.toLowerCase()){
-          const already = { ing:/ing$/, ed:/ed$/, ly:/ly$/ }[tag];
-          const fits = already ? already.test(c.w) : true;
-          if(!fits && c.p.length && need && !c.p.includes(need)) continue;
-          if(!fits && !c.p.length) continue;   // unknown part of speech: don't guess
-        }
-        const f = inflect(c.w, tag);
-        const l = f.toLowerCase();
-        if(l === tok.v.toLowerCase() || tok.hist.has(l) || used.has(l)) continue;
-        if(mine.length && c.p.length && !c.p.some(t => mine.includes(t))) continue;
-        shaped.push({ w:f, s:syllables(f), f:c.f });
-      }
-      if(!shaped.length) continue;
+async function reply(tok, rnd, used){
+  const T = await tether(tok.origin);
+  if(!T) return null;
+  const now = tok.v.toLowerCase();
+  const base = tok.recent[tok.recent.length - 1];
+  // what it means, and what it calls to mind: the drift may go sideways
+  const [ml, trg] = await Promise.all([
+    probe('ml=' + encodeURIComponent(base), 150),
+    probe('rel_trg=' + encodeURIComponent(base), 60)
+  ]);
+  if(ml === null) return null;             // the room is busy; try next time
+  const kin = trg ? ml.concat(trg) : ml;
 
-      // commonness first, then rhythm — a rare word with the right syllable
-      // count is worse than a common one a syllable off, until late.
-      for(const fmin of [floorF, floorF/4, 0]){
-        for(const tol of [0, 1, 99]){
-          const cands = shaped.filter(c => Math.abs(c.s - tok.syll) <= tol && c.f >= fmin);
-          if(!cands.length) continue;
-          cands.sort((a,b) => b.f - a.f);
-          const i = Math.min(cands.length-1, Math.floor(Math.pow(rnd(), 1.5) * cands.length));
-          used.add(cands[i].w.toLowerCase());
-          return { w:cands[i].w, via:param };
-        }
-      }
-    }
+  const shaped = [];
+  for(const c of kin){
+    // the walls never stand in for anything
+    if(WALLS.has(c.w)) continue;
+    const info = T.rank.get(c.w);
+    if(!info || !fits(tok, T, c.w, info)) continue;
+    // a word that already wears an ending would end up wearing two
+    const own = endingOf(c.w);
+    if(own && own !== tok.tag && wears(c.w, own)) continue;
+    // common words only: slang and rarities read as a joke, not a drift
+    if(c.f < 0.6) continue;
+    const f = inflect(c.w, tok.tag), l = f.toLowerCase();
+    if(l === now || tok.recent.includes(c.w) || used.has(l)) continue;
+    shaped.push({ w:c.w, f, r:info.r });
   }
-  const l = local(tok, room, rnd, used);
-  return l ? { w:inflect(l, tag), via:'local' } : null;
+
+  // further out than it stands now, by a stride that is not timid
+  const out = shaped.filter(c => c.r > tok.r).sort((a, b) => a.r - b.r);
+  if(out.length > 1){
+    const k = Math.floor(Math.pow(rnd(), 0.7) * Math.min(10, out.length));
+    out.unshift(out.splice(k, 1)[0]);
+  }
+  // at the edge, it wanders inside the neighbourhood
+  const rest = shaped.filter(c => c.r <= tok.r).sort(() => rnd() - .5);
+
+  let pick = null;
+  for(const c of [...out, ...rest].slice(0, 6)){
+    if(c.f !== c.w && !(await real(c.f))) continue;
+    pick = c; break;
+  }
+
+  // and if it has nowhere further to go, the tether pulls it home: it
+  // becomes the word first spoken again, and sets out on another path
+  if(!pick && now !== tok.origin) pick = { w:tok.origin, f:tok.spoken, r:-1, home:true };
+  return pick;
 }
 
 async function pool(items, n, fn){
@@ -401,62 +300,34 @@ async function pool(items, n, fn){
   }));
 }
 
-async function playBack(tokens, room, rnd, pass){
-  const next = tokens.map(t => t.k==='w'
-    ? {...t, hist:new Set(t.hist), via:null, moved:false}
-    : {...t, via:null, moved:false});
+async function playBack(tokens, rnd){
+  const next = tokens.map(t => t.k==='w' ? {...t, recent:[...t.recent]} : {...t});
   const live = next.filter(t => t.k==='w' && !t.wall);
   const used = new Set(next.filter(t => t.k==='w').map(t => t.v.toLowerCase()));
   // the same word answers the same way — repetition is what reinforces
   const memo = new Map();
-  await pool(live, 3, async t => {
-    const key = t.v.toLowerCase();
-    if(!memo.has(key)) memo.set(key, reply(t, room, rnd, used, pass));
+  await pool(live, 8, async t => {
+    const key = t.origin + '>' + t.v.toLowerCase();
+    if(!memo.has(key)) memo.set(key, reply(t, rnd, used));
     const r = await memo.get(key);
     if(r){
-      used.add(r.w.toLowerCase());
-      t.v = t.cap ? r.w[0].toUpperCase()+r.w.slice(1) : r.w;
-      t.hist.add(r.w.toLowerCase());
-      t.via = r.via;
+      used.add(r.f.toLowerCase());
+      t.v = r.home ? t.spoken : t.cap ? r.f[0].toUpperCase()+r.f.slice(1) : r.f;
+      t.r = r.home ? -1 : Math.max(t.r, r.r);
+      t.recent.push(r.w);
+      if(t.recent.length > 12) t.recent.shift();
     }
   });
   return next;
 }
 
-// ── erosion: rhythm survives, grammar does not ─────────────────────
-// Erosion is now part of the tape, not a filter over it: what wears away
-// stays worn away, and every later pass is played back from the worn text.
+// Nothing wears away. Punctuation, capitals and the small words stay
+// exactly as spoken, and words never trade places, so whatever is not
+// drifting is always true to the original.
 const clamp01 = x => Math.max(0, Math.min(1, x));
 
-function erode(t, pass, rnd){
-  const comma = clamp01((pass-6)/9)  * 0.3;
-  const stop  = clamp01((pass-12)/9) * 0.3;
-  const lower = clamp01((pass-10)/9) * 0.3;
-  const swap  = clamp01((pass-16)/8) * 0.1;
-
-  for(const x of t){
-    if(x.k==='p' && !x.gone){
-      if((/^[,;:]+$/.test(x.v) && rnd() < comma) || (/^[.!?]+$/.test(x.v) && rnd() < stop)){
-        x.gone = true; x.via = 'worn';
-      }
-    } else if(x.k==='w' && x.cap && rnd() < lower){
-      x.cap = false; x.v = x.v.toLowerCase();
-    }
-  }
-  // adjacent transposition: same pulse, no sense
-  const idx = t.map((x,i)=>x.k==='w'?i:-1).filter(i=>i>=0);
-  for(let n=0;n<idx.length-1;n++){
-    if(rnd() < swap){
-      const a=idx[n], b=idx[n+1];
-      const tmp=t[a]; t[a]=t[b]; t[b]=tmp;
-      t[a].moved = t[b].moved = true;
-      n++;
-    }
-  }
-}
-
 // What a pass looks like, slot by slot. Spaces never move, so slot i is
-// the same place in every pass, and a word's lineage is just column i.
+// the same place in every pass.
 function display(t){
   const out = t.map(x => x.k==='sp' ? ' ' : (x.k==='p' && x.gone) ? '' : x.v);
   for(let i=0;i<t.length;i++){
@@ -477,61 +348,42 @@ function display(t){
   return out;
 }
 
-const textOf = d => d.join('').replace(/ {2,}/g,' ').replace(/ ([,.;:!?])/g,'$1').trim();
+const textOf = d => d.join('');
 
 // ── the tape ───────────────────────────────────────────────────────
-// Each pass is still generated once and only once, in order. Scrolling
-// back only replays what the room already did; it cannot undo it.
+// It never ends. Each pass is generated once, in order, and only while
+// someone is there; only the last few are kept.
 function fresh(text){
   let seed = (Date.now() ^ text.length*2654435761) >>> 0;
   if(self.crypto && crypto.getRandomValues){
     seed = (seed ^ crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
   }
-  const first = tokenize(text).map(t => ({...t, via:null, moved:false}));
-  return {
-    text,
-    states: [first],
-    disp: [display(first)],
-    top: 0,
-    room: 'close',
-    rnd: mulberry32(seed),
-    pending: null,
-    stalls: 0
-  };
+  const first = tokenize(text);
+  return { states:[first], disp:[display(first)], top:0, rnd:mulberry32(seed), pending:null, retry:0 };
 }
 
-const VIA = {
-  rel_syn:'synonym', ml:'means something like it', rel_trg:'called up by it',
-  sl:'sounds like it', rel_hom:'sounds the same', rel_cns:'same consonants',
-  worn:'worn away', local:'from memory'
-};
-const ROOM_SAYS = {
-  close:'close room. answers with synonyms first.',
-  large:'large room. answers with words that mean something like it.',
-  hall:'hall. answers with words it calls up.',
-  tiled:'tiled room. answers by sound, not sense.'
-};
-const HINT = 'scroll to play it back into the room. tap a word to trace it.';
+// what a word passes through on its way to another: marks that are not
+// letters, all in the same face, so every one is the width of a letter
+const GLYPHS = '#%&*+=<>/\\|~^@§¶¤øæþðßµ';
+const SHIMMER = 10;  // glyph changes per second
 const BLUR = 0.45;   // em, at the height of the crossing
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let pos = 0, target = 0, raf = null;
-let slotEls = [], changed = [], lastA = -1, lastB = null, lastCp = -1, sel = null;
+let pos = 0, raf = null, last = 0, energy = 0;
+let slotEls = [], changed = [], lastA = -1, lastB = null;
 const smooth = t => t*t*(3-2*t);
-
-function say(msg, latch){
-  statusEl.textContent = msg;
-  statusEl.classList.add('show');
-  clearTimeout(say._t);
-  if(!latch) say._t = setTimeout(()=>statusEl.classList.remove('show'), 4200);
-}
+// a fixed noise per slot, letter and moment
+const hash = (a, b, c) => {
+  let h = Math.imul(a + 1, 374761393) ^ Math.imul(b + 1, 668265263) ^ Math.imul(c + 1, 2246822519);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+};
 
 function prepare(){
-  if(!S || S.pending || S.top >= PASSES) return;
-  const from = S.states[S.top], room = S.room, at = S.top + 1, rnd = S.rnd;
+  if(!S || S.pending || Date.now() < S.retry) return;
+  const from = S.states[S.top], at = S.top + 1, rnd = S.rnd;
   const before = textOf(S.disp[S.top]);
-  const job = playBack(from, room, rnd, at).then(tokens => {
-    erode(tokens, at, rnd);
+  const job = playBack(from, rnd).then(tokens => {
     return { tokens, disp: display(tokens), at };
   });
   S.pending = job;
@@ -539,21 +391,14 @@ function prepare(){
     if(S.pending !== job) return;
     S.pending = null;
     if(r.at !== S.top + 1) return;
-
-    if(offline){ say('no connection. the room cannot answer.', true); return; }
-
-    // Nothing moved. Say so rather than committing the same text twice.
-    if(textOf(r.disp) === before){
-      S.stalls++;
-      say(S.stalls > 2 ? 'the room has stopped answering' : 'the room did not answer. scroll again.');
-      return;
-    }
-    S.stalls = 0;
+    // nothing answered: keep the pass unspent and ask again shortly
+    if(textOf(r.disp) === before){ S.retry = Date.now() + 2000; return; }
     S.states[r.at] = r.tokens;
     S.disp[r.at] = r.disp;
     S.top = r.at;
-    render();
-    renderTrace();
+    // keep from the pass on screen onward; only what is behind it goes
+    for(const k in S.states) if(+k < Math.floor(pos)){ delete S.states[k]; delete S.disp[k]; }
+    wake();
   }, () => { if(S.pending === job) S.pending = null; });
 }
 
@@ -572,9 +417,6 @@ function build(){
     if(!chunk){ chunk = document.createElement('span'); chunk.className = 'chunk'; textEl.appendChild(chunk); }
     const s = document.createElement('span');
     s.className = 'slot';
-    s.dataset.i = i;
-    s.append(document.createElement('span'), document.createElement('span'));
-    s.firstChild.className = 'a'; s.lastChild.className = 'b';
     chunk.appendChild(s);
     slotEls[i] = s;
   });
@@ -591,217 +433,100 @@ function render(){
     changed = [];
     slotEls.forEach((s, i) => {
       if(!s) return;
-      const sa = s.firstChild, sb = s.lastChild;
-      sa.textContent = A[i]; sb.textContent = B[i];
+      s.textContent = A[i];
+      s.style.cssText = '';
       if(A[i] !== B[i]) changed.push(i);
-      else { s.style.width = ''; sa.style.cssText = ''; sb.style.cssText = 'opacity:0'; }
     });
     lastA = a; lastB = B;
   }
 
   // Only the words that move this pass are touched. The walls stay sharp.
-  // Each moving word goes out of focus where it stands while its
-  // replacement comes into focus in the same place; at the crossing both
-  // are smeared together and neither can be read.
-  const e = smooth(f);
+  // A moving word goes out of focus where it stands while its letters
+  // turn, under the blur, into marks that are not letters; at the height
+  // of the crossing it becomes its replacement, which comes back into
+  // focus as the new word. The line only reflows at that moment, so
+  // nothing spills over its neighbours and no gaps open.
+  const k = 1 - Math.abs(2 * f - 1);          // 0 at rest, 1 at the crossing
+  const tick = Math.floor(performance.now() / (1000 / SHIMMER));
+  const veil = REDUCED ? 0 : smooth(Math.min(1, k * 1.25));
   for(const i of changed){
-    const s = slotEls[i], sa = s.firstChild, sb = s.lastChild;
-    const la = A[i].length, lb = B[i].length;
-    s.style.width = (la + (lb - la) * e).toFixed(3) + 'ch';
-    if(REDUCED){
-      sa.style.opacity = f < .5 ? '1' : '0';
-      sb.style.opacity = f < .5 ? '0' : '1';
-      continue;
+    const s = slotEls[i], w = f < .5 ? A[i] : B[i];
+    let out = '';
+    for(let j = 0; j < w.length; j++){
+      // each letter has its own threshold, so they go and return unevenly
+      if(veil > 0 && hash(i, j, 0) < veil) out += GLYPHS[Math.floor(hash(i, j, tick) * GLYPHS.length)];
+      else out += w[j];
     }
-    const ba = BLUR * smooth(clamp01(f / .6));
-    const bb = BLUR * smooth(clamp01((1 - f) / .6));
-    sa.style.opacity = (1 - smooth(clamp01((f - .3) / .7))).toFixed(3);
-    sb.style.opacity = smooth(clamp01(f / .7)).toFixed(3);
-    sa.style.filter = ba < .005 ? 'none' : 'blur(' + ba.toFixed(3) + 'em)';
-    sb.style.filter = bb < .005 ? 'none' : 'blur(' + bb.toFixed(3) + 'em)';
+    if(s.textContent !== out) s.textContent = out;
+    if(REDUCED) continue;
+    const b = BLUR * smooth(k);
+    s.style.filter = b < .005 ? 'none' : 'blur(' + b.toFixed(3) + 'em)';
+    s.style.opacity = (1 - .45 * smooth(k)).toFixed(3);
   }
-
-  const cp = Math.round(pos);
-  countEl.textContent = 'pass ' + String(cp).padStart(2,'0') + ' of ' + PASSES;
-  [...roomsEl.children].forEach(b => b.classList.toggle('on', b.dataset.room===S.room));
-  if(cp !== lastCp){ lastCp = cp; renderTrace(); }
 }
 
-// ── the trace: every word that has stood in one place ──────────────
-function renderTrace(){
-  slotEls.forEach((s, i) => s && s.classList.toggle('sel', i === sel));
-  if(sel === null || !S){ traceEl.classList.remove('open'); traceEl.textContent = ''; return; }
-  const i = sel, cp = Math.round(pos), steps = [];
+// ── presence ───────────────────────────────────────────────────────
+// Anything the viewer does — moving, scrolling, touching, clicking,
+// typing — feeds the room a little. The room spends it slowly, and when
+// the viewer is still it finishes the crossing it is in and rests.
+const PACE = 0.9;     // passes per second, at most
+const DRAIN = 0.8;    // seconds for the feed to fall by about two thirds
+const SETTLE = 0.12;  // passes per second, finishing a crossing alone
+const BEGIN = 0.15;   // feed needed to start a new crossing
 
-  for(let p = 0; p <= S.top; p++){
-    const w = S.disp[p][i], tok = S.states[p][i];
-    if(p === 0){ steps.push({ p, w, label:'spoken' }); continue; }
-    const prev = steps[steps.length-1];
-    if(w.toLowerCase() === prev.w.toLowerCase() && !tok.moved) continue;
-    const parts = [];
-    if(tok.via) parts.push(VIA[tok.via] || tok.via);
-    if(tok.moved) parts.push('traded places');
-    if(!parts.length) parts.push('agrees with the next word');
-    steps.push({ p, w, label: parts.join(', ') + ', pass ' + p });
-  }
-
-  traceEl.textContent = '';
-  traceEl.classList.add('open');
-
-  if(steps.length === 1){
-    const t0 = S.states[0][i], w = steps[0].w;
-    const n = document.createElement('span');
-    n.className = 'note';
-    n.textContent =
-      t0.wall ? w + ' is a wall. small words never drift; they are the shape the drifting happens inside.'
-      : t0.k === 'p' ? 'punctuation. it begins to wear away at pass 6.'
-      : S.top === 0 ? 'scroll to hear what the room answers ' + w + ' with.'
-      : 'the room has not found anything to answer ' + w + ' with yet.';
-    traceEl.appendChild(n);
-    return;
-  }
-
-  let now = 0;
-  steps.forEach((st, k) => { if(st.p <= cp) now = k; });
-  steps.forEach((st, k) => {
-    if(k){ const to = document.createElement('span'); to.className = 'to'; to.textContent = '→'; traceEl.appendChild(to); }
-    const b = document.createElement('button');
-    b.className = 'step' + (k === now ? ' now' : '');
-    b.textContent = st.w || '(gone)';
-    const sm = document.createElement('small');
-    sm.textContent = st.label;
-    b.appendChild(sm);
-    b.onclick = () => { target = st.p; nudge(); };
-    traceEl.appendChild(b);
-  });
-  const nowEl = traceEl.querySelector('.now');
-  if(nowEl) nowEl.scrollIntoView({ block:'nearest' });
-}
-
-el('stage').addEventListener('click', e => {
-  const s = e.target.closest('.slot');
-  const i = s ? +s.dataset.i : null;
-  sel = (i === null || i === sel) ? null : i;
-  if(sel !== null && !hinted){ hinted = true; statusEl.classList.remove('show'); }
-  renderTrace();
-});
-
-function loop(){
-  const d = target - pos;
-  if(Math.abs(d) < 0.0004){
-    pos = target;
+function loop(t){
+  const dt = Math.min(0.1, (t - (last || t)) / 1000);
+  last = t;
+  energy *= Math.exp(-dt / DRAIN);
+  const frac = pos - Math.floor(pos);
+  let rate = Math.min(1, energy) * PACE, cap = S.top;
+  // too little feed to carry on: finish this crossing, and only this one
+  if(rate < SETTLE && frac > 0){ rate = SETTLE; cap = Math.min(cap, Math.ceil(pos)); }
+  // a new crossing begins only while the viewer is still there
+  if(frac === 0 && energy < BEGIN) rate = 0;
+  if(S.top - pos < 4 && energy > 0.05) prepare();
+  if(rate > 0 && pos < cap){
+    pos = Math.min(cap, pos + rate * dt);
     render();
-    raf = null;
+  }
+  if(energy < 0.01 && (pos === Math.floor(pos) || pos >= S.top)){
+    energy = 0; raf = null; last = 0;
     return;
   }
-  pos += d * 0.08;          // slow — the crossing is the piece
-  render();
   raf = requestAnimationFrame(loop);
 }
 
-function nudge(){
-  if(target > S.top - 1.2) prepare();
-  if(raf === null) raf = requestAnimationFrame(loop);
+function wake(){ if(raf === null) raf = requestAnimationFrame(loop); }
+
+function feed(n){
+  if(!S || !(n > 0)) return;
+  energy = Math.min(1, energy + n);
+  wake();
 }
 
-function push(d){
-  if(!S || !d) return;
-  if(!hinted){ hinted = true; statusEl.classList.remove('show'); }
-  target = Math.max(0, Math.min(S.top, target + d / CHARGE));
-  if(target >= PASSES) say('the tape ends');
-  nudge();
-}
-
-// ── input: both directions, but the drift only happens once ────────
-const inTrace = e => !!(e.target && e.target.closest && e.target.closest('#trace'));
-const sheetOpen = () => editor.classList.contains('open') || how.classList.contains('open');
-
-addEventListener('wheel', e => {
-  if(sheetOpen() || inTrace(e)) return;
-  e.preventDefault();
-  push(e.deltaY);
-}, {passive:false});
-
-let lastY = null;
-addEventListener('touchstart', e => {
-  lastY = (sheetOpen() || inTrace(e)) ? null : e.touches[0].clientY;
+let px = null, py = null;
+addEventListener('pointermove', e => {
+  if(px !== null) feed(Math.min(0.3, Math.hypot(e.clientX - px, e.clientY - py) * 0.004));
+  px = e.clientX; py = e.clientY;
 }, {passive:true});
+addEventListener('pointerdown', () => feed(0.6), {passive:true});
+addEventListener('wheel', e => { e.preventDefault(); feed(Math.min(0.4, Math.abs(e.deltaY) * 0.005)); }, {passive:false});
+addEventListener('keydown', e => { if(!e.metaKey && !e.ctrlKey) feed(0.5); });
+let ty = null, tx = null;
+addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; feed(0.6); }, {passive:true});
 addEventListener('touchmove', e => {
-  if(lastY === null || sheetOpen()) return;
-  const y = e.touches[0].clientY;
-  push((lastY - y) * 2.4);
-  lastY = y;
+  const x = e.touches[0].clientX, y = e.touches[0].clientY;
+  if(ty !== null) feed(Math.min(0.3, Math.hypot(x - tx, y - ty) * 0.005));
+  tx = x; ty = y;
 }, {passive:true});
-addEventListener('touchend', () => { lastY = null; });
-
-addEventListener('keydown', e => {
-  if(e.key === 'Escape'){
-    if(sheetOpen()){ editor.classList.remove('open'); how.classList.remove('open'); }
-    else { sel = null; renderTrace(); }
-    return;
-  }
-  if(sheetOpen()) return;
-  if(e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' '){ e.preventDefault(); push(CHARGE/3); }
-  if(e.key === 'ArrowUp' || e.key === 'PageUp'){ e.preventDefault(); push(-CHARGE/3); }
-});
-
-// ── rooms ──────────────────────────────────────────────────────────
-Object.keys(ROOMS).forEach(name => {
-  const b = document.createElement('button');
-  b.className = 'act';
-  b.dataset.room = name;
-  b.textContent = name;
-  b.onclick = () => {
-    if(name === S.room){ say(ROOM_SAYS[name]); return; }
-    const keep = Math.max(0, Math.floor(pos));
-    const cut = S.top > keep;
-    S.room = name;
-    S.pending = null;
-    S.top = keep;
-    S.states.length = S.disp.length = S.top + 1;
-    target = Math.min(target, S.top);
-    lastA = -1;
-    render();
-    renderTrace();
-    say(ROOM_SAYS[name] + (cut ? ' the tape after pass ' + keep + ' was erased.' : ''));
-    nudge();
-  };
-  roomsEl.appendChild(b);
-});
-
-// ── deck ───────────────────────────────────────────────────────────
-el('editBtn').onclick = () => { ta.value = S.text; editor.classList.add('open'); ta.focus(); };
-el('cancelBtn').onclick = () => editor.classList.remove('open');
-el('applyBtn').onclick = () => {
-  const v = ta.value.trim();
-  editor.classList.remove('open');
-  if(v) start(v);
-};
-el('againBtn').onclick = () => start(S.text);
-el('copyBtn').onclick = () => {
-  navigator.clipboard.writeText(textOf(S.disp[Math.min(S.top, Math.round(pos))])).then(
-    () => say('copied'),
-    () => say('could not copy')
-  );
-};
-el('howBtn').onclick = () => { how.classList.add('open'); how.scrollTop = 0; el('howClose').focus(); };
-el('howClose').onclick = () => how.classList.remove('open');
 
 // ── start ──────────────────────────────────────────────────────────
-function start(text){
-  hinted = false;
-  S = fresh(text);
-  sel = null;
-  pos = target = 0;
-  lastCp = -1;
-  build();
-  render();
-  renderTrace();
-  say(HINT, true);
-  prepare();
-}
-
-start(SOURCE);
+S = fresh(SOURCE);
+build();
+render();
+// the first answer is fetched quietly now, so the first movement is met;
+// nothing on the page changes until the viewer does something
+prepare();
 </script>
 </body>
 </html>
