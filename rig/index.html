@@ -59,8 +59,10 @@ nav .gap{flex:1}
 /* The rig loads the existing pages side by side. Each one stays its own page at its own address;
    the rig only catches the hand-offs between them so they land in the next tab instead of a new window,
    and keeps every clip that passes through on one shelf. */
-const TABS={find:'/shellac/',cut:'/clipper/',mangle:'/ximeremix/',chip:'/chip/'};
-const PATHS=[['/shellac/','find'],['/clipper/','cut'],['/ximeremix/','mangle'],['/remix/','mangle'],['/take/','mangle'],['/chip/','chip']];
+/* /rig/?next loads the preview copies of shellac and ximeremix, to try them together before they go live */
+const NX=new URLSearchParams(location.search).has('next');
+const TABS={find:NX?'/shellac-next/':'/shellac/',cut:'/clipper/',mangle:NX?'/ximeremix-next/':'/ximeremix/',chip:'/chip/'};
+const PATHS=[['/shellac-next/','find'],['/shellac/','find'],['/clipper/','cut'],['/ximeremix-next/','mangle'],['/ximeremix/','mangle'],['/remix/','mangle'],['/take/','mangle'],['/chip/','chip']];
 const $=id=>document.getElementById(id);
 const note=t=>{$('note').textContent=t||'';clearTimeout(note.t);if(t)note.t=setTimeout(()=>{$('note').textContent=''},6000)};
 const frames={};let cur=null;
