@@ -31,12 +31,15 @@ Code, here, with git; and Claude in chat, which has no local copy and writes
 through the GitHub connector or the browser. These rules keep one from
 overwriting the other's work.
 
-- `main` is live. Only Claude Code changes `main`, by merging. Claude in chat
-  never commits to `main`, and neither does the GitHub web editor.
+- `main` is live. Nobody commits straight to `main`, the GitHub web editor
+  included: every change arrives as a merged pull request, so each one is
+  visible and can be reverted on its own.
 - Claude in chat works on a branch named for the surface and the change
   (`ximeremix-hold`), and opens a pull request that says what changed and how
-  it was tested. Claude Code merges it after checking it, or the owner merges
-  it with the button on GitHub.
+  it was tested. The owner develops and deploys from chat, so chat may merge
+  its own pull request once the surface is not claimed and the branch is
+  current with `main`. Otherwise Claude Code merges it after checking it, or
+  the owner presses the merge button.
 - Claiming a surface: when Claude Code starts on a surface, mark its fix-list
   item `[~]` in this file and commit that first. When chat opens a pull
   request, the surface counts as claimed until it is merged or closed. Neither
