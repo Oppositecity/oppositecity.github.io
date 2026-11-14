@@ -137,6 +137,8 @@ deciding it.
 ### Later, only if needed
 
 - A front door showing the strongest handful of pieces in plain words.
+  A draft is on the `front-door` branch at `/door/`, not on main; the owner
+  picks the pieces.
 - Subdomains, a private repo for internal tools, a locked backroom.
 
 ## Open questions for the owner
