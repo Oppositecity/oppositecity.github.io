@@ -24,6 +24,50 @@ Every push to `main` is a deploy. Read this file before changing anything.
   subagents on Sonnet. Never delegate to Haiku. Use Fable only when it is
   needed: design, planning and hard problems.
 
+## Two Claudes, one repo
+
+Two Claudes work on this repo and cannot see each other's sessions: Claude
+Code, here, with git; and Claude in chat, which has no local copy and writes
+through the GitHub connector or the browser. These rules keep one from
+overwriting the other's work.
+
+- `main` is live. Nobody commits straight to `main`, the GitHub web editor
+  included: every change arrives as a merged pull request, so each one is
+  visible and can be reverted on its own.
+- Claude in chat works on a branch named for the surface and the change
+  (`ximeremix-hold`), and opens a pull request that says what changed and how
+  it was tested. The owner develops and deploys from chat, so chat may merge
+  its own pull request once the surface is not claimed and the branch is
+  current with `main`. Otherwise Claude Code merges it after checking it, or
+  the owner presses the merge button.
+- Claiming a surface: when Claude Code starts on a surface, mark its fix-list
+  item `[~]` in this file and commit that first. When chat opens a pull
+  request, the surface counts as claimed until it is merged or closed. Neither
+  Claude starts on a surface the other has claimed; ask the owner instead.
+- At the start of every session, Claude Code lists open pull requests
+  (`gh pr list`) and says which ones are waiting, before starting new work.
+- Pull before starting any work. Pull again before pushing. If `main` moved,
+  rebase on it and re-check every surface the change touches. Never
+  force-push `main`.
+- Before merging a pull request, check out its branch, serve it locally and
+  look at the surface as described above. If it conflicts with `main`, resolve
+  the conflict here; do not ask chat to resend whole files.
+- A change to how a piece sounds or behaves goes to a preview first: a folder
+  named `<slug>-next/`, unlisted (not in `surfaces.json`, the fallback list or
+  `sitemap.xml`). The owner tries it at `https://opposite.city/<slug>-next/`.
+  Once approved, copy it over `<slug>/index.html` in one commit and delete the
+  `-next` folder in the same commit. Copy fixes and small layout fixes can
+  skip the preview.
+- Pieces with audio or heavy logic get a headless run before merging
+  (Playwright with Chromium; install with `pip install playwright` then
+  `playwright install chromium` if missing). Load the page over the local
+  server, feed it a test file, read the console, and measure the output
+  level. A page that throws an error or goes silent is not merged.
+- Commits that come from chat end their message with `(from chat)`.
+- When branch protection is turned on for `main` (require a pull request),
+  Claude Code also works on a branch and merges its own pull request after
+  the checks above.
+
 ## Repo layout
 
 - `index.html`: the hub. Draws its grid from `surfaces.json`.
