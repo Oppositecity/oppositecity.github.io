@@ -251,9 +251,9 @@
     <div class="np-clip">
       <button id="clip-in">set in</button>
       <button id="clip-out">set out</button>
-      <button id="clip-go" disabled>clip</button>
+      <button id="clip-go" disabled>ximeremix</button>
     </div>
-    <div class="np-clip-span" id="clip-span">set in and out while it plays, then clip</div>
+    <div class="np-clip-span" id="clip-span">set in and out while it plays, then take it apart in ximeremix</div>
     <div class="np-error" id="np-error"></div>
   </div>
 </div>
@@ -495,7 +495,7 @@
   }
   function spanLabel() {
     var r = spanRange();
-    return r[0] === r[1] ? String(r[0]) : r[0] + "\u2013" + r[1];
+    return r[0] === r[1] ? String(r[0]) : r[0] + "–" + r[1];
   }
 
   function paintYearStrip(scroll) {
@@ -568,7 +568,7 @@
       el["radio-toggle"].classList.remove("on");
       el["audio"].pause();
     }
-    el["np-label"].textContent = on ? "on air \u00b7 " + spanLabel() : "now playing";
+    el["np-label"].textContent = on ? "on air · " + spanLabel() : "now playing";
     paintYearStrip(true);
     resetAndLoad();
   }
@@ -632,7 +632,7 @@
   function paintCountLine() {
     var bits = [];
     if (state.mode === "radio") {
-      bits.push("on air \u00b7 " + spanLabel());
+      bits.push("on air · " + spanLabel());
       if (state.numFound) bits.push(commas(state.numFound) + " sides");
     } else if (state.mode === "search") {
       if (state.numFound) {
@@ -646,7 +646,7 @@
       }
       bits.push(state.source.label);
     }
-    el["count-line"].textContent = bits.join(" \u00b7 ");
+    el["count-line"].textContent = bits.join(" · ");
   }
 
   /* ===============================================================
@@ -777,7 +777,7 @@
 
     var mark = document.createElement("div");
     mark.className = "track-mark";
-    mark.textContent = i === state.index ? "\u25B6" : "";
+    mark.textContent = i === state.index ? "▶" : "";
 
     var info = document.createElement("div");
     info.className = "track-info";
@@ -789,7 +789,7 @@
     var bits = [firstOf(t.creator) || "unknown artist"];
     var yr = firstOf(t.year);
     if (yr && state.mode !== "year") bits.push(yr);
-    meta.textContent = bits.join("  \u00b7  ");
+    meta.textContent = bits.join("  ·  ");
     info.appendChild(title);
     info.appendChild(meta);
 
@@ -812,19 +812,19 @@
     } else if (state.mode === "radio" && !state.exhausted && state.tracks.length) {
       tailEl = document.createElement("div");
       tailEl.className = "list-end";
-      tailEl.textContent = "\u2014 on air \u00b7 " + spanLabel() + " \u2014";
+      tailEl.textContent = "— on air · " + spanLabel() + " —";
     } else if (state.exhausted && state.tracks.length) {
       tailEl = document.createElement("div");
       tailEl.className = "list-end";
       tailEl.textContent = state.page >= MAX_PAGE && state.mode !== "radio"
-        ? "\u2014 first " + commas(state.tracks.length) + " of " + commas(state.numFound) + " \u2014"
-        : "\u2014 end of " + (state.mode === "search" ? "results" : spanLabel()) + " \u2014";
+        ? "— first " + commas(state.tracks.length) + " of " + commas(state.numFound) + " —"
+        : "— end of " + (state.mode === "search" ? "results" : spanLabel()) + " —";
     } else if (state.exhausted && !state.tracks.length) {
       el["status"].style.display = "block";
       el["status"].className = "status";
       el["status"].textContent =
-        state.mode === "search" ? "nothing found \u2014 try another search" :
-        "nothing in " + state.source.label + " for " + spanLabel() + " \u2014 try another year or source";
+        state.mode === "search" ? "nothing found — try another search" :
+        "nothing in " + state.source.label + " for " + spanLabel() + " — try another year or source";
     }
     if (tailEl) el["results"].insertBefore(tailEl, el["sentinel"]);
   }
@@ -905,7 +905,7 @@
     row.classList.remove("playing");
     if (cls) row.classList.add(cls);
     var mark = row.querySelector(".track-mark");
-    if (mark) mark.textContent = cls === "playing" ? "\u25B6" : "";
+    if (mark) mark.textContent = cls === "playing" ? "▶" : "";
   }
 
   var deadStreak = 0;
@@ -928,7 +928,10 @@
       deadStreak = 0;
       clip.url = url; clip.title = cleanTitle(t.title); paintClip();
       el["audio"].src = url;
-      el["audio"].play().catch(function () {});
+      el["audio"].play().catch(function () {
+        // a browser won't start sound before a first touch: the station waits on that
+        if (el["audio"].paused) el["np-error"].textContent = "tap ▶ to tune in";
+      });
     }).catch(function () {
       if (token !== state.token || state.index !== want) return;
       skipDead("couldn't load this recording");
@@ -939,7 +942,7 @@
   function skipDead(msg) {
     el["np-error"].textContent = msg;
     if (state.mode !== "radio") return;
-    if (++deadStreak > 8) { el["np-error"].textContent = msg + " \u2014 giving up"; return; }
+    if (++deadStreak > 8) { el["np-error"].textContent = msg + " — giving up"; return; }
     setTimeout(nextTrack, 350);
   }
 
@@ -966,8 +969,8 @@
     el["np-title"].textContent = cleanTitle(t.title);
     el["np-creator"].textContent = creator;
     var yr = firstOf(t.year) || "";
-    el["np-year"].textContent = [yr, state.source.label].filter(Boolean).join("  \u00b7  ");
-    el["np-label"].textContent = state.mode === "radio" ? "on air \u00b7 " + spanLabel() : "now playing";
+    el["np-year"].textContent = [yr, state.source.label].filter(Boolean).join("  ·  ");
+    el["np-label"].textContent = state.mode === "radio" ? "on air · " + spanLabel() : "now playing";
     el["mini-title"].textContent = cleanTitle(t.title);
     el["mini-creator"].textContent = creator;
     el["now-playing"].classList.add("open");
@@ -1064,11 +1067,13 @@
   });
 
   /* ===============================================================
-     Clip: a stretch of the record, handed to the clipper
+     Clip: a stretch of the record, handed straight to ximeremix
      The Archive's download servers allow reading the audio, so the
-     stretch is cut here and passed through this device's storage to
-     /clipper/, which can trim it and send it on to /ximeremix/.
+     stretch is cut here and passed through this device's storage,
+     never a server. A preview copy of this page hands to the preview
+     copy of ximeremix, so the two can be tried together.
   =============================================================== */
+  var XMX = /-next\//.test(location.pathname) ? "/ximeremix-next/" : "/ximeremix/";
   var clip = { a: NaN, b: NaN, url: null, title: "" };
   function paintClip() {
     var ok = clip.url && clip.a < clip.b, d = el["audio"].duration || 0;
@@ -1077,7 +1082,7 @@
     if (isFinite(clip.a)) parts.push("in " + formatTime(clip.a));
     if (isFinite(clip.b)) parts.push("out " + formatTime(clip.b));
     if (ok) parts.push(Math.round(clip.b - clip.a) + "s");
-    el["clip-span"].textContent = parts.length ? parts.join("  \u00b7  ") : "set in and out while it plays, then clip";
+    el["clip-span"].textContent = parts.length ? parts.join("  ·  ") : "set in and out while it plays, then take it apart in ximeremix";
     if (d && (isFinite(clip.a) || isFinite(clip.b))) {
       var a = isFinite(clip.a) ? clip.a : clip.b, b = isFinite(clip.b) ? clip.b : clip.a;
       el["np-sel"].style.display = "block";
@@ -1107,13 +1112,13 @@
   }
   function clipDB() {
     return new Promise(function (ok, no) {
-      var r = indexedDB.open("clipper", 1);
+      var r = indexedDB.open("ximeremix", 1);
       r.onupgradeneeded = function () { r.result.createObjectStore("clips"); };
       r.onsuccess = function () { ok(r.result); };
       r.onerror = function () { no(r.error); };
     });
   }
-  var PAD = 2;   // seconds kept either side, so the clipper can still trim
+  var PAD = 0;   // ximeremix takes exactly the stretch chosen
   el["clip-go"].addEventListener("click", function () {
     if (!(clip.url && clip.a < clip.b)) return;
     var win = window.open("about:blank", "_blank");
@@ -1134,20 +1139,20 @@
         var key = Date.now().toString(36);
         return new Promise(function (ok, no) {
           var st = db.transaction("clips", "readwrite").objectStore("clips");
-          st.put({ wav: wav(chs, sr), name: name, a: a - off, b: b - off }, key);
+          st.put({ wav: wav(chs, sr), name: name }, key);
           var ks = st.getAllKeys();
-          ks.onsuccess = function () { ks.result.sort().slice(0, -6).forEach(function (x) { st.delete(x); }); };
+          ks.onsuccess = function () { ks.result.sort().slice(0, -12).forEach(function (x) { st.delete(x); }); };
           st.transaction.oncomplete = function () { ok(key); };
           st.transaction.onerror = function () { no(st.transaction.error); };
         });
       });
     }).then(function (key) {
-      var url = "/clipper/?clip=" + key;
+      var url = XMX + "?clip=" + key;
       if (win) win.location = url; else location.href = url;
     }).catch(function (err) {
       if (win) win.close();
       el["np-error"].textContent = "couldn't clip this recording: " + (err && err.message || err);
-    }).then(function () { el["clip-go"].textContent = "clip"; paintClip(); });
+    }).then(function () { el["clip-go"].textContent = "ximeremix"; paintClip(); });
   });
 
   /* ===============================================================
@@ -1174,16 +1179,19 @@
   /* ===============================================================
      Deep link: #source/year  (e.g. #georgeblood/1931)
   =============================================================== */
+  /* the station is on by default; a link to a year (#source/year) opens that year instead */
+  var bootRadio = true;
   (function readHash() {
     var h = (location.hash || "").replace(/^#/, "");
     if (!h) return;
     var parts = h.split("/");
+    if (parts[0] === "radio") parts.shift(); else bootRadio = false;
     var yr = parseInt(parts[parts.length - 1], 10);
     if (parts.length > 1 && parts[0]) state.source = { id: parts[0], label: parts[0] };
     if (yr >= YEAR_MIN && yr <= YEAR_MAX) state.year = yr;
   })();
   function writeHash() {
-    var h = "#" + state.source.id + "/" + state.year;
+    var h = "#" + (state.mode === "radio" ? "radio/" : "") + state.source.id + "/" + state.year;
     if (location.hash !== h) history.replaceState(null, "", h);
   }
 
@@ -1193,11 +1201,20 @@
   paintGenres();
   paintSpans();
   renderSources();
+  if (bootRadio) {
+    state.mode = "radio";
+    state.autoplayNext = true;
+    el["radio-toggle"].classList.add("on");
+    el["np-label"].textContent = "on air · " + spanLabel();
+  }
   paintYearStrip(false);
   loadSources();
   resetAndLoad();
   startInfiniteScroll();
   window.addEventListener("load", function () { paintYearStrip(true); });
+  el["audio"].addEventListener("playing", function () {
+    if (/tune in/.test(el["np-error"].textContent)) el["np-error"].textContent = "";
+  });
   setInterval(function () { if (state.mode !== "search") writeHash(); }, 1500);
 })();
 </script>
