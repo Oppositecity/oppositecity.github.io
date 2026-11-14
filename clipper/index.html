@@ -118,6 +118,8 @@ input::placeholder{color:#fff;opacity:1}
 <script>
 const $=id=>document.getElementById(id);
 const msg=t=>{$('msg').textContent=t};
+const HINT="Press to start recording what's playing, press again to stop. The S key works too.";
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const fmt=s=>{if(!isFinite(s))return'';s=Math.max(0,s);const m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(3).padStart(6,'0')};
 const parseT=v=>{v=String(v).trim();if(!v)return NaN;const p=v.split(':').map(Number);return p.reduce((a,x)=>a*60+x,0)};
 const slug=s=>(s||'clip').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,32)||'clip';
@@ -162,7 +164,10 @@ async function ensureStream(){
   const at=stream.getAudioTracks()[0];
   if(!at){stream.getTracks().forEach(t=>t.stop());stream=null;msg('No audio came through. Choose this tab and turn on "Also share tab audio".');return false}
   stream.getVideoTracks().forEach(t=>t.stop());
-  at.onended=()=>{stream=null};
+  at.onended=()=>{stream=null;$('samplehint').textContent=HINT;
+    if(recMode==='button')$('sample').click();
+    msg('Tab audio stopped being shared. The next SAMPLE asks once more, and the video waits while you choose.')};
+  $('samplehint').textContent='Tab audio is connected. SAMPLE starts recording at once until you close or reload this tab.';
   if(!node){
     const code=`class R extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c.length)this.port.postMessage(c.map(x=>x.slice()));return true}}registerProcessor('rec',R)`;
     await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code],{type:'text/javascript'})));
@@ -194,7 +199,16 @@ async function toggleSample(){
     return;
   }
   if(!player)return msg('Paste a YouTube link first, or open a file.');
-  ensureCtx();if(!await ensureStream())return;
+  ensureCtx();
+  if(!stream){
+    // the sharing prompt takes a few seconds to answer: hold the video where
+    // SAMPLE was pressed, and record from that point once sharing is on
+    const at=vt();player.pauseVideo();
+    msg('Choose this tab and turn on "Also share tab audio". The video waits here at '+fmt(at)+'; recording starts from this point.');
+    if(!await ensureStream())return;
+    player.seekTo(Math.max(0,at-0.15),true);player.playVideo();
+    for(let i=0;i<120&&player.getPlayerState()!==1;i++)await sleep(25);
+  }
   stopPreview();
   if(player.getPlayerState()!==1)player.playVideo();
   recT0=vt();startRec();recMode='button';recStartPerf=performance.now();
