@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>ximeremix (preview)</title>
+<style>html,body{margin:0;background:#000;color:#fff;font:15px/1.5 "Courier Prime","Courier New",Courier,monospace}#m{padding:20px}</style>
+</head>
+<body>
+<div id="m">loading the preview</div>
+<script>
+/* PREVIEW. This page is /ximeremix/ with the changes below applied to it as it loads, so the
+   live page stays untouched until the preview is approved. Each change is an exact
+   [before, after] pair that must match the live page once; if the live page has moved
+   on and a pair no longer matches, this says so instead of guessing. On approval the
+   same pairs are applied to /ximeremix/index.html and this folder is deleted. */
+(function(){
+  var CHANGES = [
+[
+"  return { rate, pcm: out };\n}\n",
+"  return { rate, pcm: out };\n}\n\n/* the same format the recorder and the give page write, so a take posted from here\n   sounds and loads like every other take */\nfunction encodeADPCM(pcm, rate){\n  const n = pcm.length, out = new Uint8Array(12 + ((n + 1) >> 1));\n  out.set([79, 67, 65, 49]);\n  const dv = new DataView(out.buffer);\n  dv.setUint32(4, rate, true); dv.setUint32(8, n, true);\n  let pred = 0, index = 0;\n  for(let i=0;i<n;i++){\n    const s = Math.round(Math.max(-1, Math.min(1, pcm[i]))*32767);\n    const step = ADPCM_STEP[index];\n    let diff = s - pred, code = 0, q = step >> 3;\n    if(diff < 0){ code = 8; diff = -diff; }\n    if(diff >= step){ code |= 4; diff -= step; q += step; }\n    if(diff >= (step >> 1)){ code |= 2; diff -= step >> 1; q += step >> 1; }\n    if(diff >= (step >> 2)){ code |= 1; q += step >> 2; }\n    pred += (code & 8) ? -q : q;\n    if(pred > 32767) pred = 32767;\n    if(pred < -32768) pred = -32768;\n    index += ADPCM_INDEX[code & 7];\n    if(index < 0) index = 0;\n    if(index > 88) index = 88;\n    const k = 12 + (i >> 1);\n    if(i & 1) out[k] |= code << 4; else out[k] = code;\n  }\n  return out;\n}\n"
+],
+[
+"  W3.post   = word(w3, \"post\", () => openSheet());\n  W3.takes  = word(w3, \"takes\", () => openCat());\n  showTab(); words();\n",
+"  W3.post   = word(w3, \"post\", () => openSheet());\n  W3.takes  = word(w3, \"sounds\", () => openCat());\n  showTab(); words();\n"
+],
+[
+"}\nfunction openSheet(){\n",
+"}\nlet sheetMode = \"remix\";\nfunction openSheet(){\n"
+],
+[
+"function openSheet(){\n  if(!take){ say(\"this take is only on this device. pick one from takes to post a remix of it\"); return; }\n  if(!paramString()){ say(\"nothing changed yet. this is still the take as it was\"); return; }\n  if(!SH.post) sheetChrome();\n",
+"function openSheet(){\n  if(!buf){ say(\"nothing loaded yet. record, open a file or pick a take\"); return; }\n  if(!take){\n    if(buf.duration > TAKE_MAX){ say(\"longer than ten minutes. give a take posts long sounds in parts\"); return; }\n    sheetMode = \"take\";\n  } else {\n    if(!paramString()){ say(\"nothing changed yet. this is still the take as it was\"); return; }\n    sheetMode = \"remix\";\n  }\n  if(!SH.post) sheetChrome();\n"
+],
+[
+"  if(!SH.post) sheetChrome();\n  $(\"#shhead\").textContent = \"post this remix as a reply under \" + (takeLabel || \"the take\") + \", from your own bluesky account.\";\n  sheetSay(\"\"); sheetShow();\n",
+"  if(!SH.post) sheetChrome();\n  $(\"#shhead\").textContent = sheetMode === \"take\"\n    ? \"post \" + (takeLabel || \"this sound\") + \" as a new take, the way the recorders do. it goes up as the account you sign in with; from the band's account it joins \" + BAND + \"'s takes.\"\n    : \"post this remix as a reply under \" + (takeLabel || \"the take\") + \", from your own bluesky account.\";\n  sheetSay(\"\"); sheetShow();\n"
+],
+[
+"function closeSheet(){ $(\"#sheet\").classList.remove(\"open\"); }\nasync function postRemix(){\n",
+"function closeSheet(){ $(\"#sheet\").classList.remove(\"open\"); }\nconst TAKE_RATE = 22050, TAKE_MAX = 10*60;\nasync function callBin(nsid, bytes, retried){\n  if(!S.access && !retried) await refreshS();\n  const r = await fetch(S.pds + \"/xrpc/\" + nsid, { method:\"POST\",\n    headers:{ \"Content-Type\":\"application/octet-stream\", Authorization:\"Bearer \" + S.access }, body:bytes });\n  if(r.ok) return r.json();\n  const j = await r.json().catch(() => ({}));\n  if(!retried && (j.error === \"ExpiredToken\" || r.status === 401)){ await refreshS(); return callBin(nsid, bytes, true); }\n  throw new Error(j.message || j.error || (\"sending the audio failed (\" + r.status + \")\"));\n}\n/* the three things the give page writes: the audio as a blob, a city.opposite.take\n   record holding it so the server keeps it, and a post linking the take here */\nasync function postTake(){\n  if(sheetBusy || !S || !buf || take) return;\n  sheetBusy = true; sheetShow(); sheetSay(\"making the take\");\n  try{\n    const n = Math.ceil(buf.duration*TAKE_RATE);\n    const off = new OfflineAudioContext(1, n, TAKE_RATE);\n    const s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();\n    const pcm = (await off.startRendering()).getChannelData(0);\n    const bytes = encodeADPCM(pcm, TAKE_RATE);\n    sheetSay(\"sending the audio\");\n    const up = await callBin(\"com.atproto.repo.uploadBlob\", bytes);\n    const blob = up.blob, cid = blob.ref.$link, now = new Date().toISOString();\n    sheetSay(\"writing the take\");\n    await callS(\"com.atproto.repo.createRecord\", { repo:S.did, collection:\"city.opposite.take\", record:{\n      $type:\"city.opposite.take\", audio:blob, codec:\"oca1\", sampleRate:TAKE_RATE,\n      durationMs:Math.round(pcm.length/TAKE_RATE*1000), source:takeSource || \"ximeremix\", createdAt:now } });\n    sheetSay(\"posting\");\n    const url = \"https://opposite.city/ximeremix/#\" + S.did + \"/\" + cid;\n    const words = $(\"#shwords\").value.trim(), label = \"take it apart\";\n    const lead = words ? words + \"\\n\\n\" : \"\", te = new TextEncoder();\n    const byteStart = te.encode(lead).length, byteEnd = byteStart + te.encode(label).length;\n    const p = await callS(\"com.atproto.repo.createRecord\", { repo:S.did, collection:\"app.bsky.feed.post\", record:{\n      $type:\"app.bsky.feed.post\", text:lead + label, createdAt:now,\n      facets:[{ index:{ byteStart, byteEnd }, features:[{ $type:\"app.bsky.richtext.facet#link\", uri:url }] }] } });\n    /* from now on this sound is a take: its link works anywhere, and remixes of it reply under it */\n    take = { did:S.did, cid, anchor:{ uri:p.uri, cid:p.cid, reply:null } };\n    takeLabel = takeLabel || \"your take\"; catItems = null;\n    $(\"#shwords\").value = \"\";\n    writeHash();\n    sheetSay('posted. <a href=\"' + postLink(p.uri) + '\" target=\"_blank\" rel=\"noopener\">see the post<\/a>. remix it and post again to reply under it', true);\n  }catch(e){ sheetSay((e.message || String(e)) + \". the sound is still here; post again when you can\"); }\n  sheetBusy = false; sheetShow();\n}\nasync function postRemix(){\n"
+],
+[
+"async function postRemix(){\n  if(sheetBusy || !S || !take) return;\n",
+"async function postRemix(){\n  if(sheetMode === \"take\") return postTake();\n  if(sheetBusy || !S || !take) return;\n"
+],
+[
+"    rec = null; words();\n    say('<a href=\"' + url + '\" download=\"ximeremix.' + ext + '\">save ximeremix.' + ext + \"<\/a>\", true);\n  };\n",
+"    rec = null; words();\n    toShelf(\"bounce-\" + (takeLabel || \"ximeremix\").replace(/\\s+/g, \"-\"), blob);\n    say('<a href=\"' + url + '\" download=\"ximeremix.' + ext + '\">save ximeremix.' + ext + \"<\/a>. also on the shelf\", true);\n  };\n"
+],
+[
+"\nasync function loadBuffer(abuf, label, t){\n  const mine = ++job;\n",
+"\nlet takeSource = \"\";\nasync function loadBuffer(abuf, label, t, from){\n  const mine = ++job;\n"
+],
+[
+"  const mine = ++job;\n  stopListen(); clean = false; listenEnded = false;\n",
+"  const mine = ++job;\n  takeSource = t ? \"\" : (from || \"file\");\n  stopListen(); clean = false; listenEnded = false;\n"
+],
+[
+"  rigOpen = true;\n  await loadBuffer(ab, \"\", null);\n}\n",
+"  rigOpen = true;\n  await loadBuffer(ab, (f.name || \"\").replace(/\\.[^.]+$/, \"\").toLowerCase(), null, \"file\");\n}\n"
+],
+[
+"}\nfunction renderCat(){\n",
+"}\n/* the rig's shelf: clips kept on this device by the rig, chip and this page */\nfunction shelfDB(){\n  return new Promise((ok, no) => {\n    const r = indexedDB.open(\"rig\", 1);\n    r.onupgradeneeded = () => r.result.createObjectStore(\"shelf\");\n    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);\n  });\n}\nasync function shelfList(){\n  const db = await shelfDB();\n  return new Promise((ok, no) => {\n    const out = [], c = db.transaction(\"shelf\").objectStore(\"shelf\").openCursor();\n    c.onsuccess = () => { const x = c.result; if(x){ out.push({ key:x.key, name:x.value.name || \"clip\", wav:x.value.wav }); x.continue(); } else ok(out.reverse()); };\n    c.onerror = () => no(c.error);\n  });\n}\nasync function toShelf(name, blob){\n  try{\n    const db = await shelfDB();\n    await new Promise((ok, no) => { const t = db.transaction(\"shelf\", \"readwrite\");\n      t.objectStore(\"shelf\").put({ name, wav:blob, at:Date.now() }, Date.now().toString(36) + Math.random().toString(36).slice(2, 5));\n      t.oncomplete = ok; t.onerror = () => no(t.error); });\n    try{ new BroadcastChannel(\"rig\").postMessage({ t:\"shelf\" }); }catch(e){}\n  }catch(e){}\n}\nlet catMode = \"takes\", shelfItems = null;\nfunction renderShelf(){\n  const list = $(\"#catlist\"); list.textContent = \"\";\n  if(!shelfItems || !shelfItems.length){ list.append(el(\"div\",\"item\", \"the shelf is empty. clips land here from the rig, chip, shellac and bounce.\")); return; }\n  for(const it of shelfItems){\n    const b = el(\"button\",\"item\"); b.append(el(\"div\",\"d\", it.name));\n    b.onclick = async () => {\n      closeCat(); resetSettings(); pending = null; rigOpen = true;\n      try{ say(\"reading\"); await loadBuffer(await decodeBytes(await it.wav.arrayBuffer()), it.name, null, \"shelf\"); }\n      catch(e){ say(\"could not read that clip\"); }\n    };\n    list.append(b);\n  }\n}\nfunction renderCat(){\n"
+],
+[
+"function renderCat(){\n  const list = $(\"#catlist\"); list.textContent = \"\";\n",
+"function renderCat(){\n  if(catMode === \"shelf\") return renderShelf();\n  const list = $(\"#catlist\"); list.textContent = \"\";\n"
+],
+[
+"  $(\"#cat\").classList.add(\"open\");\n  renderCat();\n",
+"  $(\"#cat\").classList.add(\"open\");\n  catWords();\n  renderCat();\n"
+],
+[
+"function closeCat(){ $(\"#cat\").classList.remove(\"open\"); }\nfunction catChrome(){\n",
+"function closeCat(){ $(\"#cat\").classList.remove(\"open\"); }\n/* the front door: any sound in, from anywhere. the band's takes are one source of several */\nconst SHELLAC = /-next\\//.test(location.pathname) ? \"/shellac-next/\" : \"/shellac/\";\nconst CW = {};\nfunction catChrome(){\n"
+],
+[
+"  const h = $(\"#cathead\"); h.textContent = \"\";\n  h.append(el(\"div\",\"\", BAND), el(\"div\",\"\", \"takes. open one and take it apart.\"));\n  const w = $(\"#catwords\");\n",
+"  const h = $(\"#cathead\"); h.textContent = \"\";\n  h.append(el(\"div\",\"\", \"XIMEREMIX\"), el(\"div\",\"\", \"bring any sound and take it apart.\"));\n  const w = $(\"#catwords\");\n"
+],
+[
+"  const w = $(\"#catwords\");\n  word(w, \"from file\", () => $(\"#file\").click());\n  word(w, \"close\", () => closeCat());\n}\n",
+"  const w = $(\"#catwords\");\n  CW.rec = word(w, \"record\", () => micToggle());\n  CW.file = word(w, \"file\", () => $(\"#file\").click());\n  CW.shelf = word(w, \"shelf\", async () => { catMode = \"shelf\"; catWords(); shelfItems = null; renderCat(); try{ shelfItems = await shelfList(); }catch(e){ shelfItems = []; } renderCat(); });\n  CW.takes = word(w, \"takes\", () => { catMode = \"takes\"; catWords(); openCat(); });\n  CW.records = word(w, \"records\", () => { const x = window.open(SHELLAC, \"_blank\"); if(!x) location.href = SHELLAC; });\n  CW.close = word(w, \"close\", () => closeCat());\n  catWords();\n}\nfunction catWords(){\n  if(!CW.rec) return;\n  CW.rec.textContent = mic ? \"stop \" + fmtClock((performance.now() - micT0)/1000) : \"record\";\n  CW.rec.classList.toggle(\"on\", !!mic);\n  CW.shelf.classList.toggle(\"on\", catMode === \"shelf\");\n  CW.takes.classList.toggle(\"on\", catMode === \"takes\");\n  CW.close.style.display = buf ? \"\" : \"none\";\n  const h = $(\"#cathead\").lastChild;\n  if(h) h.textContent = catMode === \"shelf\" ? \"the shelf: clips kept on this device.\" : BAND + \" takes, or bring any sound and take it apart.\";\n}\n\n/* ---------- record straight in: a microphone, or a line in through a usb interface ---------- */\nlet mic = null, micStream = null, micChunks = [], micT0 = 0, micTick = 0, micLock = null;\nconst fmtClock = s => Math.floor(s/60) + \":\" + String(Math.floor(s%60)).padStart(2, \"0\");\nasync function micToggle(){\n  if(mic){ if(mic.state !== \"inactive\") mic.stop(); return; }\n  start(); wake();\n  try{\n    micStream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } });\n  }catch(e){ say(\"no microphone: \" + (e.message || e.name)); return; }\n  if(!window.MediaRecorder){ say(\"this browser can't record\"); micStream.getTracks().forEach(t => t.stop()); return; }\n  const types = [\"audio/webm;codecs=opus\",\"audio/ogg;codecs=opus\",\"audio/mp4\",\"audio/webm\"];\n  const mt = types.find(t => MediaRecorder.isTypeSupported(t));\n  mic = new MediaRecorder(micStream, mt ? { mimeType:mt } : undefined);\n  micChunks = [];\n  mic.ondataavailable = e => { if(e.data && e.data.size) micChunks.push(e.data); };\n  mic.onstop = async () => {\n    const type = mic.mimeType || mt || \"audio/webm\";\n    micStream.getTracks().forEach(t => t.stop());\n    clearInterval(micTick); mic = null; catWords();\n    try{ if(micLock) await micLock.release(); }catch(e){} micLock = null;\n    const blob = new Blob(micChunks, { type });\n    try{\n      say(\"reading\");\n      const ab = await decodeBytes(await blob.arrayBuffer());\n      if(ab.duration < 0.3){ say(\"too short to keep\"); return; }\n      const d = new Date(), name = \"recording \" + d.getHours() + \":\" + String(d.getMinutes()).padStart(2, \"0\");\n      toShelf(name.replace(/[ :]/g, \"-\"), blob);\n      closeCat(); resetSettings(); pending = null; rigOpen = true;\n      await loadBuffer(ab, name, null, \"record\");\n      say(\"recorded and on the shelf. post to make it a take\");\n    }catch(e){ say(\"could not read the recording\"); }\n  };\n  mic.start(1000); micT0 = performance.now();\n  try{ if(navigator.wakeLock) micLock = await navigator.wakeLock.request(\"screen\"); }catch(e){}\n  micTick = setInterval(catWords, 250); catWords();\n  say(\"recording. stop when you're done\");\n}\n"
+],
+[
+"      const c = await takeClip(clip);\n      if(c){ resetSettings(); pending = null; await loadBuffer(c.buf, c.name, null); return; }\n    }catch(e){}\n",
+"      const c = await takeClip(clip);\n      if(c){ resetSettings(); pending = null; await loadBuffer(c.buf, c.name, null, \"clip\"); return; }\n    }catch(e){}\n"
+]
+];
+  fetch("/ximeremix/", { cache:"no-store" }).then(function(r){
+    if(!r.ok) throw new Error("couldn't load /ximeremix/ (" + r.status + ")");
+    return r.text();
+  }).then(function(html){
+    for(var i=0;i<CHANGES.length;i++){
+      var a = CHANGES[i][0], at = html.indexOf(a);
+      if(at < 0 || html.indexOf(a, at + 1) >= 0) throw new Error("the live page has changed since this preview was made (change " + (i+1) + " of " + CHANGES.length + "). the preview needs remaking");
+      html = html.slice(0, at) + CHANGES[i][1] + html.slice(at + a.length);
+    }
+    document.open(); document.write(html); document.close();
+  }).catch(function(e){ document.getElementById("m").textContent = String(e.message || e); });
+})();
+</script>
+</body>
+</html>

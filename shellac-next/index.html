@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>shellac (preview)</title>
+<style>html,body{margin:0;background:#000;color:#fff;font:15px/1.5 "Courier Prime","Courier New",Courier,monospace}#m{padding:20px}</style>
+</head>
+<body>
+<div id="m">loading the preview</div>
+<script>
+/* PREVIEW. This page is /shellac/ with the changes below applied to it as it loads, so the
+   live page stays untouched until the preview is approved. Each change is an exact
+   [before, after] pair that must match the live page once; if the live page has moved
+   on and a pair no longer matches, this says so instead of guessing. On approval the
+   same pairs are applied to /shellac/index.html and this folder is deleted. */
+(function(){
+  var CHANGES = [
+[
+"      <button id=\"clip-out\">set out<\/button>\n      <button id=\"clip-go\" disabled>clip<\/button>\n    <\/div>\n",
+"      <button id=\"clip-out\">set out<\/button>\n      <button id=\"clip-go\" disabled>ximeremix<\/button>\n    <\/div>\n"
+],
+[
+"    <\/div>\n    <div class=\"np-clip-span\" id=\"clip-span\">set in and out while it plays, then clip<\/div>\n    <div class=\"np-error\" id=\"np-error\"><\/div>\n",
+"    <\/div>\n    <div class=\"np-clip-span\" id=\"clip-span\">set in and out while it plays, then take it apart in ximeremix<\/div>\n    <div class=\"np-error\" id=\"np-error\"><\/div>\n"
+],
+[
+"      el[\"audio\"].src = url;\n      el[\"audio\"].play().catch(function () {});\n    }).catch(function () {\n",
+"      el[\"audio\"].src = url;\n      el[\"audio\"].play().catch(function () {\n        // a browser won't start sound before a first touch: the station waits on that\n        if (el[\"audio\"].paused) el[\"np-error\"].textContent = \"tap \\u25B6 to tune in\";\n      });\n    }).catch(function () {\n"
+],
+[
+"  /* ===============================================================\n     Clip: a stretch of the record, handed to the clipper\n     The Archive's download servers allow reading the audio, so the\n",
+"  /* ===============================================================\n     Clip: a stretch of the record, handed straight to ximeremix\n     The Archive's download servers allow reading the audio, so the\n"
+],
+[
+"     The Archive's download servers allow reading the audio, so the\n     stretch is cut here and passed through this device's storage to\n     /clipper/, which can trim it and send it on to /ximeremix/.\n  =============================================================== */\n",
+"     The Archive's download servers allow reading the audio, so the\n     stretch is cut here and passed through this device's storage,\n     never a server. A preview copy of this page hands to the preview\n     copy of ximeremix, so the two can be tried together.\n  =============================================================== */\n"
+],
+[
+"  =============================================================== */\n  var clip = { a: NaN, b: NaN, url: null, title: \"\" };\n",
+"  =============================================================== */\n  var XMX = /-next\\//.test(location.pathname) ? \"/ximeremix-next/\" : \"/ximeremix/\";\n  var clip = { a: NaN, b: NaN, url: null, title: \"\" };\n"
+],
+[
+"    return new Promise(function (ok, no) {\n      var r = indexedDB.open(\"clipper\", 1);\n      r.onupgradeneeded = function () { r.result.createObjectStore(\"clips\"); };\n",
+"    return new Promise(function (ok, no) {\n      var r = indexedDB.open(\"ximeremix\", 1);\n      r.onupgradeneeded = function () { r.result.createObjectStore(\"clips\"); };\n"
+],
+[
+"  }\n  var PAD = 2;   // seconds kept either side, so the clipper can still trim\n  el[\"clip-go\"].addEventListener(\"click\", function () {\n",
+"  }\n  var PAD = 0;   // ximeremix takes exactly the stretch chosen\n  el[\"clip-go\"].addEventListener(\"click\", function () {\n"
+],
+[
+"          var st = db.transaction(\"clips\", \"readwrite\").objectStore(\"clips\");\n          st.put({ wav: wav(chs, sr), name: name, a: a - off, b: b - off }, key);\n          var ks = st.getAllKeys();\n",
+"          var st = db.transaction(\"clips\", \"readwrite\").objectStore(\"clips\");\n          st.put({ wav: wav(chs, sr), name: name }, key);\n          var ks = st.getAllKeys();\n"
+],
+[
+"          var ks = st.getAllKeys();\n          ks.onsuccess = function () { ks.result.sort().slice(0, -6).forEach(function (x) { st.delete(x); }); };\n          st.transaction.oncomplete = function () { ok(key); };\n",
+"          var ks = st.getAllKeys();\n          ks.onsuccess = function () { ks.result.sort().slice(0, -12).forEach(function (x) { st.delete(x); }); };\n          st.transaction.oncomplete = function () { ok(key); };\n"
+],
+[
+"    }).then(function (key) {\n      var url = \"/clipper/?clip=\" + key;\n      if (win) win.location = url; else location.href = url;\n",
+"    }).then(function (key) {\n      var url = XMX + \"?clip=\" + key;\n      if (win) win.location = url; else location.href = url;\n"
+],
+[
+"      el[\"np-error\"].textContent = \"couldn't clip this recording: \" + (err && err.message || err);\n    }).then(function () { el[\"clip-go\"].textContent = \"clip\"; paintClip(); });\n  });\n",
+"      el[\"np-error\"].textContent = \"couldn't clip this recording: \" + (err && err.message || err);\n    }).then(function () { el[\"clip-go\"].textContent = \"ximeremix\"; paintClip(); });\n  });\n"
+],
+[
+"  =============================================================== */\n  (function readHash() {\n",
+"  =============================================================== */\n  /* the station is on by default; a link to a year (#source/year) opens that year instead */\n  var bootRadio = true;\n  (function readHash() {\n"
+],
+[
+"    var parts = h.split(\"/\");\n    var yr = parseInt(parts[parts.length - 1], 10);\n",
+"    var parts = h.split(\"/\");\n    if (parts[0] === \"radio\") parts.shift(); else bootRadio = false;\n    var yr = parseInt(parts[parts.length - 1], 10);\n"
+],
+[
+"  function writeHash() {\n    var h = \"#\" + state.source.id + \"/\" + state.year;\n    if (location.hash !== h) history.replaceState(null, \"\", h);\n",
+"  function writeHash() {\n    var h = \"#\" + (state.mode === \"radio\" ? \"radio/\" : \"\") + state.source.id + \"/\" + state.year;\n    if (location.hash !== h) history.replaceState(null, \"\", h);\n"
+],
+[
+"  renderSources();\n  paintYearStrip(false);\n",
+"  renderSources();\n  if (bootRadio) {\n    state.mode = \"radio\";\n    state.autoplayNext = true;\n    el[\"radio-toggle\"].classList.add(\"on\");\n    el[\"np-label\"].textContent = \"on air \\u00b7 \" + spanLabel();\n  }\n  paintYearStrip(false);\n"
+],
+[
+"  window.addEventListener(\"load\", function () { paintYearStrip(true); });\n  setInterval(function () { if (state.mode !== \"search\") writeHash(); }, 1500);\n",
+"  window.addEventListener(\"load\", function () { paintYearStrip(true); });\n  el[\"audio\"].addEventListener(\"playing\", function () {\n    if (/tune in/.test(el[\"np-error\"].textContent)) el[\"np-error\"].textContent = \"\";\n  });\n  setInterval(function () { if (state.mode !== \"search\") writeHash(); }, 1500);\n"
+]
+];
+  fetch("/shellac/", { cache:"no-store" }).then(function(r){
+    if(!r.ok) throw new Error("couldn't load /shellac/ (" + r.status + ")");
+    return r.text();
+  }).then(function(html){
+    for(var i=0;i<CHANGES.length;i++){
+      var a = CHANGES[i][0], at = html.indexOf(a);
+      if(at < 0 || html.indexOf(a, at + 1) >= 0) throw new Error("the live page has changed since this preview was made (change " + (i+1) + " of " + CHANGES.length + "). the preview needs remaking");
+      html = html.slice(0, at) + CHANGES[i][1] + html.slice(at + a.length);
+    }
+    document.open(); document.write(html); document.close();
+  }).catch(function(e){ document.getElementById("m").textContent = String(e.message || e); });
+})();
+</script>
+</body>
+</html>
