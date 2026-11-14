@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<title>rig</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{--bg:#000;--fg:#fff;--rec:#ff2b2b;--shelf:#161616}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);overflow:hidden}
+body{font:15px/1.4 "Courier Prime","Courier New",Courier,monospace;display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top,0px)}
+nav{display:flex;align-items:stretch;flex-wrap:wrap;gap:0 2px;padding:0 env(safe-area-inset-right,0px) 0 env(safe-area-inset-left,0px)}
+nav button{font:inherit;font-weight:700;color:var(--fg);background:none;border:0;padding:12px clamp(7px,2vw,14px);cursor:pointer;touch-action:manipulation;letter-spacing:.03em}
+nav button[aria-selected=true]{background:var(--fg);color:var(--bg)}
+nav button:focus-visible{outline:2px solid var(--fg);outline-offset:-4px}
+nav .gap{flex:1}
+#rec.on{background:var(--rec);color:var(--fg)}
+#stage{position:relative;flex:1;min-height:0}
+#stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+#stage iframe.off{visibility:hidden;pointer-events:none}
+#shelf{position:absolute;left:0;right:0;bottom:0;max-height:62%;overflow:auto;background:var(--shelf);padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));display:none}
+#shelf.open{display:block}
+#shelf h2{font-size:15px;margin:0 0 10px}
+.it{display:flex;flex-wrap:wrap;gap:2px 16px;align-items:baseline;padding:6px 0}
+.it .nm{flex:1 1 20ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.it button,#shelf .ctl button{font:inherit;color:var(--fg);background:none;border:0;padding:4px 0;cursor:pointer}
+.it button::before,#shelf .ctl button::before{content:"[ "}.it button::after,#shelf .ctl button::after{content:" ]"}
+.it button:hover,.it button:focus-visible,#shelf .ctl button:hover{background:var(--fg);color:var(--bg);outline:none}
+#shelf .ctl{display:flex;flex-wrap:wrap;gap:4px 18px;margin:0 0 10px}
+#note{padding:0 16px 6px;min-height:0}
+#note:empty{display:none}
+</style>
+</head>
+<body>
+<nav role="tablist">
+  <button role="tab" data-tab="find" aria-selected="false">find</button>
+  <button role="tab" data-tab="cut" aria-selected="false">cut</button>
+  <button role="tab" data-tab="mangle" aria-selected="false">mangle</button>
+  <button role="tab" data-tab="chip" aria-selected="false">chip</button>
+  <span class="gap"></span>
+  <button id="rec" aria-pressed="false">rec</button>
+  <button id="shelfbtn" aria-expanded="false">shelf 0</button>
+</nav>
+<div id="note" role="status"></div>
+<div id="stage">
+  <div id="shelf" aria-label="shelf">
+    <h2>shelf: every clip in the rig, on this device only</h2>
+    <div class="ctl"><button id="addfile">add a file</button><input type="file" id="file" accept="audio/*" multiple hidden></div>
+    <div id="items"></div>
+  </div>
+</div>
+
+<script>
+/* The rig loads the existing pages side by side. Each one stays its own page at its own address;
+   the rig only catches the hand-offs between them so they land in the next tab instead of a new window,
+   and keeps every clip that passes through on one shelf. */
+const TABS={find:'/shellac/',cut:'/clipper/',mangle:'/ximeremix/',chip:'/chip/'};
+const PATHS=[['/shellac/','find'],['/clipper/','cut'],['/ximeremix/','mangle'],['/remix/','mangle'],['/take/','mangle'],['/chip/','chip']];
+const $=id=>document.getElementById(id);
+const note=t=>{$('note').textContent=t||'';clearTimeout(note.t);if(t)note.t=setTimeout(()=>{$('note').textContent=''},6000)};
+const frames={};let cur=null;
+const bc=(()=>{try{return new BroadcastChannel('rig')}catch(e){return null}})();
+
+/* ---------- tabs ---------- */
+function frame(tab,src){
+  let f=frames[tab];
+  if(!f){
+    f=document.createElement('iframe');f.title=tab;
+    f.allow='display-capture; autoplay; screen-wake-lock; fullscreen; clipboard-write';
+    f.addEventListener('load',()=>catchHandoffs(f));
+    $('stage').insertBefore(f,$('shelf'));frames[tab]=f;
+    f.src=src||TABS[tab];
+  }else if(src)f.src=src;
+  return f;
+}
+function show(tab,src){
+  frame(tab,src);cur=tab;
+  for(const [t,f] of Object.entries(frames))f.classList.toggle('off',t!==tab);
+  document.querySelectorAll('nav [data-tab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===tab));
+  try{localStorage.setItem('rig-tab',tab)}catch(e){}
+  setTimeout(()=>{try{frames[tab].contentWindow.focus()}catch(e){}},0);
+}
+document.querySelectorAll('nav [data-tab]').forEach(b=>b.onclick=()=>show(b.dataset.tab));
+
+/* ---------- hand-offs ---------- */
+function tabFor(u){if(u.origin!==location.origin)return null;for(const [p,t] of PATHS)if(u.pathname.startsWith(p))return t;return null}
+function catchHandoffs(f){
+  let w;try{w=f.contentWindow;if(!w||w.__rig)return}catch(e){return}
+  w.__rig=true;const real=w.open.bind(w);
+  w.open=(url,target,feat)=>{
+    // the pages open a blank window first and set its address once the clip is stored
+    if(!url||url==='about:blank'){
+      const fake={closed:false,close(){this.closed=true},focus(){},
+        set location(v){const u=new URL(String(v),w.location.href);if(tabFor(u))route(u);else real(u.href,'_blank')},
+        get location(){return {}}};
+      return fake;
+    }
+    const u=new URL(String(url),w.location.href);
+    if(tabFor(u)){route(u);return {closed:true,close(){},focus(){}}}
+    return real(url,target,feat);
+  };
+}
+async function route(u){
+  const tab=tabFor(u),key=u.searchParams.get('clip');
+  if(key){
+    const from=tab==='cut'?'clipper':tab==='mangle'?'ximeremix':null;
+    if(from)try{const r=await dbGet(from,'clips',key);if(r)await shelfPut({name:r.name||'clip',wav:r.wav})}catch(e){}
+  }
+  show(tab,u.pathname+u.search+u.hash);
+  note('Handed to '+tab+(key?', and kept on the shelf':'')+'.');
+}
+
+/* ---------- storage: the same on-device stores the pages already use ---------- */
+function db(name,store){return new Promise((ok,no)=>{const r=indexedDB.open(name,1);r.onupgradeneeded=()=>r.result.createObjectStore(store);r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)})}
+async function dbGet(name,store,key){const d=await db(name,store);return new Promise((ok,no)=>{const q=d.transaction(store).objectStore(store).get(key);q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)})}
+async function dbPut(name,store,key,val){const d=await db(name,store);return new Promise((ok,no)=>{const t=d.transaction(store,'readwrite');t.objectStore(store).put(val,key);t.oncomplete=ok;t.onerror=()=>no(t.error)})}
+async function dbDel(name,store,key){const d=await db(name,store);return new Promise((ok,no)=>{const t=d.transaction(store,'readwrite');t.objectStore(store).delete(key);t.oncomplete=ok;t.onerror=()=>no(t.error)})}
+async function dbAll(name,store){const d=await db(name,store);return new Promise((ok,no)=>{const o=[],c=d.transaction(store).objectStore(store).openCursor();c.onsuccess=()=>{const x=c.result;if(x){o.push([x.key,x.value]);x.continue()}else ok(o)};c.onerror=()=>no(c.error)})}
+const newKey=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+async function wavDur(blob){
+  try{const v=new DataView(await blob.slice(0,44).arrayBuffer());const sr=v.getUint32(24,true),ba=v.getUint16(32,true);return (blob.size-44)/(sr*ba)}catch(e){return NaN}
+}
+async function shelfPut(it){
+  const dur=await wavDur(it.wav);
+  await dbPut('rig','shelf',newKey(),{name:it.name,wav:it.wav,dur,at:Date.now()});
+  drawShelf();if(bc)bc.postMessage({t:'shelf'});
+}
+
+/* ---------- shelf ---------- */
+const fmt=s=>isFinite(s)?(s<60?s.toFixed(1)+'s':Math.floor(s/60)+'m'+String(Math.round(s%60)).padStart(2,'0')+'s'):'';
+async function drawShelf(){
+  let list=[];try{list=(await dbAll('rig','shelf')).reverse()}catch(e){}
+  $('shelfbtn').textContent='shelf '+list.length;
+  const box=$('items');box.innerHTML='';
+  if(!list.length){box.textContent='Empty. Clips handed between tabs, rig recordings and added files land here.';return}
+  for(const [key,v] of list){
+    const row=document.createElement('div');row.className='it';
+    const nm=document.createElement('span');nm.className='nm';nm.textContent=v.name+'  '+fmt(v.dur);
+    const b=(t,fn)=>{const x=document.createElement('button');x.textContent=t;x.onclick=fn;return x};
+    let sure=false;
+    const del=b('remove',async()=>{if(!sure){sure=true;del.textContent='remove for good';return}await dbDel('rig','shelf',key);drawShelf();if(bc)bc.postMessage({t:'shelf'})});
+    row.append(nm,
+      b('cut',async()=>{const k=newKey();await dbPut('clipper','clips',k,{wav:v.wav,name:v.name,a:0,b:v.dur||0});openShelf(false);show('cut','/clipper/?clip='+k)}),
+      b('mangle',async()=>{const k=newKey();await dbPut('ximeremix','clips',k,{wav:v.wav,name:v.name});openShelf(false);show('mangle','/ximeremix/?clip='+k)}),
+      b('save',()=>{const a=document.createElement('a');a.href=URL.createObjectURL(v.wav);a.download=(v.name||'clip')+'.wav';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}),
+      del);
+    box.appendChild(row);
+  }
+}
+function openShelf(yes){$('shelf').classList.toggle('open',yes);$('shelfbtn').setAttribute('aria-expanded',yes);if(yes)drawShelf()}
+$('shelfbtn').onclick=()=>openShelf(!$('shelf').classList.contains('open'));
+$('addfile').onclick=()=>$('file').click();
+$('file').onchange=async e=>{
+  for(const f of e.target.files){
+    try{const ac=new AudioContext(),b=await ac.decodeAudioData(await f.arrayBuffer());ac.close();
+      const chs=[];for(let c=0;c<b.numberOfChannels;c++)chs.push(b.getChannelData(c));
+      await shelfPut({name:f.name.replace(/\.[^.]+$/,'').toLowerCase(),wav:wav(chs,b.sampleRate)})}
+    catch(err){note(f.name+' could not be read.')}
+  }
+  e.target.value='';
+};
+if(bc)bc.onmessage=e=>{if(e.data&&e.data.t==='shelf')drawShelf()};
+
+/* ---------- rec: records everything the rig plays, from every tab, onto the shelf ---------- */
+let rctx=null,rnode=null,rstream=null,recOn=false,chunks=null,t0=0;
+function wav(chs,sr){
+  const n=chs[0].length,nc=chs.length,bytes=44+n*nc*2,v=new DataView(new ArrayBuffer(bytes));
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+  w(0,'RIFF');v.setUint32(4,bytes-8,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);
+  v.setUint16(22,nc,true);v.setUint32(24,sr,true);v.setUint32(28,sr*nc*2,true);v.setUint16(32,nc*2,true);v.setUint16(34,16,true);
+  w(36,'data');v.setUint32(40,n*nc*2,true);
+  let o=44;for(let i=0;i<n;i++)for(let c=0;c<nc;c++){const s=Math.max(-1,Math.min(1,chs[c][i]));v.setInt16(o,s<0?s*0x8000:s*0x7fff,true);o+=2}
+  return new Blob([v],{type:'audio/wav'});
+}
+async function connect(){
+  if(rstream)return true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){note('This browser cannot record its own sound. Chrome on a computer can.');return false}
+  note('Choose this tab and turn on "Also share tab audio". It asks once until you reload.');
+  try{rstream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},preferCurrentTab:true,selfBrowserSurface:'include'})}
+  catch(e){note('Sharing was cancelled, so nothing is recording.');return false}
+  const at=rstream.getAudioTracks()[0];rstream.getVideoTracks().forEach(t=>t.stop());
+  if(!at){rstream=null;note('No sound came through. Choose this tab and turn on "Also share tab audio".');return false}
+  at.onended=()=>{rstream=null;if(recOn)toggleRec()};
+  if(!rctx)rctx=new AudioContext();if(rctx.state==='suspended')rctx.resume();
+  if(!rnode){
+    const code=`class R extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c.length)this.port.postMessage(c.map(x=>x.slice()));return true}}registerProcessor('rigrec',R)`;
+    await rctx.audioWorklet.addModule(URL.createObjectURL(new Blob([code],{type:'text/javascript'})));
+    rnode=new AudioWorkletNode(rctx,'rigrec',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});
+    rnode.port.onmessage=e=>{if(!recOn)return;chunks[0].push(e.data[0]);chunks[1].push(e.data[1]||e.data[0])};
+    const g=rctx.createGain();g.gain.value=0;rnode.connect(g).connect(rctx.destination);
+  }
+  rctx.createMediaStreamSource(new MediaStream([at])).connect(rnode);
+  return true;
+}
+async function toggleRec(){
+  if(recOn){
+    recOn=false;$('rec').classList.remove('on');$('rec').textContent='rec';$('rec').setAttribute('aria-pressed','false');
+    const n=chunks[0].reduce((s,c)=>s+c.length,0);
+    if(!n){note('Nothing was recorded.');return}
+    const chs=[0,1].map(ch=>{const d=new Float32Array(n);let o=0;for(const c of chunks[ch]){d.set(c,o);o+=c.length}return d});
+    let pk=0;for(const x of chs[0])pk=Math.max(pk,Math.abs(x));
+    if(pk<1e-4){note('The recording was silent.');return}
+    const d=new Date(),name='rig-'+d.getHours()+'h'+String(d.getMinutes()).padStart(2,'0')+'-'+String(d.getSeconds()).padStart(2,'0');
+    await shelfPut({name,wav:wav(chs,rctx.sampleRate)});
+    note('Recording kept on the shelf as '+name+'.');
+    return;
+  }
+  if(!await connect())return;
+  chunks=[[],[]];recOn=true;t0=performance.now();
+  $('rec').classList.add('on');$('rec').setAttribute('aria-pressed','true');
+  note('Recording every tab. Press rec again to stop.');
+}
+$('rec').onclick=toggleRec;
+setInterval(()=>{if(recOn)$('rec').textContent='rec '+((performance.now()-t0)/1000).toFixed(0)+'s'},250);
+
+/* keep the screen awake while jamming */
+let lock=null;
+async function wake(){try{if('wakeLock' in navigator&&document.visibilityState==='visible'&&!lock){lock=await navigator.wakeLock.request('screen');lock.addEventListener('release',()=>{lock=null})}}catch(e){}}
+addEventListener('pointerdown',wake,{once:true});
+document.addEventListener('visibilitychange',()=>{if(lock===null)wake()});
+
+/* ---------- start ---------- */
+let first='chip';try{first=localStorage.getItem('rig-tab')||'chip'}catch(e){}
+if(!TABS[first])first='chip';
+show(first);drawShelf();wake();
+</script>
+</body>
+</html>
