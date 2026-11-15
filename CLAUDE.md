@@ -183,7 +183,7 @@ deciding it.
 The brief is `ximeremix/BRIEF.md`. Read it before starting. One phase at a
 time, in `ximeremix-next/`, stopping for the owner after each.
 
-- [ ] Phase 0: find out what plyr.fm allows from another site. No code shipped.
+- [~] Phase 0: find out what plyr.fm allows from another site. No code shipped.
 - [ ] Phase 1: plyr tracks as a source, opt-in only.
 - [ ] Phase 2: remixes of sources with no original post, and a lineage record.
 - [ ] Phase 3: publish a remix to plyr, by a deliberate button.
