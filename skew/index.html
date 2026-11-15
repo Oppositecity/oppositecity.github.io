@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKEW</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="An instrument for decoding under the wrong assumptions. Radio, files, images and the live Bluesky stream, read at the wrong clock, width and order.">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{--fg:#fff;--bg:#000;--off:#c6ff3d}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0 auto;padding:20px 18px 80px;max-width:760px;background:var(--bg);color:var(--fg);
+  font-family:'Courier Prime','Courier New',Courier,monospace;font-size:16px;line-height:1.45}
+h1{font-size:1rem;font-weight:700;letter-spacing:.3em;margin:0 0 .4em}
+p{margin:.5em 0}
+a{color:var(--fg)}
+.row{display:grid;grid-template-columns:5.6em 1fr;column-gap:.8em;align-items:center;margin:.35em 0}
+.k{font-weight:700}
+.v{display:flex;flex-wrap:wrap;align-items:center;gap:.1em .3em;min-width:0}
+.v input[type=range]{flex:1 1 9em;min-width:7em}
+.val{flex:0 1 auto;min-width:0}
+button.act{border:1px solid var(--fg)}
+button{background:none;border:0;color:var(--fg);font:inherit;padding:.3em .55em;min-height:40px;cursor:pointer;border-radius:0}
+button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
+.off{color:var(--off)}
+button.off[aria-pressed=true]{background:var(--off);color:var(--bg)}
+button:focus-visible,input:focus-visible,select:focus-visible,canvas:focus-visible{outline:2px solid var(--off);outline-offset:1px}
+input[type=text],select{background:var(--bg);color:var(--fg);border:1px solid var(--fg);font:inherit;padding:.45em .5em;min-height:40px;border-radius:0;min-width:0}
+input[type=text]{flex:1 1 8em}
+input[type=range]{accent-color:var(--fg);height:32px;margin:0}
+input[type=range].off{accent-color:var(--off)}
+form{display:flex;flex-wrap:wrap;gap:.4em;align-items:center;margin:.4em 0}
+#stations button{display:block;width:100%;text-align:left;min-height:36px}
+#stations{max-height:14.5em;overflow:auto}
+canvas{display:block;width:100%;height:190px;margin:.8em 0 .2em;touch-action:none;image-rendering:pixelated;cursor:crosshair}
+#bytes{white-space:pre-wrap;word-break:break-all;height:2.9em;overflow:hidden;margin:.2em 0 .8em}
+[hidden]{display:none!important}
+@media (max-width:420px){body{font-size:15px;padding:16px 12px 70px}.row{grid-template-columns:4.9em 1fr}}
+</style>
+</head>
+<body>
+<h1>SKEW</h1>
+<p>Decoding under the wrong assumptions. Pick a source, then read it at the wrong clock, width and order.</p>
+
+<div class="row"><span class="k">source</span><div class="v" id="srcs">
+  <button data-src="radio">radio</button><button data-src="file">file</button><button data-src="image">image</button><button data-src="bluesky">bluesky</button><button data-src="itself">this page</button>
+</div></div>
+
+<div id="panel-radio" hidden>
+  <form id="rf">
+    <select id="rfield" aria-label="search stations by"><option>country</option><option>name</option><option>tag</option><option>language</option></select>
+    <input type="text" id="rq" value="Mongolia" aria-label="search words, or a stream address">
+    <button class="act" type="submit">search</button>
+  </form>
+  <div id="stations"></div>
+</div>
+<div id="panel-file" hidden>
+  <p><button class="act" id="fpick">choose a file</button> Any file. Sound is decoded first. Anything else is read as it is.</p>
+  <input type="file" id="ffile" hidden>
+</div>
+<div id="panel-image" hidden>
+  <p><button class="act" id="ipick">choose an image</button> Its pixels become samples, row by row.</p>
+  <input type="file" id="ifile" accept="image/*" hidden>
+</div>
+<div id="panel-bluesky" hidden>
+  <p><button class="act" id="bgo">open the live stream</button> Every public post, as it is written.</p>
+</div>
+<div id="panel-itself" hidden>
+  <p><button class="act" id="selfgo">read this page</button> The code you are looking at, as sound.</p>
+</div>
+<p id="sealed" hidden>This copy is sealed off from the network, so radio and Bluesky stay silent here. File, image and this page work.</p>
+
+<div class="row"><span class="k">layer</span><div class="v">
+  <button data-layer="decoded">decoded</button><button data-layer="sent">as sent</button>
+  <span class="val" id="layernote"></span>
+</div></div>
+
+<p id="status" role="status">No source yet.</p>
+
+<canvas id="scope" width="256" height="96" tabindex="0" aria-label="Output trace. Touch and drag to hold and play a grain."></canvas>
+<p>Touch the trace to hold a grain. Across is clock, up is a shorter grain. <button class="act" id="latch" aria-pressed="false">latch</button></p>
+<div id="bytes" aria-hidden="true"></div>
+
+<div class="row"><span class="k">reading</span><div class="v">
+  <input type="range" id="dial" min="0" max="6" step="1" value="0" aria-label="reading, from as intended to everything wrong">
+  <span class="val" id="diallabel"></span>
+</div></div>
+<div class="row"><span class="k">clock</span><div class="v">
+  <input type="range" id="clock" min="0" max="1000" step="1" aria-label="clock">
+  <span class="val" id="clockval"></span>
+</div></div>
+<div class="row"><span class="k">channels</span><div class="v" data-k="chans">
+  <button data-v="1">1</button><button data-v="2">2</button>
+</div></div>
+<div class="row"><span class="k">width</span><div class="v" data-k="bits">
+  <button data-v="8">8 bit</button><button data-v="16">16</button><button data-v="24">24</button>
+</div></div>
+<div class="row"><span class="k">order</span><div class="v" data-k="big">
+  <button data-v="0">small end first</button><button data-v="1">big end first</button>
+</div></div>
+<div class="row"><span class="k">slip</span><div class="v" data-k="slip">
+  <button data-v="0">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3 bytes</button>
+</div></div>
+<div class="row"><span class="k">edges</span><div class="v" data-k="smooth">
+  <button data-v="0">stepped</button><button data-v="1">smoothed</button>
+</div></div>
+<div class="row"><span class="k">grain</span><div class="v">
+  <input type="range" id="grain" min="0" max="1000" step="1" aria-label="grain length">
+  <span class="val" id="grainval"></span>
+  <button class="act" id="hold" aria-pressed="false">hold</button>
+</div></div>
+<div class="row"><span class="k">level</span><div class="v">
+  <input type="range" id="vol" min="0" max="100" step="1" value="35" aria-label="level">
+</div></div>
+<div class="row"><span class="k">place</span><div class="v">
+  <input type="range" id="place" min="0" max="1000" step="1" value="0" aria-label="place in the source">
+  <span class="val" id="lag" hidden></span>
+  <button class="act" id="catch" hidden>catch up</button>
+</div></div>
+<div class="row" id="recrow" hidden><span class="k">take</span><div class="v">
+  <button class="act" id="rec" aria-pressed="false">record</button>
+  <span class="val" id="recnote"></span>
+</div></div>
+
+<script>
+'use strict';
+/* The engine: a byte buffer, read as samples under whatever format it is told. */
+class SkewEngine{
+  constructor(sr){
+    this.sr=sr;this.buf=null;this.N=0;this.live=false;this.W=0;this.rb=0;
+    this.p={clock:sr,chans:2,bits:16,big:false,slip:0,smooth:false,hold:false,grain:4096,vol:0.35,capture:false};
+    this.loopStart=0;this.wasHold=false;this.xl=0;this.yl=0;this.xr=0;this.yr=0;
+    this.snap=new Float32Array(512);this.si=0;this.sd=0;this.under=false;this.lapped=false;
+  }
+  msg(m){
+    if(m.t==='p')Object.assign(this.p,m.p);
+    else if(m.t==='static'){this.buf=new Uint8Array(m.buf);this.N=this.buf.length;this.live=false;this.W=this.N;this.rb=0;this.wasHold=false;}
+    else if(m.t==='live'){this.buf=new Uint8Array(m.size);this.N=m.size;this.live=true;this.W=0;this.rb=0;this.wasHold=false;}
+    else if(m.t==='write')this.write(new Uint8Array(m.buf));
+    else if(m.t==='seek'){if(!this.live&&this.N){const fb=(this.p.bits>>3)*this.p.chans;this.rb=Math.floor(m.f*this.N/fb)*fb;this.loopStart=this.rb;}}
+    else if(m.t==='catch'){if(this.live){const fb=(this.p.bits>>3)*this.p.chans;this.rb=Math.max(0,this.W-fb*Math.round(this.p.clock*0.25));this.wasHold=false;}}
+    else if(m.t==='clear'){this.buf=null;this.N=0;this.W=0;this.rb=0;this.live=false;}
+  }
+  write(u){
+    if(!this.live||!this.buf)return;
+    const N=this.N,b=this.buf;let o=this.W%N;
+    for(let i=0;i<u.length;i++){b[o]=u[i];if(++o===N)o=0;}
+    this.W+=u.length;
+  }
+  samp(a,bp,big){
+    const b=this.buf,N=this.N;let i=a%N;if(i<0)i+=N;
+    if(bp===1)return(b[i]-128)/128;
+    let j=i+1;if(j>=N)j-=N;
+    if(bp===2){let v=big?(b[i]<<8)|b[j]:(b[j]<<8)|b[i];if(v>32767)v-=65536;return v/32768;}
+    let k=j+1;if(k>=N)k-=N;
+    let v=big?(b[i]<<16)|(b[j]<<8)|b[k]:(b[k]<<16)|(b[j]<<8)|b[i];if(v>8388607)v-=16777216;return v/8388608;
+  }
+  process(inL,inR,outL,outR,n){
+    const p=this.p,N=this.N;
+    if(p.capture&&this.live&&this.buf&&inL){
+      const b=this.buf;let o=this.W%N;
+      for(let i=0;i<n;i++){
+        let l=inL[i],r=inR?inR[i]:l;
+        l=l>1?1:l<-1?-1:l;r=r>1?1:r<-1?-1:r;
+        const a=Math.round(l*32767)&65535,c=Math.round(r*32767)&65535;
+        b[o]=a&255;if(++o===N)o=0;b[o]=a>>8;if(++o===N)o=0;
+        b[o]=c&255;if(++o===N)o=0;b[o]=c>>8;if(++o===N)o=0;
+      }
+      this.W+=n*4;
+    }
+    if(!this.buf||this.W<64||N<64){for(let i=0;i<n;i++){outL[i]=0;outR[i]=0;}return;}
+    const bp=p.bits>>3,fb=bp*p.chans,step=p.clock/this.sr*fb,live=this.live,big=!!p.big,two=p.chans===2,slip=p.slip|0;
+    let lo=0,hi=0;
+    if(live){lo=Math.max(0,this.W-N+fb*8);hi=this.W-fb*3;}
+    let loopLen=0,fade=0;
+    if(p.hold){
+      loopLen=Math.max(2,p.grain|0)*fb;
+      if(!live&&loopLen>N-fb)loopLen=Math.max(fb*2,Math.floor((N-fb)/fb)*fb);
+      if(!this.wasHold){this.loopStart=Math.floor(this.rb/fb)*fb;this.wasHold=true;}
+      if(live){
+        if(this.loopStart+loopLen>hi)this.loopStart=Math.floor((hi-loopLen)/fb)*fb;
+        if(this.loopStart<lo)this.loopStart=Math.ceil(lo/fb)*fb;
+      }
+      fade=Math.min(24,loopLen/step/4);
+    }else this.wasHold=false;
+    const ls=this.loopStart,le=ls+loopLen,vol=p.vol*2;
+    let rb=this.rb;
+    for(let i=0;i<n;i++){
+      let run=true;
+      if(live){
+        if(rb<lo){rb=lo;this.lapped=true;}
+        if(rb>hi){rb=Math.max(lo,hi);run=false;this.under=true;}
+      }else if(!loopLen&&rb>=N)rb-=N*Math.floor(rb/N);
+      if(loopLen){if(rb<ls)rb=ls;else if(rb>=le)rb=ls+(rb-ls)%loopLen;}
+      const f=rb/fb,i0=Math.floor(f),a=i0*fb+slip;
+      let l=this.samp(a,bp,big),r=two?this.samp(a+bp,bp,big):l;
+      if(p.smooth){
+        const fr=f-i0;let a1=a+fb;if(loopLen&&a1-slip>=le)a1-=loopLen;
+        l+=(this.samp(a1,bp,big)-l)*fr;
+        r=two?r+(this.samp(a1+bp,bp,big)-r)*fr:l;
+      }
+      if(loopLen&&fade>1){const m=Math.min((le-rb)/step,(rb-ls)/step);if(m<fade){const g=m/fade;l*=g;r*=g;}}
+      let y=l-this.xl+0.997*this.yl;this.xl=l;this.yl=y;l=y;
+      y=r-this.xr+0.997*this.yr;this.xr=r;this.yr=y;r=y;
+      l=Math.tanh(l*vol)*0.9;r=Math.tanh(r*vol)*0.9;
+      outL[i]=l;outR[i]=r;
+      if(++this.sd===4){this.sd=0;this.snap[this.si]=(l+r)*0.5;this.si=(this.si+1)&511;}
+      if(run)rb+=step;
+    }
+    this.rb=rb;
+  }
+  report(){
+    const w=new Float32Array(512);
+    for(let i=0;i<512;i++)w[i]=this.snap[(this.si+i)&511];
+    const h=new Uint8Array(96);
+    if(this.buf&&this.N){const s=Math.floor(this.rb);for(let i=0;i<96;i++){let k=(s+i)%this.N;if(k<0)k+=this.N;h[i]=this.buf[k];}}
+    const o={w:w,h:h,rb:this.rb,W:this.W,N:this.N,live:this.live,under:this.under,lapped:this.lapped};
+    this.under=false;this.lapped=false;
+    return o;
+  }
+}
+
+const WORKLET=SkewEngine.toString()+`
+class SkewNode extends AudioWorkletProcessor{
+  constructor(){super();this.e=new SkewEngine(sampleRate);this.c=0;this.port.onmessage=ev=>this.e.msg(ev.data);}
+  process(inputs,outputs){
+    const i=inputs[0]||[],o=outputs[0];
+    this.e.process(i[0],i[1],o[0],o[1]||o[0],o[0].length);
+    this.c+=o[0].length;if(this.c>=2048){this.c=0;this.port.postMessage(this.e.report());}
+    return true;
+  }
+}
+registerProcessor('skew',SkewNode);`;
+
+const $=id=>document.getElementById(id);
+const OPEN=/(^|\.)opposite\.city$|github\.io$|^localhost$|^127\./.test(location.hostname);
+const JET='wss://jetstream2.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post';
+const RB=['https://all.api.radio-browser.info','https://de1.api.radio-browser.info','https://de2.api.radio-browser.info','https://fi1.api.radio-browser.info'];
+const LABELS_TRUE=['as intended','slow clock','stereo read as mono','half-width words','slipped one byte','byte order reversed','everything wrong'];
+const LABELS_DATA=['plainest reading. no correct one exists','slow clock','read as stereo','double-width words','slipped one byte','byte order reversed','everything at once'];
+
+const S={src:null,layer:'decoded',T:{chans:2,bits:16,big:false,clock:48000},hasTrue:false,
+  p:{clock:48000,chans:2,bits:16,big:false,slip:0,smooth:false,hold:false,grain:4096,vol:0.35,capture:false},
+  dial:0,byHand:false,latch:false,mode:'none',unit:'bytes',lastFile:null,lastImage:null,station:null,skyOpen:false,selfOn:false};
+
+let ctx=null,node=null,direct=null,recDest=null,last=null;
+let el=null,elNode=null,ws=null,abort=null,gen=0;
+
+function status(t){$('status').textContent=t;}
+
+async function audio(){
+  if(ctx){if(ctx.state!=='running')try{await ctx.resume();}catch(e){}return;}
+  const AC=window.AudioContext||window.webkitAudioContext;
+  ctx=new AC({latencyHint:'interactive'});
+  try{
+    const url=URL.createObjectURL(new Blob([WORKLET],{type:'application/javascript'}));
+    await ctx.audioWorklet.addModule(url);
+    node=new AudioWorkletNode(ctx,'skew',{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[2]});
+    node.port.onmessage=ev=>{last=ev.data;};
+  }catch(e){
+    direct=new SkewEngine(ctx.sampleRate);
+    node=ctx.createScriptProcessor(2048,2,2);
+    node.onaudioprocess=ev=>{
+      const i=ev.inputBuffer,o=ev.outputBuffer;
+      direct.process(i.getChannelData(0),i.getChannelData(1),o.getChannelData(0),o.getChannelData(1),o.length);
+      last=direct.report();
+    };
+  }
+  node.connect(ctx.destination);
+  try{recDest=ctx.createMediaStreamDestination();node.connect(recDest);}catch(e){recDest=null;}
+  if(ctx.state!=='running')try{await ctx.resume();}catch(e){}
+  send({t:'p',p:S.p});
+}
+function send(m,tr){if(!node)return;if(direct)direct.msg(m);else node.port.postMessage(m,tr||[]);}
+function pushP(){
+  send({t:'p',p:S.p});
+  if(S.mode==='element'&&el){try{el.playbackRate=Math.min(16,Math.max(0.0625,S.p.clock/S.T.clock));}catch(e){}}
+}
+
+function stopSource(){
+  gen++;
+  if(ws){try{ws.onclose=null;ws.close();}catch(e){}ws=null;}
+  if(abort){try{abort.abort();}catch(e){}abort=null;}
+  if(elNode){try{elNode.disconnect();}catch(e){}elNode=null;}
+  if(el){try{el.pause();el.removeAttribute('src');el.load();}catch(e){}el=null;}
+  S.p.capture=false;S.p.hold=false;S.mode='none';S.skyOpen=false;S.selfOn=false;
+  send({t:'clear'});pushP();last=null;
+}
+function setTrue(T,hasTrue,unit){
+  S.T=T;S.hasTrue=hasTrue;S.unit=unit||'bytes';S.dial=0;S.byHand=false;applyDial(0);
+}
+function loadStatic(u8,T,hasTrue,unit){
+  setTrue(T,hasTrue,unit);S.mode='engine';
+  const b=u8.buffer.slice(u8.byteOffset,u8.byteOffset+u8.byteLength);
+  send({t:'static',buf:b},[b]);pushP();render();
+}
+function startLive(size,T,hasTrue,capture,unit){
+  setTrue(T,hasTrue,unit);S.mode='engine';S.p.capture=!!capture;
+  send({t:'live',size:size});pushP();render();
+}
+function applyDial(i){
+  const T=S.T,A=S.hasTrue,p=S.p;
+  p.chans=T.chans;p.bits=T.bits;p.big=false;p.slip=0;p.clock=T.clock;
+  if(i===1)p.clock=T.clock*0.6;
+  else if(i===2)p.chans=A?1:2;
+  else if(i===3)p.bits=A?8:16;
+  else if(i===4){p.bits=16;p.slip=1;}
+  else if(i===5){p.bits=16;p.big=true;}
+  else if(i===6){p.chans=A?1:2;p.bits=24;p.big=true;p.slip=1;p.clock=T.clock*0.37;}
+}
+
+/* sources */
+function fmtDur(s){s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function toS16(ab){
+  const n=Math.min(ab.length,16e6),L=ab.getChannelData(0),R=ab.numberOfChannels>1?ab.getChannelData(1):L;
+  const u=new Uint8Array(n*4),dv=new DataView(u.buffer);
+  for(let i=0;i<n;i++){
+    const l=Math.max(-1,Math.min(1,L[i])),r=Math.max(-1,Math.min(1,R[i]));
+    dv.setInt16(i*4,Math.round(l*32767),true);dv.setInt16(i*4+2,Math.round(r*32767),true);
+  }
+  return u;
+}
+async function loadFile(f){
+  stopSource();await audio();const g=gen;S.lastFile=f;
+  status('Reading '+f.name+'.');
+  const ab=await f.arrayBuffer();if(g!==gen)return;
+  let note='';
+  if(S.layer==='decoded'){
+    try{
+      const dec=await new Promise((ok,no)=>{const p=ctx.decodeAudioData(ab.slice(0),ok,no);if(p&&p.catch)p.catch(no);});
+      if(g!==gen)return;
+      loadStatic(toS16(dec),{chans:2,bits:16,big:false,clock:ctx.sampleRate},true,'audio');
+      status(f.name+', decoded as sound, '+fmtDur(dec.duration)+(dec.length>16e6?'. Only the first part fits.':'.'));
+      return;
+    }catch(e){note=' It is not sound, so it is read as it is.';}
+  }
+  let u=new Uint8Array(ab);const big=u.length>64e6;if(big)u=u.subarray(0,64e6);
+  if(u.length<64){status(f.name+' is too small to read.');return;}
+  loadStatic(u,{chans:1,bits:8,big:false,clock:11025},false);
+  status(f.name+', '+u.length.toLocaleString()+' bytes, as sent.'+note+(big?' Only the first 64 MB fits.':''));
+}
+async function loadImage(f){
+  stopSource();await audio();const g=gen;S.lastImage=f;
+  if(S.layer==='sent'){
+    let u=new Uint8Array(await f.arrayBuffer());if(g!==gen)return;if(u.length>64e6)u=u.subarray(0,64e6);
+    loadStatic(u,{chans:1,bits:8,big:false,clock:11025},false);
+    status(f.name+', '+u.length.toLocaleString()+' bytes of image file, as sent.');return;
+  }
+  status('Reading '+f.name+'.');
+  try{
+    const url=URL.createObjectURL(f),im=new Image();
+    await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=url;});
+    if(g!==gen)return;
+    const k=Math.min(1,768/Math.max(im.naturalWidth,im.naturalHeight));
+    const w=Math.max(1,Math.round(im.naturalWidth*k)),h=Math.max(1,Math.round(im.naturalHeight*k));
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    const x=c.getContext('2d');x.drawImage(im,0,0,w,h);URL.revokeObjectURL(url);
+    const d=x.getImageData(0,0,w,h).data,u=new Uint8Array(w*h*3);
+    for(let i=0,j=0;i<d.length;i+=4){u[j++]=d[i];u[j++]=d[i+1];u[j++]=d[i+2];}
+    loadStatic(u,{chans:1,bits:8,big:false,clock:22050},false);
+    status(f.name+', '+w+' by '+h+' pixels. Red, green, blue, row by row.');
+  }catch(e){status('That file would not open as an image. Try the as sent layer.');}
+}
+async function loadSelf(){
+  stopSource();await audio();
+  const u=new TextEncoder().encode('<!DOCTYPE html>\n'+document.documentElement.outerHTML);
+  loadStatic(u,{chans:1,bits:8,big:false,clock:8000},false);S.selfOn=true;
+  status('This page, '+u.length.toLocaleString()+' bytes of its own code.');
+}
+async function openSky(){
+  stopSource();await audio();const g=gen,text=S.layer==='decoded',enc=new TextEncoder();
+  startLive(4<<20,{chans:1,bits:8,big:false,clock:text?4000:22050},false,false);
+  S.skyOpen=true;status('Opening the Bluesky stream.');
+  try{ws=new WebSocket(JET);}catch(e){status('The Bluesky stream could not be reached from here.');return;}
+  ws.onopen=()=>{if(g===gen)status(text?'Bluesky, live. The words of each post, one after another.':'Bluesky, live. Each whole event as the network sends it.');};
+  ws.onmessage=ev=>{
+    if(g!==gen||typeof ev.data!=='string')return;let u;
+    if(text){
+      try{const m=JSON.parse(ev.data),c=m.commit;if(!c||c.operation!=='create'||!c.record||!c.record.text)return;u=enc.encode(c.record.text+'\n');}catch(e){return;}
+    }else u=enc.encode(ev.data+'\n');
+    send({t:'write',buf:u.buffer},[u.buffer]);
+  };
+  ws.onerror=()=>{if(g===gen)status('The Bluesky stream could not be reached from here.');};
+  ws.onclose=()=>{if(g===gen)status('The Bluesky stream closed. Open it again to go on.');};
+}
+async function rbGet(path){
+  for(const b of RB){try{const r=await fetch(b+path);if(r.ok)return await r.json();}catch(e){}}
+  throw new Error('unreachable');
+}
+async function searchRadio(){
+  const q=$('rq').value.trim(),box=$('stations');if(!q)return;
+  if(/^https?:\/\//i.test(q)){tune({name:q,url:q,country:'',codec:'',bitrate:0});return;}
+  box.textContent='Searching.';
+  try{
+    const list=await rbGet('/json/stations/search?'+$('rfield').value+'='+encodeURIComponent(q)+'&hidebroken=true&is_https=true&order=clickcount&reverse=true&limit=40');
+    box.textContent='';
+    const ok=list.filter(s=>!s.hls&&(s.url_resolved||s.url));
+    if(!ok.length){box.textContent='No stations found that this page can open.';return;}
+    for(const s of ok){
+      const b=document.createElement('button');
+      b.textContent=[s.name.trim(),s.country,s.codec&&(s.codec+(s.bitrate?' '+s.bitrate:''))].filter(Boolean).join(' · ');
+      b.addEventListener('click',()=>tune({name:s.name.trim(),url:s.url_resolved||s.url,country:s.country,codec:s.codec,bitrate:s.bitrate}));
+      box.appendChild(b);
+    }
+  }catch(e){box.textContent='The station list could not be reached from here.';}
+}
+function playEl(a){
+  return new Promise((ok,no)=>{
+    const t=setTimeout(()=>no(new Error('slow')),15000);
+    a.addEventListener('error',()=>{clearTimeout(t);no(new Error('load'));},{once:true});
+    a.addEventListener('playing',()=>{clearTimeout(t);ok();},{once:true});
+    const p=a.play();if(p&&p.catch)p.catch(e=>{clearTimeout(t);no(e);});
+  });
+}
+async function tune(st){
+  stopSource();await audio();const g=gen;S.station=st;
+  status('Tuning '+st.name+'.');
+  if(S.layer==='sent'){
+    abort=new AbortController();
+    try{
+      const r=await fetch(st.url,{signal:abort.signal});if(!r.ok||!r.body)throw new Error('no');
+      if(g!==gen)return;
+      const rate=st.bitrate?st.bitrate*125:16000;
+      startLive(8<<20,{chans:1,bits:8,big:false,clock:rate},false,false);
+      status(st.name+', as sent. The compressed stream itself, never decoded.');
+      const rd=r.body.getReader();
+      for(;;){const x=await rd.read();if(x.done||g!==gen)break;const b=x.value.buffer.slice(x.value.byteOffset,x.value.byteOffset+x.value.byteLength);send({t:'write',buf:b},[b]);}
+      if(g===gen)status(st.name+' stopped sending.');
+    }catch(e){if(g===gen)status(st.name+' does not let a page read its raw stream. Try the decoded layer.');}
+    return;
+  }
+  const a=new Audio();a.crossOrigin='anonymous';a.preload='none';a.src=st.url;el=a;
+  try{
+    await playEl(a);if(g!==gen)return;
+    elNode=ctx.createMediaElementSource(a);elNode.connect(node);
+    startLive(32<<20,{chans:2,bits:16,big:false,clock:ctx.sampleRate},true,true,'audio');
+    status(st.name+(st.country?', '+st.country:'')+', live.');
+  }catch(e){
+    if(g!==gen)return;
+    try{a.pause();a.removeAttribute('src');a.load();}catch(e2){}
+    const b=new Audio(st.url);b.preservesPitch=false;b.mozPreservesPitch=false;b.webkitPreservesPitch=false;el=b;
+    try{
+      await playEl(b);if(g!==gen)return;
+      setTrue({chans:2,bits:16,big:false,clock:ctx.sampleRate},true,'audio');S.mode='element';pushP();render();
+      status(st.name+' does not share its samples with a page, so only the clock can be skewed here.');
+    }catch(e2){if(g===gen){el=null;status(st.name+' would not play.');}}
+  }
+}
+function reloadCurrent(){
+  if(S.src==='file'&&S.lastFile)loadFile(S.lastFile);
+  else if(S.src==='image'&&S.lastImage)loadImage(S.lastImage);
+  else if(S.src==='radio'&&S.station&&S.mode!=='none')tune(S.station);
+  else if(S.src==='bluesky'&&S.skyOpen)openSky();
+}
+
+/* controls */
+const clockOf=v=>200*Math.pow(1920,v/1000),clockPos=h=>1000*Math.log(h/200)/Math.log(1920);
+const grainOf=v=>Math.round(8*Math.pow(2,v/1000*15)),grainPos=g=>1000*Math.log2(g/8)/15;
+function differs(k){const p=S.p,T=S.T;
+  if(!S.hasTrue)return true;
+  if(k==='clock')return Math.abs(p.clock/T.clock-1)>0.004;
+  if(k==='chans')return p.chans!==T.chans;if(k==='bits')return p.bits!==T.bits;
+  if(k==='big')return !!p.big;if(k==='slip')return p.slip!==0;return false;}
+function anyOff(){return !S.hasTrue||['clock','chans','bits','big','slip'].some(differs)||S.p.hold;}
+function render(){
+  const p=S.p;
+  for(const b of document.querySelectorAll('#srcs button'))b.setAttribute('aria-pressed',b.dataset.src===S.src);
+  for(const n of ['radio','file','image','bluesky','itself'])$('panel-'+n).hidden=S.src!==n;
+  $('sealed').hidden=OPEN||!(S.src==='radio'||S.src==='bluesky');
+  for(const b of document.querySelectorAll('[data-layer]'))b.setAttribute('aria-pressed',b.dataset.layer===S.layer);
+  $('layernote').textContent=S.src==='itself'?'the same thing here':S.layer==='decoded'?'what it means':'the bytes that travelled';
+  for(const g of document.querySelectorAll('[data-k]')){
+    const k=g.dataset.k,cur=k==='big'||k==='smooth'?(p[k]?1:0):p[k],off=differs(k);
+    for(const b of g.querySelectorAll('button')){const on=+b.dataset.v===cur;b.setAttribute('aria-pressed',on);b.classList.toggle('off',on&&off&&k!=='smooth');}
+  }
+  $('dial').value=S.dial;$('dial').classList.toggle('off',S.dial>0||S.byHand||!S.hasTrue);
+  const dl=$('diallabel');dl.textContent=S.byHand?'set by hand':(S.hasTrue?LABELS_TRUE:LABELS_DATA)[S.dial];
+  dl.classList.toggle('off',S.dial>0||S.byHand||!S.hasTrue);
+  $('clock').value=Math.round(clockPos(p.clock));$('clock').classList.toggle('off',differs('clock'));
+  const cv=$('clockval');cv.textContent=Math.round(p.clock).toLocaleString()+' Hz'+(S.hasTrue?' · '+(p.clock/S.T.clock).toFixed(2)+'×':'');
+  cv.classList.toggle('off',differs('clock'));
+  $('grain').value=Math.round(grainPos(p.grain));
+  const ms=p.grain/p.clock*1000;
+  $('grainval').textContent=p.grain.toLocaleString()+' samples · '+(ms>=1000?(ms/1000).toFixed(1)+' s':ms>=10?Math.round(ms)+' ms':ms.toFixed(1)+' ms');
+  $('hold').setAttribute('aria-pressed',!!p.hold);$('hold').classList.toggle('off',!!p.hold);
+  $('latch').setAttribute('aria-pressed',S.latch);
+}
+function setKnob(k,v){
+  if(k==='big'||k==='smooth')S.p[k]=!!v;else S.p[k]=v;
+  if(k!=='smooth')S.byHand=true;
+  pushP();render();
+}
+for(const g of document.querySelectorAll('[data-k]'))g.addEventListener('click',e=>{const b=e.target.closest('button');if(b)setKnob(g.dataset.k,+b.dataset.v);});
+$('dial').addEventListener('input',e=>{S.dial=+e.target.value;S.byHand=false;applyDial(S.dial);pushP();render();});
+$('clock').addEventListener('input',e=>{S.p.clock=clockOf(+e.target.value);S.byHand=true;pushP();render();});
+$('grain').addEventListener('input',e=>{S.p.grain=grainOf(+e.target.value);pushP();render();});
+$('vol').addEventListener('input',e=>{S.p.vol=+e.target.value/100;pushP();});
+$('hold').addEventListener('click',()=>{S.p.hold=!S.p.hold;pushP();render();});
+$('latch').addEventListener('click',()=>{S.latch=!S.latch;render();});
+let placing=false;
+$('place').addEventListener('input',e=>{placing=true;send({t:'seek',f:+e.target.value/1000});});
+$('place').addEventListener('change',()=>{placing=false;});
+$('catch').addEventListener('click',()=>send({t:'catch'}));
+$('srcs').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  S.src=b.dataset.src;render();
+  if(S.src==='radio'&&OPEN&&!$('stations').childNodes.length)searchRadio();
+});
+for(const b of document.querySelectorAll('[data-layer]'))b.addEventListener('click',()=>{if(S.layer===b.dataset.layer)return;S.layer=b.dataset.layer;render();reloadCurrent();});
+$('rf').addEventListener('submit',e=>{e.preventDefault();searchRadio();});
+$('fpick').addEventListener('click',()=>$('ffile').click());
+$('ipick').addEventListener('click',()=>$('ifile').click());
+$('ffile').addEventListener('change',e=>{const f=e.target.files[0];if(f)loadFile(f);e.target.value='';});
+$('ifile').addEventListener('change',e=>{const f=e.target.files[0];if(f)loadImage(f);e.target.value='';});
+$('bgo').addEventListener('click',openSky);
+$('selfgo').addEventListener('click',loadSelf);
+
+/* the trace is the playing surface */
+const cv=$('scope'),g2=cv.getContext('2d');let pad=null;
+function padSet(e){
+  const r=cv.getBoundingClientRect(),x=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
+  S.p.clock=Math.min(384000,Math.max(200,pad.clock*Math.pow(2,(x-0.5)*4)));
+  S.p.grain=Math.round(Math.pow(2,6+y*10));S.p.hold=true;pushP();render();
+}
+cv.addEventListener('pointerdown',e=>{
+  if(S.mode==='none')return;e.preventDefault();
+  try{cv.setPointerCapture(e.pointerId);}catch(x){}
+  pad={clock:S.p.clock,grain:S.p.grain,hold:S.p.hold,by:S.byHand};padSet(e);
+});
+cv.addEventListener('pointermove',e=>{if(pad)padSet(e);});
+function padEnd(){
+  if(!pad)return;
+  if(S.latch)S.byHand=true;else{S.p.clock=pad.clock;S.p.grain=pad.grain;S.p.hold=pad.hold;S.byHand=pad.by;}
+  pad=null;pushP();render();
+}
+cv.addEventListener('pointerup',padEnd);cv.addEventListener('pointercancel',padEnd);
+cv.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();$('hold').click();}});
+
+const dec=new TextDecoder('utf-8');const CTRL=new RegExp('[\\x00-\\x1f\\x7f-\\x9f]|'+String.fromCharCode(65533),'g');let tick=0;
+function draw(){
+  requestAnimationFrame(draw);
+  const W=cv.width,H=cv.height,off=anyOff();
+  g2.fillStyle='#000';g2.fillRect(0,0,W,H);
+  const live=!!(last&&last.live);
+  $('place').hidden=live||S.mode==='element';$('lag').hidden=!live;$('catch').hidden=!live;
+  if(!last){if(S.mode!=='element')$('bytes').textContent='';return;}
+  g2.fillStyle=off?'#c6ff3d':'#fff';
+  const w=last.w;let py=H/2;
+  for(let x=0;x<W;x++){
+    const v=(w[x*2]+w[x*2+1])*0.5,y=Math.round(H/2-v*(H/2-1));
+    const a=Math.min(py,y),b=Math.max(py,y);g2.fillRect(x,a,1,b-a+1);py=y;
+  }
+  if(++tick%6===0){
+    $('bytes').textContent=dec.decode(last.h).replace(CTRL,String.fromCharCode(183));
+    if(live){
+      const lagB=Math.max(0,last.W-last.rb);
+      const t=S.unit==='audio'?(lagB/(4*ctx.sampleRate)).toFixed(1)+' s behind the broadcast':lagB>=1024?Math.round(lagB/1024).toLocaleString()+' kB behind live':Math.round(lagB)+' bytes behind live';
+      $('lag').textContent=t+(last.under?' · waiting for more':'')+(last.lapped?' · the oldest part was lost':'');
+    }else if(!placing&&last.N)$('place').value=Math.round(last.rb/last.N*1000);
+  }
+}
+
+/* takes */
+let mr=null,chunks=[],recT=0;
+$('rec').addEventListener('click',async()=>{
+  if(mr){mr.stop();return;}
+  await audio();if(!recDest||!window.MediaRecorder){$('recnote').textContent='This browser cannot record here.';return;}
+  chunks=[];mr=new MediaRecorder(recDest.stream);recT=Date.now();
+  mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  mr.onstop=()=>{
+    const type=mr.mimeType||'audio/webm',blob=new Blob(chunks,{type:type}),a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download='skew-'+new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')+(/ogg/.test(type)?'.ogg':/mp4/.test(type)?'.m4a':'.webm');
+    a.textContent='save this take, '+fmtDur((Date.now()-recT)/1000);
+    $('recnote').textContent='';$('recnote').appendChild(a);
+    mr=null;$('rec').setAttribute('aria-pressed','false');$('rec').textContent='record';
+  };
+  mr.start(500);$('rec').setAttribute('aria-pressed','true');$('rec').textContent='stop';$('recnote').textContent='recording';
+});
+
+$('recrow').hidden=!OPEN;
+S.src=OPEN?'radio':'itself';
+render();draw();
+if(OPEN)searchRadio();
+</script>
+</body>
+</html>
