@@ -178,6 +178,17 @@ deciding it.
   around the subject each describes. First build at `/nimbus/` (working
   title). Published to the hub under Words, 2026-11-11.
 
+### 5. XIMEREMIX opens up
+
+The brief is `ximeremix/BRIEF.md`. Read it before starting. One phase at a
+time, in `ximeremix-next/`, stopping for the owner after each.
+
+- [ ] Phase 0: find out what plyr.fm allows from another site. No code shipped.
+- [ ] Phase 1: plyr tracks as a source, opt-in only.
+- [ ] Phase 2: remixes of sources with no original post, and a lineage record.
+- [ ] Phase 3: publish a remix to plyr, by a deliberate button.
+- [ ] Phase 4: show where a sound came from and what was made from it.
+
 ### Later, only if needed
 
 - A front door showing the strongest handful of pieces in plain words.
