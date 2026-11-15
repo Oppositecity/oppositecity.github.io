@@ -366,6 +366,34 @@ function decodeADPCM(bytes){
   return { rate, pcm: out };
 }
 
+/* the same format the recorder and the give page write, so a take posted from here
+   sounds and loads like every other take */
+function encodeADPCM(pcm, rate){
+  const n = pcm.length, out = new Uint8Array(12 + ((n + 1) >> 1));
+  out.set([79, 67, 65, 49]);
+  const dv = new DataView(out.buffer);
+  dv.setUint32(4, rate, true); dv.setUint32(8, n, true);
+  let pred = 0, index = 0;
+  for(let i=0;i<n;i++){
+    const s = Math.round(Math.max(-1, Math.min(1, pcm[i]))*32767);
+    const step = ADPCM_STEP[index];
+    let diff = s - pred, code = 0, q = step >> 3;
+    if(diff < 0){ code = 8; diff = -diff; }
+    if(diff >= step){ code |= 4; diff -= step; q += step; }
+    if(diff >= (step >> 1)){ code |= 2; diff -= step >> 1; q += step >> 1; }
+    if(diff >= (step >> 2)){ code |= 1; q += step >> 2; }
+    pred += (code & 8) ? -q : q;
+    if(pred > 32767) pred = 32767;
+    if(pred < -32768) pred = -32768;
+    index += ADPCM_INDEX[code & 7];
+    if(index < 0) index = 0;
+    if(index > 88) index = 88;
+    const k = 12 + (i >> 1);
+    if(i & 1) out[k] |= code << 4; else out[k] = code;
+  }
+  return out;
+}
+
 async function decodeBytes(bytes){
   const coded = decodeADPCM(bytes);
   if(coded){
@@ -1339,7 +1367,7 @@ function panel(){
   W3.bounce = word(w3, "bounce", () => bounce());
   W3.share  = word(w3, "share", () => share());
   W3.post   = word(w3, "post", () => openSheet());
-  W3.takes  = word(w3, "takes", () => openCat());
+  W3.takes  = word(w3, "sounds", () => openCat());
   showTab(); words();
 }
 function showTab(){
@@ -1559,16 +1587,71 @@ function sheetChrome(){
   word($("#shclose"), "close", () => closeSheet());
   $("#shpw").addEventListener("keydown", e => { if(e.key === "Enter") signInS(); });
 }
+let sheetMode = "remix";
 function openSheet(){
-  if(!take){ say("this take is only on this device. pick one from takes to post a remix of it"); return; }
-  if(!paramString()){ say("nothing changed yet. this is still the take as it was"); return; }
+  if(!buf){ say("nothing loaded yet. record, open a file or pick a take"); return; }
+  if(!take){
+    if(buf.duration > TAKE_MAX){ say("longer than ten minutes. give a take posts long sounds in parts"); return; }
+    sheetMode = "take";
+  } else {
+    if(!paramString()){ say("nothing changed yet. this is still the take as it was"); return; }
+    sheetMode = "remix";
+  }
   if(!SH.post) sheetChrome();
-  $("#shhead").textContent = "post this remix as a reply under " + (takeLabel || "the take") + ", from your own bluesky account.";
+  $("#shhead").textContent = sheetMode === "take"
+    ? "post " + (takeLabel || "this sound") + " as a new take, the way the recorders do. it goes up as the account you sign in with; from the band's account it joins " + BAND + "'s takes."
+    : "post this remix as a reply under " + (takeLabel || "the take") + ", from your own bluesky account.";
   sheetSay(""); sheetShow();
   $("#sheet").classList.add("open");
 }
 function closeSheet(){ $("#sheet").classList.remove("open"); }
+const TAKE_RATE = 22050, TAKE_MAX = 10*60;
+async function callBin(nsid, bytes, retried){
+  if(!S.access && !retried) await refreshS();
+  const r = await fetch(S.pds + "/xrpc/" + nsid, { method:"POST",
+    headers:{ "Content-Type":"application/octet-stream", Authorization:"Bearer " + S.access }, body:bytes });
+  if(r.ok) return r.json();
+  const j = await r.json().catch(() => ({}));
+  if(!retried && (j.error === "ExpiredToken" || r.status === 401)){ await refreshS(); return callBin(nsid, bytes, true); }
+  throw new Error(j.message || j.error || ("sending the audio failed (" + r.status + ")"));
+}
+/* the three things the give page writes: the audio as a blob, a city.opposite.take
+   record holding it so the server keeps it, and a post linking the take here */
+async function postTake(){
+  if(sheetBusy || !S || !buf || take) return;
+  sheetBusy = true; sheetShow(); sheetSay("making the take");
+  try{
+    const n = Math.ceil(buf.duration*TAKE_RATE);
+    const off = new OfflineAudioContext(1, n, TAKE_RATE);
+    const s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();
+    const pcm = (await off.startRendering()).getChannelData(0);
+    const bytes = encodeADPCM(pcm, TAKE_RATE);
+    sheetSay("sending the audio");
+    const up = await callBin("com.atproto.repo.uploadBlob", bytes);
+    const blob = up.blob, cid = blob.ref.$link, now = new Date().toISOString();
+    sheetSay("writing the take");
+    await callS("com.atproto.repo.createRecord", { repo:S.did, collection:"city.opposite.take", record:{
+      $type:"city.opposite.take", audio:blob, codec:"oca1", sampleRate:TAKE_RATE,
+      durationMs:Math.round(pcm.length/TAKE_RATE*1000), source:takeSource || "ximeremix", createdAt:now } });
+    sheetSay("posting");
+    const url = "https://opposite.city/ximeremix/#" + S.did + "/" + cid;
+    const words = $("#shwords").value.trim(), label = "take it apart";
+    const lead = words ? words + "\n\n" : "", te = new TextEncoder();
+    const byteStart = te.encode(lead).length, byteEnd = byteStart + te.encode(label).length;
+    const p = await callS("com.atproto.repo.createRecord", { repo:S.did, collection:"app.bsky.feed.post", record:{
+      $type:"app.bsky.feed.post", text:lead + label, createdAt:now,
+      facets:[{ index:{ byteStart, byteEnd }, features:[{ $type:"app.bsky.richtext.facet#link", uri:url }] }] } });
+    /* from now on this sound is a take: its link works anywhere, and remixes of it reply under it */
+    take = { did:S.did, cid, anchor:{ uri:p.uri, cid:p.cid, reply:null } };
+    takeLabel = takeLabel || "your take"; catItems = null;
+    $("#shwords").value = "";
+    writeHash();
+    sheetSay('posted. <a href="' + postLink(p.uri) + '" target="_blank" rel="noopener">see the post</a>. remix it and post again to reply under it', true);
+  }catch(e){ sheetSay((e.message || String(e)) + ". the sound is still here; post again when you can"); }
+  sheetBusy = false; sheetShow();
+}
 async function postRemix(){
+  if(sheetMode === "take") return postTake();
   if(sheetBusy || !S || !take) return;
   sheetBusy = true; sheetShow(); sheetSay("finding the take's post");
   try{
@@ -1610,7 +1693,8 @@ function bounce(){
     const url = URL.createObjectURL(blob);
     const ext = /ogg/.test(type) ? "ogg" : /mp4/.test(type) ? "m4a" : "webm";
     rec = null; words();
-    say('<a href="' + url + '" download="ximeremix.' + ext + '">save ximeremix.' + ext + "</a>", true);
+    toShelf("bounce-" + (takeLabel || "ximeremix").replace(/\s+/g, "-"), blob);
+    say('<a href="' + url + '" download="ximeremix.' + ext + '">save ximeremix.' + ext + "</a>. also on the shelf", true);
   };
   rec.start(); words();
   if(!playing && buf) toggle();
@@ -1671,8 +1755,10 @@ function makeSlices(){
   return out;
 }
 
-async function loadBuffer(abuf, label, t){
+let takeSource = "";
+async function loadBuffer(abuf, label, t, from){
   const mine = ++job;
+  takeSource = t ? "" : (from || "file");
   stopListen(); clean = false; listenEnded = false;
   playing = false; holding = false; grains.length = 0;
   buf = null; TL = null; base = null; take = t || null; takeLabel = label || "";
@@ -1739,7 +1825,7 @@ async function playFile(f){
   say("reading");
   const ab = await decodeBytes(await f.arrayBuffer());
   rigOpen = true;
-  await loadBuffer(ab, "", null);
+  await loadBuffer(ab, (f.name || "").replace(/\.[^.]+$/, "").toLowerCase(), null, "file");
 }
 
 /* ---------- the band's takes ------------------------------------------------------------------ */
@@ -1791,7 +1877,47 @@ async function readTakes(did, seen, items){
     cursor = j.cursor; if(!cursor) break;
   }
 }
+/* the rig's shelf: clips kept on this device by the rig, chip and this page */
+function shelfDB(){
+  return new Promise((ok, no) => {
+    const r = indexedDB.open("rig", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("shelf");
+    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+  });
+}
+async function shelfList(){
+  const db = await shelfDB();
+  return new Promise((ok, no) => {
+    const out = [], c = db.transaction("shelf").objectStore("shelf").openCursor();
+    c.onsuccess = () => { const x = c.result; if(x){ out.push({ key:x.key, name:x.value.name || "clip", wav:x.value.wav }); x.continue(); } else ok(out.reverse()); };
+    c.onerror = () => no(c.error);
+  });
+}
+async function toShelf(name, blob){
+  try{
+    const db = await shelfDB();
+    await new Promise((ok, no) => { const t = db.transaction("shelf", "readwrite");
+      t.objectStore("shelf").put({ name, wav:blob, at:Date.now() }, Date.now().toString(36) + Math.random().toString(36).slice(2, 5));
+      t.oncomplete = ok; t.onerror = () => no(t.error); });
+    try{ new BroadcastChannel("rig").postMessage({ t:"shelf" }); }catch(e){}
+  }catch(e){}
+}
+let catMode = "takes", shelfItems = null;
+function renderShelf(){
+  const list = $("#catlist"); list.textContent = "";
+  if(!shelfItems || !shelfItems.length){ list.append(el("div","item", "the shelf is empty. clips land here from the rig, chip, shellac and bounce.")); return; }
+  for(const it of shelfItems){
+    const b = el("button","item"); b.append(el("div","d", it.name));
+    b.onclick = async () => {
+      closeCat(); resetSettings(); pending = null; rigOpen = true;
+      try{ say("reading"); await loadBuffer(await decodeBytes(await it.wav.arrayBuffer()), it.name, null, "shelf"); }
+      catch(e){ say("could not read that clip"); }
+    };
+    list.append(b);
+  }
+}
 function renderCat(){
+  if(catMode === "shelf") return renderShelf();
   const list = $("#catlist"); list.textContent = "";
   if(!catItems || !catItems.length){
     const p = el("div","item", catBusy ? "looking for takes..." : "no takes found there. pick a file instead.");
@@ -1812,6 +1938,7 @@ function renderCat(){
 }
 async function openCat(){
   $("#cat").classList.add("open");
+  catWords();
   renderCat();
   if(catItems == null && !catBusy){
     catBusy = true; renderCat();
@@ -1820,12 +1947,68 @@ async function openCat(){
   }
 }
 function closeCat(){ $("#cat").classList.remove("open"); }
+/* the front door: any sound in, from anywhere. the band's takes are one source of several */
+const SHELLAC = /-next\//.test(location.pathname) ? "/shellac-next/" : "/shellac/";
+const CW = {};
 function catChrome(){
   const h = $("#cathead"); h.textContent = "";
-  h.append(el("div","", BAND), el("div","", "takes. open one and take it apart."));
+  h.append(el("div","", "XIMEREMIX"), el("div","", "bring any sound and take it apart."));
   const w = $("#catwords");
-  word(w, "from file", () => $("#file").click());
-  word(w, "close", () => closeCat());
+  CW.rec = word(w, "record", () => micToggle());
+  CW.file = word(w, "file", () => $("#file").click());
+  CW.shelf = word(w, "shelf", async () => { catMode = "shelf"; catWords(); shelfItems = null; renderCat(); try{ shelfItems = await shelfList(); }catch(e){ shelfItems = []; } renderCat(); });
+  CW.takes = word(w, "takes", () => { catMode = "takes"; catWords(); openCat(); });
+  CW.records = word(w, "records", () => { const x = window.open(SHELLAC, "_blank"); if(!x) location.href = SHELLAC; });
+  CW.close = word(w, "close", () => closeCat());
+  catWords();
+}
+function catWords(){
+  if(!CW.rec) return;
+  CW.rec.textContent = mic ? "stop " + fmtClock((performance.now() - micT0)/1000) : "record";
+  CW.rec.classList.toggle("on", !!mic);
+  CW.shelf.classList.toggle("on", catMode === "shelf");
+  CW.takes.classList.toggle("on", catMode === "takes");
+  CW.close.style.display = buf ? "" : "none";
+  const h = $("#cathead").lastChild;
+  if(h) h.textContent = catMode === "shelf" ? "the shelf: clips kept on this device." : BAND + " takes, or bring any sound and take it apart.";
+}
+
+/* ---------- record straight in: a microphone, or a line in through a usb interface ---------- */
+let mic = null, micStream = null, micChunks = [], micT0 = 0, micTick = 0, micLock = null;
+const fmtClock = s => Math.floor(s/60) + ":" + String(Math.floor(s%60)).padStart(2, "0");
+async function micToggle(){
+  if(mic){ if(mic.state !== "inactive") mic.stop(); return; }
+  start(); wake();
+  try{
+    micStream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+  }catch(e){ say("no microphone: " + (e.message || e.name)); return; }
+  if(!window.MediaRecorder){ say("this browser can't record"); micStream.getTracks().forEach(t => t.stop()); return; }
+  const types = ["audio/webm;codecs=opus","audio/ogg;codecs=opus","audio/mp4","audio/webm"];
+  const mt = types.find(t => MediaRecorder.isTypeSupported(t));
+  mic = new MediaRecorder(micStream, mt ? { mimeType:mt } : undefined);
+  micChunks = [];
+  mic.ondataavailable = e => { if(e.data && e.data.size) micChunks.push(e.data); };
+  mic.onstop = async () => {
+    const type = mic.mimeType || mt || "audio/webm";
+    micStream.getTracks().forEach(t => t.stop());
+    clearInterval(micTick); mic = null; catWords();
+    try{ if(micLock) await micLock.release(); }catch(e){} micLock = null;
+    const blob = new Blob(micChunks, { type });
+    try{
+      say("reading");
+      const ab = await decodeBytes(await blob.arrayBuffer());
+      if(ab.duration < 0.3){ say("too short to keep"); return; }
+      const d = new Date(), name = "recording " + d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0");
+      toShelf(name.replace(/[ :]/g, "-"), blob);
+      closeCat(); resetSettings(); pending = null; rigOpen = true;
+      await loadBuffer(ab, name, null, "record");
+      say("recorded and on the shelf. post to make it a take");
+    }catch(e){ say("could not read the recording"); }
+  };
+  mic.start(1000); micT0 = performance.now();
+  try{ if(navigator.wakeLock) micLock = await navigator.wakeLock.request("screen"); }catch(e){}
+  micTick = setInterval(catWords, 250); catWords();
+  say("recording. stop when you're done");
 }
 $("#file").onchange = async e => {
   const f = e.target.files && e.target.files[0]; if(!f) return;
@@ -1876,7 +2059,7 @@ async function begin(){
     rigOpen = true; start();
     try{
       const c = await takeClip(clip);
-      if(c){ resetSettings(); pending = null; await loadBuffer(c.buf, c.name, null); return; }
+      if(c){ resetSettings(); pending = null; await loadBuffer(c.buf, c.name, null, "clip"); return; }
     }catch(e){}
     say("that clip isn't on this device any more. drop a file, or pick a take");
     openCat(); return;
