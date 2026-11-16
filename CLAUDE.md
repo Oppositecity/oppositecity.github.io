@@ -166,6 +166,11 @@ deciding it.
   WAKE is listed under Band and on that page. `/take/` only forwards a take
   to the remix page, so it is not listed.
 
+- [~] `idiophone/`: a more playable interface and easier playback: a real
+  keyboard (touch slides, computer keys), objects that stay between visits,
+  play without the microphone, and a recording that can go to `ximeremix/`.
+  Preview in `idiophone-next/`.
+
 ### 4. Shared code, then new work
 
 - [x] After the fixes in part 1, pull out whatever device-handling code
