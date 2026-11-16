@@ -78,7 +78,7 @@
   input[type=range]::-moz-range-track{ height:2px; background:var(--track); }
   input[type=range]::-moz-range-thumb{ width:26px; height:26px; border:0; border-radius:50%; background:var(--ink); }
 
-  .row{ display:flex; gap:24px; overflow-x:auto; scrollbar-width:none; }
+  .row{ display:flex; flex-wrap:wrap; gap:0 24px; }   /* wraps on a narrow screen; nothing waits off the edge */
   .row::-webkit-scrollbar{ display:none; }
   .row button{
     -webkit-appearance:none; appearance:none; background:none; border:0; margin:0;
