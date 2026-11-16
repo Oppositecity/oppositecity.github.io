@@ -1012,6 +1012,25 @@ $('file').onchange=async()=>{
 };
 
 /* ---------------- atproto ---------------- */
+/* An account lives on its own server, named in its identity document. Accounts
+   on Bluesky's servers sign in at bsky.social; everyone else at their own. */
+async function hostFor(id){
+  const fallback='https://bsky.social';
+  try{
+    let did=id;
+    if(!id.startsWith('did:')){
+      const r=await fetch('https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle='+encodeURIComponent(id));
+      if(!r.ok) return fallback;
+      did=(await r.json()).did;
+    }
+    const u=did.startsWith('did:web:')?'https://'+did.slice(8)+'/.well-known/did.json':'https://plc.directory/'+did;
+    const doc=await (await fetch(u)).json();
+    const svc=(doc.service||[]).find(x=>String(x.id).endsWith('atproto_pds'));
+    const pds=String(svc.serviceEndpoint).replace(/\/$/,'');
+    if(!/^https:\/\//.test(pds)) return fallback;
+    return /\.bsky\.network$/.test(new URL(pds).hostname)?fallback:pds;
+  }catch(e){ return fallback; }
+}
 $('pub').onclick=async()=>{
   const msg=$('pubmsg'); msg.innerHTML='';
   const id=$('handle').value.trim().replace(/^@/,''), pw=$('pw').value.trim();
@@ -1020,14 +1039,15 @@ $('pub').onclick=async()=>{
   if(!todo.length){msg.innerHTML='<div class="err">Nothing new to publish. Everything kept here is already in a repo.</div>';return;}
   $('pub').disabled=true; $('pub').textContent='PUBLISHING…';
   try{
-    const s=await fetch('https://bsky.social/xrpc/com.atproto.server.createSession',{
+    const host=await hostFor(id);
+    const s=await fetch(host+'/xrpc/com.atproto.server.createSession',{
       method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({identifier:id,password:pw})});
     if(!s.ok) throw new Error('Login failed. Check the handle and app password.');
     const ses=await s.json();
-    let n=0;
+    let n=0, why='';
     for(const a of todo){
-      const r=await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord',{
+      const r=await fetch(host+'/xrpc/com.atproto.repo.createRecord',{
         method:'POST',
         headers:{'content-type':'application/json','authorization':'Bearer '+ses.accessJwt},
         body:JSON.stringify({repo:ses.did,collection:'city.opposite.idiophone.capture',record:{
@@ -1038,8 +1058,9 @@ $('pub').onclick=async()=>{
           shape:a.shape||undefined,
           createdAt:new Date().toISOString()}})});
       if(r.ok){ n++; a.published=true; persist(); }
+      else if(!why){ const j=await r.json().catch(()=>({})); why=j.message||('the server answered '+r.status); }
     }
-    msg.innerHTML=''; const ok=document.createElement('div'); ok.className='ok'; ok.textContent='Published '+n+' of '+todo.length+' to '+ses.handle+'.'; msg.appendChild(ok);
+    msg.innerHTML=''; const ok=document.createElement('div'); ok.className='ok'; ok.className=n===todo.length?'ok':'err'; ok.textContent='Published '+n+' of '+todo.length+' to '+ses.handle+'.'+(why?' The rest were refused: '+why:''); msg.appendChild(ok);
   }catch(e){
     msg.innerHTML=''; const er=document.createElement('div'); er.className='err'; er.textContent=e.message; msg.appendChild(er);
   }
