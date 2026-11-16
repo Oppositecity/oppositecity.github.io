@@ -258,7 +258,7 @@ async function loadData(){
         got += value.length;
         text += dec.decode(value, {stream:true});
         boot.textContent = total
-          ? 'charting \u00b7 ' + Math.round(got / total * 100) + '%'
+          ? 'charting \u00b7 ' + Math.min(99, Math.round(got / total * 100)) + '%'   // content-length counts the compressed bytes, so this can pass 100
           : 'charting \u00b7 ' + (got >> 10) + 'k';
       }
       text += dec.decode();
