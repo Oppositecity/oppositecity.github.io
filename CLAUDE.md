@@ -283,6 +283,13 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   word is in the middle; say the download size on the begin button. Raising
   the brightness of unlikely words changes the look, so ask the owner first.
   Headless: load, begin, wait for "model ready" (about 90 s), tap a word.
+  The owner on 2026-11-16: "still weirdly arranged". Seen: half the screen
+  empty because the field opened facing the likeliest word, which stands at
+  the edge of the words in play; and words printed over each other, because
+  a word was allowed to be 36% hidden. Changed in the preview: the opening
+  turn keeps the likeliest word in the middle half of the window and picks
+  the turn that shows the most words; the hidden allowance is 8%. Words are
+  still cut by the window's edges, which a panorama does.
 - [ ] `idiophone/`: when the owner approves the preview, publish once with a
   real account to settle the decimals question, then copy `idiophone-next/`
   over it, delete the preview, and update the blurb and tags in both

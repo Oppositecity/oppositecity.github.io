@@ -582,11 +582,12 @@ function jit(id,s){var h=(id*2654435761)>>>0;return ((h%1000)/1000-0.5)*s;}
 // ---- placement ----
 // Resolved in absolute angle, once per layer, so turning afterwards is pure
 // parallax. A word may be up to BUD hidden behind nearer ones and may hide that
-// much of anything already standing; cells belong to whoever is nearest, so
+// much of anything already standing (a sliver: more than that reads on a flat
+// screen as two words printed on top of each other); cells belong to whoever is nearest, so
 // nothing is charged twice for ground it had already lost. Azimuth wraps; the
 // band has no top or bottom edge case because cos(elevation) never approaches
 // zero inside it.
-var GCELL=0.011,GW=0,GH=0,own=null,BUD=0.36;
+var GCELL=0.011,GW=0,GH=0,own=null,BUD=0.08;
 function grid(){
   var gw=Math.ceil(6.2831853/GCELL),gh=Math.ceil((2*ELMAX+0.2)/GCELL);
   if(gw!==GW||gh!==GH||!own){GW=gw;GH=gh;own=new Int32Array(GW*GH);}
@@ -713,7 +714,22 @@ function onStep(m){
   // turn belongs to the step and not to the layer.
   var top=cards[cfg.L].ids[0];
   var st={cards:cards,text:m.text,pos:m.pos,ms:m.ms,spin:0,fields:new Array(cfg.L+1)};
-  st.spin=yaw-(map[top*3]*Math.PI+jit(top,0.03));
+  // Facing the likeliest word dead on can leave half the screen looking at empty
+  // band, because the words in play stand together and it is often at their
+  // edge. So the likeliest word stays within the middle of the window and the
+  // turn is whichever, inside that limit, puts the most words on the screen.
+  var azTop=map[top*3]*Math.PI+jit(top,0.03);
+  var half=2*Math.atan(CX/(2*FOC)),lim=half*0.55,ids=cards[cfg.L].ids,nn=Math.min(N,ids.length);
+  var best=0,bestN=-1,d,j,c,da;
+  for(d=-lim;d<=lim+1e-9;d+=lim/12){
+    for(c=0,j=0;j<nn;j++){
+      da=map[ids[j]*3]*Math.PI-azTop-d;
+      if(da>Math.PI)da-=6.2831853;if(da<-Math.PI)da+=6.2831853;
+      if(da>-half*0.92&&da<half*0.92)c++;
+    }
+    if(c>bestN*1.04||(c>=bestN&&Math.abs(d)<Math.abs(best))){if(c>bestN)bestN=c;best=d;}
+  }
+  st.spin=yaw-(azTop+best);
   steps.push(st);
   for(var i=0;i<steps.length-HOLD;i++)if(steps[i].fields)steps[i].fields=null;
   for(i=0;i<steps.length-1;i++)if(steps[i].fields)steps[i].fields=new Array(cfg.L+1);
