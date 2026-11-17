@@ -51,13 +51,22 @@ border:1px solid #4a4a4a;border-radius:2px;padding:11px 12px;width:100%}
 input::placeholder{color:#8f8f8f}
 label{display:block;font-size:13px;margin-bottom:7px}
 .field{margin-bottom:14px}
-.pads{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:16px}
-.pad{background:#121212;border-radius:2px;padding:20px 0;font-size:14px;text-align:center;
-user-select:none;touch-action:manipulation}
+.pads{display:flex;flex-wrap:wrap-reverse;gap:6px;touch-action:none;
+user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer}
+.pad{flex:0 0 calc((100% - 30px)/6 - .1px);height:60px;background:#121212;border-radius:2px;
+display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:14px;line-height:1.15}
+.pad.own{color:var(--live);font-weight:700}
 .pad.on{background:var(--live);color:#000;font-weight:700}
-.row{display:flex;gap:26px;flex-wrap:wrap;align-items:baseline}
-.tog{font-size:14px}
-.tog.on{color:var(--live);font-weight:700}
+.pad kbd{display:none;font-family:inherit;font-size:11px;margin-top:3px}
+@media (hover:hover) and (pointer:fine){.pad kbd{display:block}}
+@media (min-width:520px){.pad{flex-basis:calc((100% - 66px)/12 - .1px);height:72px}}
+.arow{display:flex;gap:18px;align-items:baseline}
+.arow .arc{flex:1;min-width:0}
+.arow .arc.cur{color:var(--live);font-weight:700}
+.arow .rm{font-size:13px;padding:9px 0}
+.row{display:flex;gap:6px 26px;flex-wrap:wrap;align-items:baseline;margin-top:12px}
+.tog{font-size:14px;padding:8px 0}
+.tog.on{color:var(--hot);font-weight:700}
 .arc{display:block;width:100%;text-align:left;padding:9px 0;font-size:14px}
 .note{font-size:13px;max-width:46ch}
 .verdict{font-size:15px;font-weight:700;margin-bottom:6px}
@@ -77,15 +86,42 @@ user-select:none;touch-action:manipulation}
 
 <div class="blk">
   <button id="arm" class="big">ARM</button>
-  <div class="state" id="state">Microphone is off.</div>
+  <div class="state" id="state" aria-live="polite">Microphone is off.</div>
   <div class="floor" id="floor"></div>
   <div class="meter" id="meter"><i></i></div>
-  <button class="arc hide" id="release">release the microphone</button>
+</div>
+
+<div class="blk hide" id="playblk">
+  <div class="pads" id="pads" role="group" aria-label="the object, a semitone per key"></div>
+  <p class="cap" style="margin:10px 0 0">tap to strike. hold to bow. slide to run along it. 0 is the object as it was measured.</p>
+  <div class="row">
+    <button class="tog hide" id="tRaw">hear the recording</button>
+    <button class="tog" id="tRec">record what you play</button>
+    <button class="tog hide" id="tHear">play it back</button>
+    <button class="tog hide" id="tXmx">take it to XIMEREMIX</button>
+    <button class="tog hide" id="tWav">save as wav</button>
+  </div>
+  <div class="state" id="pstate" aria-live="polite"></div>
+</div>
+
+<div class="blk hide" id="saveblk">
+  <div class="field">
+    <label for="mat">What did you strike?</label>
+    <input id="mat" placeholder="cast iron sink" autocomplete="off" maxlength="120">
+  </div>
+  <button class="big" id="keep">KEEP</button>
+</div>
+
+<div class="blk hide" id="arcblk">
+  <div class="state" id="arcCount"></div>
+  <div id="arc"></div>
 </div>
 
 <div class="blk hide" id="result">
+  <div id="heard">
   <canvas id="sgram"></canvas>
   <p class="cap">the strike falling: time downward, frequency across. high modes die first, so it narrows as it goes.</p>
+  </div>
 
   <div class="hdr"><span>Hz / &Delta;f</span><span>Q</span><span>decay against the room</span></div>
   <div id="modes"></div>
@@ -100,28 +136,6 @@ user-select:none;touch-action:manipulation}
   <div class="scores" id="scores"></div>
 </div>
 
-<div class="blk hide" id="playblk">
-  <div class="row">
-    <button class="tog on" id="tStrike">strike</button>
-    <button class="tog" id="tBow">bow</button>
-    <button class="tog" id="tRaw">hear the recording</button>
-  </div>
-  <div class="pads" id="pads"></div>
-</div>
-
-<div class="blk hide" id="saveblk">
-  <div class="field">
-    <label for="mat">What did you strike?</label>
-    <input id="mat" placeholder="cast iron sink" autocomplete="off">
-  </div>
-  <button class="big" id="keep">KEEP</button>
-</div>
-
-<div class="blk hide" id="arcblk">
-  <div class="state" id="arcCount"></div>
-  <div id="arc"></div>
-</div>
-
 <div class="blk hide" id="pubblk">
   <div class="field">
     <label for="handle">Bluesky handle</label>
@@ -134,9 +148,21 @@ user-select:none;touch-action:manipulation}
   <p class="note">Publishes every kept capture to your repo as city.opposite.idiophone.capture. Each object is a handful of numbers — enough for anyone to rebuild the instrument without the audio.</p>
   <button class="big" id="pub">PUBLISH</button>
   <div id="pubmsg"></div>
-  <button class="arc" id="dl">download the archive as JSON</button>
 </div>
 
+<div class="blk">
+  <div class="field">
+    <label for="who">Whose objects? A handle that has published some.</label>
+    <input id="who" placeholder="someone.bsky.social" autocomplete="off" autocapitalize="off" spellcheck="false">
+  </div>
+  <button class="arc" id="fetch">open their objects</button>
+  <button class="arc" id="open">open an archive file</button>
+  <input type="file" id="file" accept="application/json,.json" class="hide" aria-label="archive file">
+  <button class="arc hide" id="dl">download the archive as JSON</button>
+  <div id="filemsg"></div>
+</div>
+
+<script src="/shared/atproto.js"></script>
 <script>
 /* ---------------- FFT ---------------- */
 function fft(re,im){
@@ -191,64 +217,81 @@ let micOpen=false, armed=false, capturing=false;
 let ring=null, ringW=0, ringN=0;
 let cap=null, capLen=0, capOnset=0, capCut=-1, quietRun=0, armTimer=null;
 let detEnv=[], floorEnv=0.003;
-let current=null, archive=[], mode='strike';
-const live=new Map(); let noiseBuf=null;
+let current=null, archive=[];
+let noiseBuf=null, master=null, comp=null, ringFill=0, ready=false, opening=false;
+const HOLD_MS=240, MAX_RING=20, REC_MAX=180, STORE='idiophone.archive.v1';
 
 const $=id=>document.getElementById(id);
 const setState=t=>$('state').textContent=t;
 
+/* ---------------- audio out ----------------
+   Playing never needs the microphone: the context is made on the first touch. */
+function audio(){
+  if(!ctx){
+    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    master=ctx.createGain(); master.gain.value=0.9;
+    comp=ctx.createDynamicsCompressor();
+    comp.threshold.value=-14; comp.knee.value=10; comp.ratio.value=8;
+    comp.attack.value=0.003; comp.release.value=0.2;
+    master.connect(comp); comp.connect(ctx.destination);
+  }
+  if(ctx.state!=='running'){ try{ const p=ctx.resume(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
+  return ctx;
+}
+/* On a phone an open microphone sends playback to the earpiece, quietly.
+   So the microphone is held only while armed, and the session is handed back. */
+function session(t){ try{ if(navigator.audioSession) navigator.audioSession.type=t; }catch(e){} }
+session('playback');
+
 /* ---------------- mic ---------------- */
 async function openMic(){
   if(micOpen) return true;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    setState('This browser gives the page no microphone.'); return false; }
+  session('play-and-record');
   try{
     stream=await navigator.mediaDevices.getUserMedia({audio:{
       autoGainControl:false,echoCancellation:false,noiseSuppression:false,channelCount:1}});
-  }catch(e){ setState('No microphone. Check the browser permission and try again.'); return false; }
+  }catch(e){ session('playback'); setState('No microphone. Check the browser permission and try again.'); return false; }
   const t=stream.getAudioTracks()[0];
   try{ await t.applyConstraints({autoGainControl:false,echoCancellation:false,noiseSuppression:false}); }catch(e){}
-  ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();
-  await ctx.resume();
+  audio();
+  try{ await ctx.resume(); }catch(e){}
   ringN=Math.ceil(PRE_SEC*ctx.sampleRate);
-  ring=new Float32Array(ringN); ringW=0;
+  ring=new Float32Array(ringN); ringW=0; ringFill=0; ready=false;
   srcNode=ctx.createMediaStreamSource(stream);
   proc=ctx.createScriptProcessor(4096,1,1);
   const mute=ctx.createGain(); mute.gain.value=0;
   srcNode.connect(proc); proc.connect(mute); mute.connect(ctx.destination);
   proc.onaudioprocess=onBlock;
   micOpen=true; floorEnv=0.003; detEnv=[];
-  $('release').classList.remove('hide');
   return true;
 }
-function closeMic(){
-  armed=false; capturing=false; micOpen=false;
+function closeMic(msg){
+  armed=false; capturing=false; micOpen=false; ready=false;
   if(armTimer) clearTimeout(armTimer);
   if(proc){proc.onaudioprocess=null;proc.disconnect();proc=null;}
   if(srcNode){srcNode.disconnect();srcNode=null;}
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  session('playback');
   $('arm').textContent='ARM'; $('arm').classList.remove('hot');
   $('meter').classList.remove('armed'); $('meter').firstElementChild.style.width='0%';
-  $('release').classList.add('hide'); $('floor').textContent='';
-  setState('Microphone is off.');
+  $('floor').textContent='';
+  if(msg!==null) setState(msg||'Microphone is off.');
 }
-$('release').onclick=closeMic;
 
 $('arm').onclick=async()=>{
-  if(armed){ disarm('Disarmed.'); return; }
-  if(!await openMic()) return;
+  if(armed){ closeMic('Disarmed. Microphone is off.'); return; }
+  if(opening) return;
+  opening=true; const ok=await openMic(); opening=false;
+  if(!ok) return;
   armed=true; capturing=false;
   $('arm').textContent='LISTENING'; $('arm').classList.add('hot');
   $('meter').classList.add('armed');
-  setState('Waiting for one strike. Get both hands on the object.');
+  setState('Opening the microphone…');
   if(armTimer) clearTimeout(armTimer);
-  armTimer=setTimeout(()=>{ if(armed&&!capturing) disarm('Nothing struck. Arm again when ready.'); },ARM_TIMEOUT);
+  armTimer=setTimeout(()=>{ if(armed&&!capturing) closeMic('Nothing struck. Arm again when ready.'); },ARM_TIMEOUT);
 };
-function disarm(msg){
-  armed=false; capturing=false;
-  if(armTimer) clearTimeout(armTimer);
-  $('arm').textContent='ARM'; $('arm').classList.remove('hot');
-  $('meter').classList.remove('armed');
-  if(msg) setState(msg);
-}
 
 /* ---------------- detection ---------------- */
 function onBlock(e){
@@ -262,7 +305,7 @@ function onBlock(e){
     if(n>RISE_LAG+1){
       const prev=detEnv[n-1-RISE_LAG]+1e-9;
       if(e1/prev>RISE_RATIO && e1>Math.max(floorEnv*7,0.006)){
-        if(armed&&!capturing) beginCapture(x,off,sr);
+        if(armed&&ready&&!capturing) beginCapture(x,off,sr);
         else if(capturing&&capCut<0&&capLen>Math.floor(sr*0.05)) capCut=capLen+off;
       }
     }
@@ -272,6 +315,9 @@ function onBlock(e){
 
   if(!capturing){
     for(let i=0;i<x.length;i++){ ring[ringW]=x[i]; ringW=(ringW+1)%ringN; }
+    ringFill+=x.length;
+    // the room has to be heard first: the fit is bounded by the floor before the strike
+    if(armed&&!ready&&ringFill>=ringN+x.length){ ready=true; setState('Waiting for one strike. Get both hands on the object.'); }
     return;
   }
   const n=Math.min(x.length,cap.length-capLen);
@@ -294,8 +340,9 @@ function beginCapture(x,off,sr){
   setState('Caught it. Measuring…');
 }
 function endCapture(sr){
-  capturing=false; disarm(null);
-  analyze(cap.subarray(0,capLen),sr,capOnset,capCut);
+  const buf=cap.subarray(0,capLen), on=capOnset, cut=capCut;
+  closeMic(null);            // one strike, then the microphone is let go
+  analyze(buf,sr,on,cut);
 }
 
 /* ---------------- analysis ---------------- */
@@ -346,8 +393,8 @@ function analyze(buf,sr,onset,cut){
   }
   modes.sort((a,b)=>a.hz-b.hz);
   current={modes,raw:buf.slice(0),sr,onset,end:hardEnd,material:'',rejected,
-           shape:classify(modes)};
-  render();
+           shape:classify(modes),struck:new Date().toISOString(),rec:null};
+  render(); renderArchive();
   setState('Measured '+modes.length+' mode'+(modes.length>1?'s':'')+'. Play it below, or arm again.');
 }
 
@@ -495,11 +542,13 @@ function drawSgram(){
 /* 1 — measured spectrum, with each mode drawn at its own linewidth */
 function drawSpec(){
   const c=$('spec'), g=fit2(c,150), W=c.clientWidth, H=150;
-  const {raw,sr,onset,end}=current;
+  const raw=current.raw, sr=current.sr||48000, onset=current.onset, end=current.end;
   const N=8192, re=new Float32Array(N), im=new Float32Array(N);
-  const st=Math.min(onset,Math.max(0,end-N));
-  for(let i=0;i<N;i++){const k=st+i, v=(k<end?raw[k]:0); re[i]=v*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));}
-  fft(re,im);
+  if(raw){
+    const st=Math.min(onset,Math.max(0,end-N));
+    for(let i=0;i<N;i++){const k=st+i, v=(k<end?raw[k]:0); re[i]=v*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));}
+    fft(re,im);
+  }
   const half=N>>1, mg=new Float32Array(half); let mx=1e-9;
   for(let i=0;i<half;i++){mg[i]=Math.hypot(re[i],im[i]); if(mg[i]>mx)mx=mg[i];}
   g.clearRect(0,0,W,H);
@@ -507,7 +556,7 @@ function drawSpec(){
 
   g.strokeStyle='#ffffff'; g.globalAlpha=.6; g.lineWidth=1; g.beginPath();
   let started=false;
-  for(let i=1;i<half;i++){
+  if(raw) for(let i=1;i<half;i++){
     const hz=i*sr/N; if(hz<F_LO||hz>F_HI) continue;
     const x=lx(hz,W), y=ydb(mg[i]/mx);
     started?g.lineTo(x,y):(g.moveTo(x,y),started=true);
@@ -569,6 +618,15 @@ function drawRuler(){
 function drawFit(c,m,span){
   const g=fit2(c,38), W=c.clientWidth, H=38, DB=54;
   g.clearRect(0,0,W,H);
+  if(!m.env){   // no recording behind this one: draw the decay its numbers describe
+    g.strokeStyle=LIVE; g.lineWidth=1.6; g.beginPath();
+    for(let px=0;px<=W;px++){
+      const db=20*Math.log10(Math.exp(-(px/W*span)/m.tau));
+      const y=H-3-(H-7)*Math.min(1,Math.max(0,(db+DB)/DB));
+      px?g.lineTo(px,y):g.moveTo(px,y);
+    }
+    g.stroke(); return;
+  }
   const ydb=v=>{
     const db=20*Math.log10(Math.max(v,1e-9)/m.top);
     return H-3-(H-7)*Math.min(1,Math.max(0,(db+DB)/DB));
@@ -596,12 +654,18 @@ function drawFit(c,m,span){
 }
 
 function render(){
+  $('mat').value=current.material||'';
+  draw();
+}
+function draw(){
   $('result').classList.remove('hide');
   $('playblk').classList.remove('hide');
-  $('saveblk').classList.remove('hide');
-  drawSgram();
+  $('saveblk').classList.toggle('hide',!!current.rec);
+  $('tRaw').classList.toggle('hide',!current.raw);
+  $('heard').classList.toggle('hide',!current.raw);
+  if(current.raw) drawSgram();
   const box=$('modes'); box.innerHTML='';
-  const span=Math.max(...current.modes.map(m=>(m.fitE-m.pk)*m.dt))*1.25;
+  const span=Math.max(...current.modes.map(m=>m.env?(m.fitE-m.pk)*m.dt:m.tau*3))*1.25;
   current.modes.forEach((m,i)=>{
     const row=document.createElement('div');
     row.className='mode'+(i===0?' f':'');
@@ -632,8 +696,6 @@ function render(){
     $('scores').innerHTML=s.map((x,i)=>'<div'+(i===0?' class="win"':'')+'>'+
       Math.round(x.err)+'¢ &nbsp;'+x.name+'</div>').join('');
   }
-  $('mat').value=current.material||'';
-  buildPads();
 }
 
 /* ---------------- playback ---------------- */
@@ -643,107 +705,344 @@ function noise(){
   for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
   return noiseBuf=b;
 }
+/* amp is kept relative to the loudest peak in the recording, which may be one
+   that was thrown away. Played back, the loudest mode that survived is full. */
+const lift1=()=>1/Math.max(0.02,...current.modes.map(m=>m.amp));
+const ringing=[];
 function strike(ratio){
   const t=ctx.currentTime, out=ctx.createGain();
-  out.gain.value=0.5; out.connect(ctx.destination);
-  let end=t+0.3;
+  out.gain.value=0.5; out.connect(master);
+  let end=t+0.3; const oscs=[], k=lift1();
   current.modes.forEach(m=>{
     const f=m.hz*ratio; if(f<25||f>18000) return;
     const tau=m.q/(Math.PI*f);
     const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
-    const g=ctx.createGain(), a=Math.max(0.02,m.amp)*0.34;
-    g.gain.setValueAtTime(a,t);
+    const g=ctx.createGain(), a=Math.max(0.02,m.amp*k)*0.34;
     const dur=Math.min(tau*6.9,9);
-    g.gain.exponentialRampToValueAtTime(a*0.001,t+dur);
-    o.connect(g); g.connect(out); o.start(t); o.stop(t+dur+0.02);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(a,t+0.002);
+    g.gain.exponentialRampToValueAtTime(a*0.001,t+0.002+dur);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t+dur+0.03);
+    oscs.push(o);
     end=Math.max(end,t+dur+0.1);
   });
-  setTimeout(()=>out.disconnect(),(end-t)*1000+200);
+  const v={out,oscs,timer:0};
+  v.timer=setTimeout(()=>{const k=ringing.indexOf(v); if(k>=0) ringing.splice(k,1); out.disconnect();},(end-t)*1000+200);
+  ringing.push(v);
+  // a long ring played fast would pile up without end: the oldest is damped
+  while(ringing.length>MAX_RING){
+    const old=ringing.shift(); clearTimeout(old.timer);
+    old.out.gain.setTargetAtTime(0,t,0.03);
+    setTimeout(()=>{old.oscs.forEach(o=>{try{o.stop();}catch(e){}}); old.out.disconnect();},300);
+  }
 }
-function bowOn(key,ratio){
+function bowOn(ratio){
   const n=ctx.createBufferSource(); n.buffer=noise(); n.loop=true;
-  const out=ctx.createGain();
-  out.gain.setValueAtTime(0,ctx.currentTime);
-  out.gain.linearRampToValueAtTime(0.5,ctx.currentTime+0.06);
-  out.connect(ctx.destination);
+  const out=ctx.createGain(), t=ctx.currentTime;
+  out.gain.setValueAtTime(0,t);
+  out.gain.linearRampToValueAtTime(0.5,t+0.18);
+  out.connect(master);
+  const k=lift1();
   current.modes.forEach(m=>{
     const f=m.hz*ratio; if(f<25||f>15000) return;
     const bp=ctx.createBiquadFilter(); bp.type='bandpass';
     bp.frequency.value=f; bp.Q.value=Math.min(m.q,900);
-    const g=ctx.createGain(); g.gain.value=Math.max(0.05,m.amp)*Math.min(3.2,1+m.q/60);
+    const g=ctx.createGain(); g.gain.value=Math.max(0.05,m.amp*k)*Math.min(3.2,1+m.q/60);
     n.connect(bp); bp.connect(g); g.connect(out);
   });
-  n.start(); live.set(key,{n,out});
+  n.start();
+  return {n,out};
 }
-function bowOff(key){
-  const v=live.get(key); if(!v) return;
-  live.delete(key);
+function bowOff(v){
   const t=ctx.currentTime;
   v.out.gain.cancelScheduledValues(t);
   v.out.gain.setValueAtTime(v.out.gain.value,t);
   v.out.gain.linearRampToValueAtTime(0,t+0.22);
   setTimeout(()=>{try{v.n.stop();v.out.disconnect();}catch(e){}},400);
 }
-function buildPads(){
-  const p=$('pads'); p.innerHTML='';
-  for(let i=0;i<12;i++){
-    const d=document.createElement('div');
-    d.className='pad'; d.textContent=i;
-    const r=Math.pow(2,i/12);
-    const on=ev=>{ev.preventDefault(); if(!ctx||!current) return;
-      d.classList.add('on');
-      if(mode==='bow'){ if(!live.has(i)) bowOn(i,r); } else strike(r);};
-    const off=()=>{d.classList.remove('on'); if(mode==='bow') bowOff(i);};
-    d.addEventListener('pointerdown',on);
-    d.addEventListener('pointerup',off);
-    d.addEventListener('pointercancel',off);
-    d.addEventListener('pointerleave',off);
-    p.appendChild(d);
-  }
+
+/* ---------------- the keyboard ----------------
+   Two octaves, the lower one below the object's own pitch. One gesture, two
+   ways of sounding it: a touch strikes, and a touch that stays becomes a bow. */
+const NPAD=24, OWN=12;
+const CODES=['KeyZ','KeyS','KeyX','KeyD','KeyC','KeyV','KeyG','KeyB','KeyH','KeyN','KeyJ','KeyM',
+             'KeyQ','Digit2','KeyW','Digit3','KeyE','KeyR','Digit5','KeyT','Digit6','KeyY','Digit7','KeyU'];
+const CAPS='zsxdcvgbhnjmq2w3er5t6y7u';
+const padEls=[], held=new Map(), downs=new Set();
+function press(src,i){
+  if(!current||i<0) return;
+  const h=held.get(src);
+  if(h){ if(h.i===i) return; lift(src); }
+  audio();
+  const r=Math.pow(2,(i-OWN)/12), v={i,bow:null,timer:0};
+  held.set(src,v); padEls[i].classList.add('on');
+  strike(r);
+  v.timer=setTimeout(()=>{ if(held.get(src)===v&&current) v.bow=bowOn(r); },HOLD_MS);
 }
-$('tStrike').onclick=()=>{mode='strike';$('tStrike').classList.add('on');$('tBow').classList.remove('on');[...live.keys()].forEach(bowOff);};
-$('tBow').onclick=()=>{mode='bow';$('tBow').classList.add('on');$('tStrike').classList.remove('on');};
+function lift(src){
+  const v=held.get(src); if(!v) return;
+  held.delete(src); clearTimeout(v.timer);
+  if(v.bow) bowOff(v.bow);
+  for(const o of held.values()) if(o.i===v.i) return;
+  padEls[v.i].classList.remove('on');
+}
+function liftAll(){ [...held.keys()].forEach(lift); downs.clear(); }
+function padAt(x,y){
+  const el=document.elementFromPoint(x,y), p=el&&el.closest?el.closest('.pad'):null;
+  return p&&p.parentNode===$('pads')?+p.dataset.i:-1;
+}
+(function buildPads(){
+  const p=$('pads');
+  for(let i=0;i<NPAD;i++){
+    const d=document.createElement('div');
+    d.className='pad'+(i===OWN?' own':''); d.dataset.i=i;
+    const n=i-OWN;
+    d.appendChild(document.createTextNode(n<0?'−'+(-n):String(n)));
+    const k=document.createElement('kbd'); k.textContent=CAPS[i]; d.appendChild(k);
+    p.appendChild(d); padEls.push(d);
+  }
+  p.addEventListener('pointerdown',e=>{
+    if(e.button>0) return;
+    e.preventDefault();
+    try{p.setPointerCapture(e.pointerId);}catch(_){}
+    const k='p'+e.pointerId; downs.add(k);
+    press(k,padAt(e.clientX,e.clientY));
+  });
+  p.addEventListener('pointermove',e=>{
+    const k='p'+e.pointerId; if(!downs.has(k)) return;
+    const i=padAt(e.clientX,e.clientY);
+    if(i<0) lift(k); else press(k,i);
+  });
+  const up=e=>{const k='p'+e.pointerId; downs.delete(k); lift(k);};
+  p.addEventListener('pointerup',up);
+  p.addEventListener('pointercancel',up);
+  p.addEventListener('lostpointercapture',up);
+  p.addEventListener('contextmenu',e=>e.preventDefault());
+})();
+window.addEventListener('keydown',e=>{
+  if(e.repeat||e.metaKey||e.ctrlKey||e.altKey||!current) return;
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable)) return;
+  const i=CODES.indexOf(e.code); if(i<0) return;
+  e.preventDefault(); press('k'+e.code,i);
+});
+window.addEventListener('keyup',e=>lift('k'+e.code));
+window.addEventListener('blur',liftAll);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) liftAll(); });
+
 $('tRaw').onclick=()=>{
-  if(!current) return;
+  if(!current||!current.raw) return;
+  audio();
   const b=ctx.createBuffer(1,current.raw.length,current.sr);
   b.getChannelData(0).set(current.raw);
-  const s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start();
+  const s=ctx.createBufferSource(); s.buffer=b; s.connect(master); s.start();
 };
 
-/* ---------------- archive ---------------- */
+/* ---------------- recording what is played ----------------
+   Taken after the limiter, so it is what was heard. It stays on this device
+   unless it is saved or handed to XIMEREMIX, which reads it from this
+   device's storage the same way it takes a clip from the clipper. */
+let rec=null, take=null, takeSrc=null;
+const psay=t=>$('pstate').textContent=t;
+const clock=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+function showTake(){
+  ['tHear','tXmx','tWav'].forEach(id=>$(id).classList.toggle('hide',!take||!!rec));
+}
+function recStart(){
+  audio();
+  const p=ctx.createScriptProcessor(4096,1,1), z=ctx.createGain(); z.gain.value=0;
+  comp.connect(p); p.connect(z); z.connect(ctx.destination);
+  const r=rec={p,z,chunks:[],n:0,tick:0};
+  p.onaudioprocess=e=>{
+    if(rec!==r) return;
+    const d=e.inputBuffer.getChannelData(0);
+    r.chunks.push(new Float32Array(d)); r.n+=d.length;
+    if(r.n>=ctx.sampleRate*REC_MAX) recStop();
+  };
+  r.tick=setInterval(()=>psay('recording '+clock(r.n/ctx.sampleRate)),250);
+  $('tRec').textContent='stop recording'; $('tRec').classList.add('on');
+  psay('recording 0:00'); showTake();
+}
+function recStop(){
+  const r=rec; if(!r) return; rec=null;
+  clearInterval(r.tick); r.p.onaudioprocess=null;
+  try{comp.disconnect(r.p);}catch(e){} r.p.disconnect(); r.z.disconnect();
+  $('tRec').textContent='record what you play'; $('tRec').classList.remove('on');
+  const all=new Float32Array(r.n); let o=0;
+  for(const c of r.chunks){ all.set(c,o); o+=c.length; }
+  let a=0, b=all.length; const sr=ctx.sampleRate, TH=2e-4;
+  while(a<b&&Math.abs(all[a])<TH) a++;
+  while(b>a&&Math.abs(all[b-1])<TH) b--;
+  if(b-a<sr*0.05){ psay(take?'Nothing was played. The last recording is still here.':'Nothing was played.'); showTake(); return; }
+  a=Math.max(0,a-Math.floor(sr*0.02)); b=Math.min(all.length,b+Math.floor(sr*0.05));
+  take={data:all.slice(a,b),sr,name:(current&&current.material||'idiophone').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'idiophone'};
+  psay(clock(take.data.length/sr)+' recorded.'); showTake();
+}
+$('tRec').onclick=()=>{ rec?recStop():recStart(); };
+$('tHear').onclick=()=>{
+  if(!take) return; audio();
+  if(takeSrc){ try{takeSrc.stop();}catch(e){} takeSrc=null; return; }
+  const b=ctx.createBuffer(1,take.data.length,take.sr); b.getChannelData(0).set(take.data);
+  const s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination);
+  s.onended=()=>{ if(takeSrc===s) takeSrc=null; };
+  takeSrc=s; s.start();
+};
+function wav(x,sr){
+  const n=x.length, v=new DataView(new ArrayBuffer(44+n*2));
+  const w=(at,str)=>{for(let k=0;k<str.length;k++) v.setUint8(at+k,str.charCodeAt(k));};
+  w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true);
+  v.setUint16(22,1,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+  w(36,'data'); v.setUint32(40,n*2,true);
+  for(let i=0;i<n;i++){ const s=Math.max(-1,Math.min(1,x[i])); v.setInt16(44+i*2,s<0?s*0x8000:s*0x7fff,true); }
+  return new Blob([v],{type:'audio/wav'});
+}
+function save(blob,name){
+  const u=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+$('tWav').onclick=()=>{ if(take) save(wav(take.data,take.sr),take.name+'.wav'); };
+function clipDB(){return new Promise((ok,no)=>{const r=indexedDB.open('ximeremix',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('clips');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});}
+$('tXmx').onclick=async()=>{
+  if(!take) return;
+  const win=window.open('about:blank','_blank');
+  try{
+    const db=await clipDB(), key=Date.now().toString(36);
+    await new Promise((ok,no)=>{
+      const st=db.transaction('clips','readwrite').objectStore('clips');
+      st.put({wav:wav(take.data,take.sr),name:take.name},key);
+      const k=st.getAllKeys(); k.onsuccess=()=>{k.result.sort().slice(0,-12).forEach(x=>st.delete(x));};
+      st.transaction.oncomplete=ok; st.transaction.onerror=()=>no(st.transaction.error);
+    });
+    const url='/ximeremix/?clip='+key;
+    if(win) win.location=url; else location.href=url;
+  }catch(e){ if(win) win.close(); psay('Could not hand it over: '+(e.message||e)); }
+};
+
+/* ---------------- archive ----------------
+   What is kept is the numbers, and they stay on this device between visits.
+   The recording itself is never stored; it lasts until the page is closed. */
+function shapeOf(modes){
+  const b=classify(modes)[0];
+  return b&&modes.length>2?{family:b.name,cents:+b.err.toFixed(1),base:+b.base.toFixed(2)}:null;
+}
+function clean(o){
+  if(!o||typeof o!=='object'||!Array.isArray(o.modes)) return null;
+  const modes=[];
+  for(const m of o.modes.slice(0,24)){
+    if(!m||typeof m!=='object') continue;
+    const hz=+m.hz, q=+m.q; let amp=+m.amp; const fit=+m.fit;
+    if(!(hz>=20&&hz<=20000)||!(q>=1&&q<=200000)) continue;
+    if(!(amp>0)) amp=0.5;
+    const r={hz:+hz.toFixed(2),q:+q.toFixed(1),df:+(hz/q).toFixed(2),amp:+Math.min(1,amp).toFixed(3)};
+    if(isFinite(fit)&&m.fit!=null) r.fit=fit;
+    modes.push(r);
+    if(modes.length>=12) break;
+  }
+  if(!modes.length) return null;
+  modes.sort((a,b)=>a.hz-b.hz);
+  const d=typeof o.struck==='string'&&!isNaN(Date.parse(o.struck))?new Date(o.struck).toISOString():new Date().toISOString();
+  return {material:String(o.material==null?'':o.material).slice(0,120),struck:d,modes,shape:shapeOf(modes),
+          published:!!o.published,imported:!!o.imported};
+}
+function persist(){
+  try{ localStorage.setItem(STORE,JSON.stringify(archive.map(a=>({material:a.material,struck:a.struck,
+    modes:a.modes,published:!!a.published,imported:!!a.imported})))); }catch(e){}
+}
+function openRec(a){
+  if(a._full) current=a._full;
+  else current={modes:a.modes.map(m=>({hz:m.hz,q:m.q,df:m.df,amp:m.amp,r2:m.fit,tau:m.q/(Math.PI*m.hz)})),
+    raw:null,material:a.material,rejected:0,shape:classify(a.modes),struck:a.struck};
+  current.rec=a; liftAll(); render(); renderArchive();
+}
 $('keep').onclick=()=>{
-  if(!current) return;
+  if(!current||current.rec) return;
   current.material=$('mat').value.trim();
-  const b=current.shape[0];
-  archive.push({
-    material:current.material,
-    struck:new Date().toISOString(),
-    modes:current.modes.map(m=>({hz:m.hz,q:m.q,df:m.df,amp:m.amp,fit:m.r2})),
-    shape:b&&current.modes.length>2?{family:b.name,cents:+b.err.toFixed(1),base:+b.base.toFixed(2)}:null,
-    _full:current
-  });
-  renderArchive();
+  const modes=current.modes.map(m=>{const r={hz:m.hz,q:m.q,df:m.df,amp:m.amp}; if(m.r2!=null) r.fit=m.r2; return r;});
+  const a={material:current.material,struck:current.struck||new Date().toISOString(),modes,shape:shapeOf(current.modes),
+    published:!!current.pub,imported:!!current.imp};
+  if(current.raw) a._full=current;
+  current.rec=a; archive.push(a); persist();
+  draw(); renderArchive();
   setState('Kept. Arm again for the next thing.');
 };
 function renderArchive(){
-  $('arcblk').classList.remove('hide');
-  $('pubblk').classList.remove('hide');
+  $('arcblk').classList.toggle('hide',!archive.length);
+  $('pubblk').classList.toggle('hide',!archive.length);
+  $('dl').classList.toggle('hide',!archive.length);
   $('arcCount').textContent=archive.length+' object'+(archive.length>1?'s':'')+' struck.';
   const box=$('arc'); box.innerHTML='';
   archive.forEach(a=>{
+    const row=document.createElement('div'); row.className='arow';
     const b=document.createElement('button');
-    b.className='arc';
+    const on=!!current&&current.rec===a;
+    b.className='arc'+(on?' cur':'');
+    if(on) b.setAttribute('aria-current','true');
     b.textContent=(a.material||'unnamed')+' — '+a.modes[0].hz.toFixed(0)+' Hz, Q '+a.modes[0].q.toFixed(0);
-    b.onclick=()=>{current=a._full; render(); setState('Loaded '+(a.material||'unnamed')+'.');};
-    box.appendChild(b);
+    b.onclick=()=>{openRec(a); setState('Loaded '+(a.material||'unnamed')+'.');};
+    row.appendChild(b);
+    if(on){
+      const x=document.createElement('button'); x.className='rm'; x.textContent='remove';
+      x.onclick=()=>{
+        const k=archive.indexOf(a); if(k<0) return;
+        archive.splice(k,1); persist();
+        // still in hand and still playable; KEEP puts it back
+        current.rec=null; current.pub=a.published; current.imp=a.imported;
+        render(); renderArchive();
+        setState('Removed '+(a.material||'unnamed')+'. It is still under the keys until you load another.');
+      };
+      row.appendChild(x);
+    }
+    box.appendChild(row);
   });
 }
 $('dl').onclick=()=>{
   const data=archive.map(a=>({$type:'city.opposite.idiophone.capture',
     material:a.material,struck:a.struck,modes:a.modes,shape:a.shape}));
-  const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-  const a=document.createElement('a'); a.href=u; a.download='idiophone.json'; a.click();
-  setTimeout(()=>URL.revokeObjectURL(u),2000);
+  save(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),'idiophone.json');
+};
+/* Take in captures from anywhere: a file, or someone's repository. Nothing is
+   needed but the numbers, so they are rebuilt here without the sound. */
+function takeIn(list){
+  let first=null, n=0;
+  for(const o of list.slice(0,500)){
+    const a=clean(o); if(!a) continue;
+    const dup=archive.find(x=>x.struck===a.struck&&x.material===a.material&&x.modes[0].hz===a.modes[0].hz);
+    if(dup){ first=first||dup; continue; }
+    a.imported=true; archive.push(a); first=first||a; n++;
+  }
+  if(first){ persist(); openRec(first); }
+  return {first,n};
+}
+const fsay=(cls,t)=>{const msg=$('filemsg'); msg.innerHTML=''; const d=document.createElement('div'); d.className=cls; d.textContent=t; msg.appendChild(d);};
+$('fetch').onclick=async()=>{
+  const who=$('who').value.trim().replace(/^@/,''); if(!who){ fsay('err','Type a handle first.'); return; }
+  $('fetch').disabled=true; fsay('ok','Looking in '+who+'\u2019s repository\u2026');
+  try{
+    const recs=await atp.listRecords(who,'city.opposite.idiophone.capture',200);
+    if(!recs.length){ fsay('err',who+' has published no objects.'); }
+    else{
+      const r=takeIn(recs.map(x=>x&&x.value));
+      if(!r.first) fsay('err','Nothing there could be read as an object.');
+      else fsay('ok',r.n?'Opened '+r.n+' object'+(r.n>1?'s':'')+' from '+who+'. Rebuilt from the numbers alone.':'Those are already here.');
+    }
+  }catch(e){ fsay('err',e.message); }
+  $('fetch').disabled=false;
+};
+$('who').addEventListener('keydown',e=>{ if(e.key==='Enter') $('fetch').click(); });
+$('open').onclick=()=>$('file').click();
+$('file').onchange=async()=>{
+  const f=$('file').files[0]; $('file').value='';
+  if(!f) return;
+  try{
+    if(f.size>4e6) throw new Error('too big');
+    let j=JSON.parse(await f.text());
+    if(!Array.isArray(j)) j=j&&Array.isArray(j.records)?j.records.map(r=>r&&r.value):[j];
+    const r=takeIn(j);
+    if(!r.first) throw new Error('nothing');
+    fsay('ok',r.n?'Opened '+r.n+' object'+(r.n>1?'s':'')+'. Rebuilt from the numbers alone.':'Those are already here.');
+  }catch(e){ fsay('err','No captures could be read from that file.'); }
 };
 
 /* ---------------- atproto ---------------- */
@@ -751,29 +1050,25 @@ $('pub').onclick=async()=>{
   const msg=$('pubmsg'); msg.innerHTML='';
   const id=$('handle').value.trim().replace(/^@/,''), pw=$('pw').value.trim();
   if(!id||!pw){msg.innerHTML='<div class="err">Handle and app password are both needed.</div>';return;}
-  if(!archive.length){msg.innerHTML='<div class="err">Nothing kept yet.</div>';return;}
+  const todo=archive.filter(a=>!a.published&&!a.imported);
+  if(!todo.length){msg.innerHTML='<div class="err">Nothing new to publish. Everything kept here is already in a repo.</div>';return;}
   $('pub').disabled=true; $('pub').textContent='PUBLISHING…';
   try{
-    const s=await fetch('https://bsky.social/xrpc/com.atproto.server.createSession',{
-      method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({identifier:id,password:pw})});
-    if(!s.ok) throw new Error('Login failed. Check the handle and app password.');
-    const ses=await s.json();
-    let n=0;
-    for(const a of archive){
-      const r=await fetch('https://bsky.social/xrpc/com.atproto.repo.createRecord',{
-        method:'POST',
-        headers:{'content-type':'application/json','authorization':'Bearer '+ses.accessJwt},
-        body:JSON.stringify({repo:ses.did,collection:'city.opposite.idiophone.capture',record:{
+    const ses=await atp.signIn(id,pw);
+    let n=0, why='';
+    for(const a of todo){
+      try{
+        await atp.createRecord(ses,'city.opposite.idiophone.capture',{
           $type:'city.opposite.idiophone.capture',
           material:a.material||'unnamed',
           struck:a.struck,
           modes:a.modes,
           shape:a.shape||undefined,
-          createdAt:new Date().toISOString()}})});
-      if(r.ok) n++;
+          createdAt:new Date().toISOString()});
+        n++; a.published=true; persist();
+      }catch(e){ if(!why) why=e.message; }
     }
-    msg.innerHTML=''; const ok=document.createElement('div'); ok.className='ok'; ok.textContent='Published '+n+' of '+archive.length+' to '+ses.handle+'.'; msg.appendChild(ok);
+    msg.innerHTML=''; const ok=document.createElement('div'); ok.className='ok'; ok.className=n===todo.length?'ok':'err'; ok.textContent='Published '+n+' of '+todo.length+' to '+ses.handle+'.'+(why?' The rest were refused: '+why:''); msg.appendChild(ok);
   }catch(e){
     msg.innerHTML=''; const er=document.createElement('div'); er.className='err'; er.textContent=e.message; msg.appendChild(er);
   }
@@ -781,7 +1076,22 @@ $('pub').onclick=async()=>{
   $('pub').disabled=false; $('pub').textContent='PUBLISH';
 };
 
-window.addEventListener('resize',()=>{if(current)render();});
+/* a phone fires resize as its bars slide; only a change of width redraws */
+let lastW=window.innerWidth;
+window.addEventListener('resize',()=>{
+  if(window.innerWidth===lastW) return;
+  lastW=window.innerWidth; if(current) draw();
+});
+
+/* what was kept before is under the keys at once, no microphone needed */
+(function restore(){
+  let j=null;
+  try{ j=JSON.parse(localStorage.getItem(STORE)||'null'); }catch(e){}
+  if(!Array.isArray(j)) return;
+  for(const o of j){ const a=clean(o); if(a) archive.push(a); }
+  if(!archive.length) return;
+  openRec(archive[archive.length-1]);
+})();
 </script>
 </body>
 </html>
