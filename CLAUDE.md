@@ -3,18 +3,40 @@
 This repo is the live site at https://opposite.city (GitHub Pages, `main` branch).
 Every push to `main` is a deploy. Read this file before changing anything.
 
+## The owner's word comes first
+
+Every rule in this file is the owner's, and the owner can override any of
+them: for one task, for one piece, or for good. The design rules are included.
+
+- What the owner says in the conversation wins over what is written here.
+- An override holds for the task it was said about. If it is meant to last,
+  write it into this file with the date, so the other Claude sees it too.
+- A piece may break a design rule on purpose. Say which rule and why in a
+  comment at the top of the piece, so nobody "fixes" it later.
+- If two rules pull against each other, or a rule would stop what the owner
+  just asked for, say so in one line and do what the owner asked.
+
 ## How to work here
 
 - One fix per commit. Name the surface first: `room: desktop layout`.
 - Before committing, serve the repo locally (`python3 -m http.server 8000`) and
   check the page at three sizes: phone portrait (390 wide), 13-inch laptop,
   wide desktop. Check with touch and with mouse and keyboard.
-- Stop after each surface and say what changed in plain words. The owner looks
-  at it on a phone and a laptop before the next one starts.
-- Push only when the owner says so. If a pushed fix looks wrong live, revert
-  that one commit; do not patch on top of it.
+- One surface at a time, saying what changed in plain words, so the owner can
+  look on a phone and a laptop before the next one starts. When the owner
+  asks for a batch ("do it all"), work through it and give one summary at
+  the end: still one commit per surface.
+- Pushing. Anything that changes a live, listed piece is pushed only when
+  the owner says so. Unlisted things may be pushed and merged without asking
+  (standing permission, 2026-11-16): previews in `-next` folders, `/yard/`,
+  `/edit/`, `scripts/`, `shared/` files not yet used by a live piece, and
+  this file. Say afterwards what went up.
+- If a pushed fix looks wrong live, revert that one commit; do not patch on
+  top of it.
 - Never put the owner's personal name in any page, file or commit message.
-- Do not rewrite a piece's copy or concept. Fix what is asked.
+- Do not rewrite a piece's copy or concept. Fix what is asked. When a change
+  leaves a blurb or a line of copy untrue, propose the new sentence with the
+  change for the owner's yes or no; the owner can also write it in `/edit/`.
 - Pages caches hard. Tell the owner to check with `?v=2` on the URL.
 - When a change alters how a piece behaves or what it shows, update its blurb
   and tags in `surfaces.json` and `registry-master.json` in the same change,
@@ -33,7 +55,10 @@ overwriting the other's work.
 
 - `main` is live. Nobody commits straight to `main`, the GitHub web editor
   included: every change arrives as a merged pull request, so each one is
-  visible and can be reverted on its own.
+  visible and can be reverted on its own. Two exceptions, both the owner's
+  choice (2026-11-16): the owner's editor at `/edit/`, and the weekly job
+  that refreshes `ephemeris/elements.json`. Each makes small commits that
+  name themselves and can be reverted one at a time.
 - Claude in chat works on a branch named for the surface and the change
   (`ximeremix-hold`), and opens a pull request that says what changed and how
   it was tested. The owner develops and deploys from chat, so chat may merge
@@ -52,12 +77,17 @@ overwriting the other's work.
 - Before merging a pull request, check out its branch, serve it locally and
   look at the surface as described above. If it conflicts with `main`, resolve
   the conflict here; do not ask chat to resend whole files.
-- A change to how a piece sounds or behaves goes to a preview first: a folder
+- A change to how a piece sounds, or to its concept or look, goes to a
+  preview first: a folder
   named `<slug>-next/`, unlisted (not in `surfaces.json`, the fallback list or
   `sitemap.xml`). The owner tries it at `https://opposite.city/<slug>-next/`.
   Once approved, copy it over `<slug>/index.html` in one commit and delete the
-  `-next` folder in the same commit. Copy fixes and small layout fixes can
-  skip the preview.
+  `-next` folder in the same commit. Copy fixes, small layout fixes and
+  small behaviour fixes (something plainly broken, made to work as the piece
+  already says it does) can skip the preview: check at three sizes, run it
+  headless if it has audio or heavy logic, and revert if it looks wrong
+  live. Keep no more than a few previews waiting; remind the owner of the
+  oldest before starting another.
 - Pieces with audio or heavy logic get a headless run before merging
   (Playwright with Chromium; install with `pip install playwright` then
   `playwright install chromium` if missing). Load the page over the local
@@ -82,8 +112,12 @@ overwriting the other's work.
   GitHub token kept on their device. By the owner's choice (2026-11-16) this
   is the one thing that commits to `main` without a pull request. Its commits
   read `registry: <slug> edited in the editor`. Pull before working: the
-  registry may have moved. It does not touch a piece's own page, so a page's
-  description tag can fall behind its blurb.
+  registry may have moved. "Text inside the page" on a piece reads its
+  `index.html` and puts its words in boxes: text between tags, description
+  and share tags, placeholders, and sentences its code writes. A save
+  splices the new words in where the old ones were; it refuses if the page's
+  code would stop parsing. Its commits then read `words in <slug> edited in
+  the editor`. Pull before touching any page for the same reason.
 - `venn/`: an unlisted experiment. Leave it alone unless asked.
 - `poemstream/`: deliberately hidden from the hub, sitemap and search. Keep
   it hidden.
@@ -118,6 +152,16 @@ The piece adapts to the viewer's device, not the other way round.
 - Touch, mouse and keyboard all work. No hover-only behaviour.
 - Motion is calm by default and honours `prefers-reduced-motion`.
 - Nothing rearranges unless the viewer caused it.
+- Immersion over controls. A piece answers to what the viewer does (moving,
+  touching, typing, speaking) before it offers a panel of settings. It shows
+  how it works by working; explainer text is a last resort, one line, and
+  gets out of the way.
+- A screen looks arranged on purpose. Words and marks are not cut off by the
+  edge of the screen, do not print over each other, and sit level, unless
+  the piece is a window onto something larger and makes that plain. When
+  something moves, the viewer can tell what moved it and why. (Drafted by
+  Claude Code from the owner's notes on `pentimento/`, 2026-11-16; the
+  owner's to reword.)
 
 ### Under revision (draft, ask before departing from the current state)
 
@@ -317,9 +361,9 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   lists bodies that have reentered as gone, and marks a body whose orbit is
   withheld. Propagation gained perigee drift and the drag term; against SGP4
   the station is within a tenth of a degree over two weeks. Built 2026-11-16.
-  Waiting on the owner's look. Not done: a weekly job to rerun the script
-  (it would commit a data file to `main` unattended, which needs the owner's
-  yes). On promotion the blurb's "a live catalogue can be pasted in" needs
+  Waiting on the owner's look. The weekly job is
+  `.github/workflows/ephemeris.yml` (the owner's yes, 2026-11-16); it can
+  also be run by hand from the Actions tab. On promotion the blurb's "a live catalogue can be pasted in" needs
   the owner's sentence about the weekly catalogue.
 - [~] `nimbus-next/`: distinctive and common words together, at the owner's
   word (2026-11-16). The cloud takes in turn from the words the article says
