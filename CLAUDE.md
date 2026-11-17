@@ -189,7 +189,9 @@ deciding it.
 The brief is `ximeremix/BRIEF.md`. Read it before starting. One phase at a
 time, in `ximeremix-next/`, stopping for the owner after each.
 
-- [~] Phase 0: find out what plyr.fm allows from another site. No code shipped.
+- [x] Phase 0: find out what plyr.fm allows from another site. No code shipped.
+  Answered 2026-11-16 in `ximeremix/PHASE0.md`: everything needed works from
+  another site. Three decisions there wait on the owner before phase 1.
 - [ ] Phase 1: plyr tracks as a source, opt-in only.
 - [ ] Phase 2: remixes of sources with no original post, and a lineage record.
 - [ ] Phase 3: publish a remix to plyr, by a deliberate button.
@@ -263,6 +265,40 @@ Not found anywhere on this machine or in the account's repositories
 - Found but not brought in: `semantic-distance.html` (an early form of
   `room/`), a Lombardi tool that needs a local server, and source for heir
   and a slop congress that are not web pages.
+
+### 7. Next, planned and not started
+
+Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
+
+- [ ] `pentimento-next/`: clearer on a phone, same concept and intro copy.
+  Seen at 390 wide on 2026-11-16: the ladder of layers sits on top of the
+  words; the top line reads "a 42% · 63.2 words still in play" as if "a"
+  began a sentence; the likeliest word is small and buried because size
+  means nearness; the hint vanishes after the first tap; the 523 MB download
+  is only in small print. Plan: give the ladder its own strip on a narrow
+  screen and drop its number column there; quote the likeliest word in the
+  top line and round the count; open each new field turned so the likeliest
+  word is in the middle; say the download size on the begin button. Raising
+  the brightness of unlikely words changes the look, so ask the owner first.
+  Headless: load, begin, wait for "model ready" (about 90 s), tap a word.
+- [ ] `idiophone/`: when the owner approves the preview, publish once with a
+  real account to settle the decimals question, then copy `idiophone-next/`
+  over it, delete the preview, and update the blurb and tags in both
+  registries (keyboard, hold to bow, objects kept, recording, hand-off) and
+  remove it from `/yard/`.
+- [ ] Shared atproto sign-in, `/shared/atproto.js`: resolve a handle, find the
+  account's own server, sign in with an app password, write a record, upload
+  a blob. Take it from `ximeremix/` (`signInS`, `pdsFor`, `entryway`,
+  `callS`, `callBin`), which is the fullest. Move `idiophone-next/` to it
+  first as the test, then `remix/give/`, then `ximeremix-next/` in phase 1.
+- [ ] `idiophone/` reader: type a handle, list that account's
+  `city.opposite.idiophone.capture` records with `listRecords` (public, no
+  sign-in), and put any of them under the keys. Builds on the import that
+  `idiophone-next/` already has.
+- [ ] XIMEREMIX phase 1, after the owner answers `ximeremix/PHASE0.md`.
+- [ ] Yard pieces the owner says yes to: add to `surfaces.json` with a blurb
+  the owner approves, resync the hub, the fallback list and the sitemap, and
+  take them off `/yard/`. `scripts/check.sh` confirms the sync.
 
 ### Later, only if needed
 
