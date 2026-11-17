@@ -241,9 +241,9 @@ Looked at and left alone, with the reason
 
 Still open
 
-- [ ] `ximeremix/`: the band handle `rainwatchbaseball.bsky.social` no longer
-  resolves, so every load logs a failed request. Takes still arrive by account
-  id. Fix inside part 5, which holds the page. It also has no share tags.
+- [x] `ximeremix/`: the dead band handle is removed. The owner confirmed on
+  2026-11-16 that the account is `oppositecity.bsky.social`.
+- [ ] `ximeremix/` has no share tags. Add them with phase 1.
 - [ ] `idiophone/`: its records hold decimals, which atproto may refuse. Test
   publishing with a real account before the preview replaces the live page.
 - [ ] `registry-master.json` still carries older names for pieces now live
@@ -311,6 +311,9 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 - Subdomains, a private repo for internal tools, a locked backroom.
 
 ## Open questions for the owner
+
+- Answered 2026-11-16: `rig/` and `chip/` are not wanted on the band page or
+  the hub. They stay in the repo as unlisted tools and are off `/yard/`.
 
 - The Venn view did not match what was pictured. What should it look like?
 - `somesets/` and `bz/`: rework, fold into Vision, or retire? bz now also
