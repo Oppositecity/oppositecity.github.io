@@ -342,6 +342,15 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   turn keeps the likeliest word in the middle half of the window and picks
   the turn that shows the most words; the hidden allowance is 8%. Words are
   still cut by the window's edges, which a panorama does.
+  The owner again, same day: off the edge of the side, shifts incoherent,
+  the ladder does little, "feels crooked", but intriguing and the mystery is
+  good. Reworked in the preview: the turning band is gone. The field is flat
+  and whole (every word wholly on screen, level, clear of its neighbours); a
+  word's place is fixed for the step (its two principal axes, ranked among
+  the words that step puts in play); its size is its probability at that
+  layer on one scale for all layers. Sideways drag does nothing; left and
+  right arrows walk the sentence. The landing copy still says "a horizon of
+  every word": the owner's to reword if this is approved (`/edit/` can).
 - [ ] `idiophone/`: when the owner approves the preview, publish once with a
   real account to settle the decimals question, then copy `idiophone-next/`
   over it, delete the preview, and update the blurb and tags in both
