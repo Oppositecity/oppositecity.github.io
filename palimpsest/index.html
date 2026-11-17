@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src https://en.wikipedia.org">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>PALIMPSEST</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+/* PALIMPSEST. The opening sentence of a Wikipedia article, with every word that ever stood in it.
+   Marks: white = the word stands at this date. Struck and violet = it stood once and was scraped off.
+   Bold = it arrived at this step. A blank = a word not yet written. The bar on each rung of the
+   ladder is how many words changed at that step. Nothing else is drawn. */
+:root{--ink:#fff;--bg:#000;--gone:#b9a2ff;--strip:64px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--ink)}
+body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;height:100dvh;overflow:hidden;
+  padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+a{color:var(--ink);text-underline-offset:4px}
+input,button{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--ink);border-radius:0;padding:8px 10px}
+button{cursor:pointer}
+button:hover,button:focus-visible{background:var(--ink);color:var(--bg)}
+:focus-visible{outline:2px solid var(--gone);outline-offset:2px}
+[hidden]{display:none!important}
+
+#door{flex:1;overflow-y:auto;padding:28px 20px 60px}
+#door .in{max-width:620px;margin:0 auto}
+h1{font-size:16px;font-weight:700;letter-spacing:.5em;margin-bottom:22px}
+#door p{margin-bottom:14px;max-width:58ch}
+form{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 14px}
+form input{flex:1 1 12rem;min-width:0}
+.try a{margin-right:14px;white-space:nowrap}
+#say{min-height:1.5em;color:var(--gone)}
+
+#stage{flex:1;min-height:0;display:flex;flex-direction:column}
+#top{padding:12px 14px 8px;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:baseline}
+#top button{border:0;padding:0;font-weight:700;letter-spacing:.3em;text-decoration:underline;text-underline-offset:4px}
+#top button:hover,#top button:focus-visible{background:var(--bg);color:var(--gone)}
+#now{flex:1 1 14rem}
+#mid{flex:1;min-height:0;display:flex}
+#page{flex:1;min-width:0;overflow-y:auto;padding:6px 14px 14px;touch-action:pan-y}
+#text{line-height:1.6;word-spacing:.1em}
+.w{cursor:pointer}
+.w.not{visibility:hidden}
+.w.gone{color:var(--gone);text-decoration:line-through;text-decoration-thickness:1px}
+.w.new{font-weight:700}
+.w.pick{outline:1px solid var(--ink);outline-offset:2px}
+#ladder{flex:0 0 var(--strip);display:flex;flex-direction:column-reverse;padding:0 0 6px;touch-action:none;cursor:ns-resize;user-select:none;-webkit-user-select:none;border-left:1px solid var(--ink)}
+.rung{flex:1 1 0;min-height:0;display:flex;align-items:center;position:relative;font-size:12px;line-height:1;padding-left:8px;white-space:nowrap;overflow:hidden}
+.rung i{position:absolute;left:0;bottom:0;height:2px;background:var(--gone)}
+.rung.on{background:var(--ink);color:var(--bg);font-weight:700}
+#foot{padding:8px 14px 12px;border-top:1px solid var(--ink);font-size:14px;min-height:4.6em}
+#word{min-height:1.5em}
+@media (min-width:760px){
+  :root{--strip:96px}
+  #top{padding:18px 28px 10px} #page{padding:10px 28px 20px} #foot{padding:10px 28px 14px}
+  .rung{font-size:13px;padding-left:12px}
+}
+@media (prefers-reduced-motion:no-preference){ .w{transition:color .25s} }
+</style>
+</head>
+<body>
+
+<div id="door"><div class="in">
+  <h1>PALIMPSEST</h1>
+  <p>The opening sentence of an encyclopedia article is rewritten for years before it holds still. This shows one, with every word that ever stood in it kept in its place.</p>
+  <p>Drag through the years. A white word stands at that date. A struck one stood once and was scraped off. A gap is a word nobody had written yet.</p>
+  <form id="ask">
+    <input id="subject" type="text" aria-label="a subject" placeholder="a subject" autocomplete="off" autocapitalize="words" spellcheck="false">
+    <button>read</button>
+  </form>
+  <p class="try">or <a href="?s=Pluto">Pluto</a> <a href="?s=Sandwich">Sandwich</a> <a href="?s=Jazz">Jazz</a> <a href="?s=Truth">Truth</a> <a href="?s=Internet">Internet</a></p>
+  <p id="say" role="status"></p>
+  <p style="margin-top:30px;font-size:14px">Text from Wikipedia and its editors, under CC BY-SA. Nothing typed here goes anywhere but Wikipedia.</p>
+</div></div>
+
+<div id="stage" hidden>
+  <div id="top"><button id="back" aria-label="another subject">PALIMPSEST</button><span id="now" role="status"></span></div>
+  <div id="mid">
+    <div id="page"><p id="text"></p></div>
+    <div id="ladder" role="slider" tabindex="0" aria-label="the date" aria-orientation="vertical"></div>
+  </div>
+  <div id="foot"><div id="word"></div><div id="src"></div></div>
+</div>
+
+<script>
+'use strict';
+const API = 'https://en.wikipedia.org/w/api.php', MOST = 70;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const when = d => MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+
+let title = '', layers = [], slots = [], at = 0, pick = -1, run = 0;
+
+async function api(p){
+  const u = API + '?' + new URLSearchParams(Object.assign({ format:'json', formatversion:'2', origin:'*' }, p));
+  for(let k = 0; k < 4; k++){
+    const r = await fetch(u);
+    if(r.status === 429 || r.status >= 500){ await wait(1500 * (k + 1)); continue; }
+    if(!r.ok) throw new Error('Wikipedia answered ' + r.status + '.');
+    return r.json();
+  }
+  throw new Error('Wikipedia is asking for a pause. Try again in a minute.');
+}
+
+/* wikitext of an article's top section -> the words of its opening: the first paragraph that
+   names its subject in bold, its first sentence */
+function words(w){
+  w = w.replace(/<!--[\s\S]*?-->/g, '').replace(/<ref[^>]*\/>/gi, '').replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '');
+  for(let i = 0; i < 12; i++){ const n = w.replace(/\{\{[^{}]*\}\}/g, ''); if(n === w) break; w = n; }
+  w = w.replace(/\{\|[\s\S]*?\|\}/g, '');
+  for(let i = 0; i < 4; i++){ const n = w.replace(/\[\[\s*(?:File|Image|Category|Media)\s*:[^\[\]]*(?:\[\[[^\[\]]*\]\][^\[\]]*)*\]\]/gi, ''); if(n === w) break; w = n; }
+  w = w.replace(/\[\[[a-z-]{2,12}:[^\[\]]*\]\]/g, '')                                  // links to other languages
+       .replace(/\[\[(?:[^\[\]|]*\|)?([^\[\]|]*)\]\]/g, '$1')
+       .replace(/\[https?:\/\/\S+\s+([^\]]*)\]/g, '$1').replace(/\[https?:\/\/\S+\]/g, '')
+       .replace(/<[^>]+>/g, '')
+       .replace(/&nbsp;/g, ' ').replace(/&ndash;/g, '–').replace(/&mdash;/g, '—').replace(/&amp;/g, '&')
+       // brackets left holding only the scraps around a removed pronunciation
+       .replace(/\(([^()]*)\)/g, (m, x) => /[^\s,;:]/.test(x.replace(/\b(pronounced|from|or|also|listen|IPA)\b/gi, '')) ? '(' + x.replace(/^[\s,;:]+|[\s,;:]+$/g, '') + ')' : '')
+       .replace(/[ \t]+/g, ' ').replace(/ ([,.;:])/g, '$1');
+  const paras = w.split(/\n\s*\n|\n(?=[=*#:;|{!])/).map(p => p.replace(/\n/g, ' ').trim())
+    .filter(p => p && !/^[=*#:;|!{}_\[\-]/.test(p) && !/^#?\s*redirect/i.test(p) && p.split(/\s+/).length >= 5);
+  const p = (paras.find(p => /'''/.test(p)) || paras[0] || '').replace(/'{2,}/g, '');
+  const out = [];
+  for(const sen of p.split(/(?<=[.!?]["\u201d]?)\s+(?=[A-Z"\u201c(])/)){
+    if(out.length >= 12) break;                          // the opening sentence; a second one only if the first is a stub
+    out.push(...sen.split(/\s+/).filter(Boolean));
+  }
+  return out.slice(0, MOST);
+}
+
+/* longest run of words two lists share, in order: pairs [i in a, j in b] */
+function lcs(a, b){
+  const n = a.length, m = b.length, W = m + 1, d = new Uint16Array((n + 1) * W);
+  for(let i = n - 1; i >= 0; i--) for(let j = m - 1; j >= 0; j--)
+    d[i * W + j] = a[i] === b[j] ? d[(i + 1) * W + j + 1] + 1 : Math.max(d[(i + 1) * W + j], d[i * W + j + 1]);
+  const out = []; let i = 0, j = 0;
+  while(i < n && j < m){
+    if(a[i] === b[j]){ out.push([i, j]); i++; j++; }
+    else if(d[(i + 1) * W + j] >= d[i * W + j + 1]) i++; else j++;
+  }
+  return out;
+}
+
+/* lay one version onto the page. Every word that ever stood keeps a slot; a version only says
+   which slots stand. A word that comes back takes its old slot; a new word gets a new one,
+   after whatever was scraped off at that spot. */
+function lay(tok, L){
+  const to = new Array(tok.length).fill(-1);
+  const prev = []; slots.forEach((s, i) => { if(s.on[L - 1]) prev.push(i); });
+  lcs(tok, prev.map(i => slots[i].w)).forEach(([i, j]) => { to[i] = prev[j]; });
+  for(let i = 0; i < tok.length; ){                          // words that came back
+    if(to[i] >= 0){ i++; continue; }
+    let j = i; while(j < tok.length && to[j] < 0) j++;
+    const lo = i ? to[i - 1] : -1, hi = j < tok.length ? to[j] : slots.length, idle = [];
+    for(let k = lo + 1; k < hi; k++) if(!slots[k].on[L - 1]) idle.push(k);
+    lcs(tok.slice(i, j), idle.map(k => slots[k].w)).forEach(([x, y]) => { to[i + x] = idle[y]; });
+    i = j;
+  }
+  const ins = {};                                            // new words, by the slot they go in front of
+  for(let i = 0; i < tok.length; i++){
+    if(to[i] >= 0){ slots[to[i]].on[L] = true; continue; }
+    let j = i + 1; while(j < tok.length && to[j] < 0) j++;
+    const k = j < tok.length ? to[j] : slots.length, s = { w:tok[i], on:[] }; s.on[L] = true;
+    (ins[k] = ins[k] || []).push(s);
+  }
+  const next = [];
+  for(let k = 0; k <= slots.length; k++){ if(ins[k]) next.push(...ins[k]); if(k < slots.length) next.push(slots[k]); }
+  slots = next;
+}
+
+async function read(subject){
+  const me = ++run;
+  const say = t => { if(me === run) $('say').textContent = t; };
+  try{
+    say('looking for ' + subject);
+    const found = await api({ action:'opensearch', search:subject, limit:'1', namespace:'0', redirects:'resolve' });
+    const name = found && found[1] && found[1][0];
+    if(!name) throw new Error('Wikipedia has nothing by that name.');
+    const first = await api({ action:'query', prop:'revisions', titles:name, redirects:'1', rvlimit:'1', rvdir:'newer', rvprop:'ids|timestamp' });
+    const pg = first.query && first.query.pages && first.query.pages[0];
+    if(!pg || pg.missing || !pg.revisions) throw new Error('Wikipedia has nothing by that name.');
+    const t0 = Date.parse(pg.revisions[0].timestamp), t1 = Date.now();
+    // as many rungs as the screen has room for
+    const n = Math.max(8, Math.min(28, Math.floor((innerHeight - 190) / 22)));
+    const got = [];
+    for(let i = 0; i < n; i++){
+      if(me !== run) return;
+      const d = new Date(t0 + (t1 - t0) * i / (n - 1));
+      say('reading ' + pg.title + ' as it stood in ' + when(d) + ' · ' + (i + 1) + ' of ' + n);
+      const r = await api({ action:'query', prop:'revisions', titles:pg.title, rvlimit:'1', rvdir:'older', rvstart:d.toISOString(),
+                            rvprop:'ids|timestamp|content', rvslots:'main', rvsection:'0' });
+      const rev = (((r.query || {}).pages || [])[0] || {}).revisions;
+      const text = rev && rev[0] && rev[0].slots && rev[0].slots.main && rev[0].slots.main.content;
+      got.push({ d, id:rev && rev[0] ? rev[0].revid : 0, tok:text ? words(text) : [] });
+      await wait(120);
+    }
+    if(me !== run) return;
+    if(!got.some(g => g.tok.length)) throw new Error('No opening sentence could be read from that article.');
+    title = pg.title; layers = got; slots = [];
+    layers.forEach((g, L) => lay(g.tok, L));
+    layers.forEach((g, L) => { g.moved = L ? slots.filter(s => !!s.on[L] !== !!s.on[L - 1]).length : 0; });
+    say(''); show();
+  }catch(e){ say(e && e.message ? e.message : 'Wikipedia could not be reached.'); }
+}
+
+function show(){
+  $('door').hidden = true; $('stage').hidden = false;
+  $('text').innerHTML = slots.map((s, i) => '<span class="w" data-i="' + i + '">' + esc(s.w) + '</span>').join(' ');
+  const most = Math.max(1, ...layers.map(g => g.moved));
+  let h = '', y = -1;
+  layers.forEach((g, L) => {
+    const yr = g.d.getUTCFullYear(), lab = yr !== y ? yr : MON[g.d.getUTCMonth()]; y = yr;
+    h += '<div class="rung" data-l="' + L + '">' + lab + '<i style="width:' + Math.round(100 * g.moved / most) + '%"></i></div>';
+  });
+  $('ladder').innerHTML = h;
+  $('ladder').setAttribute('aria-valuemin', 0); $('ladder').setAttribute('aria-valuemax', layers.length - 1);
+  pick = -1; go(layers.length - 1); fit();
+  try{ history.replaceState(null, '', '?s=' + encodeURIComponent(title)); }catch(e){}
+  document.title = 'PALIMPSEST · ' + title;
+}
+/* the largest type at which the whole page is on the screen; if none, the page scrolls */
+function fit(){
+  const p = $('page'), t = $('text'), top = innerWidth < 760 ? 19 : 26;
+  for(let f = top; f >= 12; f--){ t.style.fontSize = f + 'px'; if(t.offsetHeight <= p.clientHeight - 20) break; }
+}
+function go(L){
+  L = Math.max(0, Math.min(layers.length - 1, L)); at = L;
+  let stand = 0, gone = 0;
+  const el = $('text').children;
+  slots.forEach((s, i) => {
+    let c = 'w';
+    if(s.on[L]){ stand++; if(L && !s.on[L - 1]) c += ' new'; }
+    else if(s.on.slice(0, L).some(Boolean)){ gone++; c += ' gone'; }
+    else c += ' not';
+    if(i === pick) c += ' pick';
+    if(el[i].className !== c) el[i].className = c;
+  });
+  [...$('ladder').children].forEach((r, i) => r.classList.toggle('on', i === L));
+  const g = layers[L], date = when(g.d);
+  $('now').textContent = title + ' · ' + date + ' · ' + stand + (stand === 1 ? ' word stands' : ' words stand') + (gone ? ' · ' + gone + ' scraped off' : '');
+  $('ladder').setAttribute('aria-valuenow', L); $('ladder').setAttribute('aria-valuetext', date);
+  $('src').innerHTML = g.id ? '<a href="https://en.wikipedia.org/w/index.php?oldid=' + g.id + '" target="_blank" rel="noopener">the article as it stood in ' + esc(date) + '</a> · Wikipedia, CC BY-SA'
+                            : 'Wikipedia, CC BY-SA';
+  tell();
+}
+/* when a word stood */
+function tell(){
+  if(pick < 0){ $('word').textContent = 'drag the years on the right · touch a word to see when it stood'; return; }
+  const s = slots[pick], runs = [];
+  for(let L = 0; L < layers.length; L++) if(s.on[L]){
+    let e = L; while(e + 1 < layers.length && s.on[e + 1]) e++;
+    runs.push(when(layers[L].d) + (e === layers.length - 1 ? ' to now' : e === L ? '' : ' to ' + when(layers[e].d))); L = e;
+  }
+  $('word').textContent = '“' + s.w + '” stood ' + runs.join(', then ') + (s.on[layers.length - 1] ? '' : ', and is gone');
+}
+function choose(i){
+  const el = $('text').children;
+  if(pick >= 0) el[pick].classList.remove('pick');
+  pick = i; if(i >= 0){ el[i].classList.add('pick'); el[i].scrollIntoView({ block:'nearest' }); }
+  tell();
+}
+
+/* the ladder: drag, touch a rung, or the arrow keys */
+function rungAt(y){
+  const r = $('ladder').getBoundingClientRect(), n = layers.length;
+  return Math.max(0, Math.min(n - 1, Math.floor((r.bottom - 6 - y) / ((r.height - 6) / n))));
+}
+let held = false;
+$('ladder').addEventListener('pointerdown', e => { held = true; $('ladder').setPointerCapture(e.pointerId); go(rungAt(e.clientY)); e.preventDefault(); });
+$('ladder').addEventListener('pointermove', e => { if(held) go(rungAt(e.clientY)); });
+['pointerup', 'pointercancel'].forEach(k => $('ladder').addEventListener(k, () => { held = false; }));
+$('ladder').addEventListener('wheel', e => { go(at + (e.deltaY < 0 ? 1 : -1)); e.preventDefault(); }, { passive:false });
+addEventListener('keydown', e => {
+  if($('stage').hidden || e.target.tagName === 'INPUT' || e.metaKey || e.ctrlKey || e.altKey) return;
+  if(e.key === 'ArrowUp'){ go(at + 1); e.preventDefault(); }
+  else if(e.key === 'ArrowDown'){ go(at - 1); e.preventDefault(); }
+  else if(e.key === 'Home'){ go(0); e.preventDefault(); }
+  else if(e.key === 'End'){ go(layers.length - 1); e.preventDefault(); }
+  else if(e.key === 'ArrowRight' || e.key === 'ArrowLeft'){               // walk the words that show at this date
+    const step = e.key === 'ArrowRight' ? 1 : -1, seen = i => slots[i].on.slice(0, at + 1).some(Boolean);
+    let i = pick; do{ i += step; }while(i >= 0 && i < slots.length && !seen(i));
+    if(i >= 0 && i < slots.length) choose(i);
+    e.preventDefault();
+  }
+  else if(e.key === 'Escape') choose(-1);
+});
+$('text').addEventListener('click', e => { const w = e.target.closest('.w'); choose(w ? (+w.dataset.i === pick ? -1 : +w.dataset.i) : -1); });
+addEventListener('resize', () => { if(!$('stage').hidden) fit(); });
+
+$('ask').addEventListener('submit', e => { e.preventDefault(); const s = $('subject').value.trim(); if(s) read(s); });
+$('back').onclick = () => { run++; $('stage').hidden = true; $('door').hidden = false; $('say').textContent = ''; $('subject').focus(); };
+const q = new URLSearchParams(location.search).get('s');
+if(q){ $('subject').value = q; read(q); }
+</script>
+</body>
+</html>
