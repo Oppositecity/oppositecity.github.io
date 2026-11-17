@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src https://api.github.com">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>the editor</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#000;color:#fff}
+body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:16px;line-height:1.5;
+  padding:calc(28px + env(safe-area-inset-top,0px)) 20px 160px;max-width:760px;margin:0 auto;-webkit-font-smoothing:antialiased}
+h1{font-size:16px;font-weight:700;letter-spacing:.4em;margin-bottom:10px}
+h2{font-size:14px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin:44px 0 6px}
+p{max-width:60ch}
+a{color:#fff;text-underline-offset:4px}
+input,textarea,select,button{font:inherit;font-size:16px;color:#fff;background:#000;border:1px solid #fff;border-radius:0;padding:8px 10px}
+input,textarea,select{width:100%}
+textarea{display:block;resize:vertical;min-height:7em;line-height:1.45}
+button{cursor:pointer;background:#fff;color:#000;border-color:#fff;padding:9px 14px}
+button.q{background:#000;color:#fff}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2px solid #7fe3ff;outline-offset:2px}
+label{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase;margin:14px 0 4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row > input{flex:1 1 14rem;width:auto}
+#key{margin-top:18px}
+#say{margin-top:12px;min-height:1.5em;color:#7fe3ff;white-space:pre-wrap}
+#find{margin-top:22px}
+.piece{border-top:1px solid #fff;margin-top:14px;padding-top:6px}
+.head{display:block;width:100%;text-align:left;background:#000;color:#fff;border:0;padding:8px 0}
+.head b{letter-spacing:.12em;font-size:17px}
+.head span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.piece.changed .head b::after{content:"  · changed";color:#7fe3ff;letter-spacing:0;font-weight:400}
+.body{padding:0 0 14px}
+.also{display:flex;gap:6px 18px;flex-wrap:wrap}
+.also label{display:flex;gap:8px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-size:16px}
+.also input{width:20px;height:20px;accent-color:#fff}
+.two{display:grid;grid-template-columns:1fr 7rem;gap:10px}
+.old{margin-top:16px}
+.old li{list-style:none;border-left:2px solid #7fe3ff;padding:2px 0 2px 10px;margin-top:12px}
+.old .when{color:#7fe3ff}
+.old .txt{white-space:pre-wrap}
+#bar{position:fixed;left:0;right:0;bottom:0;background:#000;border-top:1px solid #fff;
+  padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));display:none}
+#bar .in{max-width:720px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#bar .n{flex:1 1 10rem}
+</style>
+</head>
+<body>
+<h1>THE EDITOR</h1>
+<p>Every piece's name, blurb, tags and section, in boxes. Save writes the change to the site at once: the hub shows it within a minute or two. Nothing is lost: every earlier wording stays in the site's history, and each piece can show its earlier versions and put one back.</p>
+<p style="margin-top:8px"><a href="/">back to the city</a> · <a href="/yard/">the yard</a></p>
+
+<div id="key">
+  <label for="tok">GitHub token, kept on this device only</label>
+  <div class="row">
+    <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+    <button id="keep">keep</button>
+    <button id="forget" class="q">forget</button>
+  </div>
+  <p style="margin-top:8px;font-size:14px">A fine-grained token for this one repository, with Contents set to read and write. It is what makes this page yours: without it the boxes can be read and nothing can be saved.</p>
+</div>
+
+<p id="say" role="status"></p>
+
+<input id="find" type="text" placeholder="find a piece" aria-label="find a piece" autocomplete="off" spellcheck="false">
+
+<div id="list"></div>
+
+<div id="bar"><div class="in">
+  <span class="n" id="count"></span>
+  <button id="save">save · goes live at once</button>
+  <button id="drop" class="q">discard</button>
+</div></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   THE EDITOR. The registry's text in boxes, for the owner alone.
+
+   What it writes, in one commit, so the copies cannot fall out of step:
+     surfaces.json          the published registry (the hub reads this)
+     index.html             the hub's lean copy and its fallback list
+     registry-master.json   the fuller list
+   It never changes a slug or an address, so sitemap.xml is not touched,
+   and it never touches a piece's own page.
+
+   The token never leaves this device except to api.github.com.
+   ===================================================================== */
+const REPO = 'Oppositecity/oppositecity.github.io', BRANCH = 'main', API = 'https://api.github.com/repos/' + REPO;
+const FILES = { s:'surfaces.json', m:'registry-master.json', h:'index.html' };
+const $ = id => document.getElementById(id);
+const say = t => { $('say').textContent = t; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+                set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
+
+let token = store.get('edit.token') || '';
+let S = null, M = null;          // surfaces.json and registry-master.json as read
+const changes = new Map();       // key -> { field: value }; key is "s:slug" or "m:slug"
+const open = new Set();
+
+/* ---------- GitHub ---------- */
+async function gh(path, opt){
+  opt = opt || {};
+  const h = { 'Accept': opt.raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' };
+  if(token) h['Authorization'] = 'Bearer ' + token;
+  if(opt.body) h['Content-Type'] = 'application/json';
+  const r = await fetch(API + path, { method:opt.method || 'GET', headers:h, body:opt.body ? JSON.stringify(opt.body) : undefined, cache:'no-store' });
+  if(!r.ok){
+    let why = ''; try{ why = (await r.json()).message || ''; }catch(e){}
+    const err = new Error('GitHub answered ' + r.status + (why ? ': ' + why : '')); err.status = r.status; throw err;
+  }
+  return opt.raw ? r.text() : r.json();
+}
+const fileAt = (path, ref) => gh('/contents/' + path + '?ref=' + encodeURIComponent(ref), { raw:true });
+
+/* ---------- the three files, written exactly as the repo keeps them ---------- */
+// surfaces.json: one-space indent, a newline at the end
+const writeSurfaces = d => JSON.stringify(d, null, 1) + '\n';
+// registry-master.json: one line, "key": value, commas with no space
+function writeMaster(v){
+  if(Array.isArray(v)) return '[' + v.map(writeMaster).join(',') + ']';
+  if(v && typeof v === 'object') return '{' + Object.keys(v).map(k => JSON.stringify(k) + ': ' + writeMaster(v[k])).join(',') + '}';
+  return JSON.stringify(v);
+}
+// index.html: the lean copy (the registry without blurbs) and the fallback list
+function writeHub(html, d){
+  const a = html.indexOf('/* REGISTRY:BEGIN */'), b = html.indexOf('/* REGISTRY:END */');
+  if(a < 0 || b < a) throw new Error('index.html has no REGISTRY markers; nothing was saved');
+  const was = JSON.parse(html.slice(a, b).replace(/^[^{]*/, '').replace(/;\s*$/, ''));
+  const lean = Object.assign({}, d, { note:was.note, surfaces:d.surfaces.map(s => { const o = Object.assign({}, s); delete o.blurb; return o; }) });
+  html = html.slice(0, a) + '/* REGISTRY:BEGIN */\nconst REGISTRY = ' + JSON.stringify(lean) + ';\n' + html.slice(b);
+  const f = html.indexOf('id="fallback"'), u0 = html.indexOf('<ul>', f), u1 = html.indexOf('</ul>', u0);
+  if(f < 0 || u0 < 0 || u1 < 0) throw new Error('index.html has no fallback list; nothing was saved');
+  const items = d.surfaces.map(s => '    <li><a href="' + esc(s.url) + '">' + esc(s.name) + '</a> — ' + esc((s.tags || []).join(', ')) + '</li>\n').join('');
+  return html.slice(0, u0) + '<ul>\n' + items + '  ' + html.slice(u1);
+}
+/* put the boxes' changes onto a freshly read registry, so nothing newer is overwritten */
+function apply(s, m){
+  for(const [key, c] of changes){
+    const kind = key[0], slug = key.slice(2);
+    const ms = m.surfaces.find(x => x.slug === slug);
+    if(kind === 's'){
+      const x = s.surfaces.find(x => x.slug === slug);
+      if(!x) throw new Error(slug + ' is no longer in surfaces.json; reload the page');
+      for(const k in c){
+        if(k === 'also'){ if(c.also.length) x.also = c.also; else delete x.also; }
+        else x[k] = c[k];
+      }
+      // a piece cannot be "also" in its own section
+      if(x.also){ x.also = x.also.filter(a => a !== x.district); if(!x.also.length) delete x.also; }
+      if(ms) for(const k of ['name','blurb','tags','finish']) if(k in c) ms[k] = c[k];
+    }else if(ms){
+      for(const k in c) ms[k] = c[k];
+    }
+  }
+}
+
+/* ---------- reading ---------- */
+async function load(){
+  say('reading the registry');
+  try{
+    const [s, m] = await Promise.all([fileAt(FILES.s, BRANCH), fileAt(FILES.m, BRANCH)]);
+    S = JSON.parse(s); M = JSON.parse(m);
+    draw();
+    say(token ? '' : 'No token on this device yet: the boxes can be read, and nothing can be saved.');
+  }catch(e){ say('Could not read the registry. ' + e.message); }
+}
+
+/* ---------- the boxes ---------- */
+function val(kind, x, k){
+  const c = changes.get(kind + ':' + x.slug);
+  return c && k in c ? c[k] : x[k];
+}
+function draw(){
+  const q = $('find').value.trim().toLowerCase();
+  const hit = x => !q || (x.slug + ' ' + x.name + ' ' + (x.tags || []).join(' ')).toLowerCase().includes(q);
+  let h = '';
+  for(const d of S.districts){
+    const rows = S.surfaces.filter(x => val('s', x, 'district') === d.id && hit(x));
+    if(!rows.length) continue;
+    h += '<h2>' + esc(d.name) + '</h2>' + rows.map(x => piece('s', x)).join('');
+  }
+  const pub = new Set(S.surfaces.map(x => x.slug));
+  const rest = M.surfaces.filter(x => !pub.has(x.slug) && hit(x));
+  if(rest.length) h += '<h2>Not published · the master list</h2>' + rest.map(x => piece('m', x)).join('');
+  $('list').innerHTML = h || '<p style="margin-top:22px">Nothing by that name.</p>';
+  document.querySelectorAll('textarea').forEach(grow);
+  bar();
+}
+function piece(kind, x){
+  const key = kind + ':' + x.slug, isOpen = open.has(key);
+  const name = val(kind, x, 'name'), blurb = val(kind, x, 'blurb') || '';
+  let h = '<div class="piece' + (changes.has(key) ? ' changed' : '') + '" data-key="' + esc(key) + '">'
+    + '<button class="head" aria-expanded="' + isOpen + '"><b>' + esc(name) + '</b><span>' + esc(blurb.slice(0, 120)) + '</span></button>';
+  if(isOpen){
+    const id = k => esc(key + ':' + k);
+    h += '<div class="body">'
+      + '<div class="two"><div><label for="' + id('name') + '">name</label><input type="text" id="' + id('name') + '" data-k="name" value="' + esc(name) + '" spellcheck="false"></div>'
+      + '<div><label for="' + id('finish') + '">finish</label><input type="number" min="0" max="100" id="' + id('finish') + '" data-k="finish" value="' + esc(val(kind, x, 'finish') == null ? '' : val(kind, x, 'finish')) + '"></div></div>'
+      + '<label for="' + id('blurb') + '">blurb</label><textarea id="' + id('blurb') + '" data-k="blurb">' + esc(blurb) + '</textarea>'
+      + '<label for="' + id('tags') + '">tags, with commas between</label><input type="text" id="' + id('tags') + '" data-k="tags" value="' + esc((val(kind, x, 'tags') || []).join(', ')) + '" spellcheck="false">';
+    if(kind === 's'){
+      const dist = val('s', x, 'district'), also = val('s', x, 'also') || [];
+      h += '<label for="' + id('district') + '">section</label><select id="' + id('district') + '" data-k="district">'
+        + S.districts.map(d => '<option value="' + esc(d.id) + '"' + (d.id === dist ? ' selected' : '') + '>' + esc(d.name) + '</option>').join('') + '</select>'
+        + '<label>also shown in</label><div class="also">'
+        + S.districts.filter(d => d.id !== dist).map(d => '<label><input type="checkbox" data-k="also" value="' + esc(d.id) + '"' + (also.includes(d.id) ? ' checked' : '') + '>' + esc(d.name) + '</label>').join('') + '</div>'
+        + '<p style="margin-top:14px"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url.replace('https://', '')) + '</a></p>'
+        + '<div class="old"><button class="q" data-old="1">earlier versions</button><ul></ul></div>';
+    }
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+function grow(t){ t.style.height = 'auto'; t.style.height = (t.scrollHeight + 4) + 'px'; }
+function find(key){ const kind = key[0], slug = key.slice(2); return (kind === 's' ? S : M).surfaces.find(x => x.slug === slug); }
+function same(a, b){ return JSON.stringify(a == null ? '' : a) === JSON.stringify(b == null ? '' : b); }
+function note(key, k, v){
+  const x = find(key); let c = changes.get(key) || {};
+  const orig = k === 'also' ? (x.also || []) : x[k];
+  if(same(v, orig)) delete c[k]; else c[k] = v;
+  if(Object.keys(c).length) changes.set(key, c); else changes.delete(key);
+  const el = document.querySelector('.piece[data-key="' + CSS.escape(key) + '"]');
+  if(el) el.classList.toggle('changed', changes.has(key));
+  bar();
+}
+function bar(){
+  const n = changes.size;
+  $('bar').style.display = n ? 'block' : 'none';
+  $('count').textContent = n + (n === 1 ? ' piece changed' : ' pieces changed');
+  $('save').disabled = !token;
+  if(n && !token) $('count').textContent += ' · a token is needed to save';
+}
+
+$('list').addEventListener('click', e => {
+  const head = e.target.closest('.head'), old = e.target.closest('[data-old]'), back = e.target.closest('[data-back]');
+  if(head){ const key = head.parentElement.dataset.key; if(open.has(key)) open.delete(key); else open.add(key); draw(); }
+  else if(old) earlier(old.closest('.piece'));
+  else if(back){
+    const p = back.closest('.piece'), v = JSON.parse(back.dataset.back);
+    p.querySelector('[data-k=name]').value = v.name; p.querySelector('[data-k=blurb]').value = v.blurb;
+    p.querySelector('[data-k=tags]').value = (v.tags || []).join(', ');
+    for(const k of ['name','blurb','tags']) note(p.dataset.key, k, v[k]);
+    grow(p.querySelector('textarea')); say('Put back in the boxes. Save to make it live.');
+  }
+});
+$('list').addEventListener('input', e => {
+  const t = e.target, k = t.dataset.k; if(!k) return;
+  const p = t.closest('.piece'), key = p.dataset.key;
+  if(k === 'tags') note(key, k, t.value.split(',').map(s => s.trim()).filter(Boolean));
+  else if(k === 'finish') note(key, k, t.value === '' ? find(key).finish : Math.max(0, Math.min(100, Math.round(+t.value) || 0)));
+  else if(k === 'also') note(key, k, [...p.querySelectorAll('[data-k=also]:checked')].map(c => c.value));
+  else if(k === 'district'){ note(key, k, t.value); note(key, 'also', (val('s', find(key), 'also') || []).filter(a => a !== t.value)); draw(); }
+  else note(key, k, t.value);
+  if(t.tagName === 'TEXTAREA') grow(t);
+});
+$('find').addEventListener('input', draw);
+
+/* ---------- earlier versions: the site's own history, read back ---------- */
+async function earlier(p){
+  const slug = p.dataset.key.slice(2), ul = p.querySelector('.old ul'), btn = p.querySelector('[data-old]');
+  btn.disabled = true; ul.innerHTML = '<li>reading the history</li>';
+  try{
+    const commits = await gh('/commits?sha=' + BRANCH + '&path=' + FILES.s + '&per_page=25');
+    const seen = new Set(), now = find('s:' + slug), out = [];
+    seen.add(JSON.stringify([now.name, now.blurb, now.tags]));
+    for(const c of commits){
+      let d; try{ d = JSON.parse(await fileAt(FILES.s, c.sha)); }catch(e){ continue; }
+      const x = (d.surfaces || []).find(x => x.slug === slug); if(!x) continue;
+      const sig = JSON.stringify([x.name, x.blurb, x.tags]); if(seen.has(sig)) continue;
+      seen.add(sig);
+      out.push('<li><div class="when">' + esc(c.commit.committer.date.slice(0, 10)) + ' · ' + esc(x.name) + '</div><div class="txt">' + esc(x.blurb)
+        + '</div><div>' + esc((x.tags || []).join(', ')) + '</div><button class="q" style="margin-top:8px" data-back="' + esc(JSON.stringify({ name:x.name, blurb:x.blurb, tags:x.tags })) + '">put this back</button></li>');
+      ul.innerHTML = out.join('');
+    }
+    if(!out.length) ul.innerHTML = '<li>No earlier wording in the last ' + commits.length + ' changes to the registry.</li>';
+  }catch(e){ ul.innerHTML = '<li>' + esc('Could not read the history. ' + e.message) + '</li>'; }
+  btn.disabled = false;
+}
+
+/* ---------- saving: one commit, built on whatever is newest ---------- */
+async function save(){
+  if(!token || !changes.size) return;
+  $('save').disabled = true;
+  const slugs = [...changes.keys()].map(k => k.slice(2));
+  try{
+    for(let attempt = 0; ; attempt++){
+      say('saving');
+      const head = (await gh('/git/ref/heads/' + BRANCH)).object.sha;
+      const base = (await gh('/git/commits/' + head)).tree.sha;
+      const [s, m, h] = await Promise.all([fileAt(FILES.s, head), fileAt(FILES.m, head), fileAt(FILES.h, head)]);
+      const sd = JSON.parse(s), md = JSON.parse(m);
+      apply(sd, md);
+      const tree = [[FILES.s, writeSurfaces(sd), s], [FILES.m, writeMaster(md), m], [FILES.h, writeHub(h, sd), h]]
+        .filter(f => f[1] !== f[2]).map(f => ({ path:f[0], mode:'100644', type:'blob', content:f[1] }));
+      if(!tree.length){ S = sd; M = md; changes.clear(); draw(); say('Nothing differs from what is live.'); return; }
+      const t = await gh('/git/trees', { method:'POST', body:{ base_tree:base, tree } });
+      const msg = 'registry: ' + (slugs.length > 4 ? slugs.length + ' pieces' : slugs.join(', ')) + ' edited in the editor';
+      const c = await gh('/git/commits', { method:'POST', body:{ message:msg, tree:t.sha, parents:[head] } });
+      try{ await gh('/git/refs/heads/' + BRANCH, { method:'PATCH', body:{ sha:c.sha, force:false } }); }
+      catch(e){ if(e.status === 422 && attempt < 2) continue; throw e; }   // the site moved while saving: read again and retry
+      remember(slugs);
+      S = sd; M = md; changes.clear(); draw();
+      say('Saved. Live on the hub within a minute or two. Check with ?v=2 on the address if it looks unchanged.');
+      return;
+    }
+  }catch(e){
+    say('Not saved. ' + e.message + (e.status === 401 || e.status === 403 || e.status === 404 ? '\nThe token may be wrong, expired, or lack Contents: read and write on this repository.' : ''));
+  }finally{ bar(); }
+}
+/* a second copy of what was replaced, on this device, in case */
+function remember(slugs){
+  let log = []; try{ log = JSON.parse(store.get('edit.undo') || '[]'); }catch(e){}
+  for(const slug of slugs){ const x = (S.surfaces.find(x => x.slug === slug) || M.surfaces.find(x => x.slug === slug)); if(x) log.push({ at:new Date().toISOString(), slug, name:x.name, blurb:x.blurb, tags:x.tags }); }
+  store.set('edit.undo', JSON.stringify(log.slice(-80)));
+}
+$('save').onclick = save;
+$('drop').onclick = () => { changes.clear(); draw(); say('Changes discarded. Nothing was saved.'); };
+
+$('tok').value = token;
+$('keep').onclick = () => { token = $('tok').value.trim(); if(token){ store.set('edit.token', token); say('Token kept on this device.'); } bar(); };
+$('forget').onclick = () => { token = ''; $('tok').value = ''; store.del('edit.token'); say('Token forgotten.'); bar(); };
+addEventListener('beforeunload', e => { if(changes.size){ e.preventDefault(); e.returnValue = ''; } });
+
+load();
+</script>
+</body>
+</html>

@@ -76,6 +76,14 @@ overwriting the other's work.
   the other sections it sits in.
 - One folder per surface, each with its own `index.html`.
 - `registry-master.json`: the fuller list, including unpublished work.
+- `edit/`: the owner's editor, unlisted. Names, blurbs, tags and sections in
+  boxes; a save writes `surfaces.json`, the hub's two copies and
+  `registry-master.json` in one commit, straight to `main`, with the owner's
+  GitHub token kept on their device. By the owner's choice (2026-11-16) this
+  is the one thing that commits to `main` without a pull request. Its commits
+  read `registry: <slug> edited in the editor`. Pull before working: the
+  registry may have moved. It does not touch a piece's own page, so a page's
+  description tag can fall behind its blurb.
 - `venn/`: an unlisted experiment. Leave it alone unless asked.
 - `poemstream/`: deliberately hidden from the hub, sitemap and search. Keep
   it hidden.
@@ -283,6 +291,13 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   word is in the middle; say the download size on the begin button. Raising
   the brightness of unlikely words changes the look, so ask the owner first.
   Headless: load, begin, wait for "model ready" (about 90 s), tap a word.
+  The owner on 2026-11-16: "still weirdly arranged". Seen: half the screen
+  empty because the field opened facing the likeliest word, which stands at
+  the edge of the words in play; and words printed over each other, because
+  a word was allowed to be 36% hidden. Changed in the preview: the opening
+  turn keeps the likeliest word in the middle half of the window and picks
+  the turn that shows the most words; the hidden allowance is 8%. Words are
+  still cut by the window's edges, which a panorama does.
 - [ ] `idiophone/`: when the owner approves the preview, publish once with a
   real account to settle the decimals question, then copy `idiophone-next/`
   over it, delete the preview, and update the blurb and tags in both
@@ -296,6 +311,23 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 - [x] `idiophone-next/` reader: type a handle and that account's published
   objects go under the keys. Tested against a stand-in server; no account has
   published any yet.
+- [~] `ephemeris-next/`: the chart cast on real orbits. `scripts/ephemeris-elements.py`
+  reads CelesTrak for each body's catalogue number and writes
+  `ephemeris/elements.json`; the page takes its elements from that file,
+  lists bodies that have reentered as gone, and marks a body whose orbit is
+  withheld. Propagation gained perigee drift and the drag term; against SGP4
+  the station is within a tenth of a degree over two weeks. Built 2026-11-16.
+  Waiting on the owner's look. Not done: a weekly job to rerun the script
+  (it would commit a data file to `main` unattended, which needs the owner's
+  yes). On promotion the blurb's "a live catalogue can be pasted in" needs
+  the owner's sentence about the weekly catalogue.
+- [~] `nimbus-next/`: distinctive and common words together, at the owner's
+  word (2026-11-16). The cloud takes in turn from the words the article says
+  most and the words most its own; bold marks a word that few other articles
+  use. "Few" is measured: `scripts/nimbus-common.py` samples the openings of
+  random Wikipedia articles and the page carries the share of them that say
+  each word. Waiting on the owner's look. On promotion the blurb needs the
+  owner's sentence about the bold words.
 - [ ] XIMEREMIX phase 1. The owner said yes to the recommendations in
   `ximeremix/PHASE0.md` on 2026-11-16: a track must have downloads open and
   carry the tag `remixable`; ten minutes at most; use plyr's search. Next up.
