@@ -321,6 +321,13 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   (it would commit a data file to `main` unattended, which needs the owner's
   yes). On promotion the blurb's "a live catalogue can be pasted in" needs
   the owner's sentence about the weekly catalogue.
+- [~] `nimbus-next/`: distinctive and common words together, at the owner's
+  word (2026-11-16). The cloud takes in turn from the words the article says
+  most and the words most its own; bold marks a word that few other articles
+  use. "Few" is measured: `scripts/nimbus-common.py` samples the openings of
+  random Wikipedia articles and the page carries the share of them that say
+  each word. Waiting on the owner's look. On promotion the blurb needs the
+  owner's sentence about the bold words.
 - [ ] XIMEREMIX phase 1. The owner said yes to the recommendations in
   `ximeremix/PHASE0.md` on 2026-11-16: a track must have downloads open and
   carry the tag `remixable`; ten minutes at most; use plyr's search. Next up.
