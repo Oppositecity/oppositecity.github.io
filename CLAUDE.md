@@ -296,6 +296,16 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 - [x] `idiophone-next/` reader: type a handle and that account's published
   objects go under the keys. Tested against a stand-in server; no account has
   published any yet.
+- [~] `ephemeris-next/`: the chart cast on real orbits. `scripts/ephemeris-elements.py`
+  reads CelesTrak for each body's catalogue number and writes
+  `ephemeris/elements.json`; the page takes its elements from that file,
+  lists bodies that have reentered as gone, and marks a body whose orbit is
+  withheld. Propagation gained perigee drift and the drag term; against SGP4
+  the station is within a tenth of a degree over two weeks. Built 2026-11-16.
+  Waiting on the owner's look. Not done: a weekly job to rerun the script
+  (it would commit a data file to `main` unattended, which needs the owner's
+  yes). On promotion the blurb's "a live catalogue can be pasted in" needs
+  the owner's sentence about the weekly catalogue.
 - [ ] XIMEREMIX phase 1. The owner said yes to the recommendations in
   `ximeremix/PHASE0.md` on 2026-11-16: a track must have downloads open and
   carry the tag `remixable`; ten minutes at most; use plyr's search. Next up.
