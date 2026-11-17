@@ -15,7 +15,9 @@ html,body{background:#000;color:#fff}
 body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:16px;line-height:1.5;
   padding:calc(28px + env(safe-area-inset-top,0px)) 20px 160px;max-width:760px;margin:0 auto;-webkit-font-smoothing:antialiased}
 h1{font-size:16px;font-weight:700;letter-spacing:.4em;margin-bottom:10px}
-h2{font-size:14px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin:44px 0 6px}
+h2{font-size:15px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;margin:56px 0 6px;border-top:4px solid #fff;padding-top:14px}
+h2 small{font-size:13px;font-weight:400;letter-spacing:.08em;text-transform:none}
+[hidden]{display:none!important}
 p{max-width:60ch}
 a{color:#fff;text-underline-offset:4px}
 input,textarea,select,button{font:inherit;font-size:16px;color:#fff;background:#000;border:1px solid #fff;border-radius:0;padding:8px 10px}
@@ -36,7 +38,15 @@ label{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase
 .head b{letter-spacing:.12em;font-size:17px}
 .head span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .piece.changed .head b::after{content:"  · changed";color:#7fe3ff;letter-spacing:0;font-weight:400}
-.body{padding:0 0 14px}
+.body{padding:0 0 16px 14px;margin:0 0 10px 2px;border-left:3px solid #fff}
+.part{margin-top:30px;font-size:13px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;border-top:1px solid #fff;padding-top:10px}
+.body > .part:first-child{margin-top:4px;border-top:0;padding-top:0}
+.what{font-size:14px}
+.inside{margin-top:12px}
+.sub{margin-top:26px;font-weight:700}
+.sg{margin-top:8px}
+.dirty{border-color:#7fe3ff;box-shadow:inset 4px 0 0 #7fe3ff}
+ol.how{margin:10px 0 0 1.6em;max-width:58ch}
 .also{display:flex;gap:6px 18px;flex-wrap:wrap}
 .also label{display:flex;gap:8px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-size:16px}
 .also input{width:20px;height:20px;accent-color:#fff}
@@ -47,24 +57,36 @@ label{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase
 .old .txt{white-space:pre-wrap}
 textarea.seg{min-height:0}
 #bar{position:fixed;left:0;right:0;bottom:0;background:#000;border-top:1px solid #fff;
-  padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));display:none}
+  padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px))}
 #bar .in{max-width:720px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #bar .n{flex:1 1 10rem}
 </style>
 </head>
 <body>
 <h1>THE EDITOR</h1>
-<p>Every piece's name, blurb, tags and section, in boxes, and the words inside each piece's own page. Save writes the change to the site at once: the hub shows it within a minute or two. Nothing is lost: every earlier wording stays in the site's history, and each piece can show its earlier versions and put one back.</p>
+<p>The site's words, in boxes.</p>
+<ol class="how">
+  <li>Open a piece. "On the hub" is how it is listed on the front page; "Inside the piece" is the words on its own page.</li>
+  <li>Change the words. A changed box gets a blue edge.</li>
+  <li>Press save, in the bar at the bottom of the screen. It goes live within a minute or two.</li>
+</ol>
+<p style="margin-top:10px">Nothing is lost: every earlier wording stays in the site's history.</p>
 <p style="margin-top:8px"><a href="/">back to the city</a> · <a href="/yard/">the yard</a></p>
 
 <div id="key">
-  <label for="tok">GitHub token, kept on this device only</label>
-  <div class="row">
-    <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
-    <button id="keep">keep</button>
+  <div id="has" class="row" hidden>
+    <span id="hasSay" style="flex:1 1 14rem"></span>
+    <button id="change" class="q">change</button>
     <button id="forget" class="q">forget</button>
   </div>
-  <p style="margin-top:8px;font-size:14px">A fine-grained token for this one repository, with Contents set to read and write. It is what makes this page yours: without it the boxes can be read and nothing can be saved.</p>
+  <div id="ask">
+    <label for="tok">GitHub token, kept on this device only</label>
+    <div class="row">
+      <input id="tok" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+      <button id="keep">keep</button>
+    </div>
+    <p style="margin-top:8px;font-size:14px">A fine-grained token for this one repository, with Contents set to read and write. It is what makes this page yours: without it the boxes can be read and nothing can be saved. Each phone or computer needs it pasted once; after that it stays.</p>
+  </div>
 </div>
 
 <p id="say" role="status"></p>
@@ -192,11 +214,11 @@ function draw(){
   for(const d of S.districts){
     const rows = S.surfaces.filter(x => val('s', x, 'district') === d.id && hit(x));
     if(!rows.length) continue;
-    h += '<h2>' + esc(d.name) + '</h2>' + rows.map(x => piece('s', x)).join('');
+    h += '<h2>' + esc(d.name) + ' <small>\u00b7 ' + rows.length + (rows.length === 1 ? ' piece' : ' pieces') + '</small></h2>' + rows.map(x => piece('s', x)).join('');
   }
   const pub = new Set(S.surfaces.map(x => x.slug));
   const rest = M.surfaces.filter(x => !pub.has(x.slug) && hit(x));
-  if(rest.length) h += '<h2>Not published · the master list</h2>' + rest.map(x => piece('m', x)).join('');
+  if(rest.length) h += '<h2>Not published <small>\u00b7 the master list \u00b7 ' + rest.length + '</small></h2>' + rest.map(x => piece('m', x)).join('');
   $('list').innerHTML = h || '<p style="margin-top:22px">Nothing by that name.</p>';
   document.querySelectorAll('textarea').forEach(grow);
   bar();
@@ -207,21 +229,24 @@ function piece(kind, x){
   let h = '<div class="piece' + (changes.has(key) ? ' changed' : '') + '" data-key="' + esc(key) + '">'
     + '<button class="head" aria-expanded="' + isOpen + '"><b>' + esc(name) + '</b><span>' + esc(blurb.slice(0, 120)) + '</span></button>';
   if(isOpen){
-    const id = k => esc(key + ':' + k);
+    const id = k => esc(key + ':' + k), c = changes.get(key) || {}, dk = k => k in c ? ' class="dirty"' : '';
     h += '<div class="body">'
-      + '<div class="two"><div><label for="' + id('name') + '">name</label><input type="text" id="' + id('name') + '" data-k="name" value="' + esc(name) + '" spellcheck="false"></div>'
-      + '<div><label for="' + id('finish') + '">finish</label><input type="number" min="0" max="100" id="' + id('finish') + '" data-k="finish" value="' + esc(val(kind, x, 'finish') == null ? '' : val(kind, x, 'finish')) + '"></div></div>'
-      + '<label for="' + id('blurb') + '">blurb</label><textarea id="' + id('blurb') + '" data-k="blurb">' + esc(blurb) + '</textarea>'
-      + '<label for="' + id('tags') + '">tags, with commas between</label><input type="text" id="' + id('tags') + '" data-k="tags" value="' + esc((val(kind, x, 'tags') || []).join(', ')) + '" spellcheck="false">';
+      + '<p class="part">' + (kind === 's' ? 'On the hub' : 'On the master list') + '</p>'
+      + '<p class="what">' + (kind === 's' ? 'How this piece is listed on the front page.' : 'Not published. These words are kept for later.') + '</p>'
+      + '<div class="two"><div><label for="' + id('name') + '">name</label><input type="text"' + dk('name') + ' id="' + id('name') + '" data-k="name" value="' + esc(name) + '" spellcheck="false"></div>'
+      + '<div><label for="' + id('finish') + '">finish</label><input type="number"' + dk('finish') + ' min="0" max="100" id="' + id('finish') + '" data-k="finish" value="' + esc(val(kind, x, 'finish') == null ? '' : val(kind, x, 'finish')) + '"></div></div>'
+      + '<label for="' + id('blurb') + '">blurb</label><textarea' + dk('blurb') + ' id="' + id('blurb') + '" data-k="blurb">' + esc(blurb) + '</textarea>'
+      + '<label for="' + id('tags') + '">tags, with commas between</label><input type="text"' + dk('tags') + ' id="' + id('tags') + '" data-k="tags" value="' + esc((val(kind, x, 'tags') || []).join(', ')) + '" spellcheck="false">';
     if(kind === 's'){
       const dist = val('s', x, 'district'), also = val('s', x, 'also') || [];
-      h += '<label for="' + id('district') + '">section</label><select id="' + id('district') + '" data-k="district">'
+      h += '<label for="' + id('district') + '">section</label><select' + dk('district') + ' id="' + id('district') + '" data-k="district">'
         + S.districts.map(d => '<option value="' + esc(d.id) + '"' + (d.id === dist ? ' selected' : '') + '>' + esc(d.name) + '</option>').join('') + '</select>'
         + '<label>also shown in</label><div class="also">'
         + S.districts.filter(d => d.id !== dist).map(d => '<label><input type="checkbox" data-k="also" value="' + esc(d.id) + '"' + (also.includes(d.id) ? ' checked' : '') + '>' + esc(d.name) + '</label>').join('') + '</div>'
-        + '<p style="margin-top:14px"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url.replace('https://', '')) + '</a></p>'
-        + '<div class="old"><button class="q" data-old="1">earlier versions</button><ul></ul></div>'
-        + '<div class="old">' + pagePanel(x) + '</div>';
+        + '<div class="old"><button class="q" data-old="1">earlier versions of the name, blurb and tags</button><ul></ul></div>'
+        + '<p class="part">Inside the piece</p>'
+        + '<p class="what">The words on its own page, at <a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url.replace('https://', '')) + '</a></p>'
+        + '<div class="inside">' + pagePanel(x) + '</div>';
     }
     h += '</div>';
   }
@@ -229,15 +254,28 @@ function piece(kind, x){
 }
 /* ---------- the words inside a piece's own page ---------- */
 const pathOf = x => x.url.replace('https://opposite.city/', '') + 'index.html';
-const NAMES = { html:'in the page', attr:'', js:'written by the page\u2019s code' };
+const GROUPS = [['screen', 'On the screen'], ['share', 'For search and shared links'], ['code', 'Written by the page’s code: hints and messages']];
+const groupOf = s => s.kind === 'js' ? 'code' : (s.kind === 'attr' && /shared links/.test(s.label || '') ? 'share' : 'screen');
 function pagePanel(x){
   const pg = pages.get(x.slug);
-  if(!pg) return '<button class="q" data-page="' + esc(x.slug) + '">text inside the page</button>';
+  if(!pg) return '<button class="q" data-page="' + esc(x.slug) + '">show the words inside the page</button>';
   if(pg.state) return '<p>' + esc(pg.state) + '</p>';
   if(!pg.segs.length) return '<p>No words found in this page.</p>';
-  return '<p style="margin-bottom:4px">' + pg.segs.length + ' pieces of text in ' + esc(pg.path) + '. Change the words; leave anything in angle brackets or curly braces alone.</p>'
-    + pg.segs.map((s, i) => '<label for="' + esc('p:' + x.slug + ':' + i) + '">' + esc(s.label || NAMES[s.kind]) + '</label>'
-      + '<textarea class="seg" id="' + esc('p:' + x.slug + ':' + i) + '" data-seg="' + i + '" data-slug="' + esc(x.slug) + '">' + esc(i in pg.vals ? pg.vals[i] : s.text) + '</textarea>').join('');
+  const q = (pg.q || '').trim().toLowerCase();
+  const box = i => {
+    const s = pg.segs[i], id = esc('p:' + x.slug + ':' + i), v = i in pg.vals ? pg.vals[i] : s.text;
+    return '<div class="sg"' + (q && !v.toLowerCase().includes(q) ? ' hidden' : '') + '>'
+      + (s.label ? '<label for="' + id + '">' + esc(s.label) + '</label>' : '')
+      + '<textarea class="seg' + (i in pg.vals ? ' dirty' : '') + '" id="' + id + '" data-seg="' + i + '" data-slug="' + esc(x.slug) + '"'
+      + (s.label ? '' : ' aria-label="' + esc(s.text.slice(0, 60)) + '"') + '>' + esc(v) + '</textarea></div>';
+  };
+  let h = '<p class="what">' + pg.segs.length + ' pieces of text. Change the words; leave anything in angle brackets or curly braces alone.</p>';
+  if(pg.segs.length > 12) h += '<input type="text" style="margin-top:10px" data-pf="' + esc(x.slug) + '" placeholder="find words in this page" aria-label="find words in this page" autocomplete="off" spellcheck="false" value="' + esc(pg.q || '') + '">';
+  for(const [g, title] of GROUPS){
+    const ix = pg.segs.map((s, i) => i).filter(i => groupOf(pg.segs[i]) === g);
+    if(ix.length) h += '<p class="sub">' + title + ' · ' + ix.length + '</p>' + ix.map(box).join('');
+  }
+  return h;
 }
 async function openPage(slug){
   const x = S.surfaces.find(x => x.slug === slug), pg = { path:pathOf(x), segs:[], vals:{}, state:'reading the page' };
@@ -352,11 +390,13 @@ function note(key, k, v){
   bar();
 }
 function bar(){
-  const n = changes.size, pn = pageCount();
-  $('bar').style.display = n + pn ? 'block' : 'none';
-  $('count').textContent = [n ? n + (n === 1 ? ' piece changed' : ' pieces changed') : '', pn ? pn + (pn === 1 ? ' page changed' : ' pages changed') : ''].filter(Boolean).join(' · ');
-  $('save').disabled = !token;
-  if(n + pn && !token) $('count').textContent += ' · a token is needed to save';
+  const n = changes.size, pn = pageCount(), any = n + pn;
+  $('count').textContent = any
+    ? [n ? n + (n === 1 ? ' listing changed' : ' listings changed') : '', pn ? pn + (pn === 1 ? ' page changed' : ' pages changed') : ''].filter(Boolean).join(' \u00b7 ') + (token ? '' : ' \u00b7 a token is needed to save')
+    : 'Nothing changed yet.';
+  $('save').textContent = any ? 'save \u00b7 goes live at once' : 'save';
+  $('save').disabled = !token || !any;
+  $('drop').hidden = !any;
 }
 
 $('list').addEventListener('click', e => {
@@ -375,9 +415,15 @@ $('list').addEventListener('click', e => {
 });
 $('list').addEventListener('input', e => {
   const t = e.target, k = t.dataset.k;
+  if(t.dataset.pf){
+    const pg = pages.get(t.dataset.pf), q = t.value.trim().toLowerCase(); pg.q = t.value;
+    t.closest('.inside').querySelectorAll('.sg').forEach(d => { const a = d.querySelector('textarea'); d.hidden = !!q && !a.value.toLowerCase().includes(q); if(!d.hidden) grow(a); });
+    return;
+  }
   if(t.dataset.seg){
     const pg = pages.get(t.dataset.slug), i = +t.dataset.seg;
     if(t.value === pg.segs[i].text) delete pg.vals[i]; else pg.vals[i] = t.value;
+    t.classList.toggle('dirty', i in pg.vals);
     grow(t); bar(); return;
   }
   if(!k) return;
@@ -387,6 +433,7 @@ $('list').addEventListener('input', e => {
   else if(k === 'also') note(key, k, [...p.querySelectorAll('[data-k=also]:checked')].map(c => c.value));
   else if(k === 'district'){ note(key, k, t.value); note(key, 'also', (val('s', find(key), 'also') || []).filter(a => a !== t.value)); draw(); }
   else note(key, k, t.value);
+  if(t.type !== 'checkbox' && t.isConnected) t.classList.toggle('dirty', k in (changes.get(key) || {}));
   if(t.tagName === 'TEXTAREA') grow(t);
 });
 $('find').addEventListener('input', draw);
@@ -456,9 +503,24 @@ function remember(slugs, pslugs){
 $('save').onclick = save;
 $('drop').onclick = () => { changes.clear(); pages.clear(); draw(); say('Changes discarded. Nothing was saved.'); };
 
-$('tok').value = token;
-$('keep').onclick = () => { token = $('tok').value.trim(); if(token){ store.set('edit.token', token); say('Token kept on this device.'); } bar(); };
-$('forget').onclick = () => { token = ''; $('tok').value = ''; store.del('edit.token'); say('Token forgotten.'); bar(); };
+function keyUI(){ $('has').hidden = !token; $('ask').hidden = !!token; $('tok').value = ''; }
+async function check(){
+  keyUI(); if(!token) return;
+  $('hasSay').textContent = 'A token is kept on this device. Asking GitHub about it.';
+  try{
+    const r = await gh('');
+    $('hasSay').textContent = r.permissions && r.permissions.push === false
+      ? 'GitHub knows this token, but it may not write to this repository. Press change and paste one with Contents: read and write.'
+      : 'A token is kept on this device and GitHub accepts it. It stays until you press forget.';
+  }catch(e){
+    $('hasSay').textContent = e.status === 401 ? 'GitHub refused the token kept here: it is wrong or has expired. Press change and paste a new one.'
+      : 'A token is kept on this device. GitHub could not be asked about it just now.';
+  }
+}
+$('keep').onclick = () => { const v = $('tok').value.trim(); if(!v) return; token = v; store.set('edit.token', token); say(''); check(); bar(); if(!S) load(); };
+$('change').onclick = () => { $('ask').hidden = false; $('tok').focus(); };
+$('forget').onclick = () => { token = ''; store.del('edit.token'); keyUI(); say('Token forgotten. Nothing can be saved from this device until one is pasted again.'); bar(); };
+check();
 addEventListener('beforeunload', e => { if(changes.size + pageCount()){ e.preventDefault(); e.returnValue = ''; } });
 
 load();
