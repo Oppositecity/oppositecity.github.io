@@ -497,6 +497,25 @@
    "url": "https://opposite.city/sortition-congress/"
   },
   {
+   "slug": "three-indexes",
+   "name": "THREE INDEXES",
+   "district": "atlas",
+   "status": "live",
+   "finish": 80,
+   "tags": [
+    "thompson motif index",
+    "propp",
+    "atu tale types",
+    "folklore",
+    "matching"
+   ],
+   "blurb": "A story read three ways at once: the motifs that survive retelling, the slot each occupies in the sequence, the whole tale it is a version of. Paste a myth, a fairy tale, a news item, a dream, something that happened to you. Matching runs entirely in the page, against 45,518 motifs and 1,553 tale types rebuilt from open sources, and the story comes back with the words each index caught marked where they stand. Follow a motif to the tales that carry it, or a tale to the motifs it is made of and the tales that share them.",
+   "url": "https://opposite.city/three-indexes/",
+   "also": [
+    "words"
+   ]
+  },
+  {
    "slug": "ximeremix",
    "name": "XIMEREMIX",
    "district": "band",
