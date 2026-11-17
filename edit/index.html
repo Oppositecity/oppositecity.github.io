@@ -45,6 +45,7 @@ label{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase
 .old li{list-style:none;border-left:2px solid #7fe3ff;padding:2px 0 2px 10px;margin-top:12px}
 .old .when{color:#7fe3ff}
 .old .txt{white-space:pre-wrap}
+textarea.seg{min-height:0}
 #bar{position:fixed;left:0;right:0;bottom:0;background:#000;border-top:1px solid #fff;
   padding:12px 20px calc(12px + env(safe-area-inset-bottom,0px));display:none}
 #bar .in{max-width:720px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -53,7 +54,7 @@ label{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase
 </head>
 <body>
 <h1>THE EDITOR</h1>
-<p>Every piece's name, blurb, tags and section, in boxes. Save writes the change to the site at once: the hub shows it within a minute or two. Nothing is lost: every earlier wording stays in the site's history, and each piece can show its earlier versions and put one back.</p>
+<p>Every piece's name, blurb, tags and section, in boxes, and the words inside each piece's own page. Save writes the change to the site at once: the hub shows it within a minute or two. Nothing is lost: every earlier wording stays in the site's history, and each piece can show its earlier versions and put one back.</p>
 <p style="margin-top:8px"><a href="/">back to the city</a> · <a href="/yard/">the yard</a></p>
 
 <div id="key">
@@ -87,8 +88,13 @@ label{display:block;font-size:13px;letter-spacing:.14em;text-transform:uppercase
      surfaces.json          the published registry (the hub reads this)
      index.html             the hub's lean copy and its fallback list
      registry-master.json   the fuller list
-   It never changes a slug or an address, so sitemap.xml is not touched,
-   and it never touches a piece's own page.
+   It never changes a slug or an address, so sitemap.xml is not touched.
+
+   "Text inside the page" reads a piece's own index.html and finds its words:
+   the text between tags, the description and share tags, placeholders, and
+   sentences the page's code writes. Each goes in a box. A save splices the
+   new words into the page exactly where the old ones were and changes nothing
+   else; if the page's code would no longer parse, nothing is saved.
 
    The token never leaves this device except to api.github.com.
    ===================================================================== */
@@ -103,6 +109,7 @@ const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return n
 let token = store.get('edit.token') || '';
 let S = null, M = null;          // surfaces.json and registry-master.json as read
 const changes = new Map();       // key -> { field: value }; key is "s:slug" or "m:slug"
+const pages = new Map();         // slug -> { path, segs, vals:{ index: new text }, state }
 const open = new Set();
 
 /* ---------- GitHub ---------- */
@@ -213,12 +220,125 @@ function piece(kind, x){
         + '<label>also shown in</label><div class="also">'
         + S.districts.filter(d => d.id !== dist).map(d => '<label><input type="checkbox" data-k="also" value="' + esc(d.id) + '"' + (also.includes(d.id) ? ' checked' : '') + '>' + esc(d.name) + '</label>').join('') + '</div>'
         + '<p style="margin-top:14px"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.url.replace('https://', '')) + '</a></p>'
-        + '<div class="old"><button class="q" data-old="1">earlier versions</button><ul></ul></div>';
+        + '<div class="old"><button class="q" data-old="1">earlier versions</button><ul></ul></div>'
+        + '<div class="old">' + pagePanel(x) + '</div>';
     }
     h += '</div>';
   }
   return h + '</div>';
 }
+/* ---------- the words inside a piece's own page ---------- */
+const pathOf = x => x.url.replace('https://opposite.city/', '') + 'index.html';
+const NAMES = { html:'in the page', attr:'', js:'written by the page\u2019s code' };
+function pagePanel(x){
+  const pg = pages.get(x.slug);
+  if(!pg) return '<button class="q" data-page="' + esc(x.slug) + '">text inside the page</button>';
+  if(pg.state) return '<p>' + esc(pg.state) + '</p>';
+  if(!pg.segs.length) return '<p>No words found in this page.</p>';
+  return '<p style="margin-bottom:4px">' + pg.segs.length + ' pieces of text in ' + esc(pg.path) + '. Change the words; leave anything in angle brackets or curly braces alone.</p>'
+    + pg.segs.map((s, i) => '<label for="' + esc('p:' + x.slug + ':' + i) + '">' + esc(s.label || NAMES[s.kind]) + '</label>'
+      + '<textarea class="seg" id="' + esc('p:' + x.slug + ':' + i) + '" data-seg="' + i + '" data-slug="' + esc(x.slug) + '">' + esc(i in pg.vals ? pg.vals[i] : s.text) + '</textarea>').join('');
+}
+async function openPage(slug){
+  const x = S.surfaces.find(x => x.slug === slug), pg = { path:pathOf(x), segs:[], vals:{}, state:'reading the page' };
+  pages.set(slug, pg); draw();
+  try{ pg.segs = scan(await fileAt(pg.path, BRANCH)); pg.state = ''; }
+  catch(e){ pg.state = 'Could not read the page. ' + e.message; }
+  draw();
+}
+const dec = (() => { const t = document.createElement('textarea'); return s => { t.innerHTML = s; return t.value; }; })();
+const wordy = s => /[A-Za-z\u00c0-\u024f]{2}/.test(s);
+/* find every piece of text in a page's source, with where it sits */
+function scan(src){
+  const out = [], low = src.toLowerCase();
+  const push = (a, b, kind, label) => {
+    const raw = src.slice(a, b), text = kind === 'js' ? unjs(raw.slice(1, -1)) : dec(raw);
+    if(text == null || !wordy(text)) return;
+    let nth = 0; for(const s of out) if(s.kind === kind && s.raw === raw) nth++;
+    out.push({ a, b, raw, kind, label, text, nth });
+  };
+  let i = 0;
+  while(i < src.length){
+    if(src[i] !== '<'){
+      let j = src.indexOf('<', i); if(j < 0) j = src.length;
+      const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(src.slice(i, j));
+      if(m[2].length > 1) push(i + m[1].length, j - m[3].length, 'html');
+      i = j; continue;
+    }
+    if(low.startsWith('<!--', i)){ const j = src.indexOf('-->', i); i = j < 0 ? src.length : j + 3; continue; }
+    // the tag itself, quotes respected
+    let j = i + 1, q = '';
+    for(; j < src.length; j++){ const c = src[j]; if(q){ if(c === q) q = ''; } else if(c === '"' || c === "'") q = c; else if(c === '>') break; }
+    const tag = src.slice(i, j + 1), name = (/^<\s*([a-z0-9-]+)/i.exec(tag) || [])[1];
+    const attr = n => { const m = new RegExp('\\s' + n + '\\s*=\\s*"([^"]*)"', 'i').exec(tag); return m ? { a:i + m.index + m[0].length - 1 - m[1].length, v:m[1] } : null; };
+    if(name && name.toLowerCase() === 'meta'){
+      const which = (attr('name') || attr('property') || {}).v || '';
+      if(/^(description|og:description|og:title|twitter:description|twitter:title)$/i.test(which)){ const c = attr('content'); if(c) push(c.a, c.a + c.v.length, 'attr', which.toLowerCase() + ' (for search and shared links)'); }
+    }else if(name){
+      for(const n of ['placeholder', 'aria-label', 'alt']){ const c = attr(n); if(c) push(c.a, c.a + c.v.length, 'attr', n === 'placeholder' ? 'faint text in a box' : 'read aloud to screen readers'); }
+    }
+    i = j + 1;
+    const n = name ? name.toLowerCase() : '';
+    if(n === 'script' || n === 'style'){
+      let e = low.indexOf('</' + n, i); if(e < 0) e = src.length;
+      if(n === 'script' && !/\ssrc\s*=/.test(tag) && !/type\s*=\s*"(application\/(ld\+)?json|importmap|text\/plain)/i.test(tag)) strings(src, i, e, push);
+      i = e;
+    }
+  }
+  return out;
+}
+/* sentences inside a script: plain quoted strings of three words or more */
+function strings(src, a, b, push){
+  for(let i = a; i < b; i++){
+    const c = src[i];
+    if(c === '/' && src[i + 1] === '/'){ const j = src.indexOf('\n', i); i = j < 0 || j > b ? b : j; continue; }
+    if(c === '/' && src[i + 1] === '*'){ const j = src.indexOf('*/', i); i = j < 0 || j > b ? b : j + 1; continue; }
+    if(c === '`'){ for(i++; i < b && src[i] !== '`'; i++) if(src[i] === '\\') i++; continue; }
+    if(c !== '"' && c !== "'") continue;
+    let j = i + 1;
+    for(; j < b && src[j] !== c && src[j] !== '\n'; j++) if(src[j] === '\\') j++;
+    if(src[j] !== c){ i = j; continue; }
+    const body = src.slice(i + 1, j), t = unjs(body);
+    if(t != null && t.length >= 12 && t.trim().split(/\s+/).length >= 3 && !/[<>{};=()\[\]\\]|^\s*[.#@]|\bpx\b|\d+px|rgba?\b|,\s*\d|monospace|serif|Courier/.test(t)) push(i, j + 1, 'js');
+    i = j;
+  }
+}
+function unjs(s){
+  let ok = true;
+  const t = s.replace(/\\(u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g, (m, e) => {
+    if(e[0] === 'u' || (e[0] === 'x' && e.length === 3)) return String.fromCharCode(parseInt(e.slice(1), 16));
+    if(e === 'n') return '\n'; if(e === 't') return '\t'; if(e === "'" || e === '"' || e === '\\') return e;
+    ok = false; return m;
+  });
+  return ok ? t : null;
+}
+/* the new words, written the way that place in the source needs them */
+function enc(seg, v){
+  if(seg.kind === 'html') return v.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  if(seg.kind === 'attr') return esc(v).replace(/\n/g, ' ');
+  const q = seg.raw[0], ascii = /\\u/.test(seg.raw);
+  return q + v.replace(/\\/g, '\\\\').replace(new RegExp(q, 'g'), '\\' + q).replace(/\n/g, '\\n').replace(/\t/g, '\\t')
+    .replace(/[\u0080-\uffff]/g, c => ascii ? '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0') : c) + q;
+}
+const scripts = src => { const out = []; src.replace(/<script(?![^>]*\ssrc\s*=)(?![^>]*type\s*=\s*"(?:module|application\/(?:ld\+)?json|importmap|text\/plain))[^>]*>([\s\S]*?)<\/script/gi, (m, c) => { out.push(c); return m; }); return out; };
+const parses = code => { try{ new Function(code); return true; }catch(e){ return !(e instanceof SyntaxError); } };
+/* splice a page's edits into a freshly read copy of it */
+function rewrite(slug, src){
+  const pg = pages.get(slug), fresh = scan(src), todo = [];
+  for(const i in pg.vals){
+    const s = pg.segs[i], f = fresh.find(f => f.kind === s.kind && f.raw === s.raw && f.nth === s.nth);
+    if(!f) throw new Error(pg.path + ' changed since it was read here, around \u201c' + s.text.slice(0, 40) + '\u201d. Reload the page and make the change again');
+    todo.push([f, enc(s, pg.vals[i])]);
+  }
+  todo.sort((x, y) => y[0].a - x[0].a);
+  let out = src;
+  for(const [f, v] of todo) out = out.slice(0, f.a) + v + out.slice(f.b);
+  const was = scripts(src), now = scripts(out);
+  for(let k = 0; k < now.length; k++) if(parses(was[k]) && !parses(now[k])) throw new Error('that change would break the code of ' + pg.path);
+  return out;
+}
+const pageCount = () => [...pages.values()].filter(p => Object.keys(p.vals).length).length;
+
 function grow(t){ t.style.height = 'auto'; t.style.height = (t.scrollHeight + 4) + 'px'; }
 function find(key){ const kind = key[0], slug = key.slice(2); return (kind === 's' ? S : M).surfaces.find(x => x.slug === slug); }
 function same(a, b){ return JSON.stringify(a == null ? '' : a) === JSON.stringify(b == null ? '' : b); }
@@ -232,15 +352,17 @@ function note(key, k, v){
   bar();
 }
 function bar(){
-  const n = changes.size;
-  $('bar').style.display = n ? 'block' : 'none';
-  $('count').textContent = n + (n === 1 ? ' piece changed' : ' pieces changed');
+  const n = changes.size, pn = pageCount();
+  $('bar').style.display = n + pn ? 'block' : 'none';
+  $('count').textContent = [n ? n + (n === 1 ? ' piece changed' : ' pieces changed') : '', pn ? pn + (pn === 1 ? ' page changed' : ' pages changed') : ''].filter(Boolean).join(' · ');
   $('save').disabled = !token;
-  if(n && !token) $('count').textContent += ' · a token is needed to save';
+  if(n + pn && !token) $('count').textContent += ' · a token is needed to save';
 }
 
 $('list').addEventListener('click', e => {
   const head = e.target.closest('.head'), old = e.target.closest('[data-old]'), back = e.target.closest('[data-back]');
+  const pb = e.target.closest('[data-page]');
+  if(pb){ openPage(pb.dataset.page); return; }
   if(head){ const key = head.parentElement.dataset.key; if(open.has(key)) open.delete(key); else open.add(key); draw(); }
   else if(old) earlier(old.closest('.piece'));
   else if(back){
@@ -252,7 +374,13 @@ $('list').addEventListener('click', e => {
   }
 });
 $('list').addEventListener('input', e => {
-  const t = e.target, k = t.dataset.k; if(!k) return;
+  const t = e.target, k = t.dataset.k;
+  if(t.dataset.seg){
+    const pg = pages.get(t.dataset.slug), i = +t.dataset.seg;
+    if(t.value === pg.segs[i].text) delete pg.vals[i]; else pg.vals[i] = t.value;
+    grow(t); bar(); return;
+  }
+  if(!k) return;
   const p = t.closest('.piece'), key = p.dataset.key;
   if(k === 'tags') note(key, k, t.value.split(',').map(s => s.trim()).filter(Boolean));
   else if(k === 'finish') note(key, k, t.value === '' ? find(key).finish : Math.max(0, Math.min(100, Math.round(+t.value) || 0)));
@@ -287,9 +415,10 @@ async function earlier(p){
 
 /* ---------- saving: one commit, built on whatever is newest ---------- */
 async function save(){
-  if(!token || !changes.size) return;
+  if(!token || !(changes.size + pageCount())) return;
   $('save').disabled = true;
   const slugs = [...changes.keys()].map(k => k.slice(2));
+  const pslugs = [...pages.keys()].filter(s => Object.keys(pages.get(s).vals).length);
   try{
     for(let attempt = 0; ; attempt++){
       say('saving');
@@ -298,16 +427,18 @@ async function save(){
       const [s, m, h] = await Promise.all([fileAt(FILES.s, head), fileAt(FILES.m, head), fileAt(FILES.h, head)]);
       const sd = JSON.parse(s), md = JSON.parse(m);
       apply(sd, md);
-      const tree = [[FILES.s, writeSurfaces(sd), s], [FILES.m, writeMaster(md), m], [FILES.h, writeHub(h, sd), h]]
-        .filter(f => f[1] !== f[2]).map(f => ({ path:f[0], mode:'100644', type:'blob', content:f[1] }));
-      if(!tree.length){ S = sd; M = md; changes.clear(); draw(); say('Nothing differs from what is live.'); return; }
+      const all = [[FILES.s, writeSurfaces(sd), s], [FILES.m, writeMaster(md), m], [FILES.h, writeHub(h, sd), h]];
+      for(const slug of pslugs){ const path = pages.get(slug).path, src = await fileAt(path, head); all.push([path, rewrite(slug, src), src]); }
+      const tree = all.filter(f => f[1] !== f[2]).map(f => ({ path:f[0], mode:'100644', type:'blob', content:f[1] }));
+      if(!tree.length){ S = sd; M = md; changes.clear(); pages.clear(); draw(); say('Nothing differs from what is live.'); return; }
       const t = await gh('/git/trees', { method:'POST', body:{ base_tree:base, tree } });
-      const msg = 'registry: ' + (slugs.length > 4 ? slugs.length + ' pieces' : slugs.join(', ')) + ' edited in the editor';
+      const msg = [slugs.length ? 'registry: ' + (slugs.length > 4 ? slugs.length + ' pieces' : slugs.join(', ')) : '',
+        pslugs.length ? 'words in ' + (pslugs.length > 4 ? pslugs.length + ' pages' : pslugs.join(', ')) : ''].filter(Boolean).join('; ') + ' edited in the editor';
       const c = await gh('/git/commits', { method:'POST', body:{ message:msg, tree:t.sha, parents:[head] } });
       try{ await gh('/git/refs/heads/' + BRANCH, { method:'PATCH', body:{ sha:c.sha, force:false } }); }
       catch(e){ if(e.status === 422 && attempt < 2) continue; throw e; }   // the site moved while saving: read again and retry
-      remember(slugs);
-      S = sd; M = md; changes.clear(); draw();
+      remember(slugs, pslugs);
+      S = sd; M = md; changes.clear(); pages.clear(); draw();
       say('Saved. Live on the hub within a minute or two. Check with ?v=2 on the address if it looks unchanged.');
       return;
     }
@@ -316,18 +447,19 @@ async function save(){
   }finally{ bar(); }
 }
 /* a second copy of what was replaced, on this device, in case */
-function remember(slugs){
+function remember(slugs, pslugs){
   let log = []; try{ log = JSON.parse(store.get('edit.undo') || '[]'); }catch(e){}
+  for(const slug of pslugs){ const pg = pages.get(slug); for(const i in pg.vals) log.push({ at:new Date().toISOString(), page:pg.path, was:pg.segs[i].text, now:pg.vals[i] }); }
   for(const slug of slugs){ const x = (S.surfaces.find(x => x.slug === slug) || M.surfaces.find(x => x.slug === slug)); if(x) log.push({ at:new Date().toISOString(), slug, name:x.name, blurb:x.blurb, tags:x.tags }); }
   store.set('edit.undo', JSON.stringify(log.slice(-80)));
 }
 $('save').onclick = save;
-$('drop').onclick = () => { changes.clear(); draw(); say('Changes discarded. Nothing was saved.'); };
+$('drop').onclick = () => { changes.clear(); pages.clear(); draw(); say('Changes discarded. Nothing was saved.'); };
 
 $('tok').value = token;
 $('keep').onclick = () => { token = $('tok').value.trim(); if(token){ store.set('edit.token', token); say('Token kept on this device.'); } bar(); };
 $('forget').onclick = () => { token = ''; $('tok').value = ''; store.del('edit.token'); say('Token forgotten.'); bar(); };
-addEventListener('beforeunload', e => { if(changes.size){ e.preventDefault(); e.returnValue = ''; } });
+addEventListener('beforeunload', e => { if(changes.size + pageCount()){ e.preventDefault(); e.returnValue = ''; } });
 
 load();
 </script>
