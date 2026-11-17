@@ -270,7 +270,9 @@ Not found anywhere on this machine or in the account's repositories
 
 Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 
-- [ ] `pentimento-next/`: clearer on a phone, same concept and intro copy.
+- [~] `pentimento-next/`: clearer on a phone, same concept and intro copy.
+  Built and live as a preview 2026-11-16, brightness change included at the
+  owner's yes. Waiting on the owner's look before it replaces `pentimento/`.
   Seen at 390 wide on 2026-11-16: the ladder of layers sits on top of the
   words; the top line reads "a 42% · 63.2 words still in play" as if "a"
   began a sentence; the likeliest word is small and buried because size
