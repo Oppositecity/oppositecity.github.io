@@ -1,0 +1,23 @@
+name: ephemeris elements
+# Once a week, read the current orbital elements for the bodies EPHEMERIS
+# casts its chart on and commit them, so the sky it reads is the real one.
+# It changes one data file and nothing else.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/ephemeris-elements.py
+      - run: |
+          git diff --quiet -- ephemeris/elements.json && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ephemeris/elements.json
+          git commit -m "ephemeris: this week's orbital elements"
+          git push
