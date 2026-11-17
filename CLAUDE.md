@@ -76,6 +76,14 @@ overwriting the other's work.
   the other sections it sits in.
 - One folder per surface, each with its own `index.html`.
 - `registry-master.json`: the fuller list, including unpublished work.
+- `edit/`: the owner's editor, unlisted. Names, blurbs, tags and sections in
+  boxes; a save writes `surfaces.json`, the hub's two copies and
+  `registry-master.json` in one commit, straight to `main`, with the owner's
+  GitHub token kept on their device. By the owner's choice (2026-11-16) this
+  is the one thing that commits to `main` without a pull request. Its commits
+  read `registry: <slug> edited in the editor`. Pull before working: the
+  registry may have moved. It does not touch a piece's own page, so a page's
+  description tag can fall behind its blurb.
 - `venn/`: an unlisted experiment. Leave it alone unless asked.
 - `poemstream/`: deliberately hidden from the hub, sitemap and search. Keep
   it hidden.
