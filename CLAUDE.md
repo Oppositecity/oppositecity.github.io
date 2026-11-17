@@ -154,8 +154,9 @@ deciding it.
   (DRAM gross margin) is unverified and must be checked or cut first.
   (The build is not in this repo; waiting on it.)
 - [ ] `clef/`: needs its text. (The owner's to write.)
-- [ ] Folklore classifiers (Thompson motif index, ATU tale types): finish and
-  deploy. Ask for the current builds. (Not in this repo; waiting on them.)
+- [~] Folklore classifiers (Thompson motif index, ATU tale types): the build
+  of 2026-10-02 is in at `three-indexes/`, unlisted, on the `review` branch.
+  Waiting on the owner's yes to publish.
 
 ### 3. Band and sound
 
@@ -197,83 +198,71 @@ time, in `ximeremix-next/`, stopping for the owner after each.
 ### 6. Audit of 2026-11-16
 
 Every page was loaded at phone, laptop and wide sizes with `scripts/sweep.py`
-and looked at. One surface per commit, in this order, stopping after each.
-Nothing here changes a piece's copy or concept.
+and looked at. The work sits on the branch `review`, one commit per surface,
+not pushed. The owner looks at it, then says which commits go live.
 
-Broken or wrong now
+Done on `review`
 
 - [x] `sitemap.xml` was missing `language-instrument/`. `scripts/check.sh` now
   fails when the registry, the hub's copies and the sitemap disagree.
-- [ ] `sator/` (unlisted): cannot run. It fetches `stats.json`, which was
-  never committed. Ask the owner for the file, or rebuild it from `sator/lang/`.
+- [x] `syllababbler/`: dark ground across the whole wide screen.
+- [x] `semantic-voyage/`: the loading line no longer runs past 100%.
+- [x] Text contrast: `dof/`, `split/`, `sortition-congress/`, `circlefornia/`.
+- [x] `signgularity/`: control rows wrap on a phone.
+- [x] `lode/`: instructions wrap on a phone.
+- [x] `shellac/`: the record holds still under reduced motion.
+- [x] `sator/`: `stats.json` rebuilt by `scripts/sator-census.py`. The count
+  agrees with every uncapped list of examples the page already carried.
+- [x] A description and share tags on the 29 published pages that lacked
+  them, each taken from the piece's own blurb.
+- [x] `registry-master.json`: the 11 published pieces it lacked, and the 7 in
+  the yard. Their sections and finish scores there are Claude Code's guess.
+- [x] `three-indexes/` and `fall/`: finished builds found in the owner's
+  Downloads folder, brought in unlisted. The folklore pipeline that builds
+  THREE INDEXES stays outside this repo (`~/Downloads/folkfiles`).
+- [x] `/yard/`: one unlisted page listing everything built and not published.
+  Keep it current when a piece enters or leaves.
+- [x] `idiophone-next/`: publishing signs in at the account's own server and
+  reports a refused record with the server's reason.
+
+Looked at and left alone, with the reason
+
+- `agentic-entropy/` and `clef/` open zoomed in on a phone on purpose: the
+  whole chart would be unreadable. "Whole chart" is one tap away.
+- `kelp/`: its text colours were measured when it was made (see its CSS).
+- `descent/`, `pentimento/`, `clipper/` sit left on a wide screen. That is a
+  layout choice under revision; the owner's call.
+- `chip/`: its preset row scrolls sideways as a tape, with the next one
+  showing at the edge.
+- Small touch targets in `nimbus/`, `shellac/`, `kelp/`, `bz/`: needs a hand
+  on a real phone before changing anything.
+
+Still open
+
 - [ ] `ximeremix/`: the band handle `rainwatchbaseball.bsky.social` no longer
   resolves, so every load logs a failed request. Takes still arrive by account
-  id. Remove the handle or replace it. (Wait for part 5, which holds the page.)
-- [ ] `syllababbler/`: white bands either side of the dark column on a wide
-  screen; the page background is not set outside the column.
-- [ ] `semantic-voyage/`: the loading line runs past 100% ("charting · 123%"),
-  and each load asks for a `data.html` that is not there before falling back.
-- [ ] `idiophone/`: publishing signs in at `bsky.social` only, so an account
-  hosted elsewhere cannot publish; and its records hold decimals, which
-  atproto may refuse. Test with a real account. Fix with the shared sign-in below.
-- [ ] `registry-master.json` is stale: 11 published pieces are missing from
-  it (pentimento, apophasis, dof, language-instrument, slopflag, idiophone,
-  descent, margin-walker, agentic-entropy, clef, ximeremix); it still uses the
-  old section names; some entries are older names for pieces now live
-  (figure-ground-type is `split/`, slop-flag is `slopflag/`, musical-time-clock
-  looks like `polyrhythm/`); and lode, sator, crypsis, chip and rig are absent.
-  The owner decides the section names; then reconcile.
+  id. Fix inside part 5, which holds the page. It also has no share tags.
+- [ ] `idiophone/`: its records hold decimals, which atproto may refuse. Test
+  publishing with a real account before the preview replaces the live page.
+- [ ] `registry-master.json` still carries older names for pieces now live
+  (figure-ground-type is `split/`, slop-flag is `slopflag/`,
+  musical-time-clock looks like `polyrhythm/`). The owner says which to drop.
+- [ ] One shared atproto sign-in for `idiophone/`, `ximeremix/`,
+  `remix/give/` and `slopflag/`. Part 5 needs it too.
+- [ ] One shared "record what you hear, take it to XIMEREMIX" for `kelp/`,
+  `polyrhythm/`, `language-instrument/` and `chip/`. `idiophone-next/` has it.
+- [ ] Merged remote branches can be deleted.
+- [ ] `venn/` fails `scripts/check.sh` (no CSP tag). It is marked leave alone.
 
-Text contrast (a fixed rule)
+Not found anywhere on this machine or in the account's repositories
 
-- [ ] `dof/`: the whole page is dimmed on navy, title and intro included.
-- [ ] `kelp/`: the opening line and the control labels are dim and 10px.
-- [ ] `split/`: slider labels and the note are pale grey on white.
-- [ ] `sortition-congress/`: grey 11px labels on sage.
-- [ ] `circlefornia/`: 10px labels at low contrast over the map.
-- `aureole/` has the same fault; it waits for the rebuild in part 2.
-
-Viewer first
-
-- [ ] `agentic-entropy/` and `clef/`: on a phone the chart opens zoomed into
-  its top-left corner with the title cut off. Open on the whole chart.
-- [ ] `signgularity/` and `chip/`: rows of controls run off the right edge on
-  a phone and scroll sideways with nothing to show there is more.
-- [ ] `descent/`, `pentimento/`, `clipper/`, `ximeremix/`: on a wide screen
-  the page is pinned to the left edge or stretched the full width.
-- [ ] `lode/` (unlisted): its instructions are clipped on a phone.
-- [ ] No `prefers-reduced-motion` handling in `circlefornia/`, `fullcolor/`,
-  `lode/`, `shellac/`, `remix/give/`.
-- [ ] Touch targets under 30px: the words in `nimbus/`, most of `shellac/`
-  and `kelp/`, the sliders in `bz/`.
-- Keyboard use was not checked by hand; about 25 pages bind no keys at all.
-
-Site-wide
-
-- [ ] About 30 pages have no description or share tags, so a pasted link
-  shows nothing. One mechanical pass, each taken from the piece's own blurb.
-- [ ] One shared atproto sign-in (handle, the account's own server, app
-  password) for `idiophone/`, `ximeremix/`, `remix/give/` and `slopflag/`.
-  This is the first code worth sharing; part 5 needs it too.
-- [ ] One shared "record what you hear, take it to XIMEREMIX" for the sound
-  pieces. `idiophone-next/` has it; `kelp/`, `polyrhythm/`,
-  `language-instrument/` and `chip/` could carry the same few lines.
-- [ ] Merged remote branches can be deleted (audit-fixes, rig-and-chip,
-  promote-shellac-ximeremix and others).
-
-Unfinished and unpublished
-
-- In the repo, unlisted: `crypsis/` (looks finished; publish?), `lode/`,
-  `sator/`, `chip/` and `rig/` (band tools; list on `/band/`?), `fullcolor/`
-  (a start button and nothing else until pressed), `skew` (pull request 7),
-  the front door branch. Each needs the owner's yes or no.
-- Live with a low finish score: `nimbus/` 60, `slopflag/` 60, `clipper/` 65.
-- In the master list as live but not in this repo: text-temperature,
-  drone-clock, guitar-tuner, datamosh, glitch-word-processor, pixel-converter,
-  organology-organ, top-chicken, bartlebluesky, lexicon-devil, the-receipt,
-  n-10-122. Bringing them in needs the builds.
-- New, proposed: a reader for `idiophone/` that plays anyone's published
-  objects from their handle; Organology Organ beside it.
+- The `aureole/` etymology rebuild, Accursed Share, and these pieces the
+  master list calls live: text-temperature, drone-clock, guitar-tuner,
+  datamosh, glitch-word-processor, pixel-converter, organology-organ,
+  top-chicken, bartlebluesky, lexicon-devil, the-receipt, n-10-122.
+- Found but not brought in: `semantic-distance.html` (an early form of
+  `room/`), a Lombardi tool that needs a local server, and source for heir
+  and a slop congress that are not web pages.
 
 ### Later, only if needed
 
