@@ -270,7 +270,9 @@ Not found anywhere on this machine or in the account's repositories
 
 Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 
-- [ ] `pentimento-next/`: clearer on a phone, same concept and intro copy.
+- [~] `pentimento-next/`: clearer on a phone, same concept and intro copy.
+  Built and live as a preview 2026-11-16, brightness change included at the
+  owner's yes. Waiting on the owner's look before it replaces `pentimento/`.
   Seen at 390 wide on 2026-11-16: the ladder of layers sits on top of the
   words; the top line reads "a 42% · 63.2 words still in play" as if "a"
   began a sentence; the likeliest word is small and buried because size
@@ -286,16 +288,17 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   over it, delete the preview, and update the blurb and tags in both
   registries (keyboard, hold to bow, objects kept, recording, hand-off) and
   remove it from `/yard/`.
-- [ ] Shared atproto sign-in, `/shared/atproto.js`: resolve a handle, find the
-  account's own server, sign in with an app password, write a record, upload
-  a blob. Take it from `ximeremix/` (`signInS`, `pdsFor`, `entryway`,
-  `callS`, `callBin`), which is the fullest. Move `idiophone-next/` to it
-  first as the test, then `remix/give/`, then `ximeremix-next/` in phase 1.
-- [ ] `idiophone/` reader: type a handle, list that account's
-  `city.opposite.idiophone.capture` records with `listRecords` (public, no
-  sign-in), and put any of them under the keys. Builds on the import that
-  `idiophone-next/` already has.
-- [ ] XIMEREMIX phase 1, after the owner answers `ximeremix/PHASE0.md`.
+- [~] Shared atproto plumbing, `/shared/atproto.js`: resolve a handle, find
+  the account's own server, sign in with an app password, write a record,
+  upload a file, list public records. Written 2026-11-16 and in use by
+  `idiophone-next/`. Still to move onto it: `remix/give/`, then
+  `ximeremix-next/` in phase 1. Do not change live `ximeremix/` for this.
+- [x] `idiophone-next/` reader: type a handle and that account's published
+  objects go under the keys. Tested against a stand-in server; no account has
+  published any yet.
+- [ ] XIMEREMIX phase 1. The owner said yes to the recommendations in
+  `ximeremix/PHASE0.md` on 2026-11-16: a track must have downloads open and
+  carry the tag `remixable`; ten minutes at most; use plyr's search. Next up.
 - [ ] Yard pieces the owner says yes to: add to `surfaces.json` with a blurb
   the owner approves, resync the hub, the fallback list and the sitemap, and
   take them off `/yard/`. `scripts/check.sh` confirms the sync.
