@@ -6,6 +6,14 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SPLIT — figure-ground type generator</title>
+<meta name="description" content="Figure-ground reversal type generator. Two tones only, always exact opposites — grid and pinwheel modes, up to 48 blades per glyph.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OPPOSITE CITY">
+<meta property="og:url" content="https://opposite.city/split/">
+<meta property="og:title" content="SPLIT">
+<meta property="og:description" content="Figure-ground reversal type generator. Two tones only, always exact opposites — grid and pinwheel modes, up to 48 blades per glyph.">
+<meta property="og:image" content="https://opposite.city/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root{ --ink:#111; --paper:#fafafa; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -17,13 +25,13 @@
     max-width:880px; margin:0 auto;
   }
   h1{ font-size:14px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
-  .sub{ opacity:.55; margin-bottom:22px; }
+  .sub{ margin-bottom:22px; }
   #stage{ width:100%; margin-bottom:26px; }
   #stage canvas{ width:100%; height:auto; display:block; }
   .row{ display:flex; align-items:center; gap:12px; margin:10px 0; flex-wrap:wrap; }
-  .row.off{ opacity:.25; pointer-events:none; }
-  label{ width:8.5em; flex-shrink:0; text-transform:uppercase; letter-spacing:.08em; font-size:12px; opacity:.75; }
-  .val{ width:3.5em; text-align:right; font-size:12px; opacity:.6; }
+  .row.off{ opacity:.4; pointer-events:none; }
+  label{ width:8.5em; flex-shrink:0; text-transform:uppercase; letter-spacing:.08em; font-size:12px; }
+  .val{ width:3.5em; text-align:right; font-size:12px; }
   input[type=range]{
     -webkit-appearance:none; appearance:none; flex:1; min-width:120px;
     height:18px; background:transparent; cursor:pointer;
@@ -48,7 +56,7 @@
   button.ghost{ background:transparent; color:var(--ink); text-decoration:underline; padding:8px 4px; }
   button:focus-visible, input:focus-visible{ outline:2px solid var(--ink); outline-offset:3px; }
   .actions{ margin-top:22px; display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
-  .note{ margin-top:30px; font-size:12px; opacity:.5; max-width:56ch; }
+  .note{ margin-top:30px; font-size:12px; max-width:56ch; }
 </style>
 </head>
 <body>

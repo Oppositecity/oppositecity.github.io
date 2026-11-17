@@ -6,6 +6,14 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Semantic Voyage</title>
+<meta name="description" content="Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OPPOSITE CITY">
+<meta property="og:url" content="https://opposite.city/semantic-voyage/">
+<meta property="og:title" content="SEMANTIC VOYAGE">
+<meta property="og:description" content="Twenty thousand English words placed by meaning — real GloVe vectors projected into three dimensions, so that neighbours in the language stay neighbours in the room.">
+<meta property="og:image" content="https://opposite.city/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -258,7 +266,7 @@ async function loadData(){
         got += value.length;
         text += dec.decode(value, {stream:true});
         boot.textContent = total
-          ? 'charting \u00b7 ' + Math.round(got / total * 100) + '%'
+          ? 'charting \u00b7 ' + Math.min(99, Math.round(got / total * 100)) + '%'   // content-length counts the compressed bytes, so this can pass 100
           : 'charting \u00b7 ' + (got >> 10) + 'k';
       }
       text += dec.decode();

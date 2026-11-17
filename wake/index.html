@@ -6,6 +6,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>wake</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OPPOSITE CITY">
+<meta property="og:url" content="https://opposite.city/wake/">
+<meta property="og:title" content="WAKE">
+<meta property="og:description" content="Sound in, its wake out: a recording goes in untouched and comes out as a video of what it leaves behind.">
+<meta property="og:image" content="https://opposite.city/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="description" content="Sound in, its wake out: a recording goes in untouched and comes out as a video of what it leaves behind.">
 <link rel="canonical" href="https://opposite.city/wake/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -71,10 +78,11 @@
    at the rim; everything already heard is carried inward by feedback and
    falls toward the vanishing point. Colour says which band made a mark
    (low, mid, high, attack). Motion is locked to the recording's own
-   pulse: zoom per beat, folds turn per bar, the look changes per phrase.
-   Attacks tear the past forward along a motion field, the way a damaged
-   codec drags old pixels into new frames. When the sound ends, the
-   tunnel drains.
+   pulse: it breathes per beat, folds turn per bar, the look changes per
+   phrase. The past softens as it falls, and attacks bloom it wider, a
+   swell rather than a cut. When the sound ends, the tunnel drains.
+   Every other variation trades the tunnel for a reaction: bz's chemistry,
+   disturbed by the sound where it draws and set spiralling by attacks.
 
    Pipeline rules (fixed):
    - the audio track is never re-encoded when the file is AAC (m4a/mp4):
@@ -183,7 +191,7 @@ function analyse(){
 }
 
 /* ---------- the engine ---------- */
-function Engine(seed){
+function Engine(seed, chem){
   const rnd = mulberry(seed*2654435761 ^ 0x9e3779b9);
   const R = new Float32Array(N2), G = new Float32Array(N2), B = new Float32Array(N2);
   const tR = new Float32Array(N2), tG = new Float32Array(N2), tB = new Float32Array(N2);
@@ -205,10 +213,53 @@ function Engine(seed){
     pal: rnd() < 0.7 ? pal : pal2,
     dir: rnd() < 0.82 ? 1 : -1,     // -1: the past swells back out
     spin: (rnd()-0.5)*0.05,
-    mosh: 0.6 + rnd()*0.9,
     hueKick: 0.08 + rnd()*0.35
   });
   let frame = 0;
+
+  /* THE REACTION (every other variation). bz's chemistry, three species
+     each reacting against the mean of its neighbours, becomes the medium
+     the past falls into. The present still draws at the rim; where it
+     draws, it disturbs the chemistry, and what has been heard keeps
+     rippling outward from there as waves. An attack starts a new spiral.
+     The medium stays where it is and the fast feedback clears quickly
+     here, so the memory is the chemistry, not the tunnel. */
+  /* the chemistry runs on a grid three times coarser than the picture
+     and is drawn smoothly over it: the spirals come out large and soft */
+  const CS = S/3, CN = CS*CS;
+  let CA, CB, CC, CA2, CB2, CC2, oR, oG, oB;
+  if(chem){
+    CA = new Float32Array(CN); CB = new Float32Array(CN); CC = new Float32Array(CN);
+    CA2 = new Float32Array(CN); CB2 = new Float32Array(CN); CC2 = new Float32Array(CN);
+    oR = new Float32Array(N2); oG = new Float32Array(N2); oB = new Float32Array(N2);
+    for(let i=0;i<CN;i++){ CA[i]=rnd(); CB[i]=rnd(); CC[i]=rnd(); }   // as bz starts: noise, which winds itself into spirals
+  }
+  function react(d){
+    const al = 1.2, be = 1.0, ga = 1.0;
+    for(let y=0;y<CS;y++){
+      const r0=((y-1+CS)%CS)*CS, r1=y*CS, r2=((y+1)%CS)*CS;
+      for(let x=0;x<CS;x++){
+        const xm=(x-1+CS)%CS, xp=(x+1)%CS;
+        const i0=r0+xm,i1=r0+x,i2=r0+xp,i3=r1+xm,i4=r1+x,i5=r1+xp,i6=r2+xm,i7=r2+x,i8=r2+xp;
+        const a=(CA[i0]+CA[i1]+CA[i2]+CA[i3]+CA[i4]+CA[i5]+CA[i6]+CA[i7]+CA[i8])/9;
+        const b=(CB[i0]+CB[i1]+CB[i2]+CB[i3]+CB[i4]+CB[i5]+CB[i6]+CB[i7]+CB[i8])/9;
+        const c=(CC[i0]+CC[i1]+CC[i2]+CC[i3]+CC[i4]+CC[i5]+CC[i6]+CC[i7]+CC[i8])/9;
+        const oa=CA[i4], ob=CB[i4], oc=CC[i4];
+        const na = oa + d*((a-oa) + a*(al*b - ga*c));
+        const nb = ob + d*((b-ob) + b*(be*c - al*a));
+        const nc = oc + d*((c-oc) + c*(ga*a - be*b));
+        CA2[i4]=na<0?0:na>1?1:na; CB2[i4]=nb<0?0:nb>1?1:nb; CC2[i4]=nc<0?0:nc>1?1:nc;
+      }
+    }
+    let t; t=CA;CA=CA2;CA2=t; t=CB;CB=CB2;CB2=t; t=CC;CC=CC2;CC2=t;
+  }
+  function seedDisc(gx, gy, r){
+    for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++){
+      if(dx*dx+dy*dy > r*r) continue;
+      const X=((gx+dx)%CS+CS)%CS, Y=((gy+dy)%CS+CS)%CS, i=Y*CS+X;
+      CA[i]=rnd(); CB[i]=rnd(); CC[i]=rnd();
+    }
+  }
 
   function plot(x, y, r, g, b, k){
     const xi = x|0, yi = y|0;
@@ -216,15 +267,31 @@ function Engine(seed){
       const X = xi+dx, Y = yi+dy; if(X<0||Y<0||X>=S||Y>=S) continue;
       const i = Y*S+X;
       R[i] = Math.max(R[i], r*k); G[i] = Math.max(G[i], g*k); B[i] = Math.max(B[i], b*k);
+      if(chem && k > 0.3){ const ci = ((Y/3)|0)*CS + ((X/3)|0), f = ((i*2654435761 + frame*40503)>>>0)/4294967296; CA[ci] = CA[ci]*0.8 + f*0.2; }
     }
   }
+
+  /* box blur of radius rad on the torus-free field, mixed in by amt */
+  const bT = new Float32Array(N2);
+  function blurCh(F, rad, amt){
+    const w = 2*rad+1;
+    for(let y=0;y<S;y++){ const row=y*S; let acc=0;
+      for(let x=-rad;x<=rad;x++) acc += F[row+Math.min(S-1,Math.max(0,x))];
+      for(let x=0;x<S;x++){ bT[row+x]=acc/w;
+        acc += F[row+Math.min(S-1,x+rad+1)] - F[row+Math.max(0,x-rad)]; } }
+    for(let x=0;x<S;x++){ let acc=0;
+      for(let y=-rad;y<=rad;y++) acc += bT[Math.min(S-1,Math.max(0,y))*S+x];
+      for(let y=0;y<S;y++){ const i=y*S+x; F[i] += (acc/w - F[i])*amt;
+        acc += bT[Math.min(S-1,y+rad+1)*S+x] - bT[Math.max(0,y-rad)*S+x]; } }
+  }
+  function soften(rad, amt){ blurCh(R,rad,amt); blurCh(G,rad,amt); blurCh(B,rad,amt); }
 
   function step(){
     const t = frame / FPS, af = Math.min(A.M-1, Math.floor(t*AFPS));
     const env = A.env[af], on = A.on[af], lo = A.lo[af], mi = A.mi[af], hi = A.hi[af];
     // pulse position
     const bpos = (t*AFPS - A.phi) / A.P, beat = Math.floor(bpos), ph = bpos - beat;
-    const pulse = Math.exp(-ph*(A.pulsed ? 5 : 2.2));
+    const pulse = Math.exp(-ph*(A.pulsed ? 3 : 2.2));
     const beatsPerPhrase = A.pulsed ? 16 : 6;
     const phrase = Math.max(0, Math.floor(beat / beatsPerPhrase));
     const L = phraseLook[phrase % phraseLook.length];
@@ -232,17 +299,17 @@ function Engine(seed){
     const tail = Math.max(0, Math.min(1, (t - (dur - 1.4)) / 1.4));   // the drain
 
     /* 1. carry the past inward: zoom per beat, turn per bar */
-    const zBase = 1 - (A.pulsed ? 0.018 : 0.010) - 0.02*pulse*env;
+    const zBase = 1 - (A.pulsed ? 0.014 : 0.010) - 0.006*pulse*env;   // the beat breathes, it does not punch
     const z = L.dir > 0 ? zBase - 0.06*tail : 1/zBase;
     const rot = L.spin + 0.012*Math.sin(bar*1.7 + fieldA) * (0.5 + pulse);
     const cr = Math.cos(rot)/z, sn = Math.sin(rot)/z;
-    const hue = 0.02 + L.hueKick*pulse*(0.3+env);
+    const hue = 0.02 + 0.4*L.hueKick*pulse*(0.3+env);
     const c = Math.cos(hue), s = Math.sin(hue);
     const m00=.299+.701*c+.168*s, m01=.587-.587*c+.330*s, m02=.114-.114*c-.497*s,
           m10=.299-.299*c-.328*s, m11=.587+.413*c+.035*s, m12=.114-.114*c+.292*s,
           m20=.299-.300*c+1.25*s, m21=.587-.588*c-1.05*s, m22=.114+.886*c-.203*s;
-    const decay = (0.93 + 0.035*env) - 0.05*tail;   // loud passages linger, quiet ones clear to black
-    const wob = 2.2*pulse*env;
+    const decay = (chem ? 0.8 : (0.93 + 0.035*env)) - 0.05*tail;   // loud passages linger, quiet ones clear to black
+    const wob = 0.8*pulse*env;
     for(let y=0;y<S;y++){
       const dy = y - cy;
       for(let x=0;x<S;x++){
@@ -262,9 +329,9 @@ function Engine(seed){
     }
     R.set(tR); G.set(tG); B.set(tB);
 
-    /* 1b. the low end: rings leave the centre on every beat */
+    /* 1b. the low end: rings leave the centre, swelling with the beat */
     if(tail < 0.9){
-      const Pl = L.pal[4], Pm = L.pal[3], amt = (0.015 + 0.09*lo*lo) * (0.3 + pulse);
+      const Pl = L.pal[4], Pm = L.pal[3], amt = (0.015 + 0.09*lo*lo) * (0.6 + 0.4*pulse);
       const wave = bpos * 6.2832;
       for(let i=0;i<N2;i++){
         const v = Math.sin(RAD[i]*0.11 - wave) ; if(v < 0.55) continue;
@@ -284,8 +351,8 @@ function Engine(seed){
       }
       const peak = A.rmsPeak;
       const P = L.pal, tot = lo+mi+hi+1e-6;
-      const col = [0,1,2].map(ch => (lo*P[4][ch] + mi*(P[2][ch]+P[3][ch])*0.5 + hi*P[1][ch])/tot*1.25 + on*P[5][ch]*0.9);
-      const k = Math.min(1.25, 0.35 + env*0.9 + on*0.5) * (1-tail);
+      const col = [0,1,2].map(ch => (lo*P[4][ch] + mi*(P[2][ch]+P[3][ch])*0.5 + hi*P[1][ch])/tot*1.25 + on*P[5][ch]*0.5);
+      const k = Math.min(1.1, 0.35 + env*0.9 + on*0.2) * (1-tail);
       const fold = L.fold, wedge = 2*Math.PI/fold, turn = (bar % fold) * wedge * 0.5 + t*0.05;
       const pts = [];
       const R0 = S*0.43, amp = S*0.16/peak;
@@ -305,51 +372,58 @@ function Engine(seed){
       }
     }
 
-    /* 3. attacks tear the past forward (datamosh) */
-    const bs = 9, nb = S/bs, hold = (0.04 + 0.8*on*on) * L.mosh;
-    if(hold > 0.05){
-      for(let by=0; by<nb; by++) for(let bx=0; bx<nb; bx++){
-        if(rnd() > hold) continue;
-        const ang = fieldA + Math.sin(bx*fieldB + t*0.7)*2.4 + Math.cos(by*fieldB - t*0.4)*2 + A.cen[af]*6;
-        const mag = 2 + on*14;
-        const vx = Math.round(Math.cos(ang)*mag), vy = Math.round(Math.sin(ang)*mag);
-        const flat = on > 0.55 && rnd() < 0.35;
-        let ar=0, ag=0, ab=0;
-        if(flat){ for(let y=0;y<bs;y++) for(let x=0;x<bs;x++){ const i=(by*bs+y)*S+bx*bs+x; ar+=mR[i]; ag+=mG[i]; ab+=mB[i]; }
-                  ar/=81; ag/=81; ab/=81; }
-        for(let y=0;y<bs;y++) for(let x=0;x<bs;x++){
-          const Y = by*bs+y, X = bx*bs+x, i = Y*S+X;
-          if(flat){ R[i]=ar; G[i]=ag; B[i]=ab; continue; }
-          const sy = (Y - vy + S) % S, sx = (X - vx + S) % S, j = sy*S+sx;
-          R[i]=mR[j]; G[i]=mG[j]; B[i]=mB[j];
-        }
+    /* 3. attacks bloom. A hit no longer tears blocks of the past
+       about; it softens it, the way a loud sound fills a room. Every
+       frame the past is blurred a little as it falls inward, and an
+       attack blurs it wider and lets the held memory seep back in, so
+       a hard hit reads as a swell, not a cut. */
+    if(chem){
+      if(on > 0.45 && rnd() < on*0.5 && tail < 0.9){
+        const ang = rnd()*6.2832, rr = rnd()*S*0.32;
+        seedDisc(Math.round((cx + Math.cos(ang)*rr)/3), Math.round((cy + Math.sin(ang)*rr)/3), Math.round(2 + on*3));
       }
+      const rate = (0.18 + 0.12*env) * (1 - 0.6*tail);   // louder, the chemistry runs faster; much slower and it smooths itself flat
+      react(rate); react(rate);
     }
-    if(on > 0.7 && ph < 0.15){         // a hard hit drags a whole old frame through
-      const ox = Math.round(on*10), oy = Math.round(-on*6);
-      for(let i=0;i<N2;i++){ const y=(i/S)|0, x=i%S, j=((y-oy+S)%S)*S+((x-ox+S)%S);
-        R[i]=0.55*R[i]+0.45*mR[j]; G[i]=0.55*G[i]+0.45*mG[j]; B[i]=0.55*B[i]+0.45*mB[j]; }
+    soften(1, 0.3);
+    if(!chem && on > 0.15){
+      soften(Math.round(1 + 4*on), 0.25 + 0.5*on);
+      const seep = 0.25*on*on;
+      for(let i=0;i<N2;i++){ R[i]+= (mR[i]-R[i])*seep; G[i]+= (mG[i]-G[i])*seep; B[i]+= (mB[i]-B[i])*seep; }
     }
-    const keep = on > 0.5 ? 0.98 : 0.84;   // memory freezes on attacks so the smear holds
+    const keep = on > 0.5 ? 0.97 : 0.86;   // memory holds a little longer through a hit
     for(let i=0;i<N2;i++){ mR[i]=mR[i]*keep+R[i]*(1-keep); mG[i]=mG[i]*keep+G[i]*(1-keep); mB[i]=mB[i]*keep+B[i]*(1-keep); }
 
-    /* 4. scanline tears on the beat */
-    if(ph < 0.12 && env > 0.3){
-      for(let y=0;y<S;y++){
-        if(rnd() > 0.1*env) continue;
-        const sh = Math.round((rnd()-0.5)*40*env), row = y*S;
-        const r = R.slice(row,row+S), g = G.slice(row,row+S), b = B.slice(row,row+S);
-        for(let x=0;x<S;x++){ const q=((x-sh)%S+S)%S; R[row+x]=r[q]; G[row+x]=g[q]; B[row+x]=b[q]; }
+    /* the reaction is drawn over the picture, not fed back into it, so
+       the medium keeps its own spirals instead of being smeared by the
+       tunnel. it shows as its wavefronts: the leading edge of one
+       species, coloured by which of the other two it is running into.
+       it fades with the drain like everything else. */
+    if(chem){
+      const P = L.pal, lift = (0.55 + 0.6*env) * (1 - tail);
+      for(let i=0;i<N2;i++){
+        /* bilinear, so the coarse grid reads as soft fronts, not blocks */
+        const fx = (i%S)/3 - 0.5, fy = ((i/S)|0)/3 - 0.5;
+        const x0 = Math.floor(fx), y0 = Math.floor(fy), ux = fx-x0, uy = fy-y0;
+        const xa = (x0+CS)%CS, xb = (x0+1)%CS, ya = ((y0+CS)%CS)*CS, yb = ((y0+1)%CS)*CS;
+        const bil = F => (F[ya+xa]*(1-ux) + F[ya+xb]*ux)*(1-uy) + (F[yb+xa]*(1-ux) + F[yb+xb]*ux)*uy;
+        const ca = bil(CA), cb = bil(CB), cc = bil(CC);
+        let a = (ca-0.4)/0.6; if(a <= 0){ oR[i]=R[i]; oG[i]=G[i]; oB[i]=B[i]; continue; } a = a*a*lift;
+        const w = cb > cc ? 2 : 4;
+        oR[i] = Math.max(R[i], (P[w][0]*0.7+P[1][0]*0.3)*a);
+        oG[i] = Math.max(G[i], (P[w][1]*0.7+P[1][1]*0.3)*a);
+        oB[i] = Math.max(B[i], (P[w][2]*0.7+P[1][2]*0.3)*a);
       }
     }
 
     /* 5. out: FALL's grain — ordered dither into the inks, or into a coarse spectrum */
-    const split = Math.round(1 + 4*pulse*env);
+    const split = Math.round(1 + 1.5*pulse*env);
+    const XR = chem ? oR : R, XG = chem ? oG : G, XB = chem ? oB : B;
     const P = L.pal;
     for(let y=0;y<S;y++) for(let x=0;x<S;x++){
       const i = y*S+x, o = i*4, d = bayer[(y&3)*4+(x&3)];
       const ir = y*S + Math.min(S-1, x+split), ib = Math.max(0, y-split)*S + x;
-      let r = (R[ir]-0.12)*1.25, g = (G[i]-0.12)*1.25, b = (B[ib]-0.12)*1.25;   // let the dark be dark
+      let r = (XR[ir]-0.12)*1.25, g = (XG[i]-0.12)*1.25, b = (XB[ib]-0.12)*1.25;   // let the dark be dark
       if(L.out === "ink"){
         let bi = 0, bd = 1e9; const rr=r+d*0.32, gg=g+d*0.32, bb=b+d*0.32;
         for(let p=0;p<6;p++){ const e=(P[p][0]-rr)**2+(P[p][1]-gg)**2+(P[p][2]-bb)**2; if(e<bd){bd=e;bi=p;} }
@@ -415,7 +489,7 @@ function play(){
   if(playing){ stop(); return; }
   actx = actx || new (window.AudioContext||window.webkitAudioContext)();
   actx.resume();
-  const eng = Engine(seed());
+  const eng = Engine(seed(), variation % 2 === 1);
   src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
   const t0 = actx.currentTime + 0.05; src.start(t0);
   src.onended = () => { if(playing) stop(); };
@@ -540,7 +614,7 @@ async function make(){
     let err = null;
     const venc = new VideoEncoder({ output:(c,m)=>muxer.addVideoChunk(c,m), error:e=>{ err = e; } });
     venc.configure(vcfg);
-    const eng = Engine(seed());
+    const eng = Engine(seed(), variation % 2 === 1);
     const t0 = performance.now();
     for(let f=0; f<frames; f++){
       if(err) throw err;
@@ -581,7 +655,7 @@ drop.addEventListener("drop", e => { e.preventDefault(); $("#drop").classList.re
   const f = e.dataTransfer.files[0]; if(f) load(f); });
 $("#play").onclick = play;
 $("#reroll").onclick = () => { variation++; const was = playing; stop(); clear();
-  say("variation " + (variation+1) + ". play to see it."); if(was) play(); };
+  say("variation " + (variation+1) + (variation % 2 ? ", the reaction" : ", the tunnel") + ". play to see it."); if(was) play(); };
 $("#make").onclick = make;
 $("#save").onclick = () => { if(!lastBlob) return; const a = document.createElement("a");
   a.href = URL.createObjectURL(lastBlob); a.download = lastName; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href), 30000); };

@@ -6,6 +6,13 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>SHELLAC</title>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OPPOSITE CITY">
+<meta property="og:url" content="https://opposite.city/shellac/">
+<meta property="og:title" content="SHELLAC">
+<meta property="og:description" content="Browse and listen to public domain 78rpm and cylinder recordings from the Internet Archive, year by year">
+<meta property="og:image" content="https://opposite.city/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="description" content="Browse and listen to public domain 78rpm and cylinder recordings from the Internet Archive, year by year">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -147,6 +154,7 @@
   #disc canvas { width: 100%; height: 100%; display: block; }
   #disc.spin { animation: spin 2.6s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { #disc.spin { animation: none; } }
   .np-title { font-size: 1.1rem; font-weight: 400; color: #fff; text-align: center; line-height: 1.35; }
   .np-creator { font-size: 0.85rem; color: #e4e4e4; margin-top: 0.45rem; text-align: center; }
   .np-year { font-size: 0.7rem; color: #dcdcdc; letter-spacing: 0.1em; margin-top: 0.6rem; text-align: center; }

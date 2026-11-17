@@ -154,8 +154,9 @@ deciding it.
   (DRAM gross margin) is unverified and must be checked or cut first.
   (The build is not in this repo; waiting on it.)
 - [ ] `clef/`: needs its text. (The owner's to write.)
-- [ ] Folklore classifiers (Thompson motif index, ATU tale types): finish and
-  deploy. Ask for the current builds. (Not in this repo; waiting on them.)
+- [~] Folklore classifiers (Thompson motif index, ATU tale types): the build
+  of 2026-10-02 is in at `three-indexes/`, unlisted, on the `review` branch.
+  Waiting on the owner's yes to publish.
 
 ### 3. Band and sound
 
@@ -165,6 +166,11 @@ deciding it.
   take apart and repost it. At `/band/`, linked from the hub's Band heading.
   WAKE is listed under Band and on that page. `/take/` only forwards a take
   to the remix page, so it is not listed.
+
+- [~] `idiophone/`: a more playable interface and easier playback: a real
+  keyboard (touch slides, computer keys), objects that stay between visits,
+  play without the microphone, and a recording that can go to `ximeremix/`.
+  Preview in `idiophone-next/`.
 
 ### 4. Shared code, then new work
 
@@ -183,18 +189,90 @@ deciding it.
 The brief is `ximeremix/BRIEF.md`. Read it before starting. One phase at a
 time, in `ximeremix-next/`, stopping for the owner after each.
 
-- [ ] Phase 0: find out what plyr.fm allows from another site. No code shipped.
+- [~] Phase 0: find out what plyr.fm allows from another site. No code shipped.
 - [ ] Phase 1: plyr tracks as a source, opt-in only.
 - [ ] Phase 2: remixes of sources with no original post, and a lineage record.
 - [ ] Phase 3: publish a remix to plyr, by a deliberate button.
 - [ ] Phase 4: show where a sound came from and what was made from it.
 
+### 6. Audit of 2026-11-16
+
+Every page was loaded at phone, laptop and wide sizes with `scripts/sweep.py`
+and looked at. The work sits on the branch `review`, one commit per surface,
+not pushed. The owner looks at it, then says which commits go live.
+
+Done on `review`
+
+- [x] `sitemap.xml` was missing `language-instrument/`. `scripts/check.sh` now
+  fails when the registry, the hub's copies and the sitemap disagree.
+- [x] `syllababbler/`: dark ground across the whole wide screen.
+- [x] `semantic-voyage/`: the loading line no longer runs past 100%.
+- [x] Text contrast: `dof/`, `split/`, `sortition-congress/`, `circlefornia/`.
+- [x] `signgularity/`: control rows wrap on a phone.
+- [x] `lode/`: instructions wrap on a phone.
+- [x] `shellac/`: the record holds still under reduced motion.
+- [x] `sator/`: `stats.json` rebuilt by `scripts/sator-census.py`. The count
+  agrees with every uncapped list of examples the page already carried.
+- [x] A description and share tags on the 29 published pages that lacked
+  them, each taken from the piece's own blurb.
+- [x] `registry-master.json`: the 11 published pieces it lacked, and the 7 in
+  the yard. Their sections and finish scores there are Claude Code's guess.
+- [x] `three-indexes/` and `fall/`: finished builds found in the owner's
+  Downloads folder, brought in unlisted. The folklore pipeline that builds
+  THREE INDEXES stays outside this repo (`~/Downloads/folkfiles`).
+- [x] `/yard/`: one unlisted page listing everything built and not published.
+  Keep it current when a piece enters or leaves.
+- [x] `idiophone-next/`: publishing signs in at the account's own server and
+  reports a refused record with the server's reason.
+
+Looked at and left alone, with the reason
+
+- `agentic-entropy/` and `clef/` open zoomed in on a phone on purpose: the
+  whole chart would be unreadable. "Whole chart" is one tap away.
+- `kelp/`: its text colours were measured when it was made (see its CSS).
+- `descent/`, `pentimento/`, `clipper/` sit left on a wide screen. That is a
+  layout choice under revision; the owner's call.
+- `chip/`: its preset row scrolls sideways as a tape, with the next one
+  showing at the edge.
+- Small touch targets in `nimbus/`, `shellac/`, `kelp/`, `bz/`: needs a hand
+  on a real phone before changing anything.
+
+Still open
+
+- [ ] `ximeremix/`: the band handle `rainwatchbaseball.bsky.social` no longer
+  resolves, so every load logs a failed request. Takes still arrive by account
+  id. Fix inside part 5, which holds the page. It also has no share tags.
+- [ ] `idiophone/`: its records hold decimals, which atproto may refuse. Test
+  publishing with a real account before the preview replaces the live page.
+- [ ] `registry-master.json` still carries older names for pieces now live
+  (figure-ground-type is `split/`, slop-flag is `slopflag/`,
+  musical-time-clock looks like `polyrhythm/`). The owner says which to drop.
+- [ ] One shared atproto sign-in for `idiophone/`, `ximeremix/`,
+  `remix/give/` and `slopflag/`. Part 5 needs it too.
+- [ ] One shared "record what you hear, take it to XIMEREMIX" for `kelp/`,
+  `polyrhythm/`, `language-instrument/` and `chip/`. `idiophone-next/` has it.
+- [ ] Merged remote branches can be deleted.
+- [ ] `venn/` fails `scripts/check.sh` (no CSP tag). It is marked leave alone.
+
+Not found anywhere on this machine or in the account's repositories
+
+- The `aureole/` etymology rebuild, Accursed Share, and these pieces the
+  master list calls live: text-temperature, drone-clock, guitar-tuner,
+  datamosh, glitch-word-processor, pixel-converter, organology-organ,
+  top-chicken, bartlebluesky, lexicon-devil, the-receipt, n-10-122.
+- Found but not brought in: `semantic-distance.html` (an early form of
+  `room/`), a Lombardi tool that needs a local server, and source for heir
+  and a slop congress that are not web pages.
+
 ### Later, only if needed
 
 - A front door showing the strongest handful of pieces in plain words.
+  A draft is on the `front-door` branch at `/door/`, not on main; the owner
+  picks the pieces.
 - Subdomains, a private repo for internal tools, a locked backroom.
 
 ## Open questions for the owner
 
 - The Venn view did not match what was pictured. What should it look like?
-- `somesets/` and `bz/`: rework, fold into Vision, or retire?
+- `somesets/` and `bz/`: rework, fold into Vision, or retire? bz now also
+  lives inside WAKE (every other variation); its own page is still up.

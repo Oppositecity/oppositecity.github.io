@@ -23,6 +23,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
+html{background:var(--ground)}   /* the column is narrower than a wide screen; the ground runs past it */
 body{
   background:var(--ground);color:var(--text);
   font-family:'Courier Prime','Courier New',Courier,monospace;
