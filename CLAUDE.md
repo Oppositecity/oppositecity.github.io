@@ -206,9 +206,19 @@ deciding it.
   (DRAM gross margin) is unverified and must be checked or cut first.
   (The build is not in this repo; waiting on it.)
 - [ ] `clef/`: needs its text. (The owner's to write.)
-- [~] Folklore classifiers (Thompson motif index, ATU tale types): the build
-  of 2026-10-02 is in at `three-indexes/`, unlisted, on the `review` branch.
-  Waiting on the owner's yes to publish.
+- [x] Folklore classifiers (Thompson motif index, ATU tale types): the build
+  of 2026-10-02 is `three-indexes/`. Published under Atlas (also Words) at
+  the owner's word, 2026-11-16, with three additions made in the page
+  itself: the story shown with the words each index caught marked in place,
+  a quote from the story under each motif, and "tales that share a motif
+  with this one" on each tale type. The page in this repo is now ahead of
+  the pipeline's `src/template.html` (`~/Downloads/folkfiles`): port those
+  three additions and the head tags into the template before rebuilding
+  from the pipeline, or the rebuild loses them. The matcher itself was not
+  touched; its settings were chosen by the pipeline's own evaluation. READ
+  needs the visitor's own Anthropic key and names a model in the page
+  (`claude-sonnet-4-6`); not tested here. The section and the blurb's last
+  two sentences are Claude Code's; the owner can change them in `/edit/`.
 
 ### 3. Band and sound
 
