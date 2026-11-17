@@ -219,10 +219,10 @@ deciding it.
   WAKE is listed under Band and on that page. `/take/` only forwards a take
   to the remix page, so it is not listed.
 
-- [~] `idiophone/`: a more playable interface and easier playback: a real
+- [x] `idiophone/`: a more playable interface and easier playback: a real
   keyboard (touch slides, computer keys), objects that stay between visits,
   play without the microphone, and a recording that can go to `ximeremix/`.
-  Preview in `idiophone-next/`.
+  Live since 2026-11-16.
 
 ### 4. Shared code, then new work
 
@@ -304,7 +304,7 @@ Still open
 - [ ] One shared atproto sign-in for `idiophone/`, `ximeremix/`,
   `remix/give/` and `slopflag/`. Part 5 needs it too.
 - [ ] One shared "record what you hear, take it to XIMEREMIX" for `kelp/`,
-  `polyrhythm/`, `language-instrument/` and `chip/`. `idiophone-next/` has it.
+  `polyrhythm/`, `language-instrument/` and `chip/`. `idiophone/` has it.
 - [ ] Merged remote branches can be deleted.
 - [ ] `venn/` fails `scripts/check.sh` (no CSP tag). It is marked leave alone.
 
@@ -322,7 +322,7 @@ Not found anywhere on this machine or in the account's repositories
 
 Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 
-- [~] `pentimento-next/`: clearer on a phone, same concept and intro copy.
+- [x] `pentimento-next/`: clearer on a phone, same concept and intro copy.
   Built and live as a preview 2026-11-16, brightness change included at the
   owner's yes. Waiting on the owner's look before it replaces `pentimento/`.
   Seen at 390 wide on 2026-11-16: the ladder of layers sits on top of the
@@ -351,7 +351,7 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   layer on one scale for all layers. Sideways drag does nothing; left and
   right arrows walk the sentence. The landing copy still says "a horizon of
   every word": the owner's to reword if this is approved (`/edit/` can).
-- [ ] `idiophone/`: when the owner approves the preview, publish once with a
+- [x] `idiophone/`: when the owner approves the preview, publish once with a
   real account to settle the decimals question, then copy `idiophone-next/`
   over it, delete the preview, and update the blurb and tags in both
   registries (keyboard, hold to bow, objects kept, recording, hand-off) and
@@ -359,12 +359,12 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
 - [~] Shared atproto plumbing, `/shared/atproto.js`: resolve a handle, find
   the account's own server, sign in with an app password, write a record,
   upload a file, list public records. Written 2026-11-16 and in use by
-  `idiophone-next/`. Still to move onto it: `remix/give/`, then
+  `idiophone/`. Still to move onto it: `remix/give/`, then
   `ximeremix-next/` in phase 1. Do not change live `ximeremix/` for this.
 - [x] `idiophone-next/` reader: type a handle and that account's published
   objects go under the keys. Tested against a stand-in server; no account has
   published any yet.
-- [~] `ephemeris-next/`: the chart cast on real orbits. `scripts/ephemeris-elements.py`
+- [x] `ephemeris-next/`: the chart cast on real orbits. `scripts/ephemeris-elements.py`
   reads CelesTrak for each body's catalogue number and writes
   `ephemeris/elements.json`; the page takes its elements from that file,
   lists bodies that have reentered as gone, and marks a body whose orbit is
@@ -374,13 +374,22 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   `.github/workflows/ephemeris.yml` (the owner's yes, 2026-11-16); it can
   also be run by hand from the Actions tab. On promotion the blurb's "a live catalogue can be pasted in" needs
   the owner's sentence about the weekly catalogue.
-- [~] `nimbus-next/`: distinctive and common words together, at the owner's
+- [x] `nimbus-next/`: distinctive and common words together, at the owner's
   word (2026-11-16). The cloud takes in turn from the words the article says
   most and the words most its own; bold marks a word that few other articles
   use. "Few" is measured: `scripts/nimbus-common.py` samples the openings of
   random Wikipedia articles and the page carries the share of them that say
   each word. Waiting on the owner's look. On promotion the blurb needs the
   owner's sentence about the bold words.
+- [~] Promoted 2026-11-16 at the owner's word ("previews are fine push em"):
+  `idiophone-next/`, `pentimento-next/`, `ephemeris-next/` and `nimbus-next/`
+  each replaced its live page and the preview folders are gone. Left open:
+  the four blurbs in `surfaces.json` and `registry-master.json` still
+  describe the old behaviour, because blurbs are the owner's copy; new
+  sentences were proposed and wait on the owner (`/edit/` can write them).
+  The landing copy of `pentimento/` still says "a horizon of every word".
+  `idiophone/` went live without the real-account publish test: its records
+  still hold decimals, as the page before it did.
 - [ ] XIMEREMIX phase 1. The owner said yes to the recommendations in
   `ximeremix/PHASE0.md` on 2026-11-16: a track must have downloads open and
   carry the tag `remixable`; ten minutes at most; use plyr's search. Next up.

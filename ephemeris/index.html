@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src 'self'">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Towards an Astrology of Space Junk</title>
@@ -236,52 +236,52 @@ const BODIES = [
  note:"The eye that dissolved the boundary. Made deep time into a consumer image. Falling, slowly.",
  read:"Neptune exactly: it does not show you a place you can go. It converts distance into feeling and hands it back as a desktop background."},
 {n_:"Chandra",cat:"scope",rule:"pluto",i:76.7,raan:310,e:.744,argP:270,M0:0,n:.37,epoch:9600,alt:100000,life:null,
- norad:null,since:1999,who:"NASA",mass:4790,
+ norad:25867,since:1999,who:"NASA",mass:4790,
  end:"Too high to decay. Will hold this orbit long after the agency that built it.",
  note:"Sees only what is violent enough to emit X-rays. A 64-hour orbit that carries it a third of the way to the Moon.",
  read:"Pluto's portfolio without apology: it is blind to anything that is not a catastrophe. Whatever it reports, it reports because something died."},
 // navigation
 {n_:"GPS IIR-2",cat:"nav",rule:"saturn",i:55,raan:15,e:.005,argP:0,M0:0,n:2.006,epoch:9600,alt:20200,life:null,
- norad:null,since:1997,who:"US Space Force",mass:2030,end:"Boosted to a graveyard orbit above the constellation.",
+ norad:24876,since:1997,who:"US Space Force",mass:2030,end:"Boosted to a graveyard orbit above the constellation.",
  note:"Slot A1. Its predecessor, IIR-1, was destroyed thirteen seconds after launch in 1997.",
  read:"Saturn: it tells you where you are, and in doing so tells you where you are not permitted to be lost."},
 {n_:"GPS IIR-11",cat:"nav",rule:"saturn",i:55,raan:135,e:.005,argP:180,M0:180,n:2.006,epoch:9600,alt:20200,life:null,
- norad:null,since:2004,who:"US Space Force",mass:2030,end:"Graveyard orbit.",
+ norad:28190,since:2004,who:"US Space Force",mass:2030,end:"Graveyard orbit.",
  note:"Slot C3.",read:"One of six here standing for thirty-one. The constellation is the body; no single member has a character."},
 {n_:"GPS IIF-1",cat:"nav",rule:"saturn",i:55,raan:195,e:.005,argP:270,M0:270,n:2.006,epoch:9600,alt:20200,life:null,
- norad:null,since:2010,who:"US Space Force",mass:1630,end:"Graveyard orbit.",
+ norad:36585,since:2010,who:"US Space Force",mass:1630,end:"Graveyard orbit.",
  note:"Slot D4.",read:"Saturn keeps the clock. Every timestamp in global finance is downstream of atomic clocks in orbits like this one."},
 {n_:"GPS III-1",cat:"nav",rule:"saturn",i:55,raan:255,e:.005,argP:45,M0:45,n:2.006,epoch:9600,alt:20200,life:null,
- norad:null,since:2018,who:"US Space Force",mass:3880,end:"Graveyard orbit.",
+ norad:43873,since:2018,who:"US Space Force",mass:3880,end:"Graveyard orbit.",
  note:"First of the third generation.",read:"Newer, harder to jam, more precisely encrypted. Saturn tightening the boundary it already held."},
 {n_:"GPS III-5",cat:"nav",rule:"saturn",i:55,raan:315,e:.005,argP:135,M0:135,n:2.006,epoch:9600,alt:20200,life:null,
- norad:null,since:2021,who:"US Space Force",mass:3880,end:"Graveyard orbit.",
+ norad:48859,since:2021,who:"US Space Force",mass:3880,end:"Graveyard orbit.",
  note:"Slot F1.",read:"The grid completing itself. Nothing on the ground moves without consulting this."},
 {n_:"GLONASS-K1",cat:"nav",rule:"saturn",i:64.8,raan:80,e:.001,argP:0,M0:200,n:2.131,epoch:9600,alt:19100,life:null,
- norad:null,since:2011,who:"Roscosmos",mass:935,end:"Graveyard orbit.",
+ norad:40315,since:2011,who:"Roscosmos",mass:935,end:"Graveyard orbit.",
  note:"A second authority, defining the same coordinates in a different hand.",
  read:"Two Saturns disagreeing about where you are, by a few metres. Sovereignty expressed as a rounding error."},
 {n_:"Galileo FOC-1",cat:"nav",rule:"saturn",i:56,raan:250,e:.0002,argP:0,M0:310,n:1.705,epoch:9600,alt:23200,life:null,
- norad:null,since:2014,who:"European Union Agency for the Space Programme",mass:715,end:"Graveyard orbit.",
+ norad:40128,since:2014,who:"European Union Agency for the Space Programme",mass:715,end:"Graveyard orbit.",
  note:"Civilian by charter — the only major navigation constellation that is not military at root.",
  read:"Saturn without the sword. A boundary drawn by treaty rather than by capability."},
 // communication
 {n_:"Starlink-1007",cat:"comms",rule:"mercury",i:53,raan:30,e:.0001,argP:0,M0:0,n:15.06,epoch:9600,alt:550,life:5,
- norad:null,since:2019,who:"SpaceX",mass:260,end:"Deorbits within about five years of failure — low enough that atmospheric drag does the work.",
+ norad:44713,since:2019,who:"SpaceX",mass:260,end:"Deorbits within about five years of failure — low enough that atmospheric drag does the work.",
  note:"One of many thousands. The synthetic zodiac belt.",
  read:"Mercury multiplied past the point where the metaphor holds. A single messenger is a god; ten thousand identical messengers are infrastructure."},
 {n_:"Starlink-2241",cat:"comms",rule:"mercury",i:53,raan:90,e:.0001,argP:0,M0:120,n:15.06,epoch:9600,alt:550,life:5,
- norad:null,since:2021,who:"SpaceX",mass:260,end:"Passive deorbit within five years.",
+ norad:48586,since:2021,who:"SpaceX",mass:260,end:"Passive deorbit within five years.",
  note:"Shell 1, plane 4.",read:"Interchangeable by design. Astrology has no apparatus for a body that can be replaced next Tuesday."},
 {n_:"Starlink-3588",cat:"comms",rule:"mercury",i:53,raan:150,e:.0001,argP:0,M0:240,n:15.06,epoch:9600,alt:550,life:5,
- norad:null,since:2022,who:"SpaceX",mass:260,end:"Passive deorbit within five years.",
+ norad:51869,since:2022,who:"SpaceX",mass:260,end:"Passive deorbit within five years.",
  note:"Shell 1, plane 8.",read:"Third of three standing here for thousands. The constellation crosses every sign continuously; it is always everywhere."},
 {n_:"Iridium NEXT-102",cat:"comms",rule:"mercury",i:86.4,raan:20,e:.0002,argP:0,M0:60,n:14.34,epoch:9600,alt:780,life:9,
- norad:null,since:2017,who:"Iridium Communications",mass:860,end:"Actively deorbited at end of life.",
+ norad:41920,since:2017,who:"Iridium Communications",mass:860,end:"Actively deorbited at end of life.",
  note:"Successor to the constellation whose flares people once watched for as omens.",
  read:"The original Iridium satellites produced brilliant predictable flashes — manufactured signs, appearing on schedule, which people looked up for. They were switched off in 2019. This generation does not flare."},
 {n_:"Inmarsat-5 F4",cat:"comms",rule:"mercury",i:.05,raan:0,e:.0002,argP:0,M0:100,n:1.0027,epoch:9600,alt:35786,life:null,
- norad:null,since:2017,who:"Inmarsat / Viasat",mass:6100,end:"Graveyard orbit, roughly 300 km above the geostationary belt.",
+ norad:42698,since:2017,who:"Inmarsat / Viasat",mass:6100,end:"Graveyard orbit, roughly 300 km above the geostationary belt.",
  note:"Geostationary. Fixed in the sky — an artificial star that does not rise or set.",
  read:"The only bodies here that behave like the ancient sky. It holds one degree of one sign permanently. If any artificial object deserves a classical reading, it is this kind."},
 // military
@@ -294,7 +294,7 @@ const BODIES = [
  note:"An inspector satellite. Its declared function is to look at other satellites.",
  read:"In 2020 it manoeuvred to shadow an American reconnaissance satellite, then released a smaller object at high velocity. Mars in the twelfth house: threat that is never quite stated."},
 {n_:"SBIRS GEO-5",cat:"mil",rule:"mars",i:.5,raan:0,e:.0003,argP:0,M0:40,n:1.0027,epoch:9600,alt:35786,life:null,
- norad:null,since:2021,who:"US Space Force",mass:4500,end:"Graveyard orbit.",
+ norad:48618,since:2021,who:"US Space Force",mass:4500,end:"Graveyard orbit.",
  note:"Infrared missile warning. Watches the whole hemisphere for the heat of a launch.",
  read:"It exists to detect one event, and its entire value lies in that event never occurring. A body whose purpose is to be wrong."},
 // weather
@@ -328,19 +328,19 @@ const BODIES = [
  note:"Eight tonnes, unresponsive since 2012, uncontrolled. The largest dead thing in low orbit.",
  read:"Near the top of every removal shortlist, in a heavily used orbit, tumbling, with no way to be commanded. If two objects this size collide the resulting cloud is permanent on any human timescale."},
 {n_:"Iridium 33 debris",cat:"debris",rule:"unruled",i:86.4,raan:100,e:.004,argP:90,M0:45,n:14.34,epoch:9600,alt:790,life:null,
- norad:null,since:2009,who:"nobody",mass:null,end:"Some fragments will persist for centuries.",
+ norad:33776,since:2009,who:"nobody",mass:null,end:"Some fragments will persist for centuries.",
  note:"From the 2009 collision with Cosmos 2251 — the first accidental destruction of two intact satellites.",
  read:"Neither operator intended it. Roughly two thousand catalogued fragments were created in a few seconds. Influence without intention, in its purest recorded form."},
 {n_:"Fengyun-1C debris",cat:"debris",rule:"unruled",i:99,raan:180,e:.003,argP:45,M0:200,n:14.5,epoch:9600,alt:850,life:null,
- norad:null,since:2007,who:"nobody",mass:null,end:"Much of it will outlast the century.",
+ norad:29733,since:2007,who:"nobody",mass:null,end:"Much of it will outlast the century.",
  note:"From a 2007 anti-satellite test. Thousands of catalogued fragments, deliberately made.",
  read:"The single worst debris-generating event in history, and it was on purpose, on a satellite the perpetrator owned. Unruled but not unauthored."},
 {n_:"Cosmos 1408 debris",cat:"debris",rule:"unruled",i:82.6,raan:280,e:.002,argP:0,M0:300,n:15.1,epoch:9600,alt:480,life:8,
- norad:null,since:2021,who:"nobody",mass:null,end:"Lower altitude means most will decay within a decade.",
+ norad:50032,since:2021,who:"nobody",mass:null,end:"Lower altitude means most will decay within a decade.",
  note:"From a 2021 anti-satellite test. The station crew sheltered in their return capsules as the cloud passed.",
  read:"For a few hours the people in orbit had to take shelter from a thing their own species had just made deliberately. Whatever influence means, it meant something that day."},
 {n_:"SL-16 R/B",cat:"debris",rule:"unruled",i:71,raan:340,e:.001,argP:0,M0:80,n:14.6,epoch:9600,alt:840,life:null,
- norad:null,since:1990,who:"nobody",mass:9000,end:"Indefinite at this altitude.",
+ norad:16182,since:1990,who:"nobody",mass:9000,end:"Indefinite at this altitude.",
  note:"A spent Zenit upper stage. Nine tonnes, tumbling, in a crowded band.",
  read:"There are dozens of these. Analysts consistently rank this class as the highest-priority removal target in orbit: massive, uncontrolled, clustered in the same altitudes, each one a potential source of thousands of fragments."},
 ];
@@ -451,14 +451,18 @@ const OBLIQ = 23.4393*D2R;
 
 function bodyLon(b,jd){
   const dt = jd - (2451545 + b.epoch);
-  const M = mod360(b.M0 + b.n*360*dt)*D2R;
+  // mean motion drifts as the orbit decays; a published set carries the rate
+  const M = mod360(b.M0 + (b.n + (b.ndot||0)*dt)*360*dt)*D2R;
   const E = kepler(M,b.e);
   const v = Math.atan2(Math.sqrt(1-b.e*b.e)*Math.sin(E), Math.cos(E)-b.e);
-  const u = b.argP*D2R + v;
   const inc = b.i*D2R;
   const nrad = b.n*2*Math.PI/86400;
   const a = Math.pow(398600.4418/(nrad*nrad),1/3);
-  const raanRate = -1.5*1.08263e-3*Math.cos(inc)*Math.pow(6378.137/a,2)*b.n*360;
+  // the Earth's bulge turns the orbit's plane and walks its perigee round
+  const k = 1.08263e-3*Math.pow(6378.137/(a*(1-b.e*b.e)),2)*b.n*360;
+  const raanRate = -1.5*k*Math.cos(inc);
+  const argRate = 0.75*k*(5*Math.cos(inc)*Math.cos(inc)-1);
+  const u = (b.argP + argRate*dt)*D2R + v;
   const om = b.raan*D2R + raanRate*dt*D2R;
   const x = Math.cos(om)*Math.cos(u) - Math.sin(om)*Math.sin(u)*Math.cos(inc);
   const y = Math.sin(om)*Math.cos(u) + Math.cos(om)*Math.sin(u)*Math.cos(inc);
@@ -485,7 +489,8 @@ function parseTLE(text){
     const M0=parseFloat(l2.slice(43,51));
     const n=parseFloat(l2.slice(52,63));
     if([inc,raan,e,argP,M0,n].some(v=>!isFinite(v))) continue;
-    out.push({n_:name,cat:"debris",rule:"unruled",i:inc,raan,e,argP,M0,n,
+    const ndot=parseFloat(l1.slice(33,43))||0;
+    out.push({n_:name,cat:"debris",rule:"unruled",i:inc,raan,e,argP,M0,n,ndot,
       epoch:jdEpoch-2451545,alt:Math.round(Math.pow(398600.4418/Math.pow(n*2*Math.PI/86400,2),1/3)-6378),
       life:null,note:"Imported from a live two-line element set.",live:true});
     i++;
@@ -506,12 +511,34 @@ const S = {
   selSign:null,
   cats:Object.fromEntries(Object.keys(CATS).map(k=>[k,true])),
   extra:[],
+  gone:[],        // bodies the catalogue says have reentered
+  fetched:null,   // the date the catalogue was last read
 };
 
 const sign = lon => Math.floor(lon/30);
 const degIn = lon => lon%30;
 const jdOf = ms => 2440587.5 + ms/86400000;
 const all = () => BODIES.concat(S.extra);
+
+/* The catalogue. A weekly job reads CelesTrak and leaves the answers beside
+   the page. A body with a published set takes its real elements. A body that
+   has reentered leaves the sky. A body whose elements are withheld keeps the
+   assumed figures it carries above, and says so. */
+function ground(cat){
+  S.fetched = cat.fetched;
+  for(let k=BODIES.length-1;k>=0;k--){
+    const b=BODIES[k], c=cat.bodies[b.norad];
+    if(!c) continue;
+    if(c.gone){ S.gone.push({b,date:c.gone}); BODIES.splice(k,1); continue; }
+    if(c.withheld){ b.withheld=true; continue; }
+    Object.assign(b,{i:c.i,raan:c.raan,e:c.e,argP:c.argP,M0:c.M0,n:c.n,ndot:c.ndot,epoch:c.epoch,cast:true});
+    const a=Math.pow(398600.4418/Math.pow(c.n*2*Math.PI/86400,2),1/3);
+    b.alt=Math.round(a-6378);
+    // an eccentric orbit has no one altitude; keep its low and high points
+    if(c.e>0.05){ b.peri=Math.round(a*(1-c.e)-6378); b.apo=Math.round(a*(1+c.e)-6378); }
+  }
+  S.gone.reverse(); S.sel=null;
+}
 const active = () => all().map((b,i)=>({b,i})).filter(o=>S.cats[o.b.cat]);
 
 function aspectsBetween(a,b){
@@ -742,8 +769,9 @@ const SPEEDS=[[1,"live"],[60,"1 min/s"],[3600,"1 hr/s"],[86400,"1 day/s"]];
 
 function renderChrome(C){
   el("clock").textContent = new Date(S.simMs).toUTCString().replace("GMT","UTC");
-  const days = Math.abs(C.jd - (2451545+9600));
-  el("drift").textContent = `Elements ${days.toFixed(0)} days from epoch · positions degrade with distance from it`;
+  const eps = BODIES.filter(b=>b.cast).map(b=>Math.abs(C.jd-(2451545+b.epoch))).sort((x,y)=>x-y);
+  const days = eps.length ? eps[eps.length>>1] : Math.abs(C.jd - (2451545+9600));
+  el("drift").textContent = `Elements ${days<10?days.toFixed(1):days.toFixed(0)} days from epoch · positions degrade with distance from it`;
 
   el("speeds").innerHTML = `<span style="font-size:11px;letter-spacing:.18em;color:var(--ink-3);text-transform:uppercase;margin-right:4px">Time</span>` +
     SPEEDS.map(([v,l])=>`<button class="sbtn ${S.speed===v?"on":""}" data-speed="${v}">${l}</button>`).join("");
@@ -758,6 +786,7 @@ function renderChrome(C){
     `${n} bodies tracked · ${C.asp.length} active aspects · ${C.dist.filter(x=>x>0).length}/12 signs occupied<br>` +
     `Mean Keplerian propagation with first-order J2 drift · not ephemeris-grade<br>` +
     `Natural positions from JPL approximate elements, geocentric<br>` +
+    (S.fetched ? `Elements read from CelesTrak ${S.fetched}, and again each week<br>` : "") +
     `Import a live TLE set under Data to re-ground the instrument`;
 }
 
@@ -815,7 +844,7 @@ function detailFor(C){
   const line=(k,v)=>v?`<div class="k">${k}</div><div class="v">${v}</div>`:"";
   return `<div class="detail" style="border-left:3px solid ${CATS[b.cat].col}">
     <div style="color:${CATS[b.cat].col};font-size:16px;font-weight:700">${esc(b.n_)}</div>
-    <div class="v" style="font-size:12px">${CATS[b.cat].label}${b.since?` · launched ${b.since}`:""}${b.live?" · imported":""}</div>
+    <div class="v" style="font-size:12px">${CATS[b.cat].label}${b.since?` · launched ${b.since}`:""}${b.live?" · imported":""}${b.cast?" · published elements":""}${b.withheld?" · elements withheld, position assumed":""}</div>
 
     <div class="k">Position now</div>
     <div class="v"><span style="color:${EL_COL[SIGN_EL[s]]}">${SIGNS[s]} ${SIGN_NAMES[s]} ${degIn(lon).toFixed(1)}°</span> · ${SIGN_EL[s]} · ${SIGN_MODE[s]}</div>
@@ -826,7 +855,7 @@ function detailFor(C){
     ${line("What it is", esc(b.note))}
 
     <div class="k">Orbit</div>
-    <div class="v">${b.alt.toLocaleString()} km altitude · ${(1440/b.n).toFixed(0)} min period · ${b.i.toFixed(1)}° inclination · e = ${b.e}</div>
+    <div class="v">${b.peri!=null?`${b.peri.toLocaleString()} to ${b.apo.toLocaleString()} km`:`${b.alt.toLocaleString()} km`} altitude · ${(1440/b.n).toFixed(0)} min period · ${b.i.toFixed(1)}° inclination · e = ${+b.e.toFixed(4)}</div>
     <div class="v" style="font-size:12.5px">${b.n>10?"Crosses all twelve signs roughly "+ (b.n).toFixed(0) +" times a day.":b.n>1.5?"Completes the zodiac about twice daily.":b.n>.9&&b.i<2?"Geostationary — holds one degree of one sign permanently.":"Slow enough to be read like a planet."}</div>
 
     ${line("Operator", b.who?esc(b.who):"")}
@@ -875,6 +904,10 @@ function render(){
     V.innerHTML = `<div class="eyebrow">Artificial bodies</div>` +
       C.bodies.map((b,i)=>S.cats[b.cat]?rowFor(b,i,C.pos[i]):"").join("") +
       detailFor(C) +
+      (S.gone.some(g=>S.cats[g.b.cat]) ? `<div class="eyebrow">No longer in the sky</div>` +
+        S.gone.filter(g=>S.cats[g.b.cat]).map(g=>`<div class="row static">
+          <div class="nm"><span class="dot" style="border:1px solid ${CATS[g.b.cat].col}"></span><span class="t">${esc(g.b.n_)}</span></div>
+          <div class="pos"><span class="d" style="width:auto">reentered ${g.date}</span></div></div>`).join("") : "") +
       `<div class="eyebrow">Natural bodies — ${C.natalJD?"natal":"transiting"}</div>` +
       NAT_ORDER.map(k=>{
         const s=sign(C.nat[k]);
@@ -997,6 +1030,7 @@ setInterval(()=>{
 window.addEventListener("resize",()=>{ if(S.view==="wheel") drawWheel(compute()); });
 
 render();
+fetch("/ephemeris/elements.json").then(r=>r.ok?r.json():null).then(c=>{ if(c&&c.bodies){ ground(c); render(); } }).catch(()=>{});
 </script>
 </body>
 </html>
