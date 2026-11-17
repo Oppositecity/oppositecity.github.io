@@ -400,6 +400,23 @@ Each is a preview in a `-next` folder, listed on `/yard/`, one at a time.
   The landing copy of `pentimento/` still says "a horizon of every word".
   `idiophone/` went live without the real-account publish test: its records
   still hold decimals, as the page before it did.
+- [~] `idiophone-next/`: IDIOPHONE for a room as well, at the owner's word
+  (2026-11-16). A second button, ARM FOR A ROOM: clap once. Same pipeline
+  with room settings (`KIND.room`: listens up to 5 s, fits from 60 ms after
+  the clap, looks at 40 to 2500 Hz, a narrower two-stage filter because
+  room modes sit close together). Rows show RT60 and the half wave; kept
+  rooms carry `kind: "room"` in the archive and the published record.
+  The preview also fixes a fault found on the way, which the live page still
+  has: the strike's own rise was counted as a second strike, so every
+  capture was cut to about 80 ms; and a mode still ringing when listening
+  stops is now fitted from what was heard. Headless with a made-up clap
+  (five modes found at the right pitches, ring times within about 20%) and
+  the bell file. Not tried in a real room or on a phone. Waiting on the
+  owner's look.
+- [~] `palimpsest/`: new piece, unlisted, on `/yard/` (2026-11-16). A
+  Wikipedia article's opening sentence on about two dozen dates, every word
+  that ever stood in it kept in a fixed place. Waiting on the owner's look,
+  a section and a blurb.
 - [ ] XIMEREMIX phase 1. The owner said yes to the recommendations in
   `ximeremix/PHASE0.md` on 2026-11-16: a track must have downloads open and
   carry the tag `remixable`; ten minutes at most; use plyr's search. Next up.
