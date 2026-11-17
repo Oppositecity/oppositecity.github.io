@@ -4,10 +4,18 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<meta name="robots" content="noindex">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>THREE INDEXES</title>
+<meta name="description" content="A story read three ways at once: the motifs that survive retelling, the slot each occupies in the sequence, the whole tale it is a version of.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="OPPOSITE CITY">
+<meta property="og:url" content="https://opposite.city/three-indexes/">
+<meta property="og:title" content="THREE INDEXES">
+<meta property="og:description" content="A story read three ways at once: the motifs that survive retelling, the slot each occupies in the sequence, the whole tale it is a version of.">
+<meta property="og:image" content="https://opposite.city/og/three-indexes.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://opposite.city/three-indexes/">
 <style>
   :root{
     --bg:#000000;
@@ -92,6 +100,15 @@
   .shared:before{content:"↳ ";}
 
   .verdict{margin:8px 0 0;font-size:17px;line-height:1.5}
+
+  /* the story itself, with the words each index caught */
+  .story{margin:0 0 14px;white-space:pre-wrap;word-break:break-word;font-size:16px;line-height:1.75}
+  .mk{background:none;border:none;padding:0;margin:0;font:inherit;letter-spacing:0;color:inherit;cursor:pointer;
+      text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+  .mk:hover:not(:disabled){background:none}
+  .mk.m{color:var(--motif)} .mk.f{color:var(--function)} .mk.t{color:var(--type)}
+  .quote{margin:2px 0 0;padding-left:22px}
+  .hit{outline:1px solid #fff;outline-offset:6px}
 
   .status{margin:26px 0 0;letter-spacing:.1em}
   .err{color:var(--type)}
@@ -391,6 +408,21 @@ function showType(n){
     h += '<div class="line">'+codeBtn(c)+' '+(MOTIFS[c]?esc(MOTIFS[c]):'no gloss held')
        + (sp ? ' <span class="caption">['+sp.split("").map(x=>SRC_ABBR[x]||x).join(", ")+']</span>' : '')+'</div>';
   });
+  // other tale types made of some of the same motifs; a motif that hundreds of types carry says little
+  const rel = {};
+  mine.forEach(c=>{
+    const cs = typesWith(c); if(cs.length > 60) return;
+    cs.forEach(u=>{ if(u.n === t.n) return; const r = rel[u.n] = rel[u.n] || {t:u, sh:[], w:0}; r.sh.push(c); r.w += 1/cs.length; });
+  });
+  const kin = Object.values(rel).sort((a,b)=>b.sh.length-a.sh.length || b.w-a.w || (a.t.n<b.t.n?-1:1));
+  if(kin.length){
+    h += '<p>Tales that share a motif with this one:</p>';
+    kin.slice(0,12).forEach(x=>{
+      h += '<div class="line"><button class="xref t" data-t="'+esc(x.t.n)+'">ATU '+esc(x.t.n)+' '+esc(x.t.t)+'</button>'
+         + ' <span class="caption">— shares '+x.sh.slice(0,5).map(codeBtn).join(" ")+(x.sh.length>5?' and '+(x.sh.length-5)+' more':'')+'</span></div>';
+    });
+    if(kin.length>12) h += '<p class="caption">…and '+(kin.length-12)+' more</p>';
+  }
   if(t.co && t.co.length){
     h += '<p>In real tales of this type the matcher also finds:</p>';
     t.co.forEach(([c,f])=>{ if(MOTIFS[c]) h += '<div class="line">'+codeBtn(c)+' '+esc(MOTIFS[c])+' <span class="caption">in '+Math.round(f*100)+'% of '+t.nTales+' tales</span></div>'; });
@@ -856,18 +888,74 @@ $("mech").onclick = () => {
   render(mechanical(text));
 };
 
+/* Where in the story each finding sits. MATCH reports the gloss words it matched on; READ quotes a
+   clause. Either way the words are found again in the text as typed, so they can be shown in place. */
+let SYNOF = null;
+function markStory(text, motifs, fns, types){
+  if(!SYNOF){ SYNOF = {}; Object.keys(Matcher.SYN).forEach(k=>Matcher.SYN[k].forEach(p=>{ if(!/\s/.test(p)) (SYNOF[p]=SYNOF[p]||[]).push(Matcher.stem(k)); })); }
+  const low = text.toLowerCase(), own = new Array(text.length).fill(null), toks = [];
+  const re = /[A-Za-z']+/g; let m;
+  while((m = re.exec(text))){ const w = m[0].toLowerCase(); toks.push({a:m.index, b:m.index+m[0].length, w, s:Matcher.stem(w)}); }
+  const claim = (a,b,k,ref,tip) => { const o = {k,ref,tip}; let any = false; for(let i=a;i<b;i++) if(!own[i]){ own[i] = o; any = true; } return any; };
+  const phrase = (p,k,ref,tip) => {
+    p = String(p||"").toLowerCase().replace(/^cue:\s*/,"").replace(/^[\s"'“”….]+|[\s"'“”….]+$/g,"");
+    if(p.length < 3) return null;
+    const i = low.indexOf(p); if(i < 0) return null;
+    claim(i, i+p.length, k, ref, tip); return [i, i+p.length];
+  };
+  const quote = (a,b) => {
+    let x = Math.max(0,a-24), y = Math.min(text.length,b+24);
+    while(x>0 && /\S/.test(text[x-1])) x--; while(y<text.length && /\S/.test(text[y])) y++;
+    return (x>0?"…":"") + text.slice(x,y).replace(/\s+/g," ").trim() + (y<text.length?"…":"");
+  };
+  motifs.forEach(mo=>{
+    const tip = mo.code+" "+MOTIFS[mo.code];
+    if(!/^matched on /.test(mo.evidence||"")){ const at = phrase(mo.evidence,"m",mo.code,tip); if(at) mo.quote = quote(at[0],at[1]); return; }
+    const want = new Set(mo.evidence.replace(/^matched on /,"").split(", "));
+    const keyOf = t => want.has(t.s) ? t.s : (SYNOF[t.w]||[]).find(k=>want.has(k));
+    const hit = toks.filter(keyOf);
+    let best = null;                       // the tightest stretch of the story holding the most of those words
+    for(let i=0;i<hit.length;i++){
+      const seen = new Set(); let j = i;
+      for(; j<hit.length && hit[j].a-hit[i].a <= 200; j++) seen.add(keyOf(hit[j]));
+      const len = hit[j-1].b-hit[i].a;
+      if(!best || seen.size>best.n || (seen.size===best.n && len<best.len)) best = {n:seen.size, i, j, len};
+    }
+    if(!best) return;
+    for(let k=best.i;k<best.j;k++) claim(hit[k].a, hit[k].b, "m", mo.code, tip);
+    mo.quote = quote(hit[best.i].a, hit[best.j-1].b);
+  });
+  fns.forEach(f=>phrase(f.evidence, "f", f.n, FUNCTIONS[f.n-1]));
+  if(types.length){                        // the words that pointed at the first tale type
+    const t = types[0].ref, tw = new Set(Matcher.contentOf(t.t).concat((t.v||[]).map(x=>x[0])));
+    toks.forEach(k=>{ if(k.w.length>2 && !Matcher.STOP.has(k.w) && tw.has(k.s)) claim(k.a, k.b, "t", t.n, "typical of ATU "+t.n+" "+t.t); });
+  }
+  let h = "", i = 0, any = false;
+  while(i < text.length){
+    let j = i; while(j < text.length && own[j] === own[i]) j++;
+    const o = own[i], bit = esc(text.slice(i,j));
+    if(o){ any = true; h += '<button class="mk '+o.k+'" data-k="'+o.k+'" data-ref="'+esc(o.ref)+'" title="'+esc(o.tip)+'">'+bit+'</button>'; }
+    else h += bit;
+    i = j;
+  }
+  return any ? h : "";
+}
+
 function render(r){
   const motifs = (r.motifs||[]).filter(m=>MOTIFS[m.code]);
   const unind = r.unindexed||[];
   const fns = (r.functions||[]).filter(f=>f.n>=1&&f.n<=31).sort((a,b)=>a.n-b.n);
   const types = (r.types||[]).map(t=>({...t,ref:TYPES.find(x=>x.n===String(t.n))})).filter(t=>t.ref);
 
+  const story = markStory($("input").value, motifs, fns, types);
   let h = "";
+  if(story) h += '<div class="band"><h2>The story, marked</h2><p class="caption">The words each index caught, where they stand. Touch one to see what it was taken for.</p><p class="story">'+story+'</p></div>';
 
   h += '<div class="band"><h2 class="k-motif">Motif</h2><p class="caption">Elements attested in the index.</p>';
   if(motifs.length){
     motifs.forEach(m=>{
-      h += '<div class="entry"><div><button class="xref m" data-m="'+esc(m.code)+'">'+esc(m.code)+'</button> <span class="gloss">'+esc(MOTIFS[m.code])+'</span></div>'
+      h += '<div class="entry" id="e-m-'+esc(m.code)+'"><div><button class="xref m" data-m="'+esc(m.code)+'">'+esc(m.code)+'</button> <span class="gloss">'+esc(MOTIFS[m.code])+'</span></div>'
+         + (m.quote && m.quote.toLowerCase().indexOf(String(m.evidence).toLowerCase()) < 0 ? '<div class="quote">“'+esc(m.quote)+'”</div>' : '')
          + '<div class="ev">'+esc(m.evidence)+'</div></div>';
     });
   } else {
@@ -885,7 +973,7 @@ function render(r){
   if(fns.length){
     fns.forEach(f=>{
       const label = FUNCTIONS[f.n-1].split(" — ");
-      h += '<div class="fn"><div><span class="n k-function">'+String(f.n).padStart(2,"0")+'</span> '+esc(label[0])+'</div>'
+      h += '<div class="fn" id="e-f-'+f.n+'"><div><span class="n k-function">'+String(f.n).padStart(2,"0")+'</span> '+esc(label[0])+'</div>'
          + '<div class="ev">'+esc(f.evidence)+'</div></div>';
     });
   } else {
@@ -900,7 +988,7 @@ function render(r){
       const filled = Math.max(1,Math.round(pct/5));
       const found = new Set(motifs.map(m=>m.code));
       const shared = t.ref.m.filter(c=>found.has(c));
-      h += '<div class="cand"><div><button class="xref t" data-t="'+esc(t.ref.n)+'">ATU '+esc(t.ref.n)+' '+esc(t.ref.t)+'</button></div>'
+      h += '<div class="cand" id="e-t-'+esc(t.ref.n)+'"><div><button class="xref t" data-t="'+esc(t.ref.n)+'">ATU '+esc(t.ref.n)+' '+esc(t.ref.t)+'</button></div>'
          + '<div class="bar k-type">'+"█".repeat(filled)+' '+pct+'</div>'
          + '<div>'+esc(t.reason)+'</div>';
       if(shared.length) h += '<div class="shared">shares '+shared.map(esc).join(", ")+'</div>';
@@ -921,6 +1009,11 @@ function render(r){
   $("out").className = "out on";
   $("out").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ openBrowse(); showMotif(b.dataset.m); });
   $("out").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ openBrowse(); showType(b.dataset.t); });
+  $("out").querySelectorAll(".mk").forEach(b=>b.onclick=()=>{
+    const el = document.getElementById("e-"+b.dataset.k+"-"+b.dataset.ref); if(!el) return;
+    $("out").querySelectorAll(".hit").forEach(x=>x.classList.remove("hit"));
+    el.classList.add("hit"); el.scrollIntoView({behavior:"smooth",block:"center"});
+  });
   $("out").scrollIntoView({behavior:"smooth",block:"start"});
 }
 /* --- the index can arrive three ways: built in, fetched, or hand-loaded --- */
