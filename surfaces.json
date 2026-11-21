@@ -150,6 +150,38 @@
    "url": "https://opposite.city/nimbus/"
   },
   {
+   "slug": "quick",
+   "name": "QUICK",
+   "district": "words",
+   "status": "live",
+   "finish": 60,
+   "tags": [
+    "cellular automaton",
+    "crossword",
+    "wordnet",
+    "kinship",
+    "b1/s123"
+   ],
+   "blurb": "A cellular automaton made of words, grown as a crossword. Each word is a cell and its neighbours are the words that cross it; two words are kin when they share at least two fields of meaning. Every generation, all at once, a word crossed by one to three kin lives, a word that crosses a stranger dies, and an empty slot fills with the word closest in meaning to the kin it would cross. It grows from a single word, so everything on the board descends from it, and after a few hundred generations it settles into words that blink in and out. The rule can be changed.",
+   "url": "https://opposite.city/quick/"
+  },
+  {
+   "slug": "kith",
+   "name": "KITH",
+   "district": "words",
+   "status": "live",
+   "finish": 60,
+   "tags": [
+    "game of life",
+    "conway",
+    "glider",
+    "wordnet",
+    "inheritance"
+   ],
+   "blurb": "Conway's Game of Life on a plane with no edges, where every living cell is a word. The shapes obey Conway exactly, so gliders glide and the R-pentomino settles at generation 1103; meaning decides only which word is born, the one closest to its three parents. No word lives twice at once and a word that dies stays gone for a while, so a pattern that keeps its shape keeps changing what it says: a glider's five words travel from insects to tools to fruit to soil to bread. Every birth is listed with its parents, and gliders that leave are named by the words they carry.",
+   "url": "https://opposite.city/kith/"
+  },
+  {
    "slug": "language-instrument",
    "name": "LANGUAGE INSTRUMENT",
    "district": "words",
