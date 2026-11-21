@@ -31,8 +31,9 @@ button:hover,button:focus-visible{text-decoration:underline;outline:none}
 #next{background:var(--fg);color:#000;font-weight:700;padding:12px 22px;letter-spacing:.14em;flex:1;max-width:340px}
 #next:hover,#next:focus-visible{text-decoration:underline}
 #run.on{font-weight:700}
-#seed{font:inherit;font-size:13px;background:#000;color:var(--fg);border:1px solid var(--fg);
-      padding:7px 9px;flex:1;min-width:min(100%,240px)}
+#bwrap{position:relative}
+#typer{position:absolute;left:50%;top:38%;transform:translateX(-50%);width:min(300px,86%);display:none;z-index:2}
+#seed{font:inherit;font-size:16px;background:#000;color:var(--fg);border:1px solid var(--fg);padding:7px 9px;width:100%}
 #seed::placeholder{color:#fff;opacity:.65}
 
 #rule{font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
@@ -63,7 +64,8 @@ h2{font-size:12.5px;font-weight:400;margin:18px 0 6px}
 <h1>QUICK</h1>
 
 <p class="note">A cellular automaton made of words, grown as a crossword. <span id="lexn"></span></p>
-<div id="board"></div>
+<div id="bwrap"><div id="board"></div>
+<form id="typer"><input id="seed" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false"></form></div>
 <div class="bar">
   <button id="next">NEXT GENERATION</button>
   <button id="run">run on its own</button>
@@ -82,8 +84,7 @@ h2{font-size:12.5px;font-weight:400;margin:18px 0 6px}
 <div id="out"></div>
 
 <div class="bar">
-  <input id="seed" type="text" placeholder="a word, or a line, to grow from" autocomplete="off" spellcheck="false">
-  <button id="sow">sow</button>
+  <button id="restart">start over</button>
   <button id="soup">random soup</button>
 </div>
 <div class="bar" id="rule"></div>
@@ -222,6 +223,7 @@ h2{font-size:12.5px;font-weight:400;margin:18px 0 6px}
     }
 
     // a soup: a random crossword, no meaning involved, as Life starts from noise
+    let bridges = [];
     function soup(n, seedWords) {
       let words = [];
       const pick = () => WORDS[(rand() * WORDS.length) | 0];
@@ -244,6 +246,28 @@ h2{font-size:12.5px;font-weight:400;margin:18px 0 6px}
         return false;
       }
       let pending = seeds.slice(1).filter(w => !tryPlace(w)), tries = 0;
+      // a typed word that shares no letter with what is placed comes in through a bridge:
+      // a word kin to it that can cross what is there, and that it can cross
+      let progress = true; bridges = [];
+      while (pending.length && progress) {
+        progress = false;
+        pending = pending.filter(w => !tryPlace(w));
+        for (const s of pending.slice()) {
+          const cands = kinOf(s).concat(WORDS.slice(0, 0));
+          const tryB = list => {
+            for (const b of list) {
+              if (b === s || words.some(p => p.w === b)) continue;
+              if (![...new Set(b)].some(ch => s.includes(ch))) continue;
+              const before = words.length;
+              if (!tryPlace(b)) continue;
+              if (tryPlace(s)) { bridges.push([s, b]); return true; }
+              words.splice(before);            // the bridge led nowhere: take it back
+            }
+            return false;
+          };
+          if (tryB(cands) || tryB(seeds.length ? (BYLET[s[0]] || []) : [])) { pending = pending.filter(w => w !== s); progress = true; }
+        }
+      }
       while (words.length < n && tries < n * 400) {
         tries++;
         const g = gridOf(words);
@@ -261,7 +285,7 @@ h2{font-size:12.5px;font-weight:400;margin:18px 0 6px}
       return words;
     }
 
-    return { step, soup, gridOf, cells, sim, kin, kinOf, T, WORDS, opt };
+    return { step, soup, gridOf, cells, sim, kin, kinOf, T, WORDS, opt, bridges: () => bridges };
   }
   if (typeof module !== 'undefined') module.exports = { makeEngine };
   else root.makeEngine = makeEngine;
@@ -356,6 +380,7 @@ function pickCell(k){
 /* ---------- life ---------- */
 function key(ws){ return ws.map(p=>p.w+'@'+p.r+','+p.c+p.d).sort().join(';'); }
 function tick(){
+  if(!words.length){ outEl.textContent='nothing is growing yet. type a word or a line.'; showTyper(); return; }
   const before=words;
   const res=E.step(words);
   ghosts=new Map();
@@ -389,21 +414,36 @@ function reset(seedWords,filler){
   words.forEach(p=>p.age=0);
   draw(); drawList(); stat(); tell();
 }
-document.getElementById('soup').onclick=()=>{stop();reset([],true);outEl.textContent='a random soup of 45 words, no meaning involved.';};
+document.getElementById('soup').onclick=()=>{stop();hideTyper();reset([],true);outEl.textContent='a random soup of 45 words, no meaning involved.';};
+const STOP=new Set('the a an of and or to in on at by for with from as is are was were be been it its this that these those my your our their his her he she they we you i me us them not no but so if then than into onto over under'.split(' '));
+function plain(w){
+  if(LEX[w]) return w;
+  const tries=[w.replace(/ies$/,'y'),w.replace(/ves$/,'f'),w.replace(/es$/,''),w.replace(/s$/,''),w.replace(/ied$/,'y'),w.replace(/ed$/,''),w.replace(/ed$/,'e'),
+    w.replace(/ing$/,''),w.replace(/ing$/,'e'),w.replace(/([b-df-hj-np-tv-z])\1ing$/,'$1'),w.replace(/([b-df-hj-np-tv-z])\1ed$/,'$1'),w.replace(/ly$/,'')];
+  return tries.find(t=>t!==w&&t.length>2&&LEX[t])||null;
+}
+const typerEl=document.getElementById('typer'), seedEl=document.getElementById('seed');
+function showTyper(){ typerEl.style.display='block'; seedEl.value=''; seedEl.focus(); }
+function hideTyper(){ typerEl.style.display='none'; seedEl.blur(); }
 function sow(){
   stop();
-  const raw=(document.getElementById('seed').value.toLowerCase().match(/[a-z]+/g)||[]);
-  const ok=[...new Set(raw.filter(w=>LEX[w]))], miss=raw.filter(w=>!LEX[w]&&w.length>3&&!/^(that|this|with|from|have|were|what|when|your|they|them|then|than|into|over|only|also|been|will|would|could|about)$/.test(w));
+  const raw=(seedEl.value.toLowerCase().match(/[a-z]+/g)||[]).filter(w=>!STOP.has(w));
+  const ok=[...new Set(raw.map(plain).filter(Boolean))], miss=raw.filter(w=>!plain(w));
+  if(!ok.length){ outEl.textContent=raw.length?'not in the lexicon: '+miss.join(', ')+'. try other words.':'type a word or a line.'; return; }
+  hideTyper();
   reset(ok,false);
   const placed=new Set(words.map(p=>p.w));
   const in_=ok.filter(w=>placed.has(w)), out_=ok.filter(w=>!placed.has(w));
+  const br=E.bridges();
   outEl.innerHTML=(in_.length?'sown: '+in_.join(', '):'none of those words could be sown')+
+    (br.length?'<br>'+br.map(([s,b])=>s+' shares no letter with the rest, so it came in across '+b).join('; '):'')+
     (out_.length?'<br>could not be crossed in: '+out_.join(', '):'')+
     (miss.length?'<br>not in the lexicon: '+miss.join(', '):'')+
     '<br>everything else will descend from '+(in_.length===1?'it':'these')+'.';
 }
-document.getElementById('sow').onclick=sow;
-document.getElementById('seed').addEventListener('keydown',e=>{if(e.key==='Enter')sow();});
+typerEl.addEventListener('submit',e=>{e.preventDefault();sow();});
+document.getElementById('restart').onclick=()=>{ stop(); engine(); words=[]; gen=0; focus=null; ghosts=new Map(); seen=new Map(); settled=null; prevBorn=new Set();
+  draw(); drawList(); stat(); outEl.textContent=''; showTyper(); };
 
 /* ---------- the rule, editable ---------- */
 const ruleEl=document.getElementById('rule');
@@ -432,8 +472,8 @@ function drawRule(){
 
 document.getElementById('lexn').textContent=Object.keys(LEX).length.toLocaleString()+' words can be born.';
 drawRule(); sizeBoard();
-document.getElementById('seed').value='marrow';
-sow();
+engine(); words=[]; draw(); drawList(); stat(); outEl.textContent='';
+showTyper();
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(sizeBoard);
 </script>
 </body>
