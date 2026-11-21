@@ -32,10 +32,11 @@ button.on{color:var(--born)}
 #next:hover,#next:focus-visible{background:var(--born);color:#000}
 #field{position:relative;margin:8px 0}
 #plane{display:block;width:100%;height:min(66vh,800px);touch-action:none;cursor:crosshair}
-/* the typing box opens where you tapped */
-#typer{position:absolute;display:none;z-index:2}
+/* the typing box sits under the field; a tap on the field chooses where the words land */
+#typer{margin:10px 0 0}
 #typer input{font:inherit;font-size:16px;background:#000;color:var(--fg);border:1px solid var(--fg);
-  padding:6px 8px;width:100%}
+  padding:7px 9px;flex:1;min-width:0}
+#typer button{font-size:14px;border:1px solid var(--fg);padding:7px 14px}
 #typer input::placeholder{color:#fff;opacity:.65}
 #stat{font-size:12.5px;min-height:1.6em}
 #poem{font-size:13px;margin:8px 0 4px;max-width:72ch;display:none}
@@ -53,8 +54,8 @@ button.on{color:var(--born)}
 <p class="note">Conway's Game of Life, where every living cell is a word. Tap anywhere and type. Tap a word to follow its pattern.</p>
 <div id="field">
   <canvas id="plane"></canvas>
-  <form id="typer"><input id="line" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
 </div>
+<form id="typer" class="bar"><input id="line" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit">plant</button></form>
 <div class="bar">
   <button id="next">NEXT GENERATION</button>
   <button id="run">run on its own</button>
@@ -401,22 +402,20 @@ function offscreen(){
 
 /* ---------- typing anywhere ---------- */
 const typer=document.getElementById('typer'), lineIn=document.getElementById('line');
+// where the next typed words land: the cell last tapped, or else a clear spot in view
 let typingAt=null;
-function placeTyper(){
-  if(!typingAt) return;
-  const [x,y]=toScreen(typingAt[0],typingAt[1]), w=Math.min(300,W-16);
-  typer.style.width=w+'px';
-  typer.style.left=Math.max(8,Math.min(W-w-8,x))+'px';
-  const below=y+cam.cs+4, h=40;
-  typer.style.top=(below+h<H?below:Math.max(4,y-h-4))+'px';
+function landing(){
+  if(typingAt) return typingAt;
+  if(!board.size) return [Math.round(cam.r),Math.round(cam.c)];
+  const b=bbox([...board.keys()]); return [b.r1+4,Math.round((b.c0+b.c1)/2)-2];
 }
-function openTyper(r,c){
-  typingAt=[r,c]; typer.style.display='block'; lineIn.value=''; placeTyper(); lineIn.focus(); draw();
+function placeTyper(){}
+function plantTyped(){
+  const t=lineIn.value; if(!t.trim()) return false;
+  const [r,c]=landing(); typingAt=null; lineIn.value=''; lineIn.blur();
+  plantLine(t,r,c); return true;
 }
-function closeTyper(){ typingAt=null; typer.style.display='none'; lineIn.blur(); draw(); }
-typer.addEventListener('submit',e=>{ e.preventDefault(); const at=typingAt, t=lineIn.value; closeTyper(); if(at&&t.trim()) plantLine(t,at[0],at[1]); });
-lineIn.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTyper(); });
-lineIn.addEventListener('blur',()=>{ setTimeout(()=>{ if(document.activeElement!==lineIn&&!lineIn.value.trim()) closeTyper(); },150); });
+typer.addEventListener('submit',e=>{ e.preventDefault(); stop(); if(!plantTyped()){ outEl.textContent='type a word or a line, then plant it.'; lineIn.focus(); } });
 
 /* ---------- touch: tap an empty cell to type, tap a word to follow its pattern; drag pans, pinch zooms ---------- */
 const ptrs=new Map(); let downAt=null, moved=false, pinch0=null;
@@ -435,8 +434,7 @@ const end=e=>{ ptrs.delete(e.pointerId); if(ptrs.size<2) pinch0=null;
   if(ptrs.size===0&&downAt&&!moved) tapCell(...toCell(e.offsetX,e.offsetY));
   if(ptrs.size===0) downAt=null; };
 cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
-// a tap's follow-up mouse event would take focus away from the typing box; keep it, and focus again on the click
-// (some phones only raise the keyboard from a click)
+// a tap's follow-up mouse event would take focus from the typing box; keep it there, and focus again on the click
 cv.addEventListener('mousedown',e=>e.preventDefault());
 cv.addEventListener('click',()=>{ if(typingAt) lineIn.focus(); });
 function zoomTo(cs){ setFollow('off'); cam.cs=cam.tcs=Math.max(3,Math.min(80,cs)); draw(); placeTyper(); }
@@ -444,8 +442,9 @@ cv.addEventListener('wheel',e=>{ e.preventDefault(); zoomTo(cam.cs*Math.exp(-e.d
 
 function tapCell(r,c){
   const k=K.key(r,c);
-  if(typingAt){ closeTyper(); }
-  if(!board.has(k)){ openTyper(r,c); return; }
+  if(!board.has(k)){ typingAt=[r,c]; draw(); lineIn.focus();
+    outEl.textContent='what you type next will land in the marked cell.'; return; }
+  typingAt=null;
   if(follow==='pattern'&&k===focusKey){            // second tap on the same word: silence it
     const w=board.get(k); board.delete(k); focusKey=null; ghosts=new Map([[k,w]]); born=[];
     shapes=new Map(); period=null; outEl.textContent=w+' is silenced.'; frame(); draw(); stat(); return;
@@ -509,16 +508,19 @@ function tick(){
 let timer=null;
 const runBtn=document.getElementById('run');
 function stop(){clearInterval(timer);timer=null;runBtn.textContent='run on its own';runBtn.className='';}
-function start(){if(timer)return;timer=setInterval(tick,900);runBtn.textContent='stop running';runBtn.className='on';}
+function start(){if(timer)return; plantTyped(); if(!board.size){ outEl.textContent='nothing is alive yet. type a word or a line and plant it.'; return; } timer=setInterval(tick,900);runBtn.textContent='stop running';runBtn.className='on';}
 runBtn.onclick=()=>timer?stop():start();
-document.getElementById('next').onclick=()=>{stop();tick();};
+document.getElementById('next').onclick=()=>{ stop();
+  if(plantTyped()) return;                       // words still in the box are planted first
+  if(!board.size){ outEl.textContent='nothing is alive yet. type a word or a line and plant it.'; return; }
+  tick(); };
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
   if(e.key===' '||e.key==='Enter'||e.key==='ArrowRight'){e.preventDefault();stop();tick();}
 });
 document.getElementById('clear').onclick=()=>{ stop(); board=new Map(); ghosts=new Map(); born=[]; gen=0; shapes=new Map(); period=null;
   make(); setFollow(innerWidth<520?'read':'whole'); draw(); stat(); outEl.textContent=''; goneEl.innerHTML='';
-  openTyper(Math.floor(cam.r),Math.floor(cam.c)); };
+  typingAt=null; lineIn.focus(); };
 
 /* ---------- dials ---------- */
 const meanBtn=document.getElementById('mean'), memBtn=document.getElementById('mem');
@@ -535,8 +537,8 @@ memBtn.onclick=()=>{ opts.memory=MEMS[(MEMS.indexOf(opts.memory)+1)%MEMS.length]
 drawDials();
 if(innerWidth<520) setFollow('read');
 sizeCanvas();
-frame(); stat();
-openTyper(0,0);
+frame(); stat(); draw();
+if(innerWidth>=700) lineIn.focus();
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>draw());
 </script>
 </body>
