@@ -32,8 +32,9 @@ button:hover,button:focus-visible{text-decoration:underline;outline:none}
 #next:hover,#next:focus-visible{text-decoration:underline}
 #run.on{font-weight:700}
 #bwrap{position:relative}
-#typer{position:absolute;left:50%;top:38%;transform:translateX(-50%);width:min(300px,86%);display:none;z-index:2}
-#seed{font:inherit;font-size:16px;background:#000;color:var(--fg);border:1px solid var(--fg);padding:7px 9px;width:100%}
+#typer{margin:10px 0 0;flex-wrap:nowrap}
+#typer button{font-size:14px;border:1px solid var(--fg);padding:7px 14px}
+#seed{font:inherit;font-size:16px;background:#000;color:var(--fg);border:1px solid var(--fg);padding:7px 9px;flex:1;min-width:0}
 #seed::placeholder{color:#fff;opacity:.65}
 
 #rule{font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
@@ -65,7 +66,8 @@ h2{font-size:12.5px;font-weight:400;margin:18px 0 6px}
 
 <p class="note">A cellular automaton made of words, grown as a crossword. <span id="lexn"></span></p>
 <div id="bwrap"><div id="board"></div>
-<form id="typer"><input id="seed" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false"></form></div>
+</div>
+<form id="typer" class="bar"><input id="seed" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="submit">sow</button></form>
 <div class="bar">
   <button id="next">NEXT GENERATION</button>
   <button id="run">run on its own</button>
@@ -380,7 +382,7 @@ function pickCell(k){
 /* ---------- life ---------- */
 function key(ws){ return ws.map(p=>p.w+'@'+p.r+','+p.c+p.d).sort().join(';'); }
 function tick(){
-  if(!words.length){ outEl.textContent='nothing is growing yet. type a word or a line.'; showTyper(); return; }
+  if(!words.length){ outEl.textContent='nothing is growing yet. type a word or a line and sow it.'; return; }
   const before=words;
   const res=E.step(words);
   ghosts=new Map();
@@ -400,9 +402,9 @@ function tick(){
 let timer=null;
 const runBtn=document.getElementById('run');
 function stop(){clearInterval(timer);timer=null;runBtn.textContent='run on its own';runBtn.className='';}
-function start(){if(timer)return;timer=setInterval(tick,1200);runBtn.textContent='stop running';runBtn.className='on';}
+function start(){if(timer)return; const typed=seedEl.value.trim(); if(typed) sow(); if(!words.length){ if(!typed) tick(); return; } timer=setInterval(tick,1200);runBtn.textContent='stop running';runBtn.className='on';}
 runBtn.onclick=()=>timer?stop():start();
-document.getElementById('next').onclick=()=>{stop();tick();};
+document.getElementById('next').onclick=()=>{ stop(); if(seedEl.value.trim()){ sow(); return; } tick(); };  // words still in the box are sown first
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
   if(e.key===' '||e.key==='Enter'||e.key==='ArrowRight'){e.preventDefault();stop();tick();}
@@ -423,8 +425,8 @@ function plain(w){
   return tries.find(t=>t!==w&&t.length>2&&LEX[t])||null;
 }
 const typerEl=document.getElementById('typer'), seedEl=document.getElementById('seed');
-function showTyper(){ typerEl.style.display='block'; seedEl.value=''; seedEl.focus(); }
-function hideTyper(){ typerEl.style.display='none'; seedEl.blur(); }
+function showTyper(){ seedEl.value=''; if(innerWidth>=700) seedEl.focus(); }
+function hideTyper(){ seedEl.value=''; seedEl.blur(); }
 function sow(){
   stop();
   const raw=(seedEl.value.toLowerCase().match(/[a-z]+/g)||[]).filter(w=>!STOP.has(w));
