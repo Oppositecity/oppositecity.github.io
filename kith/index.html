@@ -6,12 +6,12 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KITH</title>
-<meta name="description" content="Conway&#x2019;s Game of Life where every living cell is a word. The shapes obey Conway exactly; meaning decides which word is born.">
+<meta name="description" content="Conway&#x2019;s Game of Life where every living cell is a word. Tap anywhere and type: a line lands as a row of words and Life takes it apart; meaning decides which word is born.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="OPPOSITE CITY">
 <meta property="og:url" content="https://opposite.city/kith/">
 <meta property="og:title" content="KITH">
-<meta property="og:description" content="Conway&#x2019;s Game of Life where every living cell is a word. The shapes obey Conway exactly; meaning decides which word is born.">
+<meta property="og:description" content="Conway&#x2019;s Game of Life where every living cell is a word. Tap anywhere and type: a line lands as a row of words and Life takes it apart; meaning decides which word is born.">
 <meta property="og:image" content="https://opposite.city/og/kith.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/fonts/fonts.css">
@@ -30,12 +30,19 @@ button:hover,button:focus-visible{color:var(--born);outline:none}
 button.on{color:var(--born)}
 #next{background:var(--fg);color:#000;font-weight:700;padding:12px 22px;letter-spacing:.14em;flex:1;max-width:340px}
 #next:hover,#next:focus-visible{background:var(--born);color:#000}
-#seed{font:inherit;font-size:13px;background:#000;color:var(--fg);border:1px solid var(--fg);
-      padding:7px 9px;flex:1;min-width:min(100%,220px)}
-#seed::placeholder{color:#fff;opacity:.65}
-#plane{display:block;width:100%;height:min(62vh,760px);margin:8px 0 8px;touch-action:none;cursor:crosshair}
+#field{position:relative;margin:8px 0}
+#plane{display:block;width:100%;height:min(66vh,800px);touch-action:none;cursor:crosshair}
+/* the typing box opens where you tapped */
+#typer{position:absolute;display:none;z-index:2}
+#typer input{font:inherit;font-size:16px;background:#000;color:var(--fg);border:1px solid var(--fg);
+  padding:6px 8px;width:100%}
+#typer input::placeholder{color:#fff;opacity:.65}
 #stat{font-size:12.5px;min-height:1.6em}
-#out{font-size:12.5px;min-height:5em;margin:6px 0 14px;max-width:72ch}
+#poem{font-size:13px;margin:8px 0 4px;max-width:72ch;display:none}
+#poem .head{margin-bottom:4px}
+#poem .lines{max-height:16.5em;overflow-y:auto}
+#poem .lines div{white-space:normal}
+#out{font-size:12.5px;min-height:3em;margin:6px 0 14px;max-width:72ch}
 #gone{font-size:12.5px;max-width:72ch}
 </style>
 </head>
@@ -43,41 +50,31 @@ button.on{color:var(--born)}
 
 <h1>KITH</h1>
 
-<p class="note">Conway's Game of Life, where every living cell is a word.</p>
-<canvas id="plane"></canvas>
+<p class="note">Conway's Game of Life, where every living cell is a word. Tap anywhere and type. Tap a word to follow its pattern.</p>
+<div id="field">
+  <canvas id="plane"></canvas>
+  <form id="typer"><input id="line" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false"></form>
+</div>
 <div class="bar">
   <button id="next">NEXT GENERATION</button>
   <button id="run">run on its own</button>
-  <button id="follow" class="on">following: the whole pattern</button>
+  <button id="follow" class="on">following: everything</button>
 </div>
 
-
-
-
-
-
-
-
-
 <div id="stat"></div>
+<div id="poem"><div class="head"></div><div class="lines"></div></div>
 <div id="out"></div>
 <div id="gone"></div>
 
-<form class="bar" id="sowform">
-  <input id="seed" type="text" enterkeyhint="go" placeholder="type a word, or a line, then sow" autocomplete="off" autocapitalize="off" spellcheck="false">
-  <button id="sow" type="submit">sow</button>
-</form>
 <div class="bar" id="pats"></div>
 <div class="bar">
   <button id="mean"></button>
   <button id="mem"></button>
+  <button id="clear">clear the field</button>
 </div>
 
 <p class="note">On a plane with no edges. The shapes obey Conway exactly: a cell is born with three living neighbours and survives with two or three. Meaning decides only which word is born, the one closest to its three parents. A word that has lived is not born again for a while, so a pattern that holds its shape keeps changing what it says.</p>
-<p class="note">Newborn words are <span class="b">green</span>. Words that have just <span class="d">died</span> stay for one generation. Tap a cell to wake or silence it. Drag to look around, pinch or scroll to zoom.</p>
-
-
-
+<p class="note">A typed line lands as a row of words, one to a cell, and Life does what it does with rows: three words blink, four settle into a beehive, five make a traffic light, six die out, ten become the pentadecathlon. A single word is planted with its four nearest kin as an R-pentomino, so it grows. Follow a pattern and its words are written out, one line per generation. Newborn words are <span class="b">green</span>; words that have just <span class="d">died</span> stay for one generation. Tap a followed word again to silence it. Drag to look around, pinch or scroll to zoom.</p>
 
 <script>
 // KITH engine — Conway's Life on an unbounded plane, where every live cell is a word.
@@ -203,18 +200,10 @@ const MEMS=[0,20,60,200];
 let opts={kinOnly:false,memory:60}, K, board=new Map(), gen=0, born=[], ghosts=new Map(), shapes=new Map(), period=null;
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COL={fg:css('--fg'),born:css('--born'),dead:css('--dead')};
-
 function make(){ K=makeKith(LEX,opts); }
 make();
 
-/* ---------- patterns: Conway's, filled with your words ---------- */
-const PATTERNS={
-  'r-pentomino':[[0,1],[0,2],[1,0],[1,1],[2,1]],
-  'glider':[[0,1],[1,2],[2,0],[2,1],[2,2]],
-  'acorn':[[0,1],[1,3],[2,0],[2,1],[2,4],[2,5],[2,6]],
-  'blinker':[[0,0],[0,1],[0,2]],
-  'soup':null
-};
+/* ---------- words in ---------- */
 const STOP=new Set('the a an of and or to in on at by for with from as is are was were be been it its this that these those my your our their his her he she they we you i me us them not no but so if then than into onto over under'.split(' '));
 function plain(w){
   if(LEX[w]) return w;
@@ -222,120 +211,187 @@ function plain(w){
     w.replace(/ing$/,''),w.replace(/ing$/,'e'),w.replace(/([b-df-hj-np-tv-z])\1ing$/,'$1'),w.replace(/([b-df-hj-np-tv-z])\1ed$/,'$1'),w.replace(/ly$/,'')];
   return tries.find(t=>t!==w&&t.length>2&&LEX[t])||null;
 }
-function seedWords(n){
-  const raw=(document.getElementById('seed').value.toLowerCase().match(/[a-z]+/g)||[]).filter(w=>!STOP.has(w));
-  const ok=[...new Set(raw.map(plain).filter(Boolean))];
-  const miss=raw.filter(w=>!plain(w));
-  if(raw.length&&!ok.length) return {none:true,miss};
-  const base=ok.length?ok:['bone'], k0=base[0];
-  const extra=K.WORDS.filter(w=>!base.includes(w)&&K.sim(w,k0)>0)
-    .sort((a,b)=>K.sim(b,k0)-K.sim(a,k0)||(K.hash(k0+a)-K.hash(k0+b)));
-  return {words:base.concat(extra).slice(0,Math.max(n,base.length)),miss,typed:raw.length>0};
+function parse(text){
+  const raw=(text.toLowerCase().match(/[a-z]+/g)||[]).filter(w=>!STOP.has(w));
+  return {ok:raw.map(plain).filter(Boolean), miss:raw.filter(w=>!plain(w))};
 }
-let current='r-pentomino';
-function place(name){
-  const probe=seedWords(1);
-  if(probe.none){ outEl.innerHTML='none of those words are in the lexicon: '+probe.miss.join(', ')+
-    '<br>it holds '+K.WORDS.length.toLocaleString()+' nouns and verbs. nothing was changed.'; return; }
-  current=name;
-  stop(); make(); gen=0; ghosts=new Map(); shapes=new Map(); period=null; born=[]; board=new Map();
-  let s, note;
-  if(name==='soup'){
-    s=seedWords(5); let k=0, h=K.hash(s.words.join());
-    for(let r=-5;r<5;r++)for(let c=-6;c<6;c++){ h=Math.imul(h^((r+9)*31+c+9),2654435761)>>>0;
-      if(h%100<38){ const w=k<s.words.length?s.words[k++]:K.WORDS[h%K.WORDS.length]; if(![...board.values()].includes(w)) board.set(K.key(r,c),w); } }
-    note='a soup around your words, filled with strangers.';
+function kinOf(w,n,avoid){
+  return K.WORDS.filter(x=>x!==w&&!avoid.has(x)&&K.sim(x,w)>0)
+    .sort((a,b)=>K.sim(b,w)-K.sim(a,w)||(K.hash(w+a)-K.hash(w+b))).slice(0,n);
+}
+// a word may stand only once on the field: a repeat becomes its nearest free kin
+function free(w,taken){ if(!taken.has(w)){ taken.add(w); return w; } const k=K.childOf([w],taken); taken.add(k); return k; }
+const ROWFATE={2:'two words alone die at once; a third would make them blink.',3:'a row of three blinks forever.',
+  4:'a row of four settles into a beehive.',5:'a row of five becomes a traffic light: four blinkers.',
+  6:'a row of six dies out after twelve generations.',7:'a row of seven settles into a honey farm: four beehives.',
+  9:'a row of nine becomes two traffic lights.',10:'a row of ten becomes the pentadecathlon, which repeats every fifteen generations.'};
+let lastWords=['bone'];
+function plantLine(text,r,c){
+  const {ok,miss}=parse(text);
+  if(!ok.length){ outEl.innerHTML=(miss.length?'not in the lexicon: '+miss.join(', ')+'. ':'')+'nothing was planted.'; return; }
+  lastWords=ok.slice();
+  const taken=new Set(board.values()); let note;
+  if(ok.length===1){
+    const w=free(ok[0],taken), kin=kinOf(w,4,taken); kin.forEach(k=>taken.add(k));
+    const cells=[[0,1],[0,2],[1,0],[1,1],[2,1]], words=[w,...kin];
+    cells.forEach(([a,b],i)=>board.set(K.key(r+a,c+b-1),words[i]));
+    note='an R-pentomino of '+words.join(', ')+'. a lone word would die, so it is planted with its four nearest kin.';
   } else {
-    const cells=PATTERNS[name]; s=seedWords(cells.length);
-    cells.forEach(([r,c],k)=>board.set(K.key(r-1,c-1),s.words[k%s.words.length]));
-    note=(/^(r-|[aeiou])/.test(name)?'an ':'a ')+name+' of '+cells.map((_,k)=>s.words[k%s.words.length]).join(', ')+'.';
+    const placed=ok.map(w=>free(w,taken));
+    placed.forEach((w,i)=>board.set(K.key(r,c+i),w));
+    note='a row of '+placed.length+': '+placed.join(' ')+'.'+(ROWFATE[placed.length]?' on its own, '+ROWFATE[placed.length]:'');
   }
-  if(!s.typed) note+='<br>nothing typed, so it starts from bone.';
-  if(s.miss.length) note+='<br>not in the lexicon, left out: '+s.miss.join(', ');
-  document.querySelectorAll('#pats button').forEach(b=>b.className=b.dataset.p===name?'on':'');
-  if(follow==='off') setFollow('whole'); cam.snap=true;
-  frame(); stat(); outEl.innerHTML=note; goneEl.innerHTML='';
+  if(miss.length) note+='<br>not in the lexicon, left out: '+miss.join(', ');
+  ghosts=new Map(); born=[]; shapes=new Map(); period=null;
+  frame(); draw(); stat(); outEl.innerHTML=note;
+}
+
+/* ---------- patterns, planted at the centre of the view with your last words ---------- */
+const PATTERNS={'r-pentomino':[[0,1],[0,2],[1,0],[1,1],[2,1]],'glider':[[0,1],[1,2],[2,0],[2,1],[2,2]],
+  'acorn':[[0,1],[1,3],[2,0],[2,1],[2,4],[2,5],[2,6]],'blinker':[[0,0],[0,1],[0,2]],'soup':null};
+function plantPattern(name){
+  const taken=new Set(board.values()), base=lastWords.map(w=>free(w,taken));
+  const fill=n=>{ const ws=base.slice(); for(const k of kinOf(base[0],n,taken)){ if(ws.length>=n) break; ws.push(k); taken.add(k); } return ws; };
+  const r0=Math.round(cam.r), c0=Math.round(cam.c); let note;
+  if(name==='soup'){
+    let h=K.hash(base.join()+gen), k=0; const ws=fill(5);
+    for(let r=-5;r<5;r++)for(let c=-6;c<6;c++){ h=Math.imul(h^((r+9)*31+c+9),2654435761)>>>0;
+      if(h%100<38){ let w=k<ws.length?ws[k++]:K.WORDS[h%K.WORDS.length]; w=free(w,taken); board.set(K.key(r0+r,c0+c),w); } }
+    note='a soup around '+base.join(', ')+', filled with strangers.';
+  } else {
+    const cells=PATTERNS[name], ws=fill(cells.length);
+    cells.forEach(([a,b],i)=>board.set(K.key(r0+a-1,c0+b-1),ws[i%ws.length]));
+    note=(/^(r-|[aeiou])/.test(name)?'an ':'a ')+name+' of '+cells.map((_,i)=>ws[i%ws.length]).join(', ')+'.';
+  }
+  ghosts=new Map(); born=[]; shapes=new Map(); period=null;
+  frame(); draw(); stat(); outEl.innerHTML=note;
 }
 const patsEl=document.getElementById('pats');
-Object.keys(PATTERNS).forEach(p=>{
-  const b=document.createElement('button'); b.textContent=p; b.dataset.p=p; b.onclick=()=>place(p); patsEl.appendChild(b);
-});
+const pl=document.createElement('span'); pl.textContent='plant here:'; patsEl.appendChild(pl);
+Object.keys(PATTERNS).forEach(p=>{ const b=document.createElement('button'); b.textContent=p; b.onclick=()=>plantPattern(p); patsEl.appendChild(b); });
 
 /* ---------- the plane and its camera ---------- */
 const cv=document.getElementById('plane'), ctx=cv.getContext('2d');
 let W=0,H=0,dpr=1;
 function sizeCanvas(){ dpr=Math.min(devicePixelRatio||1,3); W=cv.clientWidth; H=cv.clientHeight;
-  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); frame(); }
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); frame(); draw(); }
 addEventListener('resize',sizeCanvas);
-// camera: centre (row, col) in cell units, and cell size in px
-const cam={r:1,c:1,cs:44,tr:1,tc:1,tcs:44,snap:true}; let follow='whole', escaped=[];
+const cam={r:1,c:1,cs:44,tr:1,tc:1,tcs:44,snap:true};
+const READ_CS=5*0.6*8.6/0.92;   // the smallest cell that still shows a five-letter word legibly
+// follow: 'all' (everything, close enough to read on a phone), 'whole' (fit everything), 'pattern', 'off'
+let follow='whole', escaped=[], tracked=null, focusKey=null, poemLines=[];
 const followBtn=document.getElementById('follow');
-const FOLLOW={whole:'following: the whole pattern', read:'following: close enough to read', off:'follow the words'};
-function setFollow(m){ if(m===true) m='whole'; if(m===false) m='off'; follow=m; followBtn.className=m==='off'?'':'on'; followBtn.textContent=FOLLOW[m]; }
+function setFollow(m){
+  follow=m;
+  if(m!=='pattern'){ tracked=null; focusKey=null; showPoem(false); }
+  followBtn.className=m==='off'?'':'on';
+  followBtn.textContent=m==='pattern'?'following one pattern: let go':m==='whole'?'following: everything':m==='read'?'following: close enough to read':'follow the words';
+}
 followBtn.onclick=()=>{ setFollow(follow==='whole'?'read':follow==='read'?'off':'whole'); frame(); stat(); };
-const READ_CS=5*0.6*8.6/0.92;   // the smallest cell that still shows a whole word
 
+function bbox(keys){ const rs=keys.map(K.rowOf), cs=keys.map(K.colOf);
+  return {r0:Math.min(...rs),r1:Math.max(...rs),c0:Math.min(...cs),c1:Math.max(...cs)}; }
 function analyse(){
-  // the main mass is everything except gliders that have travelled clear of the rest
   const comps=K.components(board);
   const big=comps.filter(c=>!K.isGlider(c));
   const ref=(big.length?big:comps).flat();
-  const rs=ref.map(K.rowOf), cs=ref.map(K.colOf);
-  const box=ref.length?{r0:Math.min(...rs),r1:Math.max(...rs),c0:Math.min(...cs),c1:Math.max(...cs)}:{r0:0,r1:2,c0:0,c1:2};
+  const box=ref.length?bbox(ref):{r0:0,r1:0,c0:0,c1:0};
   escaped=[];
   for(const c of comps){ if(!K.isGlider(c)||!big.length) continue;
     const r=K.rowOf(c[0]), cc=K.colOf(c[0]);
     const dist=Math.max(box.r0-r,r-box.r1,box.c0-cc,cc-box.c1);
     if(dist>6) escaped.push({cells:c,dist});
   }
-  const mass=new Set(); comps.forEach(c=>{ if(!escaped.some(e=>e.cells===c)) c.forEach(k=>mass.add(k)); });
-  const mr=[...mass].map(K.rowOf), mc=[...mass].map(K.colOf);
-  return mass.size?{r0:Math.min(...mr),r1:Math.max(...mr),c0:Math.min(...mc),c1:Math.max(...mc)}:box;
+  const mass=[]; comps.forEach(c=>{ if(!escaped.some(e=>e.cells===c)) mass.push(...c); });
+  return {comps, box: mass.length?bbox(mass):box};
 }
+// keep hold of one pattern from generation to generation: the group that overlaps it most
+function retrack(comps){
+  if(!tracked) return;
+  const near=new Set(); for(const k of tracked){ const r=K.rowOf(k), c=K.colOf(k);
+    for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++) near.add(K.key(r+a,c+b)); }
+  let best=null, bs=0;
+  for(const c of comps){ const s=c.filter(k=>near.has(k)).length; if(s>bs){ bs=s; best=c; } }
+  if(!best){ tracked=null; poemAdd('the pattern has died.'); setFollow('whole'); return; }
+  tracked=new Set(best);
+}
+// the view holds still, and only grows when a living word is about to leave it
 function target(){
-  const b=analyse();
+  const {comps,box}=analyse();
+  if(follow==='pattern') retrack(comps);
   if(follow==='off') return;
-  const rows=b.r1-b.r0+5, cols=b.c1-b.c0+5;
-  cam.tr=(b.r0+b.r1)/2; cam.tc=(b.c0+b.c1)/2;
-  cam.tcs=Math.max(3,Math.min(64,W/cols,H/rows));
-  if(follow==='read') cam.tcs=Math.max(cam.tcs,READ_CS);
-  if(cam.snap){ cam.r=cam.tr; cam.c=cam.tc; cam.cs=cam.tcs; cam.snap=false; }
+  const pad=1.5;
+  const want=follow==='pattern'&&tracked?bbox([...tracked]):box;
+  const need={r0:want.r0-pad,r1:want.r1+1+pad,c0:want.c0-pad,c1:want.c1+1+pad};
+  const floor=follow==='read'?READ_CS:follow==='pattern'?(W>=700?40:READ_CS):3;
+  const fit=b=>Math.max(floor,Math.min(64,W/(b.c1-b.c0),H/(b.r1-b.r0)));
+  if(cam.snap){ cam.tr=(need.r0+need.r1)/2; cam.tc=(need.c0+need.c1)/2; cam.tcs=fit(need);
+    cam.r=cam.tr; cam.c=cam.tc; cam.cs=cam.tcs; cam.snap=false; return; }
+  const hh=H/2/cam.tcs, hw=W/2/cam.tcs;
+  const view={r0:cam.tr-hh,r1:cam.tr+hh,c0:cam.tc-hw,c1:cam.tc+hw};
+  const inside=(x,v)=>x.r0>=v.r0&&x.r1<=v.r1&&x.c0>=v.c0&&x.c1<=v.c1;
+  const mid=(v,m)=>({r0:v.r0+(v.r1-v.r0)*m,r1:v.r1-(v.r1-v.r0)*m,c0:v.c0+(v.c1-v.c0)*m,c1:v.c1-(v.c1-v.c0)*m});
+  const centre={r:(need.r0+need.r1)/2,c:(need.c0+need.c1)/2};
+  // a followed pattern that fits is kept within the middle of the view; one that is too big is kept by its centre
+  const keep=follow==='pattern'&&inside(need,mid(view,0)) ? mid(view,0.18) : view;
+  if(inside(need,keep)) return;                                        // in view: hold still
+  if(follow==='whole'||follow==='read'){
+    // grow, with room to spare so it need not grow again next generation
+    const u={r0:Math.min(view.r0,need.r0),r1:Math.max(view.r1,need.r1),c0:Math.min(view.c0,need.c0),c1:Math.max(view.c1,need.c1)};
+    const sr=(u.r1-u.r0)*0.12, sc=(u.c1-u.c0)*0.12, g={r0:u.r0-sr,r1:u.r1+sr,c0:u.c0-sc,c1:u.c1+sc};
+    const cs=fit(g);
+    if(cs*(g.c1-g.c0)<=W+1&&cs*(g.r1-g.r0)<=H+1){ cam.tr=(g.r0+g.r1)/2; cam.tc=(g.c0+g.c1)/2; cam.tcs=cs; return; }
+  }
+  // the words cannot all be shown at this size: move only when their centre leaves the middle of the view
+  const c=mid(view,0.3);
+  if(centre.r>=c.r0&&centre.r<=c.r1&&centre.c>=c.c0&&centre.c<=c.c1&&!inside(need,mid(view,0))) return;
+  cam.tr=centre.r; cam.tc=centre.c;
+  if(follow==='pattern'&&fit(need)>=floor) cam.tcs=Math.max(floor,Math.min(cam.tcs,fit(need)));
 }
 let anim=null;
-function frame(){
-  if(!K) return;
-  target();
-  if(!anim) anim=requestAnimationFrame(tickCam);
-}
+function frame(){ if(!K) return; target(); if(!anim) anim=requestAnimationFrame(tickCam); }
 function tickCam(){
-  anim=null;
-  const k=0.22;
+  anim=null; const k=0.22;
   cam.r+=(cam.tr-cam.r)*k; cam.c+=(cam.tc-cam.c)*k; cam.cs+=(cam.tcs-cam.cs)*k;
-  draw();
+  draw(); placeTyper();
   if(Math.abs(cam.tr-cam.r)>0.01||Math.abs(cam.tc-cam.c)>0.01||Math.abs(cam.tcs-cam.cs)>0.05) anim=requestAnimationFrame(tickCam);
 }
 const toScreen=(r,c)=>[W/2+(c-cam.c)*cam.cs, H/2+(r-cam.r)*cam.cs];
+const toCell=(x,y)=>[Math.floor(cam.r+(y-H/2)/cam.cs), Math.floor(cam.c+(x-W/2)/cam.cs)];
 function draw(){
   ctx.clearRect(0,0,W,H);
   const cs=cam.cs, bornSet=new Set(born.map(b=>b.k));
-  // whole words at every zoom: the type shrinks with the cell, it never abbreviates
-  // words of five letters or fewer share one size; longer words are set smaller to fit their cell
+  // where a word could go: a point at the centre of every empty cell, once cells are big enough to tap
+  if(cs>=16){
+    ctx.fillStyle='rgba(255,255,255,.28)';
+    const [r0,c0]=toCell(0,0), [r1,c1]=toCell(W,H);
+    for(let r=r0;r<=r1;r++)for(let c=c0;c<=c1;c++){ if(board.has(K.key(r,c))) continue;
+      const [x,y]=toScreen(r+0.5,c+0.5); ctx.fillRect(x-0.75,y-0.75,1.5,1.5); }
+  }
+  // the cell where typing will land
+  if(typingAt){ const [x,y]=toScreen(typingAt[0],typingAt[1]); ctx.strokeStyle=COL.fg; ctx.lineWidth=1; ctx.strokeRect(x+0.5,y+0.5,cs-1,cs-1); }
+  // whole words at every zoom: words of five letters or fewer share one size, longer words are set smaller to fit
   const fs5=Math.min(16,cs/(5*0.6)*0.92);
   ctx.textAlign='center'; ctx.textBaseline='middle';
   let lastFs=-1;
-  const paint=(k,w,col)=>{
+  const paint=(k,w,col,bold)=>{
     const [x,y]=toScreen(K.rowOf(k)+0.5,K.colOf(k)+0.5);
-    if(x<-cs||y<-cs||x>W+cs||y>H+cs) return false;
+    if(x<-cs||y<-cs||x>W+cs||y>H+cs) return;
     const fs=w.length<=5?fs5:Math.min(fs5,cs/(w.length*0.6)*0.92);
-    if(fs!==lastFs){ ctx.font=fs+'px "Courier Prime","Courier New",monospace'; lastFs=fs; }
+    const f=(bold?'700 ':'')+fs+'px "Courier Prime","Courier New",monospace';
+    if(f!==lastFs){ ctx.font=f; lastFs=f; }
     ctx.fillStyle=col; ctx.fillText(w,x,y);
-    return true;
   };
-  for(const [k,w] of ghosts) paint(k,w,COL.dead);
-  let off=0;
-  for(const [k,w] of board) paint(k,w,bornSet.has(k)?COL.born:COL.fg);
+  for(const [k,w] of ghosts) paint(k,w,COL.dead,false);
+  for(const [k,w] of board) paint(k,w,bornSet.has(k)?COL.born:COL.fg,k===focusKey);
+  // the followed pattern is underlined, so you can tell what the camera is riding
+  if(follow==='pattern'&&tracked&&cs>=10){
+    ctx.fillStyle=COL.fg;
+    for(const k of tracked){ const [x,y]=toScreen(K.rowOf(k)+0.5,K.colOf(k)+0.5); const w=board.get(k); if(!w) continue;
+      const fs=w.length<=5?fs5:Math.min(fs5,cs/(w.length*0.6)*0.92), half=w.length*fs*0.3;
+      ctx.fillRect(x-half,y+fs*0.62,half*2,1); }
+  }
 }
-// how many living words lie outside the view the camera is heading to
 function offscreen(){
   let n=0; const hw=W/2/cam.tcs, hh=H/2/cam.tcs;
   for(const k of board.keys()){ const r=K.rowOf(k)+0.5, c=K.colOf(k)+0.5;
@@ -343,7 +399,26 @@ function offscreen(){
   return n;
 }
 
-/* ---------- touch: tap toggles, drag pans, pinch/scroll zooms ---------- */
+/* ---------- typing anywhere ---------- */
+const typer=document.getElementById('typer'), lineIn=document.getElementById('line');
+let typingAt=null;
+function placeTyper(){
+  if(!typingAt) return;
+  const [x,y]=toScreen(typingAt[0],typingAt[1]), w=Math.min(300,W-16);
+  typer.style.width=w+'px';
+  typer.style.left=Math.max(8,Math.min(W-w-8,x))+'px';
+  const below=y+cam.cs+4, h=40;
+  typer.style.top=(below+h<H?below:Math.max(4,y-h-4))+'px';
+}
+function openTyper(r,c){
+  typingAt=[r,c]; typer.style.display='block'; lineIn.value=''; placeTyper(); lineIn.focus(); draw();
+}
+function closeTyper(){ typingAt=null; typer.style.display='none'; lineIn.blur(); draw(); }
+typer.addEventListener('submit',e=>{ e.preventDefault(); const at=typingAt, t=lineIn.value; closeTyper(); if(at&&t.trim()) plantLine(t,at[0],at[1]); });
+lineIn.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTyper(); });
+lineIn.addEventListener('blur',()=>{ setTimeout(()=>{ if(document.activeElement!==lineIn&&!lineIn.value.trim()) closeTyper(); },150); });
+
+/* ---------- touch: tap an empty cell to type, tap a word to follow its pattern; drag pans, pinch zooms ---------- */
 const ptrs=new Map(); let downAt=null, moved=false, pinch0=null;
 cv.addEventListener('pointerdown',e=>{ cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
   if(ptrs.size===1){ downAt={x:e.offsetX,y:e.offsetY,r:cam.r,c:cam.c}; moved=false; }
@@ -354,25 +429,49 @@ cv.addEventListener('pointermove',e=>{
   if(!downAt) return;
   const dx=e.offsetX-downAt.x, dy=e.offsetY-downAt.y;
   if(!moved&&Math.hypot(dx,dy)>6){ moved=true; setFollow('off'); }
-  if(moved){ cam.r=cam.tr=downAt.r-dy/cam.cs; cam.c=cam.tc=downAt.c-dx/cam.cs; draw(); }
+  if(moved){ cam.r=cam.tr=downAt.r-dy/cam.cs; cam.c=cam.tc=downAt.c-dx/cam.cs; draw(); placeTyper(); }
 });
 const end=e=>{ ptrs.delete(e.pointerId); if(ptrs.size<2) pinch0=null;
-  if(ptrs.size===0&&downAt&&!moved){ const r=Math.floor(cam.r+(e.offsetY-H/2)/cam.cs), c=Math.floor(cam.c+(e.offsetX-W/2)/cam.cs); toggle(K.key(r,c)); }
+  if(ptrs.size===0&&downAt&&!moved) tapCell(...toCell(e.offsetX,e.offsetY));
   if(ptrs.size===0) downAt=null; };
 cv.addEventListener('pointerup',end); cv.addEventListener('pointercancel',end);
-function zoomTo(cs){ setFollow('off'); cam.cs=cam.tcs=Math.max(3,Math.min(80,cs)); draw(); }
+// a tap's follow-up mouse event would take focus away from the typing box; keep it, and focus again on the click
+// (some phones only raise the keyboard from a click)
+cv.addEventListener('mousedown',e=>e.preventDefault());
+cv.addEventListener('click',()=>{ if(typingAt) lineIn.focus(); });
+function zoomTo(cs){ setFollow('off'); cam.cs=cam.tcs=Math.max(3,Math.min(80,cs)); draw(); placeTyper(); }
 cv.addEventListener('wheel',e=>{ e.preventDefault(); zoomTo(cam.cs*Math.exp(-e.deltaY*0.0015)); },{passive:false});
 
-function toggle(k){
-  if(board.has(k)) board.delete(k);
-  else{
-    const r=K.rowOf(k), c=K.colOf(k), live=[];
-    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){ if(!a&&!b) continue; const w=board.get(K.key(r+a,c+b)); if(w) live.push(w); }
-    const on=new Set(board.values());
-    board.set(k, live.length? K.childOf(live,on) : (()=>{ const w=seedWords(1).words[0]; return on.has(w)?K.childOf([w],on):w; })());
+function tapCell(r,c){
+  const k=K.key(r,c);
+  if(typingAt){ closeTyper(); }
+  if(!board.has(k)){ openTyper(r,c); return; }
+  if(follow==='pattern'&&k===focusKey){            // second tap on the same word: silence it
+    const w=board.get(k); board.delete(k); focusKey=null; ghosts=new Map([[k,w]]); born=[];
+    shapes=new Map(); period=null; outEl.textContent=w+' is silenced.'; frame(); draw(); stat(); return;
   }
-  ghosts=new Map(); born=[]; shapes=new Map(); period=null;
+  const comp=K.components(board).find(cmp=>cmp.includes(k));
+  setFollow('pattern'); tracked=new Set(comp); focusKey=k;
+  poemLines=[]; poemAdd(readPattern(), true);
+  outEl.textContent='following the pattern of '+board.get(k)+'. tap '+board.get(k)+' again to silence it.';
   frame(); draw(); stat();
+}
+
+/* ---------- the followed pattern, written out one line per generation ---------- */
+const poemEl=document.getElementById('poem'), poemHead=poemEl.querySelector('.head'), poemLinesEl=poemEl.querySelector('.lines');
+function showPoem(on){ poemEl.style.display=on?'block':'none'; }
+function readPattern(){
+  if(!tracked) return '';
+  const bs=new Set(born.map(b=>b.k));
+  return [...tracked].filter(k=>board.has(k)).sort((a,b)=>K.rowOf(a)-K.rowOf(b)||K.colOf(a)-K.colOf(b))
+    .map(k=>bs.has(k)?'<span class="b">'+board.get(k)+'</span>':board.get(k)).join(' ');
+}
+function poemAdd(line,first){
+  showPoem(true);
+  poemLines.push(line); if(poemLines.length>300) poemLines.shift();
+  poemHead.textContent='the followed pattern, one line per generation:';
+  poemLinesEl.innerHTML=poemLines.map(l=>'<div>'+l+'</div>').join('');
+  poemLinesEl.scrollTop=poemLinesEl.scrollHeight;
 }
 
 /* ---------- life ---------- */
@@ -389,17 +488,22 @@ function tick(){
   const res=K.step(board);
   ghosts=new Map(); res.died.forEach(k=>{ if(!res.board.has(k)) ghosts.set(k,board.get(k)); });
   board=res.board; born=res.born; gen++;
+  if(focusKey&&!board.has(focusKey)) focusKey=null;
   const key=[...board.keys()].sort((a,b)=>a-b).join(',');
   if(!period&&shapes.has(key)) period={p:gen-shapes.get(key),at:shapes.get(key)};
   if(!period){ shapes.set(key,gen); if(shapes.size>400) shapes.delete(shapes.keys().next().value); }
-  frame(); draw(); stat(born.length,res.died.length);
-  if(!board.size){ stop(); outEl.textContent='silence. everything has died.'; goneEl.innerHTML=''; return; }
-  outEl.innerHTML=born.length
-    ? born.slice(0,8).map(b=>'<span class="b">'+b.w+'</span> ← '+b.parents.join(', ')).join('<br>')+(born.length>8?'<br>and '+(born.length-8)+' more':'')
-    : 'no births this generation.';
+  frame();
+  if(follow==='pattern'&&tracked) poemAdd(readPattern());
+  draw(); stat(born.length,res.died.length);
+  if(!board.size){ stop(); outEl.textContent='silence. everything has died. tap anywhere and type.'; goneEl.innerHTML=''; return; }
+  const list=follow==='pattern'&&tracked?born.filter(b=>tracked.has(b.k)):born;
+  outEl.innerHTML=list.length
+    ? list.slice(0,6).map(b=>'<span class="b">'+b.w+'</span> ← '+b.parents.join(', ')).join('<br>')+(list.length>6?'<br>and '+(list.length-6)+' more':'')
+    : 'no births '+(follow==='pattern'?'in the pattern ':'')+'this generation.';
   goneEl.innerHTML=escaped.length
     ? (escaped.length===1?'a glider has left, carrying, right now: ':escaped.length+' gliders have left. what they carry right now:')+'<br>'+
-      escaped.slice(0,6).map(e=>e.cells.map(k=>board.get(k)).join(' ')+' &nbsp; '+e.dist+' cells out').join('<br>')
+      escaped.slice(0,6).map(e=>e.cells.map(k=>board.get(k)).join(' ')+' &nbsp; '+e.dist+' cells out').join('<br>')+
+      '<br>tap one to follow it.'
     : '';
 }
 let timer=null;
@@ -412,6 +516,9 @@ addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
   if(e.key===' '||e.key==='Enter'||e.key==='ArrowRight'){e.preventDefault();stop();tick();}
 });
+document.getElementById('clear').onclick=()=>{ stop(); board=new Map(); ghosts=new Map(); born=[]; gen=0; shapes=new Map(); period=null;
+  make(); setFollow(innerWidth<520?'read':'whole'); draw(); stat(); outEl.textContent=''; goneEl.innerHTML='';
+  openTyper(Math.floor(cam.r),Math.floor(cam.c)); };
 
 /* ---------- dials ---------- */
 const meanBtn=document.getElementById('mean'), memBtn=document.getElementById('mem');
@@ -425,12 +532,11 @@ meanBtn.onclick=()=>{ opts.kinOnly=!opts.kinOnly; remake();
 memBtn.onclick=()=>{ opts.memory=MEMS[(MEMS.indexOf(opts.memory)+1)%MEMS.length]; remake();
   outEl.textContent=opts.memory===0?'no memory: meaning will sink into the nearest dense cluster and stay there.':'a word that dies stays gone '+opts.memory+' generations before it can be born again, unless the words run short.'; };
 
-document.getElementById('sowform').addEventListener('submit',e=>{ e.preventDefault(); document.getElementById('seed').blur(); place(current); });
 drawDials();
 if(innerWidth<520) setFollow('read');
-document.getElementById('seed').value='bone';
 sizeCanvas();
-place('r-pentomino');
+frame(); stat();
+openTyper(0,0);
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>draw());
 </script>
 </body>

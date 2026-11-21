@@ -175,10 +175,10 @@
     "game of life",
     "conway",
     "glider",
-    "wordnet",
+    "typing",
     "inheritance"
    ],
-   "blurb": "Conway's Game of Life on a plane with no edges, where every living cell is a word. The shapes obey Conway exactly, so gliders glide and the R-pentomino settles at generation 1103; meaning decides only which word is born, the one closest to its three parents. No word lives twice at once and a word that dies stays gone for a while, so a pattern that keeps its shape keeps changing what it says: a glider's five words travel from insects to tools to fruit to soil to bread. Every birth is listed with its parents, and gliders that leave are named by the words they carry.",
+   "blurb": "Conway's Game of Life on a plane with no edges, where every living cell is a word. Tap anywhere and type: a line lands as a row of words, one to a cell, and Life takes it apart (three words blink, four settle into a beehive, ten become the pentadecathlon); a single word is planted with its four nearest kin and grows. The shapes obey Conway exactly; meaning decides only which word is born, the one closest to its three parents, and a word that has lived stays gone a while, so a pattern that keeps its shape keeps changing what it says. Tap a word to follow its pattern: the view rides it and its words are written out, one line per generation.",
    "url": "https://opposite.city/kith/"
   },
   {
