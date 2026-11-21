@@ -315,17 +315,38 @@ function retrack(comps){
   if(!best){ tracked=null; poemAdd('the pattern has died.'); setFollow('whole'); return; }
   tracked=new Set(best);
 }
+// the view holds still, and only grows when a living word is about to leave it
 function target(){
   const {comps,box}=analyse();
   if(follow==='pattern') retrack(comps);
   if(follow==='off') return;
-  const b=follow==='pattern'&&tracked?bbox([...tracked]):box;
-  const rows=b.r1-b.r0+5, cols=b.c1-b.c0+5;
-  cam.tr=(b.r0+b.r1)/2+0.5; cam.tc=(b.c0+b.c1)/2+0.5;
-  cam.tcs=Math.max(3,Math.min(64,W/cols,H/rows));
-  if(follow==='read') cam.tcs=Math.max(cam.tcs,READ_CS);
-  if(follow==='pattern') cam.tcs=Math.max(cam.tcs,W>=700?40:READ_CS);   // a followed pattern is meant to be read
-  if(cam.snap){ cam.r=cam.tr; cam.c=cam.tc; cam.cs=cam.tcs; cam.snap=false; }
+  const pad=1.5;
+  const want=follow==='pattern'&&tracked?bbox([...tracked]):box;
+  const need={r0:want.r0-pad,r1:want.r1+1+pad,c0:want.c0-pad,c1:want.c1+1+pad};
+  const floor=follow==='read'?READ_CS:follow==='pattern'?(W>=700?40:READ_CS):3;
+  const fit=b=>Math.max(floor,Math.min(64,W/(b.c1-b.c0),H/(b.r1-b.r0)));
+  if(cam.snap){ cam.tr=(need.r0+need.r1)/2; cam.tc=(need.c0+need.c1)/2; cam.tcs=fit(need);
+    cam.r=cam.tr; cam.c=cam.tc; cam.cs=cam.tcs; cam.snap=false; return; }
+  const hh=H/2/cam.tcs, hw=W/2/cam.tcs;
+  const view={r0:cam.tr-hh,r1:cam.tr+hh,c0:cam.tc-hw,c1:cam.tc+hw};
+  const inside=(x,v)=>x.r0>=v.r0&&x.r1<=v.r1&&x.c0>=v.c0&&x.c1<=v.c1;
+  const mid=(v,m)=>({r0:v.r0+(v.r1-v.r0)*m,r1:v.r1-(v.r1-v.r0)*m,c0:v.c0+(v.c1-v.c0)*m,c1:v.c1-(v.c1-v.c0)*m});
+  const centre={r:(need.r0+need.r1)/2,c:(need.c0+need.c1)/2};
+  // a followed pattern that fits is kept within the middle of the view; one that is too big is kept by its centre
+  const keep=follow==='pattern'&&inside(need,mid(view,0)) ? mid(view,0.18) : view;
+  if(inside(need,keep)) return;                                        // in view: hold still
+  if(follow==='whole'||follow==='read'){
+    // grow, with room to spare so it need not grow again next generation
+    const u={r0:Math.min(view.r0,need.r0),r1:Math.max(view.r1,need.r1),c0:Math.min(view.c0,need.c0),c1:Math.max(view.c1,need.c1)};
+    const sr=(u.r1-u.r0)*0.12, sc=(u.c1-u.c0)*0.12, g={r0:u.r0-sr,r1:u.r1+sr,c0:u.c0-sc,c1:u.c1+sc};
+    const cs=fit(g);
+    if(cs*(g.c1-g.c0)<=W+1&&cs*(g.r1-g.r0)<=H+1){ cam.tr=(g.r0+g.r1)/2; cam.tc=(g.c0+g.c1)/2; cam.tcs=cs; return; }
+  }
+  // the words cannot all be shown at this size: move only when their centre leaves the middle of the view
+  const c=mid(view,0.3);
+  if(centre.r>=c.r0&&centre.r<=c.r1&&centre.c>=c.c0&&centre.c<=c.c1&&!inside(need,mid(view,0))) return;
+  cam.tr=centre.r; cam.tc=centre.c;
+  if(follow==='pattern'&&fit(need)>=floor) cam.tcs=Math.max(floor,Math.min(cam.tcs,fit(need)));
 }
 let anim=null;
 function frame(){ if(!K) return; target(); if(!anim) anim=requestAnimationFrame(tickCam); }
@@ -514,7 +535,7 @@ drawDials();
 if(innerWidth<520) setFollow('read');
 sizeCanvas();
 plantLine('bone',0,0);
-cam.snap=true; frame();
+frame();
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>draw());
 </script>
 </body>
