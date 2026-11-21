@@ -64,7 +64,7 @@ button.on{font-weight:700;text-decoration:underline}
 <p class="note">A page written by a one-dimensional cellular automaton. Each line is born from the line above it.</p>
 
 <form class="bar" id="begin">
-  <input id="seed" type="text" enterkeyhint="go" placeholder="a word, or a line, to begin the page" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <input id="seed" type="text" enterkeyhint="go" placeholder="type" autocomplete="off" autocapitalize="off" spellcheck="false">
   <button type="submit">begin a new page</button>
 </form>
 
@@ -198,7 +198,7 @@ function markEl(text){
 const STOP=new Set('the a an of and or to in on at by for with from as is are was were be been it its this that these those my your our their his her he she they we you i me us them not no but so if then than into onto over under'.split(' '));
 function plain(w){
   if(LEX[w]) return w;
-  const tries=[w.replace(/ies$/,'y'),w.replace(/es$/,''),w.replace(/s$/,''),w.replace(/ied$/,'y'),w.replace(/ed$/,''),w.replace(/ed$/,'e'),
+  const tries=[w.replace(/ies$/,'y'),w.replace(/ves$/,'f'),w.replace(/es$/,''),w.replace(/s$/,''),w.replace(/ied$/,'y'),w.replace(/ed$/,''),w.replace(/ed$/,'e'),
     w.replace(/ing$/,''),w.replace(/ing$/,'e'),w.replace(/([b-df-hj-np-tv-z])\1ing$/,'$1'),w.replace(/([b-df-hj-np-tv-z])\1ed$/,'$1'),w.replace(/ly$/,'')];
   return tries.find(t=>t!==w&&t.length>2&&LEX[t])||null;
 }
@@ -214,7 +214,7 @@ function begin(text){
   return true;
 }
 function nextLine(animate){
-  if(!lines.length) return;
+  if(!lines.length){ outEl.textContent='the page is empty. type a word or a line to begin it.'; document.getElementById('seed').focus(); return; }
   const l=E.next(lines); lines.push(l); if(lines.length>800) lines.shift();
   const row=rowEl(l,animate);
   if(!l.some(Boolean)){ stop(); outEl.textContent='the row is empty. nothing can be born from nothing under this rule.'; }
@@ -265,9 +265,7 @@ document.getElementById('copy').onclick=async()=>{
 };
 
 drawRules(); sizePage();
-document.getElementById('seed').value='bone';
-begin('bone');
-for(let i=0;i<11;i++) nextLine(false);
+document.getElementById('seed').focus();
 </script>
 </body>
 </html>
