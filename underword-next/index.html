@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>UNDERWORD</title>
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{ --fg:#ffffff; --bg:#000000; }
+  html,body{
+    height:100%;width:100%;overflow:hidden;
+    background:var(--bg);color:var(--fg);
+    font-family:'Courier Prime','Courier New',monospace;
+    -webkit-font-smoothing:antialiased;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+    cursor:none;
+  }
+  body.ink{ --fg:#000000; --bg:#ffffff; }
+
+  #site{position:fixed;inset:0;perspective:820px;perspective-origin:50% 43%}
+  #field{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transform-style:preserve-3d}
+  #rot{position:relative;transform-style:preserve-3d;transition:transform .22s ease-out;will-change:transform}
+
+  .c{
+    position:absolute;display:flex;align-items:center;justify-content:center;
+    text-align:center;line-height:1.02;white-space:normal;word-break:break-word;
+    transition:transform .13s cubic-bezier(.18,.9,.28,1);
+    color:var(--fg);
+  }
+  .c.root{font-weight:700}
+  .c.aim{font-weight:700}
+
+  #ghosts{position:fixed;inset:0;pointer-events:none;z-index:6}
+  .gh{position:fixed;color:var(--fg);white-space:nowrap;
+      animation:rise 1.15s cubic-bezier(.15,.7,.3,1) forwards}
+  @keyframes rise{
+    0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-190%) scale(1.5)}
+  }
+
+  #cross{position:fixed;left:0;top:0;z-index:8;pointer-events:none;
+         color:var(--fg);font-size:16px;transform:translate(-50%,-50%);
+         will-change:transform}
+
+  .hud{position:fixed;z-index:10;pointer-events:none;color:var(--fg);
+       font-size:12px;line-height:1.55}
+  #probe{left:14px;top:14px;max-width:62vw}
+  #probe b{font-weight:700}
+  #count{right:14px;top:14px;text-align:right}
+  #chain{left:0;right:0;bottom:44px;text-align:center;padding:0 12px;
+         font-size:12px;line-height:1.5;word-break:break-word}
+  #keys{left:0;right:0;bottom:14px;text-align:center;font-size:11px}
+  #keys span{pointer-events:auto;cursor:pointer}
+
+  #done{position:fixed;inset:0;z-index:12;display:none;
+        align-items:center;justify-content:center;text-align:center;
+        background:var(--bg);color:var(--fg);font-size:14px;line-height:2;
+        padding:24px}
+  body.finished #done{display:flex}
+
+  @media (max-width:600px){
+    .hud{font-size:11px}
+    #chain{font-size:11px;bottom:40px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .c{transition:none} #rot{transition:none} .gh{animation-duration:.4s}
+  }
+</style>
+</head>
+<body>
+<div id="site"><div id="field"><div id="rot"></div></div></div>
+<div id="ghosts"></div>
+<div id="cross">+</div>
+
+<div class="hud" id="probe"></div>
+<div class="hud" id="count"></div>
+<div class="hud" id="chain"></div>
+<div class="hud" id="keys"><span id="kNew">new site</span> &nbsp; <span id="kInk">ink</span> &nbsp; <span id="kMute">sound</span></div>
+
+<div id="done"><div id="doneTxt"></div></div>
+
+<script>
+/* ------------------------------------------------------------------
+   UNDERWORD
+   A first-person dig. The ground is words. Depth is time.
+   Every strike knocks the words it touches back one stage in their
+   own history, until they bottom out on a reconstructed root.
+------------------------------------------------------------------ */
+
+/* stage = [form, language, date, sense] */
+const SEAMS = [
+["earth",[
+  ["earth","English","now","the planet; the soil under everything"],
+  ["erthe","Middle English","c.1300","ground, dirt, the world"],
+  ["eorþe","Old English","c.900","the ground, dry land, country"],
+  ["*erþō","Proto-Germanic","c.500 BCE","earth, soil"],
+  ["*er-","Proto-Indo-European","c.4000 BCE","earth, ground"]]],
+["word",[
+  ["word","English","now","a unit of language"],
+  ["word","Middle English","c.1200","speech, utterance, a saying"],
+  ["word","Old English","c.900","speech, talk, promise, news"],
+  ["*wurdą","Proto-Germanic","c.500 BCE","word"],
+  ["*wer-","Proto-Indo-European","c.4000 BCE","to speak"]]],
+["dig",[
+  ["dig","English","now","to break and turn ground"],
+  ["diggen","Middle English","c.1300","to make a ditch"],
+  ["diguer","Old French","c.1200","to dig a dyke (perhaps)"],
+  ["·origin obscure·","unknown","—","the word for digging has no floor"]]],
+["grave",[
+  ["grave","English","now","a dug place for the dead"],
+  ["grave","Middle English","c.1300","burial pit"],
+  ["græf","Old English","c.900","ditch, cave, trench, grave"],
+  ["*grabą","Proto-Germanic","c.500 BCE","a digging, a hollow"],
+  ["*ghrebh-","Proto-Indo-European","c.4000 BCE","to dig, scratch, scrape"]]],
+["stone",[
+  ["stone","English","now","hard mineral matter"],
+  ["ston","Middle English","c.1200","rock, gem, testicle"],
+  ["stān","Old English","c.900","common rock, precious gem"],
+  ["*stainaz","Proto-Germanic","c.500 BCE","stone"],
+  ["*stei-","Proto-Indo-European","c.4000 BCE","to stiffen, thicken"]]],
+["deep",[
+  ["deep","English","now","far down"],
+  ["dep","Middle English","c.1300","profound, far below"],
+  ["dēop","Old English","c.900","deep, awful, mysterious, sombre"],
+  ["*deupaz","Proto-Germanic","c.500 BCE","deep"],
+  ["*dheub-","Proto-Indo-European","c.4000 BCE","deep, hollow"]]],
+["ground",[
+  ["ground","English","now","the surface of the earth"],
+  ["grund","Middle English","c.1200","bottom, foundation"],
+  ["grund","Old English","c.900","bottom, abyss, sea floor"],
+  ["*grunduz","Proto-Germanic","c.500 BCE","deep place, foundation"],
+  ["·no cognates·","unknown","—","found nowhere outside Germanic"]]],
+["text",[
+  ["text","English","now","written words"],
+  ["texte","Middle English","c.1300","wording of a written work"],
+  ["textus","Latin","c.100","the weave, the tissue of a work"],
+  ["texere","Latin","c.200 BCE","to weave, to braid"],
+  ["*teks-","Proto-Indo-European","c.4000 BCE","to weave, to fabricate"]]],
+["write",[
+  ["write","English","now","to set down in letters"],
+  ["writen","Middle English","c.1200","to inscribe, compose"],
+  ["wrītan","Old English","c.900","to score, outline, draw a figure"],
+  ["*wrītaną","Proto-Germanic","c.500 BCE","to tear, to scratch"],
+  ["*wer-","Proto-Indo-European","c.4000 BCE","to scratch, to tear"]]],
+["read",[
+  ["read","English","now","to take meaning from marks"],
+  ["reden","Middle English","c.1200","to interpret, to explain"],
+  ["rǣdan","Old English","c.900","to advise, to guess, to rule"],
+  ["*rēdaną","Proto-Germanic","c.500 BCE","to counsel, to deliberate"],
+  ["*re-","Proto-Indo-European","c.4000 BCE","to reason, to count"]]],
+["book",[
+  ["book","English","now","bound pages"],
+  ["bok","Middle English","c.1200","written work, charter"],
+  ["bōc","Old English","c.900","writing, document, register"],
+  ["*bōks","Proto-Germanic","c.500 BCE","beech, beech tablet"],
+  ["*bhāgo-","Proto-Indo-European","c.4000 BCE","beech tree (disputed)"]]],
+["name",[
+  ["name","English","now","what a thing is called"],
+  ["name","Middle English","c.1200","reputation, appellation"],
+  ["nama","Old English","c.900","name, fame"],
+  ["*namô","Proto-Germanic","c.500 BCE","name"],
+  ["*h₁nómn̥","Proto-Indo-European","c.4000 BCE","name"]]],
+["tongue",[
+  ["tongue","English","now","the organ; a language"],
+  ["tunge","Middle English","c.1200","tongue, speech, people"],
+  ["tunge","Old English","c.900","organ of speech, a language"],
+  ["*tungǭ","Proto-Germanic","c.500 BCE","tongue"],
+  ["*dn̥ǵʰwéh₂s","Proto-Indo-European","c.4000 BCE","tongue"]]],
+["dream",[
+  ["dream","English","now","visions in sleep"],
+  ["dreem","Middle English","c.1250","sleeping vision"],
+  ["drēam","Old English","c.900","joy, music, noisy merriment"],
+  ["*draumaz","Proto-Germanic","c.500 BCE","deception, phantom"],
+  ["*dhreugh-","Proto-Indo-European","c.4000 BCE","to deceive"]]],
+["ghost",[
+  ["ghost","English","now","the spirit of the dead"],
+  ["gost","Middle English","c.1200","soul, breath, spirit"],
+  ["gāst","Old English","c.900","breath, good or bad spirit"],
+  ["*gaistaz","Proto-Germanic","c.500 BCE","terrifying spirit"],
+  ["*gheis-","Proto-Indo-European","c.4000 BCE","to be shaken with fear"]]],
+["noise",[
+  ["noise","English","now","unwanted sound"],
+  ["noise","Middle English","c.1225","loud outcry, uproar, quarrel"],
+  ["noise","Old French","c.1100","din, brawl, dispute"],
+  ["nausea","Latin","c.100","seasickness, disgust"],
+  ["naus","Greek","c.700 BCE","ship"],
+  ["*neh₂u-","Proto-Indo-European","c.4000 BCE","boat"]]],
+["history",[
+  ["history","English","now","the record of the past"],
+  ["historie","Middle English","c.1390","story, chronicle, account"],
+  ["historia","Latin","c.100","narrative of past events"],
+  ["historía","Greek","c.500 BCE","inquiry, knowing by asking"],
+  ["*weid-","Proto-Indo-European","c.4000 BCE","to see, to know"]]],
+["memory",[
+  ["memory","English","now","what is retained"],
+  ["memorie","Middle English","c.1300","recollection, remembrance"],
+  ["memoria","Latin","c.100","mindfulness, a memorial"],
+  ["memor","Latin","c.200 BCE","mindful, remembering"],
+  ["*(s)mer-","Proto-Indo-European","c.4000 BCE","to remember, to care"]]],
+["time",[
+  ["time","English","now","duration, the fourth dimension"],
+  ["time","Middle English","c.1200","a while, a season, an hour"],
+  ["tīma","Old English","c.900","limited span, fixed period"],
+  ["*tīmô","Proto-Germanic","c.500 BCE","a stretch, a portion"],
+  ["*dā-","Proto-Indo-European","c.4000 BCE","to divide"]]],
+["root",[
+  ["root","English","now","the buried part of a plant"],
+  ["rote","Middle English","c.1200","root, source, origin"],
+  ["rót","Old Norse","c.900","root"],
+  ["*wrōts","Proto-Germanic","c.500 BCE","root"],
+  ["*wrād-","Proto-Indo-European","c.4000 BCE","branch, root"]]],
+["layer",[
+  ["layer","English","now","one stratum of a thing"],
+  ["leyer","Middle English","c.1400","one who lays, a course laid"],
+  ["lecgan","Old English","c.900","to place, to put down"],
+  ["*lagjaną","Proto-Germanic","c.500 BCE","to lay"],
+  ["*legh-","Proto-Indo-European","c.4000 BCE","to lie down"]]],
+["stratum",[
+  ["stratum","English","now","a layer of rock or meaning"],
+  ["stratum","Latin","c.100","a covering, something spread"],
+  ["sternere","Latin","c.200 BCE","to spread out, to strew"],
+  ["*stere-","Proto-Indo-European","c.4000 BCE","to spread"]]],
+["fossil",[
+  ["fossil","English","now","remains turned to stone"],
+  ["fossile","French","c.1600","obtained by digging"],
+  ["fossilis","Latin","c.100","dug up"],
+  ["fodere","Latin","c.200 BCE","to dig, to pierce"],
+  ["*bhedh-","Proto-Indo-European","c.4000 BCE","to dig, to pierce"]]],
+["bury",[
+  ["bury","English","now","to put under earth"],
+  ["burien","Middle English","c.1200","to inter, to conceal"],
+  ["byrgan","Old English","c.900","to raise a mound, to hide"],
+  ["*burgijaną","Proto-Germanic","c.500 BCE","to shelter, to keep safe"],
+  ["*bhergh-","Proto-Indo-European","c.4000 BCE","to hide, to protect"]]],
+["hole",[
+  ["hole","English","now","an opening, an absence"],
+  ["hol","Middle English","c.1200","hollow place, cavity"],
+  ["hol","Old English","c.900","cave, den, orifice"],
+  ["*hulaz","Proto-Germanic","c.500 BCE","hollow"],
+  ["*kel-","Proto-Indo-European","c.4000 BCE","to cover, to conceal"]]],
+["sky",[
+  ["sky","English","now","the air overhead"],
+  ["sky","Middle English","c.1220","a cloud"],
+  ["ský","Old Norse","c.900","cloud"],
+  ["*skiwją","Proto-Germanic","c.500 BCE","cloud, cloud cover"],
+  ["*skeu-","Proto-Indo-European","c.4000 BCE","to cover, to conceal"]]],
+["light",[
+  ["light","English","now","what lets you see"],
+  ["light","Middle English","c.1200","brightness, daylight"],
+  ["lēoht","Old English","c.900","radiance, luminary, day"],
+  ["*leuhtą","Proto-Germanic","c.500 BCE","light"],
+  ["*leuk-","Proto-Indo-European","c.4000 BCE","to shine, white"]]],
+["dark",[
+  ["dark","English","now","absence of light"],
+  ["derk","Middle English","c.1200","without light, gloomy"],
+  ["deorc","Old English","c.900","dark, obscure, sad, sinister"],
+  ["*derkaz","Proto-Germanic","c.500 BCE","dark"],
+  ["·uncertain·","unknown","—","the root of darkness is unrecovered"]]],
+["water",[
+  ["water","English","now","the liquid"],
+  ["water","Middle English","c.1200","water, a body of water"],
+  ["wæter","Old English","c.900","water, sea, flood"],
+  ["*watōr","Proto-Germanic","c.500 BCE","water"],
+  ["*wed-","Proto-Indo-European","c.4000 BCE","water, wet"]]],
+["fire",[
+  ["fire","English","now","combustion"],
+  ["fyr","Middle English","c.1200","fire, a burning"],
+  ["fȳr","Old English","c.900","fire, a conflagration"],
+  ["*fūr","Proto-Germanic","c.500 BCE","fire"],
+  ["*péh₂wr̥","Proto-Indo-European","c.4000 BCE","fire (as a thing, not a force)"]]],
+["ash",[
+  ["ash","English","now","what is left after burning"],
+  ["asshe","Middle English","c.1300","ashes, dust of the dead"],
+  ["æsce","Old English","c.900","ashes, cinders"],
+  ["*askǭ","Proto-Germanic","c.500 BCE","ash"],
+  ["*as-","Proto-Indo-European","c.4000 BCE","to burn, to glow"]]],
+["bone",[
+  ["bone","English","now","the hard frame"],
+  ["bon","Middle English","c.1200","bone, the body"],
+  ["bān","Old English","c.900","bone, tusk, the skeleton"],
+  ["*bainą","Proto-Germanic","c.500 BCE","bone"],
+  ["·no cognates·","unknown","—","the word for bone stops at Germanic"]]],
+["hand",[
+  ["hand","English","now","the grasping limb"],
+  ["hond","Middle English","c.1200","hand, side, power"],
+  ["hand","Old English","c.900","hand, side, control, agency"],
+  ["*handuz","Proto-Germanic","c.500 BCE","hand"],
+  ["·origin unknown·","unknown","—","no accepted root beyond Germanic"]]],
+["mouth",[
+  ["mouth","English","now","the opening for speech"],
+  ["mouth","Middle English","c.1200","mouth, an utterance"],
+  ["mūþ","Old English","c.900","mouth, opening, door"],
+  ["*munþaz","Proto-Germanic","c.500 BCE","mouth"],
+  ["*mendh-","Proto-Indo-European","c.4000 BCE","to chew"]]],
+["speak",[
+  ["speak","English","now","to say aloud"],
+  ["speken","Middle English","c.1200","to talk, to declare"],
+  ["sprecan","Old English","c.900","to utter, to make a speech"],
+  ["*sprekaną","Proto-Germanic","c.500 BCE","to speak, to crackle"],
+  ["*spreg-","Proto-Indo-European","c.4000 BCE","to speak, to strew"]]],
+["star",[
+  ["star","English","now","a distant sun"],
+  ["sterre","Middle English","c.1200","star, a fate"],
+  ["steorra","Old English","c.900","star"],
+  ["*sternô","Proto-Germanic","c.500 BCE","star"],
+  ["*h₂stḗr","Proto-Indo-European","c.4000 BCE","star"]]],
+["salt",[
+  ["salt","English","now","sodium chloride"],
+  ["salt","Middle English","c.1200","salt, savour"],
+  ["sealt","Old English","c.900","salt, brine"],
+  ["*saltą","Proto-Germanic","c.500 BCE","salt"],
+  ["*séh₂ls","Proto-Indo-European","c.4000 BCE","salt"]]],
+["gold",[
+  ["gold","English","now","the metal"],
+  ["gold","Middle English","c.1200","gold, wealth"],
+  ["gold","Old English","c.900","gold, gilded metal"],
+  ["*gulþą","Proto-Germanic","c.500 BCE","gold"],
+  ["*ghel-","Proto-Indo-European","c.4000 BCE","to shine, yellow"]]],
+["glass",[
+  ["glass","English","now","the transparent solid"],
+  ["glas","Middle English","c.1200","glass, a mirror"],
+  ["glæs","Old English","c.900","glass, a glass vessel, amber"],
+  ["*glasą","Proto-Germanic","c.500 BCE","glass, amber"],
+  ["*ghel-","Proto-Indo-European","c.4000 BCE","to shine"]]],
+["field",[
+  ["field","English","now","open cleared land"],
+  ["feld","Middle English","c.1200","open country, battleground"],
+  ["feld","Old English","c.900","plain, pasture, open land"],
+  ["*felþuz","Proto-Germanic","c.500 BCE","flat land"],
+  ["*pelh₂-","Proto-Indo-European","c.4000 BCE","flat, to spread"]]],
+["wall",[
+  ["wall","English","now","a vertical barrier"],
+  ["wal","Middle English","c.1200","rampart, defence"],
+  ["weall","Old English","c.900","earthwork, rampart, cliff"],
+  ["vallum","Latin","c.100 BCE","palisade, line of stakes"],
+  ["*walso-","Proto-Indo-European","c.4000 BCE","a post"]]],
+["death",[
+  ["death","English","now","the end of a life"],
+  ["deeth","Middle English","c.1200","dying, the dead state"],
+  ["dēaþ","Old English","c.900","death, dying, cause of death"],
+  ["*dauþuz","Proto-Germanic","c.500 BCE","death"],
+  ["*dheu-","Proto-Indo-European","c.4000 BCE","to die, to pass away"]]],
+["love",[
+  ["love","English","now","the attachment"],
+  ["luve","Middle English","c.1200","affection, desire"],
+  ["lufu","Old English","c.900","love, affection, friendliness"],
+  ["*lubō","Proto-Germanic","c.500 BCE","love"],
+  ["*leubh-","Proto-Indo-European","c.4000 BCE","to care, to desire"]]],
+["shame",[
+  ["shame","English","now","the painful feeling"],
+  ["shame","Middle English","c.1200","disgrace, dishonour"],
+  ["sceamu","Old English","c.900","shame, confusion, disgrace"],
+  ["*skamō","Proto-Germanic","c.500 BCE","shame"],
+  ["*skem-","Proto-Indo-European","c.4000 BCE","to cover oneself"]]],
+["god",[
+  ["god","English","now","the deity"],
+  ["god","Middle English","c.1200","god, the Christian God"],
+  ["god","Old English","c.900","deity, image of a god"],
+  ["*gudą","Proto-Germanic","c.500 BCE","that which is invoked"],
+  ["*ǵʰau-","Proto-Indo-European","c.4000 BCE","to call, to invoke"]]],
+["poem",[
+  ["poem","English","now","a made thing in language"],
+  ["poème","French","c.1540","a poem"],
+  ["poema","Latin","c.100","a poem"],
+  ["poíēma","Greek","c.500 BCE","a thing made, a fabrication"],
+  ["*kwei-","Proto-Indo-European","c.4000 BCE","to pile up, to build"]]],
+["machine",[
+  ["machine","English","now","a device that does work"],
+  ["machine","French","c.1540","a structure, a contrivance"],
+  ["machina","Latin","c.100 BCE","device, trick, engine"],
+  ["makhaná","Greek","c.500 BCE","a means, an expedient"],
+  ["*magh-","Proto-Indo-European","c.4000 BCE","to be able, to have power"]]],
+["robot",[
+  ["robot","English","now","an automaton"],
+  ["robot","Czech","1920","coined for a play about made workers"],
+  ["robota","Czech","c.1500","forced labour, drudgery"],
+  ["*orbъ","Proto-Slavic","c.500","slave, orphan"],
+  ["*h₃erbʰ-","Proto-Indo-European","c.4000 BCE","to change allegiance, status"]]],
+["glitch",[
+  ["glitch","English","now","a brief fault"],
+  ["glitch","American English","1962","a surge of current; space-program slang"],
+  ["glitsh","Yiddish","c.1900","a slip, a slide"],
+  ["·uncertain·","unknown","—","the fault has no confirmed floor"]]],
+["spade",[
+  ["spade","English","now","the digging tool"],
+  ["spade","Middle English","c.1200","a spade"],
+  ["spadu","Old English","c.900","spade, shovel"],
+  ["*spadǭ","Proto-Germanic","c.500 BCE","spade"],
+  ["*spē-","Proto-Indo-European","c.4000 BCE","long flat piece of wood"]]],
+["letter",[
+  ["letter","English","now","a written character"],
+  ["lettre","Middle English","c.1200","alphabetic sign; a missive"],
+  ["littera","Latin","c.200 BCE","a letter of the alphabet"],
+  ["·uncertain·","unknown","—","perhaps Etruscan, from Greek diphthera, hide"]]],
+["night",[
+  ["night","English","now","the dark half"],
+  ["night","Middle English","c.1200","night, darkness"],
+  ["niht","Old English","c.900","night, darkness, absence of light"],
+  ["*nahts","Proto-Germanic","c.500 BCE","night"],
+  ["*nókʷts","Proto-Indo-European","c.4000 BCE","night"]]],
+["day",[
+  ["day","English","now","the lit half"],
+  ["day","Middle English","c.1200","daylight, a period of 24 hours"],
+  ["dæg","Old English","c.900","day, lifetime, a fixed date"],
+  ["*dagaz","Proto-Germanic","c.500 BCE","day"],
+  ["*dhegh-","Proto-Indo-European","c.4000 BCE","to burn"]]],
+["dust",[
+  ["dust","English","now","fine dry particles"],
+  ["dust","Middle English","c.1200","dust, powder, the grave"],
+  ["dūst","Old English","c.900","dust, ash"],
+  ["*dunstaz","Proto-Germanic","c.500 BCE","vapour, exhalation"],
+  ["*dheu-","Proto-Indo-European","c.4000 BCE","dust, smoke, vapour"]]]
+];
+
+/* ---------- geometry ---------- */
+const rot   = document.getElementById('rot');
+const field = document.getElementById('field');
+const site  = document.getElementById('site');
+const ghosts= document.getElementById('ghosts');
+const cross = document.getElementById('cross');
+const elProbe = document.getElementById('probe');
+const elCount = document.getElementById('count');
+const elChain = document.getElementById('chain');
+const elDone  = document.getElementById('doneTxt');
+
+let CW, CH, FS, DZ = 46;
+let cols, rows, cells = [];
+let strikes = 0, aimIdx = -1;
+
+function measure(){
+  const w = window.innerWidth, h = window.innerHeight;
+  const small = w < 620;
+  CW = small ? 86 : 108;
+  CH = small ? 40 : 46;
+  FS = small ? 10.5 : 12.5;
+  cols = Math.max(4, Math.round(w / CW) + 1);
+  rows = Math.max(6, Math.round(h / CH) + 1);
+}
+
+function build(){
+  measure();
+  rot.innerHTML = '';
+  cells = [];
+  strikes = 0;
+  document.body.classList.remove('finished');
+
+  const W = cols * CW, H = rows * CH;
+  field.style.width  = W + 'px';
+  field.style.height = H + 'px';
+  rot.style.width    = W + 'px';
+  rot.style.height   = H + 'px';
+
+  for (let r = 0; r < rows; r++){
+    for (let c = 0; c < cols; c++){
+      const el = document.createElement('div');
+      el.className = 'c';
+      el.style.width  = CW + 'px';
+      el.style.height = CH + 'px';
+      el.style.left   = (c * CW) + 'px';
+      el.style.top    = (r * CH) + 'px';
+      el.style.fontSize = FS + 'px';
+      rot.appendChild(el);
+
+      const cell = {
+        el, c, r, d: 0,
+        seam: (Math.random() * SEAMS.length) | 0,
+        jx: (Math.random() - .5) * 5,
+        jy: (Math.random() - .5) * 4,
+        jr: (Math.random() - .5) * 3
+      };
+      cells.push(cell);
+      paint(cell);
+      setZ(cell, 0);
+    }
+  }
+  tally();
+  aimIdx = -1;
+  elProbe.textContent = '';
+  elChain.textContent = '';
+}
+
+function chain(cell){ return SEAMS[cell.seam][1]; }
+function stage(cell){ const ch = chain(cell); return ch[Math.min(cell.d, ch.length - 1)]; }
+function atRoot(cell){ return cell.d >= chain(cell).length - 1; }
+
+function paint(cell){
+  cell.el.textContent = stage(cell)[0];
+  cell.el.classList.toggle('root', atRoot(cell));
+}
+
+function setZ(cell, punch){
+  const z = -(cell.d * DZ) - (punch || 0);
+  cell.el.style.transform =
+    `translate3d(${cell.jx}px, ${cell.jy}px, ${z}px) rotate(${cell.jr}deg)`;
+}
+
+/* ---------- the strike ---------- */
+function idxOf(c, r){
+  if (c < 0 || r < 0 || c >= cols || r >= rows) return -1;
+  return r * cols + c;
+}
+
+const BLAST = [[0,0,2],[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],
+               [1,1,0],[1,-1,0],[-1,1,0],[-1,-1,0],
+               [2,0,0],[-2,0,0],[0,2,0],[0,-2,0]];
+
+function strike(cell){
+  if (!cell || document.body.classList.contains('finished')) return;
+  strikes++;
+  let clink = true, deepest = 0;
+
+  for (const [dc, dr, force] of BLAST){
+    const i = idxOf(cell.c + dc, cell.r + dr);
+    if (i < 0) continue;
+    const t = cells[i];
+
+    if (force > 0 && !atRoot(t)){
+      clink = false;
+      const was = stage(t)[0];
+      t.d = Math.min(t.d + force, chain(t).length - 1);
+      ghost(t, was);
+      paint(t);
+    }
+    deepest = Math.max(deepest, t.d);
+    setZ(t, 14 - Math.abs(dc) * 4 - Math.abs(dr) * 4);
+    setTimeout(() => setZ(t, 0), 95);
+  }
+
+  shake(clink ? 1.5 : 4);
+  sound(deepest, clink);
+  tally();
+  if (aimIdx >= 0) probe(cells[aimIdx]);
+}
+
+/* the later form escapes upward out of the hole */
+function ghost(cell, form){
+  const b = cell.el.getBoundingClientRect();
+  const g = document.createElement('div');
+  g.className = 'gh';
+  g.textContent = form;
+  g.style.left = (b.left + b.width / 2) + 'px';
+  g.style.top  = (b.top + b.height / 2) + 'px';
+  g.style.fontSize = FS + 'px';
+  ghosts.appendChild(g);
+  setTimeout(() => g.remove(), 1200);
+}
+
+function tally(){
+  let roots = 0;
+  for (const c of cells) if (atRoot(c)) roots++;
+  elCount.innerHTML = `${strikes} strikes<br>${roots} / ${cells.length} at root`;
+  if (roots >= cells.length * 0.8 && !document.body.classList.contains('finished')){
+    finish(roots);
+  }
+}
+
+function finish(roots){
+  document.body.classList.add('finished');
+  elDone.innerHTML =
+    `the floor is all roots<br><br>` +
+    `${strikes} strikes &nbsp; ${roots} words taken to bedrock<br><br>` +
+    `<span style="cursor:pointer;text-decoration:underline" id="again">open a new site</span>`;
+  document.getElementById('again').onclick = (e) => { e.stopPropagation(); build(); };
+}
+
+/* ---------- aiming ---------- */
+function probe(cell){
+  const s = stage(cell);
+  const ch = chain(cell);
+  elProbe.innerHTML =
+    `<b>${s[0]}</b><br>${s[1]}, ${s[2]}<br>${s[3]}`;
+
+  const parts = ch.map((st, i) =>
+    i < cell.d ? st[0] : (i === cell.d ? '[ ' + st[0] + ' ]' : '· · ·')
+  );
+  elChain.textContent = parts.join('   ');
+}
+
+function aimAt(x, y){
+  const el = document.elementFromPoint(x, y);
+  if (!el || !el.classList.contains('c')) return;
+  const i = cells.findIndex(c => c.el === el);
+  if (i < 0 || i === aimIdx) return;
+  if (aimIdx >= 0) cells[aimIdx].el.classList.remove('aim');
+  aimIdx = i;
+  cells[i].el.classList.add('aim');
+  probe(cells[i]);
+}
+
+let ax = 0, ay = 0, shx = 0, shy = 0;
+function applyRot(){
+  rot.style.transform =
+    `rotateX(${ay}deg) rotateY(${ax}deg) translate3d(${shx}px,${shy}px,0)`;
+}
+function look(x, y){
+  ax = ((x / window.innerWidth) - .5) * 8;
+  ay = -((y / window.innerHeight) - .5) * 8;
+  applyRot();
+}
+function shake(mag){
+  shx = (Math.random() - .5) * mag * 2;
+  shy = (Math.random() - .5) * mag * 2;
+  applyRot();
+  setTimeout(() => { shx = 0; shy = 0; applyRot(); }, 70);
+}
+
+/* ---------- sound: a dull thud that lowers as you go down ---------- */
+let actx = null, muted = false;
+function ac(){
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function sound(depth, clink){
+  if (muted) return;
+  let a; try { a = ac(); } catch(e){ return; }
+  const t = a.currentTime;
+
+  if (clink){
+    [1580, 2360].forEach((f, i) => {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.05 / (i + 1), t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.25);
+    });
+    return;
+  }
+
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = 'triangle';
+  const f0 = 190 / (1 + depth * 0.3);
+  o.frequency.setValueAtTime(f0 * 1.7, t);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.6, t + 0.16);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.16, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.22);
+
+  const len = Math.floor(a.sampleRate * 0.09);
+  const buf = a.createBuffer(1, len, a.sampleRate);
+  const dat = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) dat[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const lp = a.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 1100 / (1 + depth * 0.35);
+  const ng = a.createGain(); ng.gain.value = 0.11;
+  src.connect(lp).connect(ng).connect(a.destination);
+  src.start(t);
+}
+
+/* ---------- input ---------- */
+let holding = null;
+
+function point(e){
+  const x = e.clientX, y = e.clientY;
+  cross.style.transform = `translate(${x}px, ${y}px)`;
+  look(x, y);
+  aimAt(x, y);
+}
+
+window.addEventListener('pointermove', point, {passive:true});
+
+window.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('#keys') || e.target.closest('#done')) return;
+  point(e);
+  if (aimIdx >= 0) strike(cells[aimIdx]);
+  holding = setInterval(() => { if (aimIdx >= 0) strike(cells[aimIdx]); }, 165);
+});
+const release = () => { clearInterval(holding); holding = null; };
+window.addEventListener('pointerup', release);
+window.addEventListener('pointercancel', release);
+window.addEventListener('blur', release);
+
+document.getElementById('kNew').onclick  = (e) => { e.stopPropagation(); build(); };
+document.getElementById('kInk').onclick  = (e) => { e.stopPropagation(); document.body.classList.toggle('ink'); };
+document.getElementById('kMute').onclick = (e) => {
+  e.stopPropagation();
+  muted = !muted;
+  e.target.textContent = muted ? 'silent' : 'sound';
+};
+
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'n') build();
+  if (k === 'i') document.body.classList.toggle('ink');
+  if (k === 'm') document.getElementById('kMute').click();
+  if (k === ' ' && aimIdx >= 0){ e.preventDefault(); strike(cells[aimIdx]); }
+});
+
+let rz, lastW = window.innerWidth;
+window.addEventListener('resize', () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => {
+    if (Math.abs(window.innerWidth - lastW) < 40) return;
+    lastW = window.innerWidth;
+    build();
+  }, 220);
+});
+
+build();
+</script>
+</body>
+</html>
