@@ -1,0 +1,78 @@
+name: live check
+# After every push to main, wait for Pages to publish that commit, then load
+# the pages it touched on the LIVE site (scripts/live-check.py) and put the
+# screenshots and report on the `checks` branch, replacing the last run.
+# It never writes to main. Run by hand from the Actions tab to check any
+# pages: give their folder names, space-separated ("hub" for the front page).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: 'folders to check, space-separated (hub = front page)'
+        required: true
+        default: 'hub'
+permissions:
+  contents: write
+  pages: read
+concurrency:
+  group: live-check
+  cancel-in-progress: false
+jobs:
+  look:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: which pages
+        id: pages
+        env:
+          INPUT: ${{ github.event.inputs.pages }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$INPUT" ]; then list="$INPUT"; else
+            base="$BEFORE"; git cat-file -e "$base" 2>/dev/null || base=HEAD~1
+            list=""
+            for f in $(git diff --name-only "$base" HEAD); do
+              top="${f%%/*}"
+              if [ "$top" = "$f" ]; then
+                case "$f" in index.html|surfaces.json) list="$list hub";; esac
+              elif [ -f "$top/index.html" ]; then list="$list $top"; fi
+            done
+          fi
+          list=$(echo $list | tr ' ' '\n' | awk 'NF && !seen[$0]++' | head -12 | tr '\n' ' ')
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+          echo "checking: ${list:-nothing}"
+      - name: wait for Pages to publish this commit
+        if: steps.pages.outputs.list != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 60); do
+            read -r commit status <<< "$(gh api repos/${{ github.repository }}/pages/builds/latest --jq '.commit+" "+.status')"
+            echo "pages: $status at ${commit:0:7}"
+            if [ "$commit" = "${{ github.sha }}" ] && [ "$status" = "built" ]; then sleep 30; exit 0; fi
+            sleep 15
+          done
+          echo "Pages did not publish this commit in 15 minutes; checking anyway"
+      - name: set up browser
+        if: steps.pages.outputs.list != ''
+        run: |
+          pip install -q playwright pillow
+          python3 -m playwright install --with-deps chromium > /dev/null
+      - name: look
+        if: steps.pages.outputs.list != ''
+        run: python3 scripts/live-check.py /tmp/out ${{ github.sha }} ${{ steps.pages.outputs.list }}
+      - name: put results on the checks branch
+        if: steps.pages.outputs.list != ''
+        run: |
+          cd /tmp/out
+          git init -q -b checks
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "live check of ${GITHUB_SHA:0:7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" checks
