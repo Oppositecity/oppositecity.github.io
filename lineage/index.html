@@ -37,7 +37,7 @@ html{overflow-x:hidden}
 /* on a wide screen the field takes the whole width, so more of the page's history is in view */
 #over,#field{width:min(calc(100vw - 28px),1600px)!important;margin-left:calc((100% - min(calc(100vw - 28px),1600px))/2)!important}
 #over{display:block;margin:14px 0 6px;touch-action:none;cursor:pointer}
-#field{display:block;width:100%;touch-action:pan-y;cursor:grab}
+#field{display:block;width:100%;touch-action:none;cursor:grab}
 
 /* the typewriter stays within reach */
 #keys{position:sticky;bottom:0;background:var(--bg);padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
@@ -85,7 +85,7 @@ html{overflow-x:hidden}
     <input id="rulen" type="text" inputmode="numeric" placeholder="90">
     <button id="copy">copy the page</button>
   </div>
-  <p class="note">Each line is a column of 33 cells, with an empty margin above and below it, and time runs left to right. A cell lives or dies by Wolfram's rule, read from the three cells beside it in the line before: the one above, itself and the one below. Meaning decides only which word it is: the word closest to the living words it was born of. No word comes back within six lines, so the page keeps moving. A living cell is white with its word in it, so the rule's shape is written in words; read a column downward as a line. The strip above is the whole page at a glance: tap or drag it to move through time, or drag the page itself. Tap a word to see what it was born of. A red line marks where the rule changed.</p>
+  <p class="note">Each line is a column of 33 cells, with an empty margin above and below it, and time runs left to right. A cell lives or dies by Wolfram's rule, read from the three cells beside it in the line before: the one above, itself and the one below. Meaning decides only which word it is: the word closest to the living words it was born of. No word comes back within six lines, so the page keeps moving. A living cell is white with its word in it, so the rule's shape is written in words; read a column downward as a line. The strip above is the whole page at a glance: tap or drag it to move through time, or drag the page itself. Pinch to zoom out to the whole shape and in to the words; a double tap does either. Tap a word to see what it was born of. A red line marks where the rule changed.</p>
 </div>
 
 <script>
@@ -186,40 +186,55 @@ const field=document.getElementById('field'), fctx=field.getContext('2d');
 const over=document.getElementById('over'), octx=over.getContext('2d');
 const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const RED=css('--red'), PICK=css('--pick');
-const TOP=18, OROW=2;            // room over a column for the rule's name; the overview draws a cell two pixels tall
-let FW=0,FH=0,rowH=16,fs=12,colW=80,OW=0,OH=0, camX=0, camT=0, follow=true, pick=null, anim=null;
+const TOP=18, OROW=2, CH=12;     // room over a column for the rule's name; overview cells 2px tall; a cell holds 12 letters at full size
+// rowH0, fs0, colW0: the reading size; z: zoom (1 reads, less shows more of the page, more brings words closer)
+let FW=0,FH=0,rowH0=16,fs0=13,colW0=100,z=1,OW=0,OH=0, camX=0, camT=0, camY=0, follow=true, pick=null, anim=null;
+const rowH=()=>rowH0*z, colW=()=>colW0*z, fs=()=>fs0*z;
 function sizeField(){
   const dpr=Math.min(devicePixelRatio||1,3);
   OH=WIDTH*OROW; OW=over.clientWidth; over.style.height=OH+'px'; over.width=OW*dpr; over.height=OH*dpr; octx.setTransform(dpr,0,0,dpr,0,0);
-  // the column of 33 cells fits the screen's height, so every word in view can be read at once
+  // the reading size: type never under 13px; the field is as tall as the screen allows, and scrolls if the column is taller
   const keys=document.getElementById('keys').offsetHeight, top=Math.min(field.getBoundingClientRect().top+scrollY,230);
-  rowH=Math.max(11,Math.min(22,Math.floor((innerHeight-top-keys-56)/WIDTH)));
-  fs=rowH*0.8; colW=Math.round(fs*0.6*9+8);
-  FW=field.clientWidth; FH=TOP+rowH*WIDTH; field.style.height=FH+'px';
+  FH=Math.max(260,Math.min(TOP+22*WIDTH,innerHeight-top-keys-50));
+  fs0=Math.max(13,Math.min(17,(FH-TOP)/WIDTH*0.8)); rowH0=Math.round(fs0*1.3); colW0=Math.round(fs0*0.6*CH+8);
+  FW=field.clientWidth; field.style.height=FH+'px';
   field.width=FW*dpr; field.height=FH*dpr; fctx.setTransform(dpr,0,0,dpr,0,0);
   if(follow) camX=camT=maxCam(); clampCam(); draw();
 }
-const maxCam=()=>Math.max(0,lines.length*colW-FW);
-function clampCam(){ camT=Math.max(0,Math.min(camT,maxCam())); camX=Math.max(0,Math.min(camX,maxCam())); follow=camT>=maxCam()-1; }
+const maxCam=()=>Math.max(0,lines.length*colW()-FW);
+const maxY=()=>Math.max(0,TOP+WIDTH*rowH()-FH);
+// zoomed all the way out, the page fits the field, but cells are never set smaller than a third of reading size
+const zFit=()=>Math.max(0.3,Math.min(1,FW/Math.max(1,lines.length*colW0),(FH-TOP)/(WIDTH*rowH0)));
+function clampCam(){ camT=Math.max(0,Math.min(camT,maxCam())); camX=Math.max(0,Math.min(camX,maxCam())); camY=Math.max(0,Math.min(camY,maxY())); follow=camT>=maxCam()-1; }
 function glide(){ if(reduce){ camX=camT; draw(); return; } if(!anim) anim=requestAnimationFrame(step); }
 function step(){ anim=null; camX+=(camT-camX)*0.25; if(Math.abs(camT-camX)<0.5) camX=camT; draw(); if(camX!==camT) anim=requestAnimationFrame(step); }
+function zoomAt(nz,px,py){
+  nz=Math.max(0.3,Math.min(3,nz));
+  const gx=(camX+px)/colW(), gy=(camY+py-TOP)/rowH();
+  z=nz; camX=camT=gx*colW()-px; camY=gy*rowH()-(py-TOP); clampCam(); draw();
+}
 function draw(){
   fctx.fillStyle='#000'; fctx.fillRect(0,0,FW,FH);
-  const g0=Math.max(0,Math.floor(camX/colW)), g1=Math.min(lines.length-1,Math.ceil((camX+FW)/colW));
+  const cw=colW(), rh=rowH(), f0=fs();
+  const g0=Math.max(0,Math.floor(camX/cw)), g1=Math.min(lines.length-1,Math.ceil((camX+FW)/cw));
+  const gap=cw>=12?3:cw>=4?1:0, vgap=rh>=6?1:0;
   fctx.textAlign='center'; fctx.textBaseline='middle';
+  fctx.save(); fctx.beginPath(); fctx.rect(0,TOP,FW,FH-TOP); fctx.clip();   // a cell half out of view is cut by the window's edge, word and all
   for(let g=g0;g<=g1;g++){
-    const line=lines[g], x=g*colW-camX, m=ruleMarks.get(line);
-    if(m){ fctx.fillStyle=RED; if(g>0) fctx.fillRect(x-2,0,2,FH);
-      fctx.textAlign='left'; fctx.font=Math.max(10,fs*0.85)+'px "Courier Prime","Courier New",monospace'; fctx.fillText(m,x+2,TOP/2); fctx.textAlign='center'; }
+    const line=lines[g], x=g*cw-camX, m=ruleMarks.get(line);
+    if(m){ fctx.restore(); fctx.fillStyle=RED; if(g>0) fctx.fillRect(x-Math.min(2,gap||1),0,2,FH);
+      fctx.textAlign='left'; fctx.font='11px "Courier Prime","Courier New",monospace'; fctx.fillText(m,x+3,TOP/2); fctx.textAlign='center';
+      fctx.save(); fctx.beginPath(); fctx.rect(0,TOP,FW,FH-TOP); fctx.clip(); }
     for(let c=0;c<WIDTH;c++){ const w=line[c]; if(!w) continue;
-      const y=TOP+c*rowH;
+      const y=TOP+c*rh-camY; if(y+rh<TOP||y>FH) continue;
       const lit=pick&&((pick.line===line&&pick.c===c)||(pick.prev===line&&Math.abs(pick.c-c)<=1));
-      fctx.fillStyle=lit?PICK:'#fff'; fctx.fillRect(x,y,colW-3,rowH-1);
-      // a word fills its cell; a word too long for the cell is set smaller
-      const f=Math.min(fs,(colW-7)/(w.length*0.6));
-      fctx.fillStyle='#000'; fctx.font=f+'px "Courier Prime","Courier New",monospace'; fctx.fillText(w,x+(colW-3)/2,y+rowH/2+0.5);
+      fctx.fillStyle=lit?PICK:'#fff'; fctx.fillRect(x,y,cw-gap,rh-vgap);
+      // a word fills its cell; only a word longer than twelve letters is set smaller
+      const f=Math.min(f0,(cw-gap-6)/(w.length*0.6));
+      if(f>=6){ fctx.fillStyle='#000'; fctx.font=f+'px "Courier Prime","Courier New",monospace'; fctx.fillText(w,x+(cw-gap)/2,y+rh/2+0.5); }
     }
   }
+  fctx.restore();
   drawOver();
 }
 // the whole page at a glance: one column of pixels a line, and where the view stands in it
@@ -227,31 +242,47 @@ function drawOver(){
   octx.fillStyle='#000'; octx.fillRect(0,0,OW,OH);
   if(!lines.length) return;
   const kx=Math.min(3,OW/lines.length);
-  octx.fillStyle='#fff';
   for(let g=0;g<lines.length;g++){ const l=lines[g], x=g*kx;
-    if(ruleMarks.get(l)&&g>0){ octx.fillStyle=RED; octx.fillRect(x,0,1,OH); octx.fillStyle='#fff'; }
-    for(let c=0;c<WIDTH;c++) if(l[c]) octx.fillRect(x,c*OROW,Math.max(1,kx-(kx>=2?1:0)),OROW-(OROW>1?0:0)); }
-  if(lines.length*colW>FW){ const a=camX/colW*kx, b=Math.min(lines.length,(camX+FW)/colW)*kx;
-    octx.strokeStyle=PICK; octx.lineWidth=1; octx.strokeRect(a+0.5,0.5,Math.max(2,b-a-1),OH-1); }
+    if(ruleMarks.get(l)&&g>0){ octx.fillStyle=RED; octx.fillRect(x,0,1,OH); }
+    octx.fillStyle='#fff';
+    for(let c=0;c<WIDTH;c++) if(l[c]) octx.fillRect(x,c*OROW,Math.max(1,kx-(kx>=2?1:0)),OROW); }
+  const cw=colW(), rh=rowH();
+  if(lines.length*cw>FW||WIDTH*rh>FH-TOP){ const a=camX/cw*kx, b=Math.min(lines.length,(camX+FW)/cw)*kx;
+    const t=camY/rh*OROW, u=Math.min(WIDTH,(camY+FH-TOP)/rh)*OROW;
+    octx.strokeStyle=PICK; octx.lineWidth=1; octx.strokeRect(a+0.5,t+0.5,Math.max(2,b-a-1),Math.max(2,u-t-1)); }
 }
-function overTo(x){ const kx=Math.min(3,OW/Math.max(1,lines.length)); camT=x/kx*colW-FW/2; clampCam(); camX=camT; draw(); }
+function overTo(x,y){ const kx=Math.min(3,OW/Math.max(1,lines.length)); camT=x/kx*colW()-FW/2; camY=y/OROW*rowH()-(FH-TOP)/2; clampCam(); camX=camT; draw(); }
 const op=new Map();
-over.addEventListener('pointerdown',e=>{ over.setPointerCapture(e.pointerId); op.set(e.pointerId,1); overTo(e.offsetX); });
-over.addEventListener('pointermove',e=>{ if(op.has(e.pointerId)) overTo(e.offsetX); });
+over.addEventListener('pointerdown',e=>{ over.setPointerCapture(e.pointerId); op.set(e.pointerId,1); overTo(e.offsetX,e.offsetY); });
+over.addEventListener('pointermove',e=>{ if(op.has(e.pointerId)) overTo(e.offsetX,e.offsetY); });
 over.addEventListener('pointerup',e=>op.delete(e.pointerId)); over.addEventListener('pointercancel',e=>op.delete(e.pointerId));
-// drag the field sideways to move through time; tap a word to see what it was born of
-let fdown=null, fmoved=false;
-field.addEventListener('pointerdown',e=>{ fdown={x:e.offsetX,y:e.offsetY,cam:camX,id:e.pointerId}; fmoved=false; });
-field.addEventListener('pointermove',e=>{ if(!fdown||fdown.id!==e.pointerId) return; const dx=e.offsetX-fdown.x;
-  if(!fmoved&&Math.abs(dx)>6){ fmoved=true; field.setPointerCapture(e.pointerId); }
-  if(fmoved){ camT=camX=fdown.cam-dx; clampCam(); draw(); } });
-field.addEventListener('pointerup',e=>{ if(!fdown||fdown.id!==e.pointerId) return;
-  if(!fmoved){ const g=Math.floor((camX+e.offsetX)/colW), c=Math.floor((e.offsetY-TOP)/rowH);
+// one finger drags through the page, two pinch to zoom; a tap on a word says what it was born of;
+// a double tap shows the whole page, or goes back to reading size where you tapped
+const fp=new Map(); let fdown=null, fmoved=false, fpinch=null, lastTap=null;
+field.addEventListener('pointerdown',e=>{ field.setPointerCapture(e.pointerId); fp.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+  if(fp.size===1){ fdown={x:e.offsetX,y:e.offsetY,cx:camX,cy:camY}; fmoved=false; }
+  if(fp.size===2){ const [a,b]=[...fp.values()]; fpinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,z}; fmoved=true; } });
+field.addEventListener('pointermove',e=>{ if(!fp.has(e.pointerId)) return; fp.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+  if(fp.size===2&&fpinch){ const [a,b]=[...fp.values()]; zoomAt(fpinch.z*Math.hypot(a.x-b.x,a.y-b.y)/fpinch.d,(a.x+b.x)/2,(a.y+b.y)/2); return; }
+  if(!fdown) return; const dx=e.offsetX-fdown.x, dy=e.offsetY-fdown.y;
+  if(!fmoved&&Math.hypot(dx,dy)>6) fmoved=true;
+  if(fmoved){ camT=camX=fdown.cx-dx; camY=fdown.cy-dy; clampCam(); draw(); } });
+const fend=e=>{ if(!fp.has(e.pointerId)) return; fp.delete(e.pointerId); if(fp.size<2) fpinch=null;
+  if(fp.size===0&&fdown&&!fmoved&&e.type==='pointerup'){
+    const now=performance.now();
+    if(lastTap&&now-lastTap.t<320&&Math.hypot(e.offsetX-lastTap.x,e.offsetY-lastTap.y)<30){
+      lastTap=null; zoomAt(z>zFit()+0.01?zFit():1,e.offsetX,e.offsetY); fdown=null; return; }
+    lastTap={t:now,x:e.offsetX,y:e.offsetY};
+    const g=Math.floor((camX+e.offsetX)/colW()), c=Math.floor((camY+e.offsetY-TOP)/rowH());
     if(g>=0&&g<lines.length&&c>=0&&c<WIDTH){ const l=lines[g], prev=lines[g-1]||null; pick=l[c]?{line:l,prev,c}:null; tellCell(l,prev,c); draw(); } }
-  fdown=null; });
-field.addEventListener('pointercancel',()=>{ fdown=null; });
-field.addEventListener('wheel',e=>{ const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:(e.shiftKey?e.deltaY:0);
-  if(!d) return; e.preventDefault(); camT=camX=camX+d; clampCam(); draw(); },{passive:false});
+  if(fp.size===0) fdown=null; };
+field.addEventListener('pointerup',fend); field.addEventListener('pointercancel',fend);
+field.addEventListener('wheel',e=>{
+  if(e.ctrlKey){ e.preventDefault(); zoomAt(z*Math.exp(-e.deltaY*0.01),e.offsetX,e.offsetY); return; }     // a trackpad pinch
+  const horiz=Math.abs(e.deltaX)>Math.abs(e.deltaY)||e.shiftKey, d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;
+  if(horiz){ e.preventDefault(); camT=camX=camX+d; clampCam(); draw(); return; }
+  if(maxY()>0){ const y0=camY; camY+=d; clampCam(); if(camY!==y0){ e.preventDefault(); draw(); } }
+},{passive:false});
 addEventListener('resize',()=>sizeField());
 function keepInView(){ if(follow){ camT=maxCam(); glide(); } else draw(); }
 
@@ -278,7 +309,7 @@ function begin(text){
   if(!ok.length){ outEl.textContent=raw.length?'none of those words are in the lexicon: '+miss.join(', ')+'. the page is unchanged.':'type a word to begin.'; return false; }
   make(); lines=[E.seed(ok)];
   markEl('rule '+rule+(RULES.find(r=>r[0]===rule&&r[1])?', '+RULES.find(r=>r[0]===rule)[1]:''));
-  ruleMarks.clear(); ruleMarks.set(lines[0],pendingMark); pendingMark=null; pick=null; follow=true; camX=camT=0; draw();
+  ruleMarks.clear(); ruleMarks.set(lines[0],pendingMark); pendingMark=null; pick=null; follow=true; camX=camT=0; z=1; camY=maxY()/2; draw();   // the seed stands in the middle of the column
   outEl.textContent=(ok.length>WIDTH-2?'the row holds '+(WIDTH-2)+' words; the rest were left off. ':'')+(miss.length?'not in the lexicon, left out: '+miss.join(', '):'');
   return true;
 }
@@ -303,7 +334,8 @@ document.getElementById('ten').onclick=()=>{ stop(); let r; for(let i=0;i<10;i++
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
   if(e.key===' '||e.key==='Enter'||e.key==='ArrowDown'){ e.preventDefault(); stop(); keepInView(nextLine(true)); }
-  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); camT=camX+(e.key==='ArrowLeft'?-colW:colW); clampCam(); glide(); }
+  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); camT=camX+(e.key==='ArrowLeft'?-colW():colW()); clampCam(); glide(); }
+  if(e.key==='+'||e.key==='='||e.key==='-'){ e.preventDefault(); zoomAt(z*(e.key==='-'?0.8:1.25),FW/2,(FH+TOP)/2); }
 });
 document.getElementById('begin').addEventListener('submit',e=>{ e.preventDefault(); document.getElementById('seed').blur(); begin(document.getElementById('seed').value); });
 
