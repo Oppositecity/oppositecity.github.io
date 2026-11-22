@@ -1005,22 +1005,22 @@ function frame(){
                     break;
                     
                 case 'G':
-                    shape.moveTo(2, 0.5);
+                    // C's bowl, with a clean spur + crossbar at lower right.
+                    shape.moveTo(2, 1.4);
+                    shape.lineTo(2, 0.5);
                     shape.bezierCurveTo(2, 0, 1.5, 0, 1, 0);
                     shape.bezierCurveTo(0.5, 0, 0, 0.5, 0, 1.5);
                     shape.bezierCurveTo(0, 2.5, 0.5, 3, 1, 3);
                     shape.bezierCurveTo(1.5, 3, 2, 2.5, 2, 2);
-                    shape.lineTo(1.5, 2);
-                    shape.lineTo(1.5, 1.5);
-                    shape.lineTo(2, 1.5);
-                    shape.lineTo(1.85, 1.2);
-                    shape.lineTo(1.2, 1.2);
-                    shape.lineTo(1.2, 2.2);
-                    shape.bezierCurveTo(1.2, 2.3, 1.1, 2.7, 1, 2.7);
+                    shape.lineTo(1.7, 2.2);
+                    shape.bezierCurveTo(1.7, 2.3, 1.4, 2.7, 1, 2.7);
                     shape.bezierCurveTo(0.7, 2.7, 0.3, 2.3, 0.3, 1.5);
                     shape.bezierCurveTo(0.3, 0.7, 0.7, 0.3, 1, 0.3);
                     shape.bezierCurveTo(1.4, 0.3, 1.7, 0.7, 1.7, 0.8);
-                    shape.lineTo(2, 0.5);
+                    shape.lineTo(1.7, 1.1);
+                    shape.lineTo(1.1, 1.1);
+                    shape.lineTo(1.1, 1.4);
+                    shape.lineTo(2, 1.4);
                     break;
                     
                 case 'H':
@@ -1195,23 +1195,32 @@ function frame(){
                     shape.holes.push(holeR);
                     break;
                     
-                case 'S':
-                    shape.moveTo(2, 0.5);
-                    shape.bezierCurveTo(2, 0, 1.5, 0, 1, 0);
-                    shape.bezierCurveTo(0.5, 0, 0, 0.3, 0, 0.8);
-                    shape.bezierCurveTo(0, 1.2, 0.3, 1.5, 1, 1.5);
-                    shape.bezierCurveTo(1.7, 1.5, 2, 1.8, 2, 2.2);
-                    shape.bezierCurveTo(2, 2.7, 1.5, 3, 1, 3);
-                    shape.bezierCurveTo(0.5, 3, 0, 2.7, 0, 2.5);
-                    shape.lineTo(0.3, 2.3);
-                    shape.bezierCurveTo(0.3, 2.5, 0.6, 2.7, 1, 2.7);
-                    shape.bezierCurveTo(1.3, 2.7, 1.7, 2.5, 1.7, 2.2);
-                    shape.bezierCurveTo(1.7, 1.9, 1.4, 1.8, 1, 1.8);
-                    shape.bezierCurveTo(0.3, 1.8, 0.3, 1.5, 0.3, 0.8);
-                    shape.bezierCurveTo(0.3, 0.5, 0.6, 0.3, 1, 0.3);
-                    shape.bezierCurveTo(1.3, 0.3, 1.7, 0.5, 1.7, 0.7);
-                    shape.lineTo(2, 0.5);
+                case 'S': {
+                    // One stroke: a centreline spine offset to both sides,
+                    // so the outline can never cross itself at the waist.
+                    const W = 0.15, spine = [
+                        [[1.8,2.5],[1.65,2.8],[1.3,2.85],[1,2.85]],
+                        [[1,2.85],[0.55,2.85],[0.2,2.6],[0.2,2.2]],
+                        [[0.2,2.2],[0.2,1.75],[0.6,1.6],[1,1.5]],
+                        [[1,1.5],[1.4,1.4],[1.8,1.25],[1.8,0.8]],
+                        [[1.8,0.8],[1.8,0.4],[1.45,0.15],[1,0.15]],
+                        [[1,0.15],[0.7,0.15],[0.35,0.2],[0.2,0.5]]
+                    ];
+                    const c = [];
+                    spine.forEach(function(b, bi){
+                        const cv = new THREE.CubicBezierCurve(
+                            new THREE.Vector2(b[0][0],b[0][1]), new THREE.Vector2(b[1][0],b[1][1]),
+                            new THREE.Vector2(b[2][0],b[2][1]), new THREE.Vector2(b[3][0],b[3][1]));
+                        for(let k = (bi ? 1 : 0); k <= 16; k++){
+                            const t = k/16, p = cv.getPoint(t), d = cv.getTangent(t);
+                            c.push([p.x, p.y, -d.y, d.x]);
+                        }
+                    });
+                    const L = c.map(function(q){ return new THREE.Vector2(q[0]+q[2]*W, q[1]+q[3]*W); });
+                    const R = c.map(function(q){ return new THREE.Vector2(q[0]-q[2]*W, q[1]-q[3]*W); }).reverse();
+                    shape.setFromPoints(L.concat(R));
                     break;
+                }
                     
                 case 'T':
                     shape.moveTo(0, 2.6);
