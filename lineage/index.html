@@ -51,6 +51,7 @@ html{overflow-x:hidden}
 #table .r i{width:7px;height:7px;border:1px solid var(--fg)}
 #table .r i.on{background:var(--fg)}
 #out{font-size:12.5px;min-height:1.6em;margin:4px 0}
+#recipe{font-size:12.5px;margin:0 0 6px;word-break:break-word}
 .tail{margin:28px 0 40px}
 </style>
 </head>
@@ -67,6 +68,7 @@ html{overflow-x:hidden}
 <canvas id="over"></canvas>
 <canvas id="field"></canvas>
 <div id="out"></div>
+<div id="recipe"></div>
 
 <div id="keys">
   <div class="bar" style="margin:0 0 10px">
@@ -84,8 +86,9 @@ html{overflow-x:hidden}
     <label for="rulen">any rule, 0 to 255</label>
     <input id="rulen" type="text" inputmode="numeric" placeholder="90">
     <button id="copy">copy the page</button>
+    <button id="copylink">copy the link</button>
   </div>
-  <p class="note">Each line is a column of 33 cells, with an empty margin above and below it, and time runs left to right. A cell lives or dies by Wolfram's rule, read from the three cells beside it in the line before: the one above, itself and the one below. Meaning decides only which word it is: the word closest to the living words it was born of. No word comes back within six lines, so the page keeps moving. A living cell is white with its word in it, so the rule's shape is written in words; read a column downward as a line. The strip above is the whole page at a glance: tap or drag it to move through time, or drag the page itself. Pinch to zoom out to the whole shape and in to the words; a double tap does either. Tap a word to see what it was born of. A red line marks where the rule changed.</p>
+  <p class="note">Each line is a column of 33 cells, with an empty margin above and below it, and time runs left to right. A cell lives or dies by Wolfram's rule, read from the three cells beside it in the line before: the one above, itself and the one below. Meaning decides only which word it is: the word closest to the living words it was born of. No word comes back within six lines, so the page keeps moving. A living cell is white with its word in it, so the rule's shape is written in words; read a column downward as a line. The strip above is the whole page at a glance: tap or drag it to move through time, or drag the page itself. Pinch to zoom out to the whole shape and in to the words; a double tap does either. Tap a word to see what it was born of. A red line marks where the rule changed. The address always carries the page as a string: what was typed, then each rule and how many lines it wrote, in order. Nothing in the automaton is left to chance, so the link rebuilds the page exactly.</p>
 </div>
 
 <script>
@@ -311,6 +314,7 @@ function begin(text){
   markEl('rule '+rule+(RULES.find(r=>r[0]===rule&&r[1])?', '+RULES.find(r=>r[0]===rule)[1]:''));
   ruleMarks.clear(); ruleMarks.set(lines[0],pendingMark); pendingMark=null; pick=null; follow=true; camX=camT=0; z=1; camY=maxY()/2; draw();   // the seed stands in the middle of the column
   outEl.textContent=(ok.length>WIDTH-2?'the row holds '+(WIDTH-2)+' words; the rest were left off. ':'')+(miss.length?'not in the lexicon, left out: '+miss.join(', '):'');
+  recipe={seed:ok.length?text.trim().toLowerCase().replace(/\s+/g,' '):'',segs:[[rule,0]]}; showRecipe();
   return true;
 }
 function nextLine(animate){
@@ -318,6 +322,7 @@ function nextLine(animate){
   // an empty row stays empty unless the rule makes life from nothing (an odd rule number)
   if(!lines[lines.length-1].some(Boolean)&&!(rule&1)){ stop(); outEl.textContent='the row is empty, and rule '+rule+' makes nothing from nothing. change the rule, or begin a new page.'; return null; }
   const l=E.next(lines); lines.push(l); if(lines.length>800) lines.shift();
+  recipe.segs[recipe.segs.length-1][1]++; showRecipe();
   if(pendingMark){ ruleMarks.set(l,pendingMark); pendingMark=null; }
   const row=true;
   if(!l.some(Boolean)&&!(rule&1)){ stop(); outEl.textContent='the row is empty, and rule '+rule+' makes nothing from nothing. change the rule, or begin a new page.'; }
@@ -343,7 +348,8 @@ document.getElementById('begin').addEventListener('submit',e=>{ e.preventDefault
 const rulesEl=document.getElementById('rules'), tableEl=document.getElementById('table');
 function setRule(n){
   if(n===rule) return;
-  rule=n; E.opt.rule=n;
+  rule=n; if(E) E.opt.rule=n;
+  if(recipe.segs.length){ const s=recipe.segs[recipe.segs.length-1]; if(s[1]) recipe.segs.push([n,0]); else s[0]=n; showRecipe(); }
   if(lines.length) markEl('rule '+n+(RULES.find(r=>r[0]===n&&r[1])?', '+RULES.find(r=>r[0]===n)[1]:'')+', from here');
   drawRules();
 }
@@ -368,7 +374,33 @@ document.getElementById('copy').onclick=async()=>{
   catch(e){ outEl.textContent='this browser would not copy; select the page and copy it by hand.'; }
 };
 
+/* ---------- the page as a string: what was typed, then each rule and how many lines it wrote, in order ---------- */
+// the automaton has no chance in it, so this string rebuilds the page exactly; the address carries it, so the link is the page
+var recipe={seed:'',segs:[]};
+function recipeText(){ return recipe.seed?[recipe.seed].concat(recipe.segs.filter(s=>s[1]).map(s=>'rule '+s[0]+' × '+s[1])).join(' · '):''; }
+function showRecipe(){
+  const el=document.getElementById('recipe'); if(!el) return;
+  el.textContent=recipe.seed?'this page: '+recipeText():'';
+  const h=recipe.seed?'#'+encodeURIComponent(recipe.seed).replace(/%20/g,'+')+'/'+recipe.segs.filter(s=>s[1]).map(s=>s[0]+'.'+s[1]).join('/'):'';
+  try{ history.replaceState(null,'',location.pathname+location.search+h); }catch(e){}
+}
+function fromAddress(){
+  const h=decodeURIComponent(location.hash.slice(1).replace(/\+/g,' ')); if(!h) return false;
+  const parts=h.split('/'), seed=parts.shift(), segs=parts.map(s=>s.split('.').map(Number)).filter(s=>s.length===2&&s[0]>=0&&s[0]<=255&&s[1]>0);
+  if(!seed) return false;
+  if(segs.length) setRule(segs[0][0]);
+  document.getElementById('seed').value=seed;
+  if(!begin(seed)) return false;
+  segs.forEach(([r,n],k)=>{ if(k) setRule(r); for(let i=0;i<Math.min(n,800);i++) if(!nextLine(false)) break; });
+  follow=true; camT=camX=maxCam(); draw(); outEl.textContent='';
+  return true;
+}
+document.getElementById('copylink').onclick=async()=>{
+  try{ await navigator.clipboard.writeText(location.href); outEl.textContent='the link is copied. it rebuilds this page: '+recipeText(); }
+  catch(e){ outEl.textContent='this browser would not copy; the address above is the link.'; }
+};
 drawRules(); sizeField();
+fromAddress();
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>draw());
 document.getElementById('seed').focus();
 </script>
