@@ -94,6 +94,21 @@ overwriting the other's work.
   server, feed it a test file, read the console, and measure the output
   level. A page that throws an error or goes silent is not merged.
 - Commits that come from chat end their message with `(from chat)`.
+- Since 2026-11-21 chat can also attach this repo and work in a git clone
+  (the owner calls it "the conduit"): edit on disk, serve locally, check
+  headless, push a branch, open a pull request through `gh api`. That is now
+  chat's main path; the GitHub connector and drag-drop uploads are fallbacks.
+  The same rules apply: a branch per change, a pull request, `(from chat)`.
+- Live check (2026-11-21): after every push to `main`,
+  `.github/workflows/live-check.yml` waits for Pages to publish that commit,
+  loads the pages it touched on the live site with `scripts/live-check.py`
+  (phone, laptop, wide; console errors; how much of the screen was drawn) and
+  force-pushes the screenshots and `report.md` to the `checks` branch,
+  replacing the last run. Read it with
+  `git fetch --depth=1 origin checks && git show origin/checks:report.md`.
+  It never writes to `main`. Any pages can be checked by hand from the
+  Actions tab. A BLANK flag on a WebGL piece is worth a look, not proof of a
+  break: the runner draws WebGL in software.
 - When branch protection is turned on for `main` (require a pull request),
   Claude Code also works on a branch and merges its own pull request after
   the checks above.
