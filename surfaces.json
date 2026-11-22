@@ -194,7 +194,7 @@
     "prose",
     "inheritance"
    ],
-   "blurb": "A page written by a one-dimensional cellular automaton made of words. Type a line and each line after it is born from the one above: Wolfram's rule decides which cells live, meaning decides which words. The rule can be changed mid-page, from the triangle of rule 90 to the chaos of rule 30, and the margin keeps the rule's shape as the words run beside it. A second view sets every row at its true shape, with each word in its cell, so the triangle is written in words.",
+   "blurb": "A page written by a one-dimensional cellular automaton made of words. Type a line and each line after it is born from the one before: Wolfram's rule decides which cells live, meaning decides which words. Each line stands as a column and time runs sideways, every living cell a block with its word in it, so the rule's shape — the triangle of rule 90, the chaos of rule 30 — is written in words. The rule can be changed mid-page.",
    "url": "https://opposite.city/lineage/"
   },
   {
