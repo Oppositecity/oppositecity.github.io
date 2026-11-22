@@ -38,7 +38,7 @@ const ETY = (() => {
 
   /* templates that mean "this came from that" */
   const ANCESTRY = /^(inh|inh\+|inh-lite|der|der\+|der-lite|bor|bor\+|lbor|slbor|ubor|uder|obor|learned borrowing|semi-learned borrowing|inherited|derived|borrowed|calque|cal|clq|sl|semantic loan|psm|translit)$/;
-  const FORMOF = /^(inflection of|infl of|plural of|past tense of|past participle of|present participle of|en-past of|en-ing form of|en-third-person singular of|en-third person singular of|en-simple past of|en-superlative of|en-comparative of|comparative of|superlative of|alternative form of|alt form|alternative spelling of|alt sp|obsolete spelling of|archaic spelling of|en-archaic third-person singular of|third-person singular of|misspelling of|nonstandard spelling of|eye dialect of|pronunciation spelling of|abbreviation of|clipping of|short for|contraction of)$/;
+  const FORMOF = /^(inflection of|infl of|plural of|past tense of|past of|past participle of|en-past tense of|en-past participle of|en-plural of|present participle of|en-past of|en-ing form of|en-third-person singular of|en-third person singular of|en-simple past of|en-superlative of|en-comparative of|comparative of|superlative of|alternative form of|alt form|alternative spelling of|alt sp|obsolete spelling of|archaic spelling of|en-archaic third-person singular of|third-person singular of|misspelling of|nonstandard spelling of|eye dialect of|pronunciation spelling of|abbreviation of|clipping of|short for|contraction of)$/;
 
   /* split a template body on top-level pipes */
   function args(body){
@@ -77,7 +77,7 @@ const ETY = (() => {
     return out;
   }
 
-  const clean = s => (s || '').replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1').replace(/<[^>]+>/g, '').replace(/'''?/g, '').trim();
+  const clean = s => (s || '').replace(/\[\[(?:[^|\]]*\|)?([^\]]*)\]\]/g, '$1').replace(/<[^>]+>/g, '').replace(/'''?/g, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
 
   /* get the English section, and within it the first Etymology block */
   function englishSection(wt){
@@ -97,20 +97,31 @@ const ETY = (() => {
     if (!sec) return { stages: [], lemma: null };
     // inflected form? follow to its lemma
     const defs = sec.match(/\n#[^:*][^\n]*/g) || [];
-    if (defs.length){
-      const first = templates(defs[0]);
-      const f = first.find(t => FORMOF.test(t.name));
+    let lemma = null;
+    for (const d of defs){
+      const f = templates(d).find(t => FORMOF.test(t.name));
       if (f){
-        const target = (f.name.startsWith('en-') ? f.pos[0] : f.pos[1]) || f.pos[0];
-        const nonEty = !/Etymology/.test(sec) || defs.every(d => templates(d).some(t => FORMOF.test(t.name)));
-        if (target && nonEty && clean(target) !== word) return { stages: [], lemma: clean(target) };
+        const target = clean((f.name.startsWith('en-') ? f.pos[0] : f.pos[1]) || f.pos[0]);
+        if (target && target !== word){ lemma = target; break; }
       }
     }
     const ety = etymBlock(sec);
-    if (!ety) return { stages: [], lemma: null };
+    if (!ety) return { stages: [], lemma };
     // first sentence-ish run: stop at "Cognate", "Compare", "Doublet", "Related"
     const cut = ety.search(/\b(Cognate|Compare|Doublet|Related|Equivalent|Displaced|Replaced|Akin)\b|\{\{(cog|noncog|col-top|doublet|cog-lite)\|/);
-    const head = cut > 0 ? ety.slice(0, cut) : ety;
+    let head = cut > 0 ? ety.slice(0, cut) : ety;
+    {
+      const first = templates(head).find(t => ANCESTRY.test(t.name));
+      if (first){
+        // end of that sentence, skipping periods inside templates
+        let depth = 0;
+        for (let k = first.at; k < head.length; k++){
+          if (head[k] === '{' && head[k+1] === '{'){ depth++; k++; continue; }
+          if (head[k] === '}' && head[k+1] === '}'){ depth--; k++; continue; }
+          if (!depth && head[k] === '.' && /[\s\n]/.test(head[k+1] || ' ')){ head = head.slice(0, k); break; }
+        }
+      }
+    }
     const ts = templates(head);
     const stages = [];
     const seen = new Set();
@@ -132,19 +143,20 @@ const ETY = (() => {
       if (!seen.has(lc + '|' + form)){ const [ln, dt] = lang(lc); stages.push([form, ln, dt, '', lc]); }
     }
     // compounds and affixed words: descend through the stem
-    if (!stages.length){
+    if (!stages.length && !lemma){
       const af = ts.find(t => /^(af|affix|compound|com|suffix|suf|prefix|pre|confix|con|blend|univerbation)$/.test(t.name));
       if (af){
         const parts = af.pos.slice(1).map(clean).filter(p => p && !/^-|-$/.test(p));
         if (parts.length) return { stages: [], lemma: null, parts };
       }
     }
+    if (!stages.length && lemma) return { stages: [], lemma };
     return { stages, lemma: null };
   }
 
   /* ---------- fetching + cache ---------- */
   const mem = new Map();
-  const LS = 'underword.ety.v1.';
+  const LS = 'underword.ety.v2.';
   function cacheGet(w){
     if (mem.has(w)) return mem.get(w);
     try { const s = localStorage.getItem(LS + w); if (s){ const v = JSON.parse(s); mem.set(w, v); return v; } } catch(e){}

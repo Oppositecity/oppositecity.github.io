@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>UNDERWORD</title>
 <meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'">
+<meta name="description" content="Dig through any text to the roots of its words.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
@@ -18,6 +19,7 @@
     touch-action:none;user-select:none;-webkit-user-select:none;
     cursor:none;
   }
+  @media (hover:none){ #cross{display:none} }
   body.ink{ --fg:#000000; --bg:#ffffff; }
 
   #site{position:fixed;inset:0;perspective:820px;perspective-origin:50% 43%}
@@ -31,7 +33,8 @@
     color:var(--fg);
   }
   .c.root{font-weight:700}
-  .c.aim{font-weight:700}
+  .c.aim{font-weight:700;text-decoration:underline}
+  .c.kin{font-weight:700}
 
   #ghosts{position:fixed;inset:0;pointer-events:none;z-index:6}
   .gh{position:fixed;color:var(--fg);white-space:nowrap;
@@ -47,13 +50,28 @@
 
   .hud{position:fixed;z-index:10;pointer-events:none;color:var(--fg);
        font-size:12px;line-height:1.55}
-  #probe{left:14px;top:14px;max-width:62vw}
+  #probe{left:8px;top:8px;max-width:62vw;padding:6px;background:var(--bg)}
   #probe b{font-weight:700}
-  #count{right:14px;top:14px;text-align:right}
-  #chain{left:0;right:0;bottom:44px;text-align:center;padding:0 12px;
-         font-size:12px;line-height:1.5;word-break:break-word}
-  #keys{left:0;right:0;bottom:14px;text-align:center;font-size:11px}
-  #keys span{pointer-events:auto;cursor:pointer}
+  #count{right:8px;top:8px;text-align:right;padding:6px;background:var(--bg)}
+  #foot{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;flex-direction:column;
+         background:var(--bg);padding:6px 12px max(12px, env(safe-area-inset-bottom))}
+  #foot .hud{position:static}
+  #chain{text-align:center;font-size:12px;line-height:1.5;word-break:break-word;padding-bottom:6px}
+  #keys{text-align:center;font-size:12px;line-height:1.8}
+  #keys span,#keys a{pointer-events:auto;cursor:pointer;color:var(--fg)}
+  .act{cursor:pointer;text-decoration:underline}
+  #chain:empty,#probe:empty{display:none}
+
+  #box{position:fixed;inset:0;z-index:14;display:none;align-items:center;justify-content:center;
+       background:var(--bg);padding:20px;cursor:auto}
+  body.boxed #box{display:flex}
+  body.boxed #cross{display:none}
+  #boxin{width:min(640px,100%);display:flex;flex-direction:column;gap:12px;font-size:14px;line-height:1.5}
+  #ta{width:100%;height:min(46vh,360px);resize:vertical;font:inherit;font-size:15px;line-height:1.5;
+      color:var(--fg);background:var(--bg);border:1px solid var(--fg);padding:10px;
+      user-select:text;-webkit-user-select:text;cursor:text}
+  #ta::placeholder{color:var(--fg);opacity:.75}
+  #ta:focus{outline:2px solid var(--fg);outline-offset:2px}
 
   #done{position:fixed;inset:0;z-index:12;display:none;
         align-items:center;justify-content:center;text-align:center;
@@ -63,7 +81,7 @@
 
   @media (max-width:600px){
     .hud{font-size:11px}
-    #chain{font-size:11px;bottom:40px}
+    #chain{font-size:11px}
   }
   @media (prefers-reduced-motion:reduce){
     .c{transition:none} #rot{transition:none} .gh{animation-duration:.4s}
@@ -77,11 +95,20 @@
 
 <div class="hud" id="probe"></div>
 <div class="hud" id="count"></div>
-<div class="hud" id="chain"></div>
-<div class="hud" id="keys"><span id="kNew">new site</span> &nbsp; <span id="kInk">ink</span> &nbsp; <span id="kMute">sound</span></div>
+<div id="foot"><div class="hud" id="chain"></div>
+<div class="hud" id="keys"><span id="kText">your text</span> &nbsp; <span id="kNew">dig again</span> &nbsp; <span id="kInk">ink</span> &nbsp; <span id="kMute">sound</span> &nbsp; <a href="https://en.wiktionary.org/" target="_blank" rel="noopener">wiktionary</a></div></div>
+
+<div id="box">
+  <div id="boxin">
+    <label for="ta">Type or paste any English. It becomes the ground.</label>
+    <textarea id="ta" spellcheck="false" placeholder="Type here"></textarea>
+    <div id="bRow"><span class="act" id="bDig">dig</span> &nbsp; <span class="act" id="bSite">the built-in site</span> &nbsp; <span class="act" id="bClose">close</span></div>
+  </div>
+</div>
 
 <div id="done"><div id="doneTxt"></div></div>
 
+<script src="ety.js"></script>
 <script>
 /* ------------------------------------------------------------------
    UNDERWORD
@@ -415,76 +442,135 @@ const SEAMS = [
   ["*dheu-","Proto-Indo-European","c.4000 BCE","dust, smoke, vapour"]]]
 ];
 
-/* ---------- geometry ---------- */
+/* ---------- the ground ---------- */
 const rot   = document.getElementById('rot');
 const field = document.getElementById('field');
-const site  = document.getElementById('site');
 const ghosts= document.getElementById('ghosts');
 const cross = document.getElementById('cross');
 const elProbe = document.getElementById('probe');
 const elCount = document.getElementById('count');
 const elChain = document.getElementById('chain');
 const elDone  = document.getElementById('doneTxt');
+const box     = document.getElementById('box');
+const ta      = document.getElementById('ta');
 
 let CW, CH, FS, DZ = 46;
 let cols, rows, cells = [];
 let strikes = 0, aimIdx = -1;
+let source = null;          // null = the built-in site; else the viewer's text
+let reading = 0, toRead = 0;
 
-function measure(){
+const BUILTIN = SEAMS.map(s => s[1]);
+
+/* words of a passage, in reading order */
+function tokens(text){
+  return (text.match(/[A-Za-zÀ-ɏ]+(?:['’-][A-Za-zÀ-ɏ]+)*/g) || []);
+}
+
+function measure(n){
   const w = window.innerWidth, h = window.innerHeight;
   const small = w < 620;
-  CW = small ? 86 : 108;
-  CH = small ? 40 : 46;
-  FS = small ? 10.5 : 12.5;
-  cols = Math.max(4, Math.round(w / CW) + 1);
-  rows = Math.max(6, Math.round(h / CH) + 1);
+  let k = 1;
+  const base = () => {
+    CW = Math.round((small ? 86 : 108) * k);
+    CH = Math.round((small ? 40 : 46) * k);
+    FS = Math.max(9, (small ? 10.5 : 12.5) * k);
+    cols = Math.max(3, Math.floor((w - 24) / CW));
+  };
+  base();
+  if (n){
+    // a short passage stands larger; a long one shrinks to fit, down to a floor
+    while (k < 1.5 && Math.ceil(n / Math.max(3, Math.floor((w - 24) / Math.round((small ? 86 : 108) * (k + .04))))) * Math.round((small ? 40 : 46) * (k + .04)) < (h - 220) * 0.6){ k += 0.04; base(); }
+    while (k > 0.62 && Math.ceil(n / cols) * CH > h - 150){ k -= 0.04; base(); }
+    rows = Math.max(1, Math.ceil(Math.min(n, cols * Math.floor((h - 150) / CH)) / cols));
+    if (cols * CW > w - 16){ const f = (w - 16) / (cols * CW); CW = Math.floor(CW * f); FS = Math.max(9, FS * f); }
+  } else {
+    cols = Math.max(4, Math.round(w / CW) + 1);
+    rows = Math.max(6, Math.round(h / CH) + 1);
+  }
 }
 
 function build(){
-  measure();
+  const words = source ? tokens(source) : null;
+  measure(words ? words.length : 0);
   rot.innerHTML = '';
   cells = [];
   strikes = 0;
+  aimIdx = -1;
   document.body.classList.remove('finished');
 
+  const n = words ? Math.min(words.length, cols * rows) : cols * rows;
   const W = cols * CW, H = rows * CH;
-  field.style.width  = W + 'px';
-  field.style.height = H + 'px';
-  rot.style.width    = W + 'px';
-  rot.style.height   = H + 'px';
+  field.style.width  = rot.style.width  = W + 'px';
+  field.style.height = rot.style.height = H + 'px';
 
-  for (let r = 0; r < rows; r++){
-    for (let c = 0; c < cols; c++){
-      const el = document.createElement('div');
-      el.className = 'c';
-      el.style.width  = CW + 'px';
-      el.style.height = CH + 'px';
-      el.style.left   = (c * CW) + 'px';
-      el.style.top    = (r * CH) + 'px';
-      el.style.fontSize = FS + 'px';
-      rot.appendChild(el);
+  for (let i = 0; i < n; i++){
+    const c = i % cols, r = (i / cols) | 0;
+    const el = document.createElement('div');
+    el.className = 'c';
+    el.style.width  = CW + 'px';
+    el.style.height = CH + 'px';
+    el.style.left   = (c * CW) + 'px';
+    el.style.top    = (r * CH) + 'px';
+    el.style.fontSize = FS + 'px';
+    rot.appendChild(el);
 
-      const cell = {
-        el, c, r, d: 0,
-        seam: (Math.random() * SEAMS.length) | 0,
-        jx: (Math.random() - .5) * 5,
-        jy: (Math.random() - .5) * 4,
-        jr: (Math.random() - .5) * 3
-      };
-      cells.push(cell);
-      paint(cell);
-      setZ(cell, 0);
+    let ch, key = null, pending = false;
+    if (words){
+      key = words[i].toLowerCase().replace(/’/g, "'");
+      ch = ETY.get(key);
+      if (!ch){ ch = [[words[i], 'English', 'now', '']]; pending = true; }
+      else ch = [[words[i]].concat(ch[0].slice(1)), ...ch.slice(1)];
+    } else {
+      ch = BUILTIN[(Math.random() * BUILTIN.length) | 0];
     }
+    const cell = {
+      el, c, r, d: 0, ch, key, pending, word: words ? words[i] : ch[0][0],
+      jx: (Math.random() - .5) * 5,
+      jy: (Math.random() - .5) * 4,
+      jr: (Math.random() - .5) * 3
+    };
+    cells.push(cell);
+    paint(cell);
+    setZ(cell, 0);
   }
-  tally();
-  aimIdx = -1;
   elProbe.textContent = '';
   elChain.textContent = '';
+  tally();
+  if (words) read(words.slice(0, n));
 }
 
-function chain(cell){ return SEAMS[cell.seam][1]; }
-function stage(cell){ const ch = chain(cell); return ch[Math.min(cell.d, ch.length - 1)]; }
-function atRoot(cell){ return cell.d >= chain(cell).length - 1; }
+/* fetch the record for every word not yet known */
+async function read(words){
+  const need = [...new Set(words.map(w => w.toLowerCase().replace(/’/g, "'")))].filter(k => !ETY.get(k));
+  toRead = need.length; reading = 0;
+  tally();
+  if (!need.length) return;
+  const mine = source;
+  for (let i = 0; i < need.length; i += 40){
+    if (source !== mine) return;
+    await ETY.resolve(need.slice(i, i + 40), (k, chain) => {
+      reading++;
+      for (const cell of cells) if (cell.pending && cell.key === k){
+        cell.ch = [[cell.word].concat(chain[0].slice(1)), ...chain.slice(1)];
+        cell.pending = false;
+        cell.d = Math.min(cell.d, cell.ch.length - 1);
+        paint(cell); setZ(cell, 0);
+      }
+      tally();
+      if (aimIdx >= 0) probe(cells[aimIdx]);
+    });
+  }
+  // anything the network never answered stays at the surface
+  if (source !== mine) return;
+  for (const cell of cells) if (cell.pending) cell.offline = true;
+  reading = toRead; tally();
+  if (aimIdx >= 0) probe(cells[aimIdx]);
+}
+
+function stage(cell){ return cell.ch[Math.min(cell.d, cell.ch.length - 1)]; }
+function atRoot(cell){ return !cell.pending && cell.d >= cell.ch.length - 1; }
+const lost = st => st[0].startsWith('·');
 
 function paint(cell){
   cell.el.textContent = stage(cell)[0];
@@ -500,7 +586,8 @@ function setZ(cell, punch){
 /* ---------- the strike ---------- */
 function idxOf(c, r){
   if (c < 0 || r < 0 || c >= cols || r >= rows) return -1;
-  return r * cols + c;
+  const i = r * cols + c;
+  return i < cells.length ? i : -1;
 }
 
 const BLAST = [[0,0,2],[1,0,1],[-1,0,1],[0,1,1],[0,-1,1],
@@ -516,11 +603,10 @@ function strike(cell){
     const i = idxOf(cell.c + dc, cell.r + dr);
     if (i < 0) continue;
     const t = cells[i];
-
-    if (force > 0 && !atRoot(t)){
+    if (force > 0 && !t.pending && !atRoot(t)){
       clink = false;
       const was = stage(t)[0];
-      t.d = Math.min(t.d + force, chain(t).length - 1);
+      t.d = Math.min(t.d + force, t.ch.length - 1);
       ghost(t, was);
       paint(t);
     }
@@ -551,29 +637,70 @@ function ghost(cell, form){
 function tally(){
   let roots = 0;
   for (const c of cells) if (atRoot(c)) roots++;
-  elCount.innerHTML = `${strikes} strikes<br>${roots} / ${cells.length} at root`;
-  if (roots >= cells.length * 0.8 && !document.body.classList.contains('finished')){
+  const r = (source && reading < toRead) ? `<br>reading ${reading} / ${toRead}` : '';
+  elCount.innerHTML = `${strikes} strikes<br>${roots} / ${cells.length} at root${r}`;
+  if (cells.length && roots >= cells.length * 0.8 && !document.body.classList.contains('finished')){
     finish(roots);
   }
 }
 
 function finish(roots){
   document.body.classList.add('finished');
+  const shared = sharedRoots();
+  const line = shared.length
+    ? '<br><br>' + shared.slice(0, 6).map(([f, ws]) => `${esc(f)} &nbsp; under ${ws.map(esc).join(', ')}`).join('<br>')
+    : '';
   elDone.innerHTML =
     `the floor is all roots<br><br>` +
-    `${strikes} strikes &nbsp; ${roots} words taken to bedrock<br><br>` +
-    `<span style="cursor:pointer;text-decoration:underline" id="again">open a new site</span>`;
+    `${strikes} strikes &nbsp; ${roots} words taken to bedrock` + line + `<br><br>` +
+    `<span class="act" id="again">dig it again</span> &nbsp; <span class="act" id="other">${source ? 'other text' : 'your text'}</span>`;
   document.getElementById('again').onclick = (e) => { e.stopPropagation(); build(); };
+  document.getElementById('other').onclick = (e) => { e.stopPropagation(); openBox(); };
 }
+
+/* roots that more than one different word in the ground comes from */
+function sharedRoots(){
+  const by = new Map();
+  for (const c of cells){
+    const st = c.ch[c.ch.length - 1];
+    if (c.ch.length < 2 || lost(st)) continue;
+    const k = st[0] + '|' + st[1];
+    if (!by.has(k)) by.set(k, [st[0], new Set()]);
+    by.get(k)[1].add(c.ch[0][0].toLowerCase());
+  }
+  return [...by.values()].filter(([, s]) => s.size > 1).map(([f, s]) => [f, [...s]])
+    .sort((a, b) => b[1].length - a[1].length);
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
 /* ---------- aiming ---------- */
 function probe(cell){
   const s = stage(cell);
-  const ch = chain(cell);
+  for (const c of cells) c.el.classList.remove('kin');
+  if (cell.pending){
+    elProbe.innerHTML = `<b>${esc(s[0])}</b><br>${cell.offline ? 'Wiktionary did not answer; this word stays at the surface' : 'reading its record'}`;
+    elChain.textContent = s[0] + '   · · ·';
+    return;
+  }
+  // other words in the ground that pass through the same form
+  const kin = new Set();
+  if (cell.d > 0 && !lost(s)){
+    for (const c of cells){
+      if (c === cell) continue;
+      if (c.ch.some(st => st[0] === s[0] && st[1] === s[1])){
+        kin.add(c.ch[0][0].toLowerCase());
+        if (c.d > 0 && stage(c)[0] === s[0]) c.el.classList.add('kin');
+      }
+    }
+    kin.delete(cell.ch[0][0].toLowerCase());
+  }
   elProbe.innerHTML =
-    `<b>${s[0]}</b><br>${s[1]}, ${s[2]}<br>${s[3]}`;
+    `<b>${esc(s[0])}</b><br>${esc(s[1])}${s[2] && s[2] !== '—' ? ', ' + esc(s[2]) : ''}` +
+    (s[3] ? `<br>${esc(s[3])}` : '') +
+    (kin.size ? `<br>also under ${[...kin].slice(0, 5).map(esc).join(', ')}` : '');
 
-  const parts = ch.map((st, i) =>
+  const parts = cell.ch.map((st, i) =>
     i < cell.d ? st[0] : (i === cell.d ? '[ ' + st[0] + ' ]' : '· · ·')
   );
   elChain.textContent = parts.join('   ');
@@ -581,10 +708,20 @@ function probe(cell){
 
 function aimAt(x, y){
   const el = document.elementFromPoint(x, y);
-  if (!el || !el.classList.contains('c')) return;
-  const i = cells.findIndex(c => c.el === el);
+  let i = -1;
+  if (el && el.classList.contains('c')) i = cells.findIndex(c => c.el === el);
+  else if (el && (el.id === 'field' || el.id === 'rot' || el.id === 'site')){
+    // a touch between words takes the nearest one
+    let best = 1e9;
+    cells.forEach((c, j) => {
+      const b = c.el.getBoundingClientRect();
+      const d = Math.hypot(b.left + b.width / 2 - x, b.top + b.height / 2 - y);
+      if (d < best){ best = d; i = j; }
+    });
+    if (best > CW) i = -1;
+  }
   if (i < 0 || i === aimIdx) return;
-  if (aimIdx >= 0) cells[aimIdx].el.classList.remove('aim');
+  if (aimIdx >= 0 && cells[aimIdx]) cells[aimIdx].el.classList.remove('aim');
   aimIdx = i;
   cells[i].el.classList.add('aim');
   probe(cells[i]);
@@ -656,18 +793,19 @@ function sound(depth, clink){
 
 /* ---------- input ---------- */
 let holding = null;
+const boxOpen = () => document.body.classList.contains('boxed');
 
 function point(e){
   const x = e.clientX, y = e.clientY;
   cross.style.transform = `translate(${x}px, ${y}px)`;
-  look(x, y);
   aimAt(x, y);
+  look(x, y);
 }
 
-window.addEventListener('pointermove', point, {passive:true});
+window.addEventListener('pointermove', (e) => { if (!boxOpen()) point(e); }, {passive:true});
 
 window.addEventListener('pointerdown', (e) => {
-  if (e.target.closest('#keys') || e.target.closest('#done')) return;
+  if (boxOpen() || e.target.closest('#keys') || e.target.closest('#done')) return;
   point(e);
   if (aimIdx >= 0) strike(cells[aimIdx]);
   holding = setInterval(() => { if (aimIdx >= 0) strike(cells[aimIdx]); }, 165);
@@ -677,7 +815,31 @@ window.addEventListener('pointerup', release);
 window.addEventListener('pointercancel', release);
 window.addEventListener('blur', release);
 
-document.getElementById('kNew').onclick  = (e) => { e.stopPropagation(); build(); };
+/* the viewer's own text */
+function openBox(){
+  document.body.classList.add('boxed');
+  ta.value = source || '';
+  setTimeout(() => ta.focus(), 30);
+}
+function closeBox(){ document.body.classList.remove('boxed'); }
+function dig(text){
+  text = (text || '').trim();
+  source = tokens(text).length ? text : null;
+  try { history.replaceState(null, '', source ? '#' + encodeURIComponent(source) : location.pathname); } catch(e){}
+  closeBox();
+  build();
+}
+document.getElementById('kText').onclick = (e) => { e.stopPropagation(); openBox(); };
+document.getElementById('bDig').onclick  = () => dig(ta.value);
+document.getElementById('bSite').onclick = () => dig('');
+document.getElementById('bClose').onclick = closeBox;
+ta.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) dig(ta.value);
+  if (e.key === 'Escape') closeBox();
+});
+
+document.getElementById('kNew').onclick  = (e) => { e.stopPropagation(); if (source) build(); else build(); };
 document.getElementById('kInk').onclick  = (e) => { e.stopPropagation(); document.body.classList.toggle('ink'); };
 document.getElementById('kMute').onclick = (e) => {
   e.stopPropagation();
@@ -686,8 +848,10 @@ document.getElementById('kMute').onclick = (e) => {
 };
 
 window.addEventListener('keydown', (e) => {
+  if (boxOpen()) return;
   const k = e.key.toLowerCase();
   if (k === 'n') build();
+  if (k === 't'){ e.preventDefault(); openBox(); }
   if (k === 'i') document.body.classList.toggle('ink');
   if (k === 'm') document.getElementById('kMute').click();
   if (k === ' ' && aimIdx >= 0){ e.preventDefault(); strike(cells[aimIdx]); }
@@ -703,6 +867,10 @@ window.addEventListener('resize', () => {
   }, 220);
 });
 
+if (location.hash.length > 1){
+  try { source = decodeURIComponent(location.hash.slice(1)); } catch(e){ source = null; }
+  if (source && !tokens(source).length) source = null;
+}
 build();
 </script>
 </body>
