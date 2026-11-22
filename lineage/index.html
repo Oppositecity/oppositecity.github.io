@@ -88,7 +88,7 @@ button.on{font-weight:700;text-decoration:underline}
     <input id="rulen" type="text" inputmode="numeric" placeholder="90">
     <button id="copy">copy the page</button>
   </div>
-  <p class="note">The row is 31 cells wide, with an empty margin beyond each edge. A cell lives or dies by Wolfram's rule, read from the three cells above it: its left neighbour, itself and its right. Meaning decides only which word it is: the word closest to the living words above it. No word comes back within six lines, so the page keeps moving. The strip in the margin is the row itself, one bar to a cell, as tall as its line, so the rule's shape builds down the side as the words run beside it. A line in red marks where the rule changed.</p>
+  <p class="note">The row is 33 cells wide, with an empty margin beyond each edge. A cell lives or dies by Wolfram's rule, read from the three cells above it: its left neighbour, itself and its right. Meaning decides only which word it is: the word closest to the living words above it. No word comes back within six lines, so the page keeps moving. The strip in the margin is the row itself, one bar to a cell, as tall as its line, so the rule's shape builds down the side as the words run beside it. A line in red marks where the rule changed.</p>
 </div>
 
 <script>
@@ -166,7 +166,7 @@ const LEX=(()=>{const P=LEXP,o={};
   P.w.split('|').forEach(e=>{const [w,t]=e.split(':');o[w]=t.split('.').map(i=>P.t[+i]);});return o;})();
 // common forms not in the lexicon, and the lexicon word each comes from (were -> be, children -> child, beautifully -> beautiful)
 const ALIAS=(()=>{const o={}; (LEXP.a||'').split('|').forEach(e=>{const [a,b]=e.split(':'); if(b) o[a]=b;}); return o;})();
-const WIDTH=31;
+const WIDTH=33;   // not 31: under rule 90 a row 31 wide (one less than a power of two) empties itself in sixteen lines
 const RULES=[[90,'the triangle'],[30,'chaos'],[110,'the one that computes'],[150,'the other triangle'],[18,''],[54,''],[73,''],[105,'']];
 let rule=90, E, lines=[], timer=null;
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -226,9 +226,11 @@ function begin(text){
 }
 function nextLine(animate){
   if(!lines.length){ outEl.textContent='the page is empty. type a word or a line to begin it.'; document.getElementById('seed').focus(); return; }
+  // an empty row stays empty unless the rule makes life from nothing (an odd rule number)
+  if(!lines[lines.length-1].some(Boolean)&&!(rule&1)){ stop(); outEl.textContent='the row is empty, and rule '+rule+' makes nothing from nothing. change the rule, or begin a new page.'; return null; }
   const l=E.next(lines); lines.push(l); if(lines.length>800) lines.shift();
   const row=rowEl(l,animate);
-  if(!l.some(Boolean)){ stop(); outEl.textContent='the row is empty. nothing can be born from nothing under this rule.'; }
+  if(!l.some(Boolean)&&!(rule&1)){ stop(); outEl.textContent='the row is empty, and rule '+rule+' makes nothing from nothing. change the rule, or begin a new page.'; }
   return row;
 }
 function keepInView(row){ if(row) row.scrollIntoView({block:'end',behavior:reduce?'auto':'smooth'}); }
@@ -236,10 +238,10 @@ function keepInView(row){ if(row) row.scrollIntoView({block:'end',behavior:reduc
 /* ---------- keys ---------- */
 const runBtn=document.getElementById('run');
 function stop(){ clearInterval(timer); timer=null; runBtn.textContent='run on its own'; runBtn.className=''; }
-function start(){ if(timer) return; timer=setInterval(()=>keepInView(nextLine(false)),700); runBtn.textContent='stop running'; runBtn.className='on'; }
+function start(){ if(timer) return; timer=setInterval(()=>{ const r=nextLine(false); if(r) keepInView(r); },700); runBtn.textContent='stop running'; runBtn.className='on'; }
 runBtn.onclick=()=>timer?stop():start();
 document.getElementById('next').onclick=()=>{ stop(); keepInView(nextLine(true)); };
-document.getElementById('ten').onclick=()=>{ stop(); let r; for(let i=0;i<10;i++) r=nextLine(false); keepInView(r); };
+document.getElementById('ten').onclick=()=>{ stop(); let r; for(let i=0;i<10;i++){ const x=nextLine(false); if(!x) break; r=x; } keepInView(r); };
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT') return;
   if(e.key===' '||e.key==='Enter'||e.key==='ArrowDown'){ e.preventDefault(); stop(); keepInView(nextLine(true)); }
