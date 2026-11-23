@@ -61,7 +61,7 @@ a{color:#fff}
 
 <div id="about">
 <p><b>How it's priced.</b> Each word in each post is looked up in human rating studies and scored 0&ndash;100 on that study's own scale. A ticker's level is the mean over every rated word posted in the last 60 seconds. &ldquo;Everyday&rdquo; is the same lens averaged over English weighted by how often words are used (SUBTLEX-US film and television subtitles), so the gap shows how Bluesky reads against ordinary speech. Change is measured from the level when you opened the page. Up is green, down is red; nothing else is coloured.</p>
-<p><b>Driving it.</b> The words that pushed the selected ticker furthest from everyday English in the last minute, weighted by how often they were posted. No posts, names or accounts are shown or kept; only word counts, in this browser, until you close it.</p>
+<p><b>Driving it.</b> The words that pushed the selected ticker furthest from everyday English in the last minute, weighted by how often they were posted. Small function words (is, the, have) count in the price but are left out of these lists. No posts, names or accounts are shown or kept; only word counts, in this browser, until you close it.</p>
 <p><b>Sources.</b> Posts: Bluesky's public Jetstream. Lenses: the ousiometer of Dodds and colleagues; NRC VAD Lexicon v2; labMT; Lancaster Sensorimotor Norms; Brysbaert concreteness; Glasgow Norms; Kuperman age of acquisition; the extended Moral Foundations Dictionary. NRC data and the ousiometer are for research and non-commercial use. <a href="../">Read a single text through the same lenses &rarr;</a></p>
 </div>
 </main>
@@ -74,6 +74,7 @@ concreteness:'CONC',imageability:'IMAG',size:'SIZE',gender:'MASC',familiarity:'F
 const HOSTS=['jetstream2.us-east.bsky.network','jetstream1.us-east.bsky.network','jetstream1.us-west.bsky.network','jetstream2.us-west.bsky.network'];
 const WIN=60, STEP=5, KEEP=7200;            // seconds: rolling window, chart step, history kept
 const $=s=>document.querySelector(s);
+const STOP=new Set('a an the and or but nor so yet for of to in on at by from with as into onto about than then that this these those there here is am are was were be been being have has had do does did will would shall should can could may might must not no yes i me my mine we us our ours you your yours he him his she her hers it its they them their theirs who whom whose which what when where why how all any some just very too also only even still more most much many such own same other each every both either neither if because while though although until unless again ever never always now oh ok okay like get got go going gone make made say said one two lol im dont cant its thats ive youre'.split(' '));
 let AX=[],NA=0,LEX=new Map(),sel='danger',frame=1800;
 // per-second buckets: sums & counts per axis, plus word tallies for drivers
 const sec=new Map();                          // second -> {sum:Float64Array,n:Uint32Array,words:Map}
@@ -103,7 +104,7 @@ function ingest(text){
   const s=Math.floor(Date.now()/1000); let B=sec.get(s);
   if(!B){B={sum:new Float64Array(NA),n:new Uint32Array(NA),words:new Map()}; sec.set(s,B);}
   posts++; postTimes.push(Date.now());
-  const toks=text.replace(/https?:\/\/\S+/g,' ').replace(/[@#][\w.\-]+/g,' ').match(/[A-Za-z][A-Za-z'’]*/g)||[];
+  const toks=text.replace(/https?:\/\/\S+/g,' ').replace(/[@#][\w.\-]+/g,' ').replace(/\b[\w-]+(\.[\w-]+)+\b/g,' ').match(/[A-Za-z][A-Za-z'’]*/g)||[];
   for(const tk of toks){ if(tk.length>24)continue; const h=look(tk); if(!h)continue; words++;
     const w=h.w; let row=B.words.get(w);
     if(!row){row=new Float32Array(NA).fill(NaN); for(let i=0;i<NA;i++){const v=score(h,i); if(v!=null)row[i]=v;} row.c=0; B.words.set(w,row);}
@@ -172,7 +173,7 @@ function drawHero(L,nowS){
 function drivers(nowS,i,a){
   const agg=new Map();
   for(let s=nowS-WIN+1;s<=nowS;s++){const B=sec.get(s); if(!B)continue; for(const [w,row] of B.words){const v=row[i]; if(v!==v)continue; const p=agg.get(w)||{v,c:0}; p.c+=row.c; agg.set(w,p);}}
-  const arr=[...agg].map(([w,p])=>({w,c:p.c,pull:(p.v-a.run)*p.c}));
+  const arr=[...agg].filter(([w])=>!STOP.has(w)&&w.length>1).map(([w,p])=>({w,c:p.c,pull:(p.v-a.run)*p.c}));
   const up=arr.filter(x=>x.pull>0).sort((p,q)=>q.pull-p.pull).slice(0,8);
   const dn=arr.filter(x=>x.pull<0).sort((p,q)=>p.pull-q.pull).slice(0,8);
   const fmtw=l=>l.map(x=>`${x.w} <span style="font-size:13px">×${x.c}</span>`).join(', ')||'—';
