@@ -7,61 +7,63 @@
 <title>PRISM · FIREHOSE</title>
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
-/* colour carries direction only: up green, down red; everything else white on black */
-:root{--up:#4dff7a;--dn:#ff5c5c}
+/* Colour encodes one thing: the family a lens belongs to. Direction is written as + or −. */
+:root{--essence:#ff8a65;--feeling:#ffe14d;--body:#4dd9ff;--substance:#8cff6a;--life:#c99bff;--moral:#ff7ad1}
 *{box-sizing:border-box;min-width:0}
 html,body{margin:0;background:#000;color:#fff}
 body{font-family:"Courier Prime","Courier New",monospace;font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%;overflow-x:clip}
-main{max-width:1100px;margin:0 auto;padding:22px 16px 80px}
+main{max-width:1180px;margin:0 auto;padding:22px 16px 80px}
 h1{font-size:15px;font-weight:700;letter-spacing:.3em;margin:0 0 6px}
 p{margin:0 0 10px}
-.up{color:var(--up)}.dn{color:var(--dn)}
-button{background:none;border:0;color:#fff;font:inherit;padding:6px 0;margin:0 12px 0 0;cursor:pointer;min-height:34px}
+button{background:none;border:0;color:#fff;font:inherit;padding:6px 0;margin:0 10px 0 0;cursor:pointer;min-height:36px}
 button.on::before{content:"["}button.on::after{content:"]"}
 button:not(.on){padding-left:.6em;padding-right:.6em}
-#status{margin:0 0 18px}
-#hero{display:grid;grid-template-columns:1fr;gap:6px 24px;margin-bottom:10px}
-#sym{font-size:clamp(34px,8vw,56px);font-weight:700;line-height:1}
-#name{font-size:16px}
-#big{font-size:clamp(30px,7vw,48px);font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
-#facts{font-variant-numeric:tabular-nums}
-.fig{position:relative;height:clamp(220px,38vh,380px);margin:8px 0 6px}
-.fig canvas{position:absolute;inset:0;width:100%;height:100%}
-#frames{margin-bottom:14px}
-#drivers{margin:6px 0 26px}
-#drivers b{font-weight:700}
-#board{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px 18px}
-.fam{grid-column:1/-1;font-weight:700;margin-top:10px;letter-spacing:.15em}
+button:focus-visible,.tk:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:0 4px;margin:2px 0}
+.row .k{font-weight:700;margin-right:8px}
+#status{margin:0 0 14px}
+#lead{margin:0 0 10px;min-height:3em}
+#lead b{font-weight:700}
+.fig{position:relative;height:clamp(300px,52vh,560px);margin:6px 0 4px;touch-action:pan-y}
+.fig canvas{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+#focus{margin:10px 0 4px;min-height:1.5em}
+#focus b{font-weight:700}
+#drivers{margin:4px 0 22px}
+#board{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:12px 18px;margin-top:10px}
+.gh{grid-column:1/-1;font-weight:700;margin-top:8px;letter-spacing:.15em}
 .tk{cursor:pointer;padding:2px 0}
 .tk .top{display:flex;justify-content:space-between;gap:6px;font-variant-numeric:tabular-nums}
 .tk .s{font-weight:700}
 .tk .lab{font-size:13px}
 .tk canvas{display:block;width:100%;height:34px;margin-top:3px}
+.tk.off,.gh.off{display:none}
 .tk.sel .s::before{content:"["}.tk.sel .s::after{content:"]"}
 #about{margin-top:54px}
 a{color:#fff}
-@media(min-width:760px){#hero{grid-template-columns:auto 1fr;align-items:end}}
+.essence{color:var(--essence)}.feeling{color:var(--feeling)}.body{color:var(--body)}.substance{color:var(--substance)}.life{color:var(--life)}.moral{color:var(--moral)}
 </style>
 </head>
 <body>
 <main>
 <h1>PRISM · FIREHOSE</h1>
-<p>Every English post on Bluesky, scored as it arrives on thirty-one measured lenses of meaning. Each lens trades as a ticker: its level is the average score of the last minute of words, set against English as it is ordinarily used.</p>
+<p>Every English post on Bluesky, scored as it arrives on thirty-one measured lenses of meaning, all drawn at once against English as it is ordinarily spoken.</p>
 <div id="status">connecting&hellip;</div>
+<p id="lead"></p>
 
-<div id="hero">
-  <div><div id="sym">DNGR</div><div id="name">danger</div></div>
-  <div><div id="big">—</div><div id="facts"></div></div>
-</div>
-<div class="fig"><canvas id="chart"></canvas></div>
-<div id="frames"><button data-f="300">5m</button><button data-f="1800" class="on">30m</button><button data-f="7200">2h</button></div>
+<div class="row"><span class="k">show</span><span id="fams"></span></div>
+<div class="row"><span class="k">measure</span><button data-m="gap" class="on">gap from everyday</button><button data-m="move">move since open</button></div>
+<div class="fig"><canvas id="chart" aria-label="All lenses over time"></canvas></div>
+<div class="row"><span class="k">span</span><button data-f="300">5m</button><button data-f="1800" class="on">30m</button><button data-f="7200">2h</button></div>
+
+<div id="focus"></div>
 <div id="drivers"></div>
 
+<div class="row"><span class="k">board</span><button data-s="family" class="on">by family</button><button data-s="gap">by gap</button><button data-s="move">by move</button><span id="sortnote"></span></div>
 <div id="board"></div>
 
 <div id="about">
-<p><b>How it's priced.</b> Each word in each post is looked up in human rating studies and scored 0&ndash;100 on that study's own scale. A ticker's level is the mean over every rated word posted in the last 60 seconds. &ldquo;Everyday&rdquo; is the same lens averaged over English weighted by how often words are used (SUBTLEX-US film and television subtitles), so the gap shows how Bluesky reads against ordinary speech. Change is measured from the level when you opened the page. Up is green, down is red; nothing else is coloured.</p>
-<p><b>Driving it.</b> The words that pushed the selected ticker furthest from everyday English in the last minute, weighted by how often they were posted. Small function words (is, the, have) count in the price but are left out of these lists. No posts, names or accounts are shown or kept; only word counts, in this browser, until you close it.</p>
+<p><b>How to read it.</b> Each word in each post is looked up in human rating studies and scored 0&ndash;100 on that study's own scale. A lens's level is the mean over every rated word posted in the last 60 seconds. <b>Gap</b> is that level minus the same lens averaged over everyday spoken English (SUBTLEX-US film and television subtitles, each word weighted by how often it is said), so the zero line is ordinary speech. <b>Move</b> is the change since you opened the page. Colour marks the family; tap a line, a label or a tile to bring one lens forward, tap it again to let go.</p>
+<p><b>Driving it.</b> The words that pushed the lens in front furthest from everyday English in the last minute, weighted by how often they were posted. Small function words count in the levels but are left out of these lists. No posts, names or accounts are shown or kept; only word counts, in this browser, until you close it.</p>
 <p><b>Sources.</b> Posts: Bluesky's public Jetstream. Lenses: the ousiometer of Dodds and colleagues; NRC VAD Lexicon v2; labMT; Lancaster Sensorimotor Norms; Brysbaert concreteness; Glasgow Norms; Kuperman age of acquisition; the extended Moral Foundations Dictionary. NRC data and the ousiometer are for research and non-commercial use. <a href="../">Read a single text through the same lenses &rarr;</a></p>
 </div>
 </main>
@@ -71,27 +73,28 @@ a{color:#fff}
 const SYM={goodness:'GOOD',power:'POWR',aggression:'AGGR',danger:'DNGR',structure:'STRC',valence:'PLSR',arousal:'AROU',dominance:'CTRL',happiness:'HAPY',
 visual:'SGHT',auditory:'SOND',haptic:'TUCH',olfactory:'SMEL',gustatory:'TAST',interoceptive:'INSD',hand:'HAND',foot:'FOOT',mouth:'MOUT',head:'HEAD',torso:'TRSO',
 concreteness:'CONC',imageability:'IMAG',size:'SIZE',gender:'MASC',familiarity:'FAML',aoa:'LATE',care:'CARE',fairness:'FAIR',loyalty:'LOYL',authority:'AUTH',sanctity:'SNCT'};
+const FAMS=['essence','feeling','body','substance','life','moral'];
+const COL={}; {const cs=getComputedStyle(document.documentElement); FAMS.forEach(f=>COL[f]=cs.getPropertyValue('--'+f).trim());}
 const HOSTS=['jetstream2.us-east.bsky.network','jetstream1.us-east.bsky.network','jetstream1.us-west.bsky.network','jetstream2.us-west.bsky.network'];
-const WIN=60, STEP=5, KEEP=7200;            // seconds: rolling window, chart step, history kept
-const $=s=>document.querySelector(s);
 const STOP=new Set('a an the and or but nor so yet for of to in on at by from with as into onto about than then that this these those there here is am are was were be been being have has had do does did will would shall should can could may might must not no yes i me my mine we us our ours you your yours he him his she her hers it its they them their theirs who whom whose which what when where why how all any some just very too also only even still more most much many such own same other each every both either neither if because while though although until unless again ever never always now oh ok okay like get got go going gone make made say said one two lol im dont cant its thats ive youre'.split(' '));
-let AX=[],NA=0,LEX=new Map(),sel='danger',frame=1800;
-// per-second buckets: sums & counts per axis, plus word tallies for drivers
-const sec=new Map();                          // second -> {sum:Float64Array,n:Uint32Array,words:Map}
-const hist=[];                                 // [{t, v:Float32Array(level or NaN)}] every STEP s
-let open=null, posts=0, words=0, postTimes=[], t0=Date.now(), lastMsg=0, ws=null, hostI=0, cursor=null;
+const WIN=60, STEP=5, KEEP=7200;
+const $=s=>document.querySelector(s);
+let AX=[],NA=0,LEX=new Map();
+const S={focus:null,measure:'gap',frame:1800,sort:'family',show:new Set(FAMS),order:null,sortedAt:null};
+const sec=new Map(), hist=[];
+let open=null,words=0,postTimes=[],t0=Date.now(),lastMsg=0,ws=null,hostI=0,cursor=null,L=null,labelBoxes=[];
 
 async function boot(){
   const t=await (await fetch('../lex.txt')).text();
   const nl=t.indexOf('\n'); AX=JSON.parse(t.slice(0,nl)).axes; NA=AX.length;
   const b=t.slice(nl+1); let p=0;
   while(p<b.length){const e=b.indexOf('\n',p); if(e<0)break; const tab=b.indexOf('\t',p); LEX.set(b.slice(p,tab),b.slice(tab+1,e)); p=e+1;}
-  buildBoard(); connect(); setInterval(tick,1000); tick();
+  buildControls(); buildBoard(); connect(); setInterval(tick,1000); tick();
 }
-const IDX=k=>AX.findIndex(a=>a.key===k);
 function look(raw){
   const w=raw.toLowerCase().replace(/’/g,"'"); const tries=[w]; const b=w.replace(/'s$/,''); if(b!==w)tries.push(b);
-  if(b.endsWith('ies'))tries.push(b.slice(0,-3)+'y'); if(b.endsWith('es')&&b.length>4)tries.push(b.slice(0,-2)); if(b.endsWith('s')&&b.length>3&&!/(ss|us|is)$/.test(b))tries.push(b.slice(0,-1));
+  if(b.endsWith('ies'))tries.push(b.slice(0,-3)+'y'); if(b.endsWith('es')&&b.length>4)tries.push(b.slice(0,-2));
+  if(b.endsWith('s')&&b.length>3&&!/(ss|us|is)$/.test(b))tries.push(b.slice(0,-1));
   if(b.endsWith('ied'))tries.push(b.slice(0,-3)+'y');
   if(b.endsWith('ed')){tries.push(b.slice(0,-2),b.slice(0,-1)); if(/(.)\1ed$/.test(b))tries.push(b.slice(0,-3));}
   if(b.endsWith('ing')){tries.push(b.slice(0,-3),b.slice(0,-3)+'e'); if(/(.)\1ing$/.test(b))tries.push(b.slice(0,-4));}
@@ -99,17 +102,15 @@ function look(raw){
   const out=[]; for(const k of tries){const v=LEX.get(k); if(v)out.push(v);} return out.length?{w:tries[0],v:out}:null;
 }
 function score(hit,i){for(const v of hit.v){const c=v.charCodeAt(i); if(c!==32)return (c-33)/93*100;} return null;}
-
 function ingest(text){
   const s=Math.floor(Date.now()/1000); let B=sec.get(s);
   if(!B){B={sum:new Float64Array(NA),n:new Uint32Array(NA),words:new Map()}; sec.set(s,B);}
-  posts++; postTimes.push(Date.now());
+  postTimes.push(Date.now());
   const toks=text.replace(/https?:\/\/\S+/g,' ').replace(/[@#][\w.\-]+/g,' ').replace(/\b[\w-]+(\.[\w-]+)+\b/g,' ').match(/[A-Za-z][A-Za-z'’]*/g)||[];
   for(const tk of toks){ if(tk.length>24)continue; const h=look(tk); if(!h)continue; words++;
-    const w=h.w; let row=B.words.get(w);
-    if(!row){row=new Float32Array(NA).fill(NaN); for(let i=0;i<NA;i++){const v=score(h,i); if(v!=null)row[i]=v;} row.c=0; B.words.set(w,row);}
-    row.c++;
-    for(let i=0;i<NA;i++){const v=row[i]; if(v===v){B.sum[i]+=v; B.n[i]++;}}
+    let row=B.words.get(h.w);
+    if(!row){row=new Float32Array(NA).fill(NaN); for(let i=0;i<NA;i++){const v=score(h,i); if(v!=null)row[i]=v;} row.c=0; B.words.set(h.w,row);}
+    row.c++; for(let i=0;i<NA;i++){const v=row[i]; if(v===v){B.sum[i]+=v; B.n[i]++;}}
   }
 }
 function connect(){
@@ -119,96 +120,155 @@ function connect(){
   ws.onmessage=ev=>{ lastMsg=Date.now(); let m; try{m=JSON.parse(ev.data);}catch(e){return;}
     if(m.time_us)cursor=m.time_us;
     const c=m.commit; if(!c||c.operation!=='create'||c.collection!=='app.bsky.feed.post'||!c.record)return;
-    const L=c.record.langs; if(!L||!L.some(l=>/^en/i.test(l)))return;
+    const Lg=c.record.langs; if(!Lg||!Lg.some(l=>/^en/i.test(l)))return;
     if(typeof c.record.text==='string'&&c.record.text)ingest(c.record.text); };
   ws.onclose=()=>retry(); ws.onerror=()=>{try{ws.close();}catch(e){}};
 }
 let rt=null; function retry(){ if(rt)return; hostI++; rt=setTimeout(()=>{rt=null; connect();},2500); }
 setInterval(()=>{ if(ws&&ws.readyState===1&&Date.now()-lastMsg>20000){try{ws.close();}catch(e){}} },5000);
 
-function level(nowS){ // rolling mean over WIN seconds, per axis
+function level(nowS){
   const sum=new Float64Array(NA),n=new Uint32Array(NA);
   for(let s=nowS-WIN+1;s<=nowS;s++){const B=sec.get(s); if(!B)continue; for(let i=0;i<NA;i++){sum[i]+=B.sum[i]; n[i]+=B.n[i];}}
   const v=new Float32Array(NA); for(let i=0;i<NA;i++)v[i]=n[i]>=20?sum[i]/n[i]:NaN; return {v,n};
 }
+const gapOf=(v,i)=>v-AX[i].run;
+const moveOf=(v,i)=>open&&open[i]===open[i]?v-open[i]:NaN;
+const measureOf=(v,i)=>S.measure==='gap'?gapOf(v,i):moveOf(v,i);
+const sgn=d=>d!==d?'—':(d>=0?'+':'−')+Math.abs(d).toFixed(1);
+const fmt=x=>x===x?x.toFixed(1):'—';
+const visible=i=>S.show.has(AX[i].family);
+
 let lastStep=0;
 function tick(){
   const nowS=Math.floor(Date.now()/1000);
   for(const k of sec.keys())if(k<nowS-WIN-2)sec.delete(k);
   while(postTimes.length&&postTimes[0]<Date.now()-10000)postTimes.shift();
-  const L=level(nowS);
+  L=level(nowS);
   if(nowS-lastStep>=STEP){ lastStep=nowS; hist.push({t:nowS,v:L.v}); while(hist.length&&hist[0].t<nowS-KEEP)hist.shift();
     if(!open&&nowS-Math.floor(t0/1000)>=WIN&&L.v.some(x=>x===x))open=L.v.slice(); }
   const live=ws&&ws.readyState===1&&Date.now()-lastMsg<20000;
   const warm=Math.max(0,WIN-Math.floor((Date.now()-t0)/1000));
-  $('#status').textContent=(live?'live':'reconnecting')+` · ${(postTimes.length/10).toFixed(1)} English posts/s · ${words.toLocaleString()} words scored since ${new Date(t0).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}`+(warm&&live?` · opening price in ${warm}s`:'');
-  drawBoard(L); drawHero(L,nowS); drawChart();
+  $('#status').textContent=(live?'live':'reconnecting')+` · ${(postTimes.length/10).toFixed(1)} English posts/s · ${words.toLocaleString()} words scored since ${new Date(t0).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}`+(warm&&live?` · opening level in ${warm}s`:'');
+  drawLead(); drawFocus(nowS); drawBoard(); drawChart();
 }
-const fmt=x=>x===x?x.toFixed(1):'—';
-const chg=(a,b)=>(a===a&&b===b)?a-b:NaN;
-const sgn=d=>d!==d?'':(d>=0?'+':'−')+Math.abs(d).toFixed(1);
-const cls=d=>d!==d||Math.abs(d)<0.05?'':(d>0?'up':'dn');
+function drawLead(){
+  const r=AX.map((a,i)=>({i,g:gapOf(L.v[i],i)})).filter(x=>x.g===x.g&&visible(x.i)).sort((p,q)=>Math.abs(q.g)-Math.abs(p.g)).slice(0,6);
+  $('#lead').innerHTML=r.length?'Furthest from everyday English right now: '+r.map(x=>`<b class="${AX[x.i].family}">${SYM[AX[x.i].key]}</b> ${sgn(x.g)}`).join(' · '):'Gathering the first words&hellip;';
+}
+function lensForDrivers(){ if(S.focus!=null)return S.focus;
+  let best=null; AX.forEach((a,i)=>{const g=Math.abs(gapOf(L.v[i],i)); if(g===g&&visible(i)&&(best==null||g>best.g))best={i,g};}); return best?best.i:null; }
+function drawFocus(nowS){
+  const i=S.focus;
+  if(i==null){$('#focus').innerHTML='Tap a line, a label or a tile to bring one lens forward.';}
+  else{ const a=AX[i],v=L.v[i]; const back=hist.find(h=>h.t>=nowS-300); const d5=back?v-back.v[i]:NaN;
+    $('#focus').innerHTML=`<b class="${a.family}">${SYM[a.key]}</b> ${a.label} · ${a.family} · level ${fmt(v)} · everyday ${a.run.toFixed(1)} · gap ${sgn(gapOf(v,i))} · since open ${sgn(moveOf(v,i))} · 5 min ${sgn(d5)} · ${L.n[i].toLocaleString()} rated words this minute <button id="unfocus">let go</button>`;
+    $('#unfocus').onclick=()=>{S.focus=null; tick();}; }
+  const k=lensForDrivers(); if(k==null){$('#drivers').textContent=''; return;}
+  const a=AX[k],agg=new Map();
+  for(let s=nowS-WIN+1;s<=nowS;s++){const B=sec.get(s); if(!B)continue; for(const [w,row] of B.words){const v=row[k]; if(v!==v||STOP.has(w)||w.length<2)continue; const p=agg.get(w)||{v,c:0}; p.c+=row.c; agg.set(w,p);}}
+  const arr=[...agg].map(([w,p])=>({w,c:p.c,pull:(p.v-a.run)*p.c}));
+  const up=arr.filter(x=>x.pull>0).sort((p,q)=>q.pull-p.pull).slice(0,8), dn=arr.filter(x=>x.pull<0).sort((p,q)=>p.pull-q.pull).slice(0,8);
+  const f=l=>l.map(x=>`${x.w} <span style="font-size:13px">×${x.c}</span>`).join(', ')||'—';
+  $('#drivers').innerHTML=arr.length?`<b class="${a.family}">${SYM[a.key]}</b> ${S.focus==null?'(furthest out) ':''}pushed up by ${f(up)}<br>pulled down by ${f(dn)}`:'';
+}
+function buildControls(){
+  $('#fams').innerHTML=FAMS.map(f=>`<button class="on ${f}" data-fam="${f}">${f}</button>`).join('');
+  document.querySelectorAll('[data-fam]').forEach(b=>b.onclick=()=>{const f=b.dataset.fam;
+    if(S.show.has(f)&&S.show.size>1)S.show.delete(f); else S.show.add(f); b.classList.toggle('on',S.show.has(f)); tick();});
+  document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{S.measure=b.dataset.m; document.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x===b)); tick();});
+  document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{S.frame=+b.dataset.f; document.querySelectorAll('[data-f]').forEach(x=>x.classList.toggle('on',x===b)); drawChart();});
+  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{S.sort=b.dataset.s; document.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',x===b)); resort();});
+  $('#chart').addEventListener('click',chartTap);
+}
+function setFocus(i){S.focus=S.focus===i?null:i; tick();}
+// the board is ordered only when the viewer asks
+function resort(){
+  const idx=AX.map((a,i)=>i);
+  if(S.sort==='family'){S.order=null; S.sortedAt=null;}
+  else{ const key=i=>{const v=L?L.v[i]:NaN; const m=S.sort==='gap'?gapOf(v,i):moveOf(v,i); return m===m?Math.abs(m):-1;};
+    S.order=idx.sort((p,q)=>key(q)-key(p)); S.sortedAt=new Date(); }
+  $('#sortnote').textContent=S.sortedAt?` as of ${S.sortedAt.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'})} · tap again to re-sort`:'';
+  buildBoard(); drawBoard();
+}
 function buildBoard(){
-  let h='',fam=''; AX.forEach(a=>{ if(a.family!==fam){fam=a.family; h+=`<div class="fam">${fam.toUpperCase()}</div>`;}
-    h+=`<div class="tk" data-k="${a.key}"><div class="top"><span class="s">${SYM[a.key]}</span><span class="v"></span></div><div class="top lab"><span>${a.label}</span><span class="c"></span></div><canvas></canvas></div>`; });
+  let h='';
+  const tile=i=>{const a=AX[i]; return `<div class="tk" tabindex="0" role="button" data-i="${i}"><div class="top"><span class="s ${a.family}">${SYM[a.key]}</span><span class="v"></span></div><div class="top lab"><span>${a.label}</span><span class="c"></span></div><canvas></canvas></div>`;};
+  if(!S.order){ FAMS.forEach(f=>{h+=`<div class="gh ${f}">${f.toUpperCase()}</div>`; AX.forEach((a,i)=>{if(a.family===f)h+=tile(i);});}); }
+  else S.order.forEach(i=>h+=tile(i));
   $('#board').innerHTML=h;
-  document.querySelectorAll('.tk').forEach(el=>el.onclick=()=>{sel=el.dataset.k; window.scrollTo({top:0,behavior:'smooth'}); tick();});
-  document.querySelectorAll('#frames button').forEach(b=>b.onclick=()=>{frame=+b.dataset.f; document.querySelectorAll('#frames button').forEach(x=>x.classList.toggle('on',x===b)); drawChart();});
+  document.querySelectorAll('.tk').forEach(el=>{const i=+el.dataset.i; el.onclick=()=>setFocus(i); el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); setFocus(i);}};});
 }
-function drawBoard(L){
-  document.querySelectorAll('.tk').forEach(el=>{ const i=IDX(el.dataset.k); const v=L.v[i]; const d=open?chg(v,open[i]):NaN;
-    el.classList.toggle('sel',el.dataset.k===sel);
+function drawBoard(){
+  if(!L)return;
+  document.querySelectorAll('.tk').forEach(el=>{ const i=+el.dataset.i,v=L.v[i];
+    el.classList.toggle('sel',S.focus===i); el.classList.toggle('off',!visible(i));
     el.querySelector('.v').textContent=fmt(v);
-    const c=el.querySelector('.c'); c.textContent=open?sgn(d):''; c.className='c '+cls(d);
-    spark(el.querySelector('canvas'),i,600); });
-}
-function drawHero(L,nowS){
-  const i=IDX(sel),a=AX[i],v=L.v[i]; $('#sym').textContent=SYM[sel]; $('#name').textContent=a.label+' · '+a.family;
-  const d=open?chg(v,open[i]):NaN; const e=v-a.run;
-  $('#big').innerHTML=`${fmt(v)} <span class="${cls(d)}">${open?sgn(d):''}</span>`;
-  const back=hist.find(h=>h.t>=nowS-300); const d5=back?chg(v,back.v[i]):NaN;
-  $('#facts').innerHTML=`everyday English ${a.run.toFixed(1)} · Bluesky runs <span class="${cls(e)}">${sgn(e)}</span> (×${v===v?(v/a.run).toFixed(2):'—'})<br>5-minute change <span class="${cls(d5)}">${sgn(d5)||'—'}</span> · ${L.n[i].toLocaleString()} rated words in the last minute`;
-  drivers(nowS,i,a);
-}
-function drivers(nowS,i,a){
-  const agg=new Map();
-  for(let s=nowS-WIN+1;s<=nowS;s++){const B=sec.get(s); if(!B)continue; for(const [w,row] of B.words){const v=row[i]; if(v!==v)continue; const p=agg.get(w)||{v,c:0}; p.c+=row.c; agg.set(w,p);}}
-  const arr=[...agg].filter(([w])=>!STOP.has(w)&&w.length>1).map(([w,p])=>({w,c:p.c,pull:(p.v-a.run)*p.c}));
-  const up=arr.filter(x=>x.pull>0).sort((p,q)=>q.pull-p.pull).slice(0,8);
-  const dn=arr.filter(x=>x.pull<0).sort((p,q)=>p.pull-q.pull).slice(0,8);
-  const fmtw=l=>l.map(x=>`${x.w} <span style="font-size:13px">×${x.c}</span>`).join(', ')||'—';
-  $('#drivers').innerHTML=arr.length?`<b class="up">pushing ${SYM[sel]} up:</b> ${fmtw(up)}<br><b class="dn">pulling it down:</b> ${fmtw(dn)}`:'waiting for words&hellip;';
+    el.querySelector('.c').textContent=(S.measure==='gap'?'gap ':'move ')+sgn(measureOf(v,i));
+    spark(el.querySelector('canvas'),i); });
+  document.querySelectorAll('.gh').forEach(el=>el.classList.toggle('off',!FAMS.some(f=>el.classList.contains(f)&&S.show.has(f))));
 }
 function fit(c){const r=c.getBoundingClientRect(),d=window.devicePixelRatio||1; const W=Math.max(1,Math.round(r.width*d)),H=Math.max(1,Math.round(r.height*d)); if(c.width!==W||c.height!==H){c.width=W;c.height=H;} return {W,H,d};}
-function series(i,span){const nowS=Math.floor(Date.now()/1000); return hist.filter(h=>h.t>=nowS-span).map(h=>({t:h.t,v:h.v[i]})).filter(p=>p.v===p.v);}
-function spark(c,i,span){
-  const {W,H,d}=fit(c); const g=c.getContext('2d'); g.clearRect(0,0,W,H); const s=series(i,span); if(s.length<2)return;
-  let lo=Math.min(...s.map(p=>p.v)),hi=Math.max(...s.map(p=>p.v)); if(hi-lo<0.5){const m=(hi+lo)/2; lo=m-.25; hi=m+.25;}
-  const nowS=Math.floor(Date.now()/1000);
-  g.strokeStyle=s[s.length-1].v>=s[0].v?'#4dff7a':'#ff5c5c'; g.lineWidth=1.5*d; g.beginPath();
-  s.forEach((p,k)=>{const x=(1-(nowS-p.t)/span)*W, y=H-((p.v-lo)/(hi-lo))*(H-4*d)-2*d; k?g.lineTo(x,y):g.moveTo(x,y);}); g.stroke();
+function series(i,span){const nowS=Math.floor(Date.now()/1000); const out=[]; for(const h of hist){if(h.t<nowS-span)continue; const m=measureOf(h.v[i],i); if(m===m)out.push({t:h.t,m});} return out;}
+function spark(c,i){
+  const {W,H,d}=fit(c); const g=c.getContext('2d'); g.clearRect(0,0,W,H); const s=series(i,600); if(s.length<2)return;
+  let lo=Math.min(0,...s.map(p=>p.m)),hi=Math.max(0,...s.map(p=>p.m)); if(hi-lo<1){hi+=.5;lo-=.5;}
+  const nowS=Math.floor(Date.now()/1000), Y=m=>H-((m-lo)/(hi-lo))*(H-4*d)-2*d;
+  g.strokeStyle='#fff'; g.lineWidth=1*d; g.setLineDash([2*d,3*d]); g.beginPath(); g.moveTo(0,Y(0)); g.lineTo(W,Y(0)); g.stroke(); g.setLineDash([]);
+  g.strokeStyle=COL[AX[i].family]; g.lineWidth=1.6*d; g.beginPath();
+  s.forEach((p,k)=>{const x=(1-(nowS-p.t)/600)*W; k?g.lineTo(x,Y(p.m)):g.moveTo(x,Y(p.m));}); g.stroke();
 }
+let CH=null;
 function drawChart(){
   if(!AX.length)return;
   const c=$('#chart'); const {W,H,d}=fit(c); const g=c.getContext('2d'); g.clearRect(0,0,W,H);
-  const i=IDX(sel),a=AX[i],s=series(i,frame); const nowS=Math.floor(Date.now()/1000);
-  g.font=`${13*d}px "Courier Prime","Courier New",monospace`; g.fillStyle='#fff'; g.textBaseline='middle';
-  const padL=6*d,padT=12*d,padB=22*d; const padR=Math.max(g.measureText('everyday '+a.run.toFixed(1)).width, open&&open[i]===open[i]?g.measureText('open '+open[i].toFixed(1)).width:0, g.measureText('100.0').width)+14*d;
-  if(s.length<2){g.fillText(open?'drawing…':'first minute: gathering words…',padL,H/2); return;}
-  let lo=Math.min(a.run,...s.map(p=>p.v)),hi=Math.max(a.run,...s.map(p=>p.v)); const m=(hi-lo)*0.12||0.5; lo-=m; hi+=m;
-  const X=t=>padL+(1-(nowS-t)/frame)*(W-padL-padR), Y=v=>padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
-  // everyday-English reference
-  g.strokeStyle='#fff'; g.lineWidth=1*d; g.setLineDash([3*d,5*d]); g.beginPath(); g.moveTo(padL,Y(a.run)); g.lineTo(W-padR,Y(a.run)); g.stroke(); g.setLineDash([]);
-  g.fillText('everyday '+a.run.toFixed(1),W-padR+6*d,Y(a.run));
-  // opening price
-  if(open&&open[i]===open[i]){g.fillText('open '+open[i].toFixed(1),W-padR+6*d,Math.min(H-padB,Math.max(padT,Y(open[i])+(Math.abs(Y(open[i])-Y(a.run))<16*d?16*d:0))));}
-  // level line, coloured by direction since window start
-  g.lineWidth=2*d; g.strokeStyle=s[s.length-1].v>=s[0].v?'#4dff7a':'#ff5c5c'; g.beginPath();
-  s.forEach((p,k)=>{k?g.lineTo(X(p.t),Y(p.v)):g.moveTo(X(p.t),Y(p.v));}); g.stroke();
-  const last=s[s.length-1]; g.fillText(last.v.toFixed(1),W-padR+6*d,Y(last.v));
-  // time labels
+  const narrow=W/d<600, fs=(narrow?11:13)*d;
+  g.font=`${fs}px "Courier Prime","Courier New",monospace`; g.textBaseline='middle';
+  const nowS=Math.floor(Date.now()/1000);
+  const first=hist.length?hist[0].t:nowS; const span=Math.max(60,Math.min(S.frame,nowS-first));
+  const idx=AX.map((a,i)=>i).filter(visible);
+  const S2=idx.map(i=>({i,s:series(i,span)})).filter(x=>x.s.length>=2);
+  g.font=`bold ${fs}px "Courier Prime","Courier New",monospace`; const lw=g.measureText('[MOUT −00.0]').width; g.font=`${fs}px "Courier Prime","Courier New",monospace`;
+  const padL=6*d,padR=lw+12*d,padT=10*d,padB=22*d;
+  CH=null; labelBoxes=[];
+  if(!S2.length){g.fillStyle='#fff'; g.fillText(S.measure==='move'&&!open?'the opening level is set after the first minute…':'first minute: gathering words…',padL,H/2); return;}
+  let lo=0,hi=0; S2.forEach(x=>x.s.forEach(p=>{if(p.m<lo)lo=p.m; if(p.m>hi)hi=p.m;}));
+  const m=(hi-lo)*0.08||1; lo-=m; hi+=m;
+  const X=t=>padL+(1-(nowS-t)/span)*(W-padL-padR), Y=v=>padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
+  CH={X,Y,S2,padL,padR,W,H,d,span};
+  // zero line = everyday English (gap) or the opening level (move)
+  g.strokeStyle='#fff'; g.lineWidth=1*d; g.setLineDash([3*d,5*d]); g.beginPath(); g.moveTo(padL,Y(0)); g.lineTo(W-padR,Y(0)); g.stroke(); g.setLineDash([]);
+  g.fillStyle='#fff'; g.textBaseline='bottom'; g.fillText(S.measure==='gap'?'everyday English':'level when you opened',padL,Y(0)-3*d); g.textBaseline='middle';
+  // scale ticks at the left: points of gap
+  const step=niceStep((hi-lo)/4); g.textBaseline='middle';
+  for(let v=Math.ceil(lo/step)*step; v<=hi; v+=step){ if(Math.abs(v)<step/2)continue; const y=Y(v); if(y<padT+8*d||y>H-padB-8*d)continue; g.fillText((v>0?'+':'−')+Math.abs(v).toFixed(step<1?1:0),padL,y); }
+  // lines: unfocused first, focused last and thicker
+  const order=[...S2].sort((p,q)=>(p.i===S.focus)-(q.i===S.focus));
+  order.forEach(x=>{ const f=S.focus!=null&&x.i!==S.focus;
+    g.globalAlpha=f?0.3:1; g.strokeStyle=COL[AX[x.i].family]; g.lineWidth=(x.i===S.focus?3:1.4)*d; g.beginPath();
+    x.s.forEach((p,k)=>{k?g.lineTo(X(p.t),Y(p.m)):g.moveTo(X(p.t),Y(p.m));}); g.stroke(); });
+  g.globalAlpha=1;
+  // right-edge labels: as many as fit, furthest from zero first, the focused lens always
+  const lh=fs*1.2, maxN=Math.max(3,Math.floor((H-padT-padB)/lh));
+  let cand=S2.map(x=>({i:x.i,m:x.s[x.s.length-1].m})).sort((p,q)=>Math.abs(q.m)-Math.abs(p.m));
+  let pick=cand.slice(0,maxN); if(S.focus!=null&&!pick.some(p=>p.i===S.focus)){const f=cand.find(p=>p.i===S.focus); if(f){pick.pop(); pick.push(f);}}
+  pick.forEach(p=>p.y=Y(p.m)); pick.sort((a,b)=>a.y-b.y);
+  for(let k=0;k<pick.length;k++){const minY=k?pick[k-1].y+lh:padT+lh/2; if(pick[k].y<minY)pick[k].y=minY;}
+  for(let k=pick.length-1;k>=0;k--){const maxY=k<pick.length-1?pick[k+1].y-lh:H-padB-lh/2; if(pick[k].y>maxY)pick[k].y=maxY;}
+  pick.forEach(p=>{ const a=AX[p.i]; g.fillStyle=COL[a.family];
+    const t=(p.i===S.focus?'[':'')+`${SYM[a.key]} ${sgn(p.m)}`+(p.i===S.focus?']':''); g.font=`${p.i===S.focus?'bold ':''}${fs}px "Courier Prime","Courier New",monospace`; g.fillText(t,W-padR+8*d,p.y);
+    labelBoxes.push({i:p.i,x:W-padR,y:p.y,h:lh}); });
+  g.globalAlpha=1; g.font=`${fs}px "Courier Prime","Courier New",monospace`; g.fillStyle='#fff';
   g.textBaseline='alphabetic'; const lab=t=>new Date(t*1000).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-  g.fillText(lab(nowS-frame),padL,H-4*d); const tw=g.measureText(lab(nowS)).width; g.fillText(lab(nowS),W-padR-tw,H-4*d);
+  g.fillText(lab(nowS-span),padL,H-4*d); const tw=g.measureText(lab(nowS)).width; g.fillText(lab(nowS),W-padR-tw,H-4*d);
+}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(Math.max(x,1e-6)))),r=x/p; return (r<1.5?1:r<3?2:r<7?5:10)*p;}
+function chartTap(e){
+  if(!CH)return; const r=e.currentTarget.getBoundingClientRect(),d=CH.d; const px=(e.clientX-r.left)*d, py=(e.clientY-r.top)*d;
+  const lb=labelBoxes.find(b=>px>=b.x&&Math.abs(py-b.y)<=b.h/2); if(lb){setFocus(lb.i); return;}
+  const nowS=Math.floor(Date.now()/1000); const t=nowS-(1-(px-CH.padL)/(CH.W-CH.padL-CH.padR))*CH.span;
+  let best=null; CH.S2.forEach(x=>{ let q=x.s[0]; for(const p of x.s){if(Math.abs(p.t-t)<Math.abs(q.t-t))q=p;} const dy=Math.abs(CH.Y(q.m)-py); if(!best||dy<best.dy)best={i:x.i,dy}; });
+  if(best&&best.dy<28*d)setFocus(best.i); else if(S.focus!=null){S.focus=null; tick();}
 }
 new ResizeObserver(()=>drawChart()).observe($('#chart'));
 boot().catch(e=>{$('#status').textContent='Could not load the lexicon: '+e.message;});
