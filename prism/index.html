@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="base-uri 'self'; object-src 'none'; form-action 'self'; connect-src 'self'">
+<title>PRISM</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;background:#000;color:#fff}
+body{font-family:"Courier Prime","Courier New",monospace;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;overflow-x:clip}
+main{max-width:820px;margin:0 auto;padding:28px 18px 120px}
+h1{font-size:15px;font-weight:700;letter-spacing:.3em;margin:0 0 14px}
+p{margin:0 0 12px}
+textarea,select{background:#000;color:#fff;border:1px solid #fff;border-radius:0;font:inherit;font-size:16px}
+textarea{width:100%;min-height:96px;padding:10px;resize:vertical}
+textarea::placeholder{color:#fff;opacity:1}
+select{padding:8px 10px;max-width:100%;-webkit-appearance:none;appearance:none;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(135deg,#fff 50%,transparent 50%);background-position:calc(100% - 15px) 52%,calc(100% - 10px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+button{background:none;border:0;color:#fff;font:inherit;padding:6px 0;margin:0 14px 0 0;cursor:pointer;min-height:36px}
+button.on::before{content:"["}button.on::after{content:"]"}
+button:not(.on){padding-left:.6em;padding-right:.6em}
+.row{margin:10px 0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px}
+.row label{display:flex;align-items:center;gap:8px}
+#readout{margin:20px 0 16px}
+.hide{display:none!important}
+/* profile */
+#profile table{width:100%;border-collapse:collapse}
+#profile th{text-align:right;font-weight:700;padding:4px 0 8px 14px;white-space:nowrap}
+#profile th:first-child{text-align:left;padding-left:0}
+#profile .tw{overflow-x:auto}
+@media(max-width:600px){#profile table{font-size:13.5px}#profile .rc{display:none}#profile th,#profile td{padding-left:9px!important}#profile th:first-child,#profile td:first-child{padding-left:0!important}}
+#profile td{padding:5px 0 5px 14px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+#profile td:first-child{text-align:left;padding-left:0;white-space:normal}
+#profile tr.r{cursor:pointer}
+#profile .fam{font-weight:700;padding-top:16px}
+#lean{margin-bottom:18px}
+#lean b{font-weight:700}
+/* gloss */
+#gloss{line-height:1.2}
+#gloss .g{display:inline-flex;flex-direction:column;align-items:center;margin:0 .35em 14px 0;cursor:pointer;vertical-align:top}
+#gloss .g .n{font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
+#gloss .g.un{font-style:italic}
+#gloss .p{display:inline-block;vertical-align:top;margin:0 .35em 0 -.3em}
+/* lift, rank */
+#lift,#rank{line-height:1.25;word-wrap:break-word}
+.w{cursor:pointer;display:inline-block;margin:0 .04em}
+.un{font-style:italic}
+#rank .tail{display:block;margin-top:18px}
+/* plane */
+#plane{position:relative;width:100%;aspect-ratio:4/5;margin-top:8px}
+@media(min-width:620px){#plane{aspect-ratio:1/1}}
+#field{position:absolute;left:0;right:0;top:2.2em;bottom:2.2em}
+#plane .w{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:14px}
+#plane .ax{position:absolute;font-weight:700;font-size:14px;white-space:nowrap}
+/* sheet */
+#sheet{position:fixed;left:0;right:0;bottom:0;background:#000;max-height:72vh;overflow:auto;padding:16px 18px 28px;display:none;box-shadow:0 -40px 40px #000}
+#sheet.open{display:block}
+#sheet .inner{max-width:820px;margin:0 auto}
+#sheet h2{font-size:28px;margin:0 0 4px}
+#sgrid{columns:2;column-gap:26px}
+@media(min-width:620px){#sgrid{columns:3}}
+#sgrid .cell{break-inside:avoid;display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
+#sgrid .fh{break-inside:avoid;font-weight:700;margin-top:10px}
+#about{margin-top:60px}
+a{color:#fff}
+</style>
+</head>
+<body>
+<main>
+<h1>PRISM</h1>
+<p>Paste any text. Every word is scored on thirty-one measured lenses &mdash; averages of what thousands of people said a word feels like, looks like, smells like, weighs &mdash; and the text is set against English as it is actually used.</p>
+<textarea id="src" placeholder="type or paste" spellcheck="false"></textarea>
+<div class="row"><button id="sample">sample: Melville, 1851</button><button id="clear">clear</button></div>
+
+<div class="row" id="modes">
+<button data-m="profile" class="on">profile</button><button data-m="gloss">gloss</button><button data-m="lift">lift</button><button data-m="rank">rank</button><button data-m="plane">plane</button>
+</div>
+<div class="row hide" id="lensrow"><label><span id="ylab">lens</span> <select id="selY"></select></label><label id="xwrap" class="hide">across <select id="selX"></select></label></div>
+
+<div id="readout">loading the lexicon&hellip;</div>
+<div id="stage">
+<div id="profile"></div>
+<div id="gloss" class="hide"></div>
+<div id="lift" class="hide"></div>
+<div id="rank" class="hide"></div>
+<div id="plane" class="hide"></div>
+</div>
+
+<div id="about">
+<p><b>The numbers.</b> Each lens is a dataset's own rating scale set to 0&ndash;100. On two-sided lenses (essence, pleasure, arousal, control) 50 is neutral; on the rest 0 is none. &ldquo;In use&rdquo; weights every rated word by how often it occurs in film and television subtitles (SUBTLEX-US), so common words count more &mdash; the fair comparison for running text. &ldquo;In dict&rdquo; counts every rated word once. A text's figure averages its rated words, each time they occur. Difference is in points and ratio is text &divide; in use, both against everyday English.</p>
+<p><b>Gaps.</b> Datasets leave words out. The feeling lexicon skips negators and function words like <i>no</i>, <i>not</i>, <i>the</i>; the essence lenses skip <i>yes</i> as well. Unrated words show in italic. Word endings are trimmed simply, so a few forms are missed.</p>
+<p><b>Sources.</b> Essence: the ousiometer of Dodds and colleagues (aggression is their energy axis, the power-plus-danger diagonal). Feeling: NRC VAD Lexicon v2 and labMT happiness. Body: Lancaster Sensorimotor Norms. Substance: Brysbaert concreteness and the Glasgow Norms. Life: Kuperman age of acquisition. Moral: the extended Moral Foundations Dictionary. The NRC lexicons and the ousiometer built on them are for research and non-commercial use; Lancaster and Glasgow are CC BY 4.0.</p>
+</div>
+</main>
+
+<div id="sheet"><div class="inner"><button id="close">close</button><h2 id="sw"></h2><p id="sform"></p><div id="sgrid"></div></div></div>
+
+<script>
+{
+const SAMPLE="Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can.";
+const $=s=>document.querySelector(s);
+const S={mode:'profile',y:'danger',x:'power',sort:'diff'};
+let AX=[],IDX={},LEX=new Map();
+const MODES=['profile','gloss','lift','rank','plane'];
+
+async function boot(){
+  const t=await (await fetch('lex.txt')).text();
+  const nl=t.indexOf('\n'); const meta=JSON.parse(t.slice(0,nl));
+  AX=meta.axes; AX.forEach((a,i)=>IDX[a.key]=i);
+  const body=t.slice(nl+1); let p=0;
+  while(p<body.length){const e=body.indexOf('\n',p); if(e<0)break; const tab=body.indexOf('\t',p); LEX.set(body.slice(p,tab),body.slice(tab+1,e)); p=e+1;}
+  const opts=()=>{let h='',fam=''; AX.forEach(a=>{if(a.family!==fam){if(fam)h+='</optgroup>'; fam=a.family; h+=`<optgroup label="${fam}">`;} h+=`<option value="${a.key}">${a.label}</option>`;}); return h+'</optgroup>';};
+  $('#selY').innerHTML=opts(); $('#selX').innerHTML=opts(); $('#selY').value=S.y; $('#selX').value=S.x;
+  render();
+}
+function look(raw){
+  const w=raw.toLowerCase().replace(/’/g,"'"); const tries=[w];
+  const b=w.replace(/'s$/,''); if(b!==w)tries.push(b);
+  if(b.endsWith('ies'))tries.push(b.slice(0,-3)+'y');
+  if(b.endsWith('es')&&b.length>4)tries.push(b.slice(0,-2));
+  if(b.endsWith('s')&&b.length>3&&!/(ss|us|is)$/.test(b))tries.push(b.slice(0,-1));
+  if(b.endsWith('ied'))tries.push(b.slice(0,-3)+'y');
+  if(b.endsWith('ed')){tries.push(b.slice(0,-2),b.slice(0,-1)); if(/(.)\1ed$/.test(b))tries.push(b.slice(0,-3));}
+  if(b.endsWith('ing')){tries.push(b.slice(0,-3),b.slice(0,-3)+'e'); if(/(.)\1ing$/.test(b))tries.push(b.slice(0,-4));}
+  if(b.endsWith('ly'))tries.push(b.slice(0,-2));
+  if(b.includes('-'))tries.push(b.replace(/-/g,''));
+  const forms=[]; for(const k of tries){const v=LEX.get(k); if(v&&!forms.some(f=>f.form===k))forms.push({form:k,v});}
+  return forms.length?{form:forms[0].form,forms}:null;
+}
+const val=(hit,key)=>{ if(!hit)return null; for(const f of hit.forms){const c=f.v.charCodeAt(IDX[key]); if(c!==32)return Math.round((c-33)/93*100);} return null; };
+const ax=k=>AX[IDX[k]];
+const sgn=d=>(d>0?'+':d<0?'−':'±')+Math.abs(d).toFixed(0);
+const fmt1=x=>x.toFixed(1);
+
+function tokens(text){ const out=[]; const re=/[A-Za-z][A-Za-z'’\-]*|[^A-Za-z]+/g; let m;
+  while((m=re.exec(text))){const s=m[0]; if(/^[A-Za-z]/.test(s)){const t=s.replace(/['’\-]+$/,''); out.push({w:t,hit:look(t)}); if(t.length<s.length)out.push({sep:s.slice(t.length)});} else out.push({sep:s});}
+  return out; }
+
+function setMode(m){S.mode=m; document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  MODES.forEach(x=>$('#'+x).classList.toggle('hide',x!==m));
+  $('#lensrow').classList.toggle('hide',m==='profile'); $('#xwrap').classList.toggle('hide',m!=='plane');
+  $('#ylab').textContent=m==='plane'?'up':'lens'; render();}
+document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$('#selY').onchange=e=>{S.y=e.target.value; render();};
+$('#selX').onchange=e=>{S.x=e.target.value; render();};
+
+function stats(words,key){ let sum=0,n=0,hi=null,lo=null; words.forEach(t=>{const v=val(t.hit,key); if(v==null)return; sum+=v; n++; if(!hi||v>hi.v)hi={w:t.w,v}; if(!lo||v<lo.v)lo={w:t.w,v};}); return {n,mean:n?sum/n:null,hi,lo}; }
+
+function render(){
+  if(!LEX.size)return;
+  const toks=tokens($('#src').value); const words=toks.filter(t=>t.w);
+  if(!words.length){$('#readout').textContent='Nothing to read yet.'; MODES.forEach(m=>$('#'+m).innerHTML=''); return;}
+  ({profile,gloss,lift,rank,plane})[S.mode](words,toks);
+}
+
+function profile(words){
+  $('#readout').textContent=`${words.length} words · ${words.filter(t=>t.hit).length} found in at least one dataset`;
+  const rows=AX.map(a=>{const s=stats(words,a.key); return {a,...s,diff:s.mean==null?null:s.mean-a.run,ratio:s.mean==null?null:s.mean/a.run};});
+  const ok=rows.filter(r=>r.n>=3);
+  const up=[...ok].sort((p,q)=>q.diff-p.diff).slice(0,4).filter(r=>r.diff>2);
+  const dn=[...ok].sort((p,q)=>p.diff-q.diff).slice(0,4).filter(r=>r.diff<-2);
+  const say=rs=>rs.map(r=>`<b>${r.a.label}</b> ${sgn(r.diff)}`).join(', ');
+  let lean='';
+  if(up.length)lean+=`Compared with English in everyday use, this text runs higher on ${say(up)}. `;
+  if(dn.length)lean+=`It runs lower on ${say(dn)}.`;
+  const order=S.sort==='diff'?[...rows].sort((p,q)=>(q.diff==null?-1:Math.abs(q.diff))-(p.diff==null?-1:Math.abs(p.diff))):rows;
+  let h=`<p id="lean">${lean||'Close to everyday English on every lens.'}</p>`;
+  h+=`<div class="row"><button data-s="diff" class="${S.sort==='diff'?'on':''}">by difference</button><button data-s="family" class="${S.sort==='family'?'on':''}">by family</button></div>`;
+  h+='<div class="tw"><table><thead><tr><th>lens</th><th>text</th><th>in use</th><th>diff</th><th>ratio</th><th>in dict</th><th class="rc">rated</th></tr></thead><tbody>';
+  let fam='';
+  order.forEach(r=>{
+    if(S.sort==='family'&&r.a.family!==fam){fam=r.a.family; h+=`<tr><td class="fam" colspan="7">${fam}</td></tr>`;}
+    h+= r.mean==null? `<tr class="r un" data-k="${r.a.key}"><td>${r.a.label}</td><td>—</td><td>${fmt1(r.a.run)}</td><td></td><td></td><td>${fmt1(r.a.eng)}</td><td class="rc">0</td></tr>`
+      : `<tr class="r" data-k="${r.a.key}"><td>${r.a.label}</td><td>${fmt1(r.mean)}</td><td>${fmt1(r.a.run)}</td><td>${sgn(r.diff)}</td><td>×${r.ratio.toFixed(2)}</td><td>${fmt1(r.a.eng)}</td><td class="rc">${r.n}</td></tr>`;
+  });
+  const gap=[...AX].sort((p,q)=>Math.abs(q.run-q.eng)-Math.abs(p.run-p.eng)).filter(a=>!['familiarity','aoa'].includes(a.key)).slice(0,4).map(a=>`${a.label} ${sgn(a.run-a.eng)}`).join(', ');
+  h+=`</tbody></table></div><p style="margin-top:14px">Tap a lens to gloss the text with it.</p><p>English itself leans: words in use, against every word in the dictionary, run ${gap}. That gap is the language's own bias, before any text.</p>`;
+  const P=$('#profile'); P.innerHTML=h;
+  P.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{S.sort=b.dataset.s; render();});
+  P.querySelectorAll('tr.r').forEach(tr=>tr.onclick=()=>{S.y=tr.dataset.k; $('#selY').value=S.y; setMode('gloss');});
+}
+function head(words,key){ const s=stats(words,key), a=ax(key);
+  $('#readout').innerHTML= s.n? `${a.label}: text ${fmt1(s.mean)} · in use ${fmt1(a.run)} · ${sgn(s.mean-a.run)} · ×${(s.mean/a.run).toFixed(2)} · ${s.n} of ${words.length} rated · high ${s.hi.w} ${s.hi.v} · low ${s.lo.w} ${s.lo.v}` : `${a.label}: none of these words were rated on this lens.`;
+  return s; }
+function gloss(words,toks){
+  head(words,S.y); const G=$('#gloss'); G.innerHTML='';
+  toks.forEach(t=>{
+    if(t.sep!=null){ const p=t.sep.replace(/\s+/g,''); if(p){const last=G.lastElementChild; if(last&&last.firstChild)last.firstChild.textContent+=p; else {const s=document.createElement('span'); s.className='p'; s.textContent=p; G.appendChild(s);}} return; }
+    const v=val(t.hit,S.y); const g=document.createElement('span'); g.className='g'+(v==null?' un':'');
+    g.innerHTML=`<span></span><span class="n">${v==null?'·':v}</span>`; g.firstChild.textContent=t.w; g.onclick=()=>sheet(t); G.appendChild(g);
+  });
+}
+let LO=0,HI=100;
+const size=v=>v==null?0.9:(0.7+Math.pow((v-LO)/Math.max(1,HI-LO),1.3)*1.9);
+function span(t,v){const s=document.createElement('span'); s.className='w'+(v==null?' un':''); s.textContent=t.w; s.style.fontSize=size(v)+'em'; s.onclick=()=>sheet(t); return s;}
+function range(words,key){const vs=words.map(t=>val(t.hit,key)).filter(v=>v!=null); LO=vs.length?Math.min(...vs):0; HI=vs.length?Math.max(...vs):100;}
+function lift(words,toks){ head(words,S.y); range(words,S.y); const L=$('#lift'); L.innerHTML='';
+  toks.forEach(t=>{ if(t.sep!=null)L.appendChild(document.createTextNode(t.sep)); else L.appendChild(span(t,val(t.hit,S.y))); }); }
+function rank(words){ head(words,S.y); range(words,S.y); const R=$('#rank'); R.innerHTML=''; const seen=new Map();
+  words.forEach(t=>{const k=t.w.toLowerCase(); if(!seen.has(k))seen.set(k,t);});
+  const u=[...seen.values()]; const r=u.filter(t=>val(t.hit,S.y)!=null).sort((a,b)=>val(b.hit,S.y)-val(a.hit,S.y));
+  r.forEach(t=>{R.appendChild(span(t,val(t.hit,S.y))); R.appendChild(document.createTextNode(' '));});
+  const un=u.filter(t=>val(t.hit,S.y)==null);
+  if(un.length){const d=document.createElement('span'); d.className='tail'; d.append('unrated: '); un.forEach(t=>{d.appendChild(span(t,null)); d.append(' ');}); R.appendChild(d);} }
+function plane(words){
+  const P=$('#plane'); P.innerHTML=''; const F=document.createElement('div'); F.id='field'; P.appendChild(F);
+  const lab=(txt,css)=>{const d=document.createElement('div'); d.className='ax'; d.textContent=txt; Object.assign(d.style,css); P.appendChild(d);};
+  lab('↑ more '+ax(S.y).label,{left:'0',top:'0'}); lab('more '+ax(S.x).label+' →',{right:'0',bottom:'0'});
+  if(S.x==='power'&&S.y==='danger'){lab('aggression ↗',{right:'0',top:'0'}); lab('↙ calm',{left:'0',bottom:'0'});}
+  const pts=[],seen=new Set();
+  words.forEach(t=>{const k=t.w.toLowerCase(); if(seen.has(k))return; const x=val(t.hit,S.x),y=val(t.hit,S.y); if(x==null||y==null)return; seen.add(k); pts.push({t,x,y});});
+  const sx=stats(words,S.x),sy=stats(words,S.y);
+  $('#readout').textContent= sx.n&&sy.n? `${ax(S.y).label} ${fmt1(sy.mean)} (in use ${fmt1(ax(S.y).run)}) · ${ax(S.x).label} ${fmt1(sx.mean)} (in use ${fmt1(ax(S.x).run)}) · ${pts.length} words placed · spread to fill the field` : 'Too few words rated on both lenses.';
+  if(!pts.length)return;
+  const ext=a=>{let lo=Math.min(...a),hi=Math.max(...a); if(hi-lo<10){const m=(hi+lo)/2; lo=m-5; hi=m+5;} return [lo,hi];};
+  const [x0,x1]=ext(pts.map(p=>p.x)),[y0,y1]=ext(pts.map(p=>p.y));
+  const W=F.clientWidth,H=F.clientHeight,placed=[];
+  pts.sort((a,b)=>b.y-a.y).forEach(p=>{
+    const s=document.createElement('span'); s.className='w'; s.textContent=p.t.w; s.onclick=()=>sheet(p.t); F.appendChild(s);
+    const w=s.offsetWidth,h=s.offsetHeight;
+    let cx=((p.x-x0)/(x1-x0))*(W-w)+w/2, cy=(1-(p.y-y0)/(y1-y0))*(H-h)+h/2;
+    const hit=(x,y)=>placed.some(q=>Math.abs(q.x-x)<(q.w+w)/2+4&&Math.abs(q.y-y)<(q.h+h)/2);
+    let ok=!hit(cx,cy);
+    for(let i=1;!ok&&i<40;i++){const d=Math.ceil(i/2)*(h*0.6)*(i%2?1:-1); const ny=Math.min(H-h/2,Math.max(h/2,cy+d)); if(!hit(cx,ny)){cy=ny;ok=true;}}
+    for(let i=1;!ok&&i<40;i++){const d=Math.ceil(i/2)*14*(i%2?1:-1); const nx=Math.min(W-w/2,Math.max(w/2,cx+d)); if(!hit(nx,cy)){cx=nx;ok=true;}}
+    s.style.left=cx+'px'; s.style.top=cy+'px'; placed.push({x:cx,y:cy,w,h});
+  });
+}
+function sheet(t){
+  $('#sw').textContent=t.w;
+  $('#sform').textContent=!t.hit?'Not in any of the datasets.':(t.hit.forms.map(f=>f.form).join(' / ')!==t.w.toLowerCase().replace(/’/g,"'")?`read as “${t.hit.forms.map(f=>f.form).join('” / “')}” · score, then difference from English in use`:'score, then difference from English in use');
+  const g=$('#sgrid'); g.innerHTML=''; let fam='';
+  if(t.hit)AX.forEach(a=>{ if(a.family!==fam){fam=a.family; const f=document.createElement('div'); f.className='fh'; f.textContent=fam; g.appendChild(f);}
+    const v=val(t.hit,a.key); const c=document.createElement('div'); c.className='cell'+(v==null?' un':'');
+    c.innerHTML=`<span>${a.label}</span><span>${v==null?'—':v+' '+sgn(v-a.run)}</span>`; g.appendChild(c); });
+  $('#sheet').classList.add('open');
+}
+$('#close').onclick=()=>$('#sheet').classList.remove('open');
+$('#src').addEventListener('input',()=>{clearTimeout(window._t); window._t=setTimeout(render,150);});
+$('#sample').onclick=()=>{$('#src').value=SAMPLE; render();};
+$('#clear').onclick=()=>{$('#src').value=''; render();};
+window.addEventListener('resize',()=>{if(S.mode==='plane'){clearTimeout(window._r); window._r=setTimeout(render,150);}});
+boot().catch(e=>{$('#readout').textContent='Could not load the lexicon: '+e.message;});
+}
+</script>
+</body>
+</html>
