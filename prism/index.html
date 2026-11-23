@@ -96,46 +96,26 @@ a{color:#fff}
 
 <div id="sheet"><div class="inner"><button id="close">close</button><h2 id="sw"></h2><p id="sform"></p><div id="sgrid"></div></div></div>
 
+<script src="/shared/lenses.js"></script>
 <script>
 {
 const SAMPLE="Call me Ishmael. Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world. It is a way I have of driving off the spleen and regulating the circulation. Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people’s hats off—then, I account it high time to get to sea as soon as I can.";
 const $=s=>document.querySelector(s);
 const S={mode:'profile',y:'danger',x:'power',sort:'diff'};
-let AX=[],IDX={},LEX=new Map();
+let AX=[];
+const tokens=lenses.tokens;
 const MODES=['profile','gloss','lift','rank','plane'];
 
 async function boot(){
-  const t=await (await fetch('lex.txt')).text();
-  const nl=t.indexOf('\n'); const meta=JSON.parse(t.slice(0,nl));
-  AX=meta.axes; AX.forEach((a,i)=>IDX[a.key]=i);
-  const body=t.slice(nl+1); let p=0;
-  while(p<body.length){const e=body.indexOf('\n',p); if(e<0)break; const tab=body.indexOf('\t',p); LEX.set(body.slice(p,tab),body.slice(tab+1,e)); p=e+1;}
+  AX=await lenses.load('lex.txt');
   const opts=()=>{let h='',fam=''; AX.forEach(a=>{if(a.family!==fam){if(fam)h+='</optgroup>'; fam=a.family; h+=`<optgroup label="${fam}">`;} h+=`<option value="${a.key}">${a.label}</option>`;}); return h+'</optgroup>';};
   $('#selY').innerHTML=opts(); $('#selX').innerHTML=opts(); $('#selY').value=S.y; $('#selX').value=S.x;
   render();
 }
-function look(raw){
-  const w=raw.toLowerCase().replace(/’/g,"'"); const tries=[w];
-  const b=w.replace(/'s$/,''); if(b!==w)tries.push(b);
-  if(b.endsWith('ies'))tries.push(b.slice(0,-3)+'y');
-  if(b.endsWith('es')&&b.length>4)tries.push(b.slice(0,-2));
-  if(b.endsWith('s')&&b.length>3&&!/(ss|us|is)$/.test(b))tries.push(b.slice(0,-1));
-  if(b.endsWith('ied'))tries.push(b.slice(0,-3)+'y');
-  if(b.endsWith('ed')){tries.push(b.slice(0,-2),b.slice(0,-1)); if(/(.)\1ed$/.test(b))tries.push(b.slice(0,-3));}
-  if(b.endsWith('ing')){tries.push(b.slice(0,-3),b.slice(0,-3)+'e'); if(/(.)\1ing$/.test(b))tries.push(b.slice(0,-4));}
-  if(b.endsWith('ly'))tries.push(b.slice(0,-2));
-  if(b.includes('-'))tries.push(b.replace(/-/g,''));
-  const forms=[]; for(const k of tries){const v=LEX.get(k); if(v&&!forms.some(f=>f.form===k))forms.push({form:k,v});}
-  return forms.length?{form:forms[0].form,forms}:null;
-}
-const val=(hit,key)=>{ if(!hit)return null; for(const f of hit.forms){const c=f.v.charCodeAt(IDX[key]); if(c!==32)return Math.round((c-33)/93*100);} return null; };
-const ax=k=>AX[IDX[k]];
+const val=(hit,key)=>{ const v=lenses.score(hit,key); return v==null?null:Math.round(v); };
+const ax=k=>lenses.axis(k);
 const sgn=d=>(d>0?'+':d<0?'−':'±')+Math.abs(d).toFixed(0);
 const fmt1=x=>x.toFixed(1);
-
-function tokens(text){ const out=[]; const re=/[A-Za-z][A-Za-z'’\-]*|[^A-Za-z]+/g; let m;
-  while((m=re.exec(text))){const s=m[0]; if(/^[A-Za-z]/.test(s)){const t=s.replace(/['’\-]+$/,''); out.push({w:t,hit:look(t)}); if(t.length<s.length)out.push({sep:s.slice(t.length)});} else out.push({sep:s});}
-  return out; }
 
 function setMode(m){S.mode=m; document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
   MODES.forEach(x=>$('#'+x).classList.toggle('hide',x!==m));
@@ -148,7 +128,7 @@ $('#selX').onchange=e=>{S.x=e.target.value; render();};
 function stats(words,key){ let sum=0,n=0,hi=null,lo=null; words.forEach(t=>{const v=val(t.hit,key); if(v==null)return; sum+=v; n++; if(!hi||v>hi.v)hi={w:t.w,v}; if(!lo||v<lo.v)lo={w:t.w,v};}); return {n,mean:n?sum/n:null,hi,lo}; }
 
 function render(){
-  if(!LEX.size)return;
+  if(!lenses.size)return;
   const toks=tokens($('#src').value); const words=toks.filter(t=>t.w);
   if(!words.length){$('#readout').textContent='Nothing to read yet.'; MODES.forEach(m=>$('#'+m).innerHTML=''); return;}
   ({profile,gloss,lift,rank,plane})[S.mode](words,toks);
