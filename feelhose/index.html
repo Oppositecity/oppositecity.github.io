@@ -68,6 +68,7 @@ a{color:#fff}
 </div>
 </main>
 
+<script src="/shared/lenses.js"></script>
 <script>
 {
 const SYM={goodness:'GOOD',power:'POWR',aggression:'AGGR',danger:'DNGR',structure:'STRC',valence:'PLSR',arousal:'AROU',dominance:'CTRL',happiness:'HAPY',
@@ -79,37 +80,24 @@ const HOSTS=['jetstream2.us-east.bsky.network','jetstream1.us-east.bsky.network'
 const STOP=new Set('a an the and or but nor so yet for of to in on at by from with as into onto about than then that this these those there here is am are was were be been being have has had do does did will would shall should can could may might must not no yes i me my mine we us our ours you your yours he him his she her hers it its they them their theirs who whom whose which what when where why how all any some just very too also only even still more most much many such own same other each every both either neither if because while though although until unless again ever never always now oh ok okay like get got go going gone make made say said one two lol im dont cant its thats ive youre'.split(' '));
 const WIN=60, STEP=5, KEEP=7200;
 const $=s=>document.querySelector(s);
-let AX=[],NA=0,LEX=new Map();
+let AX=[],NA=0;
 const S={focus:null,measure:'gap',frame:1800,sort:'family',show:new Set(FAMS),order:null,sortedAt:null};
 const sec=new Map(), hist=[];
 let open=null,words=0,postTimes=[],t0=Date.now(),lastMsg=0,ws=null,hostI=0,cursor=null,L=null,labelBoxes=[];
 
 async function boot(){
-  const t=await (await fetch('/prism/lex.txt')).text();
-  const nl=t.indexOf('\n'); AX=JSON.parse(t.slice(0,nl)).axes; NA=AX.length;
-  const b=t.slice(nl+1); let p=0;
-  while(p<b.length){const e=b.indexOf('\n',p); if(e<0)break; const tab=b.indexOf('\t',p); LEX.set(b.slice(p,tab),b.slice(tab+1,e)); p=e+1;}
+  AX=await lenses.load('/prism/lex.txt'); NA=AX.length;
   buildControls(); buildBoard(); connect(); setInterval(tick,1000); tick();
 }
-function look(raw){
-  const w=raw.toLowerCase().replace(/’/g,"'"); const tries=[w]; const b=w.replace(/'s$/,''); if(b!==w)tries.push(b);
-  if(b.endsWith('ies'))tries.push(b.slice(0,-3)+'y'); if(b.endsWith('es')&&b.length>4)tries.push(b.slice(0,-2));
-  if(b.endsWith('s')&&b.length>3&&!/(ss|us|is)$/.test(b))tries.push(b.slice(0,-1));
-  if(b.endsWith('ied'))tries.push(b.slice(0,-3)+'y');
-  if(b.endsWith('ed')){tries.push(b.slice(0,-2),b.slice(0,-1)); if(/(.)\1ed$/.test(b))tries.push(b.slice(0,-3));}
-  if(b.endsWith('ing')){tries.push(b.slice(0,-3),b.slice(0,-3)+'e'); if(/(.)\1ing$/.test(b))tries.push(b.slice(0,-4));}
-  if(b.endsWith('ly'))tries.push(b.slice(0,-2));
-  const out=[]; for(const k of tries){const v=LEX.get(k); if(v)out.push(v);} return out.length?{w:tries[0],v:out}:null;
-}
-function score(hit,i){for(const v of hit.v){const c=v.charCodeAt(i); if(c!==32)return (c-33)/93*100;} return null;}
+const look=lenses.look, score=lenses.score;
 function ingest(text){
   const s=Math.floor(Date.now()/1000); let B=sec.get(s);
   if(!B){B={sum:new Float64Array(NA),n:new Uint32Array(NA),words:new Map()}; sec.set(s,B);}
   postTimes.push(Date.now());
   const toks=text.replace(/https?:\/\/\S+/g,' ').replace(/[@#][\w.\-]+/g,' ').replace(/\b[\w-]+(\.[\w-]+)+\b/g,' ').match(/[A-Za-z][A-Za-z'’]*/g)||[];
   for(const tk of toks){ if(tk.length>24)continue; const h=look(tk); if(!h)continue; words++;
-    let row=B.words.get(h.w);
-    if(!row){row=new Float32Array(NA).fill(NaN); for(let i=0;i<NA;i++){const v=score(h,i); if(v!=null)row[i]=v;} row.c=0; B.words.set(h.w,row);}
+    let row=B.words.get(h.word);
+    if(!row){row=new Float32Array(NA).fill(NaN); for(let i=0;i<NA;i++){const v=score(h,i); if(v!=null)row[i]=v;} row.c=0; B.words.set(h.word,row);}
     row.c++; for(let i=0;i<NA;i++){const v=row[i]; if(v===v){B.sum[i]+=v; B.n[i]++;}}
   }
 }
