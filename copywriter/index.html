@@ -21,11 +21,16 @@ p{margin:0 0 12px}
 textarea{background:#000;color:#fff;border:1px solid #fff;border-radius:0;font:inherit;font-size:16px;width:100%;min-height:110px;padding:10px;resize:vertical}
 textarea::placeholder{color:#fff;opacity:1}
 textarea:focus-visible{outline:2px solid #fff;outline-offset:2px}
-button{background:none;border:0;color:#fff;font:inherit;padding:6px 0;margin:0 10px 0 0;cursor:pointer;min-height:36px}
-button.on::before{content:"["}button.on::after{content:"]"}
-button:not(.on){padding-left:.6em;padding-right:.6em}
-button:focus-visible,.g:focus-visible{outline:2px solid #fff;outline-offset:2px}
-.row{margin:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px}
+/* A box means "you press this"; filled white means "this one is chosen". Readings stay unboxed. */
+button{background:#000;border:1px solid #fff;border-radius:0;color:#fff;font:inherit;padding:6px 12px;margin:0;cursor:pointer;min-height:40px;line-height:1.2}
+button.on{background:#fff;color:#000;font-weight:700}
+@media(hover:hover){button:not(.on):hover{background:#fff;color:#000}}
+button:focus-visible,.g:focus-visible{outline:2px solid #fff;outline-offset:3px}
+/* A boxed group: controls that work together, named on the box's edge */
+.grp{border:1px solid #fff;padding:18px 12px 4px;margin:30px 0 0;position:relative}
+.grp>.lg{position:absolute;top:-.8em;left:10px;background:#000;padding:0 8px;margin:0;font-size:16px;font-weight:700;letter-spacing:.2em;line-height:1.5}
+.grp p{margin-top:6px}
+.row{margin:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .hide{display:none!important}
 .essence{color:var(--essence)}.feeling{color:var(--feeling)}.body{color:var(--body)}.substance{color:var(--substance)}.life{color:var(--life)}.moral{color:var(--moral)}
 #readout{margin:22px 0 10px}
@@ -38,7 +43,7 @@ td{padding:2px 0 2px 12px;text-align:right;white-space:nowrap}
 td:first-child{text-align:left;padding-left:0;white-space:normal}
 td.fam{font-weight:700;padding-top:14px;text-align:left}
 tr.off td{font-style:italic}
-td .t{min-height:32px;padding:2px 6px;margin:0;min-width:4.2em;text-align:right}
+td .t{min-height:32px;padding:2px 6px;margin:2px 0;min-width:4.6em;text-align:right}
 @media(max-width:620px){table{font-size:13.5px}.wide{display:none}}
 @media(max-width:440px){.mid{display:none}td .t{min-width:3.6em;padding:2px 4px}th,td{padding-left:8px}th:first-child,td:first-child{padding-left:0}}
 /* draft gloss */
@@ -68,16 +73,18 @@ a{color:#fff}
 <textarea id="draft" placeholder="draft" spellcheck="false" aria-label="draft"></textarea>
 <div class="row"><button id="sample">sample draft</button><button id="clear">clear</button></div>
 
-<div class="k">TARGET</div>
+<section class="grp" aria-labelledby="lgT"><h2 class="lg" id="lgT">TARGET</h2>
 <div class="row" id="presets"></div>
 <div id="matchwrap" class="hide">
 <textarea id="match" placeholder="paste a text whose feel you want" spellcheck="false" aria-label="text to match"></textarea>
 </div>
 <p id="tnote"></p>
+</section>
 
-<div class="k">LENSES</div>
+<section class="grp" aria-labelledby="lgL"><h2 class="lg" id="lgL">LENSES</h2>
 <div class="row"><button data-c="0" class="on">all thirty-one</button><button data-c="1">cleared for paid use</button></div>
 <p id="cnote"></p>
+</section>
 
 <div id="readout">loading the lexicon&hellip;</div>
 <div class="tw"><table id="table"></table></div>
@@ -167,8 +174,8 @@ function pull(hit){
 function render(){
   if(!lenses.size)return;
   const on=lensOn();
-  document.querySelectorAll('[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===(S.src||'none')));
-  document.querySelectorAll('[data-c]').forEach(b=>b.classList.toggle('on',+b.dataset.c===+S.commercial));
+  document.querySelectorAll('[data-p]').forEach(b=>{const on=b.dataset.p===(S.src||'none'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);});
+  document.querySelectorAll('[data-c]').forEach(b=>{const on=+b.dataset.c===+S.commercial; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);});
   const toks=lenses.tokens($('#draft').value), words=toks.filter(t=>t.w);
   ROWS=lenses.profile(words); MEAN={}; ROWS.forEach(r=>MEAN[r.key]=r.mean);
   const inplay=Object.keys(S.target).filter(k=>on.has(k));
