@@ -8,132 +8,123 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>COPYWRITER (working title)</title>
 <link rel="stylesheet" href="/fonts/fonts.css">
-<!-- Working title from copywriter/BRIEF.md; the owner names it. Unlisted, on /yard/. -->
+<!-- Working title from copywriter/BRIEF.md; the owner names it. Unlisted, on /yard/.
+     Controls follow XIMEREMIX: words you press invert when on; a lens is a bar you drag. -->
 <style>
 :root{--essence:#ff8a65;--feeling:#ffe14d;--body:#4dd9ff;--substance:#8cff6a;--life:#c99bff;--moral:#ff7ad1}
-*{box-sizing:border-box;min-width:0}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:#000;color:#fff}
-body{font-family:"Courier Prime","Courier New",monospace;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;overflow-x:clip}
-main{max-width:860px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top,0px)) 18px 120px}
-h1{font-size:15px;font-weight:700;letter-spacing:.3em;margin:0 0 14px}
-.k{font-weight:700;letter-spacing:.2em;margin:26px 0 4px}
+body{font-family:"Courier Prime","Courier New",Courier,monospace;font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%;overflow-x:clip}
+main{max-width:860px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 10px 120px}
+h1{font-size:13px;font-weight:400;letter-spacing:.14em;margin:0 4px}
+.intro{font-size:13px;letter-spacing:.14em;margin:0 4px 12px}
 p{margin:0 0 12px}
-textarea{background:#000;color:#fff;border:1px solid #fff;border-radius:0;font:inherit;font-size:16px;width:100%;min-height:110px;padding:10px;resize:vertical}
+.hint{font-size:13px;letter-spacing:.1em;margin:4px 4px 10px;min-height:1.5em}
+textarea{display:block;background:#000;color:#fff;border:1px solid #fff;border-radius:0;font:inherit;font-size:16px;width:100%;min-height:110px;padding:9px 10px;resize:vertical}
 textarea::placeholder{color:#fff;opacity:1}
 textarea:focus-visible{outline:2px solid #fff;outline-offset:2px}
-/* A box means "you press this"; filled white means "this one is chosen". Readings stay unboxed. */
-button{background:#000;border:1px solid #fff;border-radius:0;color:#fff;font:inherit;padding:6px 12px;margin:0;cursor:pointer;min-height:40px;line-height:1.2}
-button.on{background:#fff;color:#000;font-weight:700}
-@media(hover:hover){button:not(.on):hover{background:#fff;color:#000}}
-button:focus-visible,.g:focus-visible{outline:2px solid #fff;outline-offset:3px}
-/* A boxed group: controls that work together, named on the box's edge */
-.grp{border:1px solid #fff;padding:18px 12px 4px;margin:30px 0 0;position:relative}
-.grp>.lg{position:absolute;top:-.8em;left:10px;background:#000;padding:0 8px;margin:0;font-size:16px;font-weight:700;letter-spacing:.2em;line-height:1.5}
-.grp p{margin-top:6px}
-/* Pick one of several: one box, and a white block that slides to the chosen option */
-.seg{position:relative;display:inline-flex;flex-wrap:wrap;border:1px solid #fff;padding:3px;margin:8px 0}
-.seg button{border:0;background:transparent;position:relative;z-index:1;transition:color .2s}
-.seg button.on{background:transparent;color:#000}
-@media(hover:hover){.seg button:not(.on):hover{background:transparent;color:#fff;text-decoration:underline;text-underline-offset:4px}}
-.seg .slide{position:absolute;left:0;top:0;background:#fff;z-index:0;transition:transform .22s ease,width .22s ease,height .22s ease}
-/* On or off: a switch, its two settings named either side */
-.swrow{gap:4px;flex-wrap:nowrap}
-.lab{border:0;padding:6px 4px}
-.lab.on{background:none;color:#fff;font-weight:700}
-@media(hover:hover){.lab:not(.on):hover{background:none;color:#fff;text-decoration:underline;text-underline-offset:4px}}
-.sw{width:64px;height:32px;min-height:32px;padding:0;position:relative}
-.sw .kn{position:absolute;top:3px;left:3px;width:24px;height:24px;background:#fff;transition:transform .2s ease}
-.sw[aria-checked="true"] .kn{transform:translateX(32px)}
-@media(prefers-reduced-motion:reduce){.seg .slide,.sw .kn,.seg button{transition:none}}
-.row{margin:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+/* a word you press; white when it is on */
+.wr{display:flex;flex-wrap:wrap;align-items:center}
+.w{font:inherit;font-size:14px;letter-spacing:.14em;color:#fff;background:#000;border:0;border-radius:0;padding:9px 10px;cursor:pointer;line-height:1.3}
+.w.on{background:#fff;color:#000}
+.w:focus-visible,.bar:focus-visible,.g:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.lk{font-size:14px;letter-spacing:.14em;padding:9px 10px 9px 4px;width:6.4em}
 .hide{display:none!important}
 .essence{color:var(--essence)}.feeling{color:var(--feeling)}.body{color:var(--body)}.substance{color:var(--substance)}.life{color:var(--life)}.moral{color:var(--moral)}
-#readout{margin:22px 0 10px}
-/* profile table */
+#readout{font-size:13px;letter-spacing:.14em;margin:16px 4px 6px}
+/* a lens: name, the draft's figure, and a bar. Dots are the scale, 0 to 100.
+   White runs from everyday English to the draft. The inverted column is where
+   you want the draft; drag it. */
+.fh{font-size:13px;letter-spacing:.2em;margin:14px 4px 2px}
+.row{display:flex;align-items:center;gap:8px;height:32px;padding:0 4px}
+.l{width:8.6em;flex:none;letter-spacing:.06em;white-space:nowrap}
+.v{flex:none;width:6.6em;text-align:right;font:inherit;font-size:14px;color:#fff;background:#000;border:0;padding:4px 0;cursor:pointer;font-variant-numeric:tabular-nums;white-space:nowrap}
+.v.set{text-decoration:underline;text-underline-offset:4px}
+.bar{flex:1;height:20px;position:relative;touch-action:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='white'/%3E%3C/svg%3E");
+  background-size:4px 4px;image-rendering:pixelated}
+.bar .ev{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#fff}
+.bar .fill{position:absolute;top:0;bottom:0;background:#fff}
+.bar .tg{position:absolute;top:-4px;bottom:-4px;width:6px;margin-left:-3px;background:#fff;mix-blend-mode:difference}
+.row.off{display:none}
+@media(max-width:440px){.l{width:8.4em;font-size:13px;letter-spacing:.02em}.v{width:6.2em;font-size:13px}.row{gap:6px}}
+/* numbers */
 .tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th{text-align:right;font-weight:700;padding:4px 0 8px 12px;white-space:nowrap}
-th:first-child{text-align:left;padding-left:0}
-td{padding:2px 0 2px 12px;text-align:right;white-space:nowrap}
-td:first-child{text-align:left;padding-left:0;white-space:normal}
-td.fam{font-weight:700;padding-top:14px;text-align:left}
-tr.off td{font-style:italic}
-td .t{min-height:32px;padding:2px 6px;margin:2px 0;min-width:4.6em;text-align:right}
-@media(max-width:620px){table{font-size:13.5px}.wide{display:none}}
-@media(max-width:440px){.mid{display:none}td .t{min-width:3.6em;padding:2px 4px}th,td{padding-left:8px}th:first-child,td:first-child{padding-left:0}}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}
+th{text-align:right;font-weight:400;letter-spacing:.1em;padding:4px 0 8px 12px;white-space:nowrap}
+th:first-child{text-align:left;padding-left:4px}
+td{padding:3px 0 3px 12px;text-align:right;white-space:nowrap}
+td:first-child{text-align:left;padding-left:4px;white-space:normal}
+td.fam{letter-spacing:.2em;padding-top:14px;text-align:left;font-size:13px}
+@media(max-width:620px){table{font-size:13px}.wide{display:none}th,td{padding-left:8px}}
+@media(max-width:440px){.mid{display:none}}
 /* draft gloss */
-#gloss{line-height:1.2;margin-top:6px}
+#gloss{line-height:1.2;margin:8px 4px 0}
 .g{display:inline-flex;flex-direction:column;align-items:center;margin:0 .35em 14px 0;cursor:pointer;vertical-align:top}
 .g .n{font-size:13px;margin-top:2px;font-variant-numeric:tabular-nums}
-.g.away>span:first-child{font-weight:700}
+.g.away>span:first-child{background:#fff;color:#000}
 .g.un{font-style:italic}
 .pn{display:inline-block;vertical-align:top;margin:0 .35em 0 -.3em}
 /* word sheet */
-#sheet{position:fixed;left:0;right:0;bottom:0;background:#000;max-height:70vh;overflow:auto;padding:16px 18px calc(28px + env(safe-area-inset-bottom,0px));display:none;box-shadow:0 -40px 40px #000}
+#sheet{position:fixed;left:0;right:0;bottom:0;background:#000;max-height:70vh;overflow:auto;padding:12px 14px calc(24px + env(safe-area-inset-bottom,0px));display:none;box-shadow:0 -40px 40px #000}
 #sheet.open{display:block}
 #sheet .inner{max-width:860px;margin:0 auto}
-#sheet h2{font-size:28px;margin:0 0 4px}
+#sheet h2{font-size:28px;margin:4px 0}
 #sgrid{columns:2;column-gap:26px}
 @media(min-width:620px){#sgrid{columns:3}}
 #sgrid .cell{break-inside:avoid;display:flex;justify-content:space-between;gap:8px;font-variant-numeric:tabular-nums}
-#sgrid .fh{break-inside:avoid;font-weight:700;margin-top:10px}
-#about{margin-top:56px}
+#sgrid .sh{break-inside:avoid;letter-spacing:.2em;font-size:13px;margin-top:10px}
+#about{margin:56px 4px 0}
 a{color:#fff}
 </style>
 </head>
 <body>
 <main>
 <h1>COPYWRITER</h1>
-<p>Write or paste a draft. Every word is scored on thirty-one measured lenses of meaning; set the feel you want and see which words pull the draft away from it.</p>
-<textarea id="draft" placeholder="draft" spellcheck="false" aria-label="draft"></textarea>
-<div class="row"><button id="sample">sample draft</button><button id="clear">clear</button></div>
+<p class="intro">each word of a draft, on thirty-one measured lenses of meaning.</p>
+<textarea id="draft" placeholder="type or paste a draft" spellcheck="false" aria-label="draft"></textarea>
+<div class="wr"><button class="w" id="sample">sample</button><button class="w" id="clear">clear</button></div>
 
-<section class="grp" aria-labelledby="lgT"><h2 class="lg" id="lgT">TARGET</h2>
-<div class="seg" id="presets" role="group" aria-label="target"></div>
-<div id="matchwrap" class="hide">
-<textarea id="match" placeholder="paste a text whose feel you want" spellcheck="false" aria-label="text to match"></textarea>
-</div>
-<p id="tnote"></p>
-</section>
-
-<section class="grp" aria-labelledby="lgL"><h2 class="lg" id="lgL">LENSES</h2>
-<div class="row swrow"><button data-c="0" class="lab on">all lenses</button><button class="sw" id="sw" role="switch" aria-checked="false" aria-label="cleared for paid use only"><span class="kn"></span></button><button data-c="1" class="lab">paid use only</button></div>
-<p id="cnote"></p>
-</section>
+<div class="wr" id="presets"><span class="lk">target</span></div>
+<textarea id="match" class="hide" placeholder="paste a text whose feel you want" spellcheck="false" aria-label="text to match"></textarea>
+<div class="wr"><span class="lk">show</span><button class="w on" data-v="bars">bars</button><button class="w" data-v="numbers">numbers</button><button class="w" id="paid"></button></div>
+<p class="hint" id="tnote"></p>
 
 <div id="readout">loading the lexicon&hellip;</div>
-<div class="tw"><table id="table"></table></div>
-<p id="thelp"></p>
+<div id="bars"></div>
+<div id="numbers" class="hide"><div class="tw"><table id="table"></table></div></div>
 
-<div class="k">THE DRAFT, WORD BY WORD</div>
-<p id="ghelp"></p>
+<div class="fh" id="gtitle">THE DRAFT, WORD BY WORD</div>
+<p class="hint" id="ghelp"></p>
 <div id="gloss"></div>
 
 <div id="about">
 <p><b>The numbers.</b> Each lens is a study's own rating scale set to 0&ndash;100. On two-sided lenses (essence, pleasure, arousal, control) 50 is neutral; on the rest 0 is none. &ldquo;In use&rdquo; is everyday spoken English: every rated word weighted by how often it is said in film and television subtitles (SUBTLEX-US). A draft's figure averages its rated words, each time they occur. Words no study rated are shown in italic and are never guessed.</p>
-<p><b>Sources and licences.</b> Essence: the ousiometer of Dodds and colleagues, built on NRC VAD v1. Feeling: NRC VAD Lexicon v2 and labMT happiness. Body: Lancaster Sensorimotor Norms. Substance: Brysbaert concreteness and the Glasgow Norms. Life: Kuperman age of acquisition. Moral: the extended Moral Foundations Dictionary. The NRC lexicons and the ousiometer are for research and non-commercial use only. Lancaster and Glasgow are CC BY 4.0. The terms of the others are not yet checked, so &ldquo;cleared for paid use&rdquo; leaves them out.</p>
+<p><b>Sources and licences.</b> Essence: the ousiometer of Dodds and colleagues, built on NRC VAD v1. Feeling: NRC VAD Lexicon v2 and labMT happiness. Body: Lancaster Sensorimotor Norms. Substance: Brysbaert concreteness and the Glasgow Norms. Life: Kuperman age of acquisition. Moral: the extended Moral Foundations Dictionary. The NRC lexicons and the ousiometer are for research and non-commercial use only. Lancaster and Glasgow are CC BY 4.0. The terms of the others are not yet checked, so &ldquo;paid use only&rdquo; leaves them out.</p>
 </div>
 </main>
 
-<div id="sheet" role="dialog" aria-label="word"><div class="inner"><button id="close">close</button><h2 id="sw"></h2><p id="sform"></p><div id="sgrid"></div></div></div>
+<div id="sheet" role="dialog" aria-label="word"><div class="inner"><button class="w" id="close">close</button><h2 id="sword"></h2><p id="sform"></p><div id="sgrid"></div></div></div>
 
 <script src="/shared/lenses.js"></script>
 <script>
 {
 const SAMPLE="Our new blender combines innovative technology with a sophisticated design. It facilitates the preparation of nutritious beverages and offers exceptional performance for every household.";
-/* Presets: a handful of lens directions each. The owner may rename or replace these. */
+/* Presets: which lenses go up or down. A lens sent up is aimed 15 points above
+   everyday English, down 15 below. The owner may rename or replace these. */
 const PRESETS={
-  sensory:{say:'touch, taste, smell and sight up',t:{haptic:'up',gustatory:'up',olfactory:'up',visual:'up'}},
-  plain:{say:'familiar and concrete up, learned late down',t:{familiarity:'up',aoa:'down',concreteness:'up'}},
-  warm:{say:'pleasure and care up, danger down',t:{valence:'up',care:'up',danger:'down'}},
-  urgent:{say:'arousal and power up',t:{arousal:'up',power:'up'}}
+  sensory:{say:'touch, taste, smell and sight up',t:{haptic:1,gustatory:1,olfactory:1,visual:1}},
+  plain:{say:'familiar and concrete up, learned late down',t:{familiarity:1,aoa:-1,concreteness:1}},
+  warm:{say:'pleasure and care up, danger down',t:{valence:1,care:1,danger:-1}},
+  urgent:{say:'arousal and power up',t:{arousal:1,power:1}}
 };
+const STEP=15, MET=2;
 const FAMS=['essence','feeling','body','substance','life','moral'];
-const CYCLE=['','up','down','hold'];
 const $=s=>document.querySelector(s);
-const S={src:null,target:{},commercial:false,sheet:null};
-let ROWS=[],MEAN={};
+const S={src:null,target:{},commercial:false,view:'bars',sheet:null};
+let ROWS=[],MEAN={},BARS={};
 
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const sgn=(d,k=1)=>{ if(d==null||d!==d)return ''; const r=+d.toFixed(k); return (r>0?'+':r<0?'−':'±')+Math.abs(r).toFixed(k); };
 const f1=x=>x==null?'—':x.toFixed(1);
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -141,120 +132,122 @@ const lensOn=()=>new Set(lenses.allowed({commercial:S.commercial}).map(a=>a.key)
 
 async function boot(){
   await lenses.load('/prism/lex.txt');
-  buildPresets(); render();
+  buildPresets(); buildBars(); render();
 }
 function buildPresets(){
-  let h=Object.keys(PRESETS).map(k=>`<button data-p="${k}">${k}</button>`).join('');
-  h+=`<button data-p="match">match this</button><button data-p="none">no target</button><span class="slide" aria-hidden="true"></span>`;
-  $('#presets').innerHTML=h;
-  new ResizeObserver(slide).observe($('#presets'));
-  document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>setSource(b.dataset.p));
-}
-/* move the white block under the chosen option */
-function slide(){
-  const seg=$('#presets'), b=seg.querySelector('button.on'), k=seg.querySelector('.slide'); if(!b||!k)return;
-  k.style.width=b.offsetWidth+'px'; k.style.height=b.offsetHeight+'px'; k.style.transform=`translate(${b.offsetLeft}px,${b.offsetTop}px)`;
+  const P=$('#presets');
+  [...Object.keys(PRESETS),'match','none'].forEach(k=>{const b=document.createElement('button'); b.className='w'; b.dataset.p=k;
+    b.textContent=k==='match'?'match this':k; b.onclick=()=>setSource(k); P.appendChild(b);});
 }
 function setSource(p){
   S.src=p==='none'?null:p; S.target={};
-  if(PRESETS[p])Object.entries(PRESETS[p].t).forEach(([k,d])=>S.target[k]={dir:d});
-  $('#matchwrap').classList.toggle('hide',p!=='match');
+  if(PRESETS[p])Object.entries(PRESETS[p].t).forEach(([k,d])=>{const a=lenses.axis(k); S.target[k]=clamp(a.run+d*STEP,0,100);});
+  $('#match').classList.toggle('hide',p!=='match');
   if(p==='match'){fromMatch(); $('#match').focus();}
   render();
 }
-/* match this: the sample's own profile is the target, lens by lens */
+/* match this: the pasted text's own profile is the target, lens by lens */
 function fromMatch(){
   S.target={};
-  const w=lenses.tokens($('#match').value).filter(t=>t.w);
-  lenses.profile(w).forEach(r=>{ if(r.n>=3)S.target[r.key]={dir:'match',T:r.mean}; });
+  lenses.profile($('#match').value).forEach(r=>{ if(r.n>=3)S.target[r.key]=r.mean; });
 }
-/* one tap on a lens's target moves it along: none, up, down, hold */
-function cycle(k){
-  const cur=S.target[k]; const d=cur?(cur.dir==='match'?'':cur.dir):'';
-  const next=CYCLE[(CYCLE.indexOf(d)+1)%CYCLE.length];
-  if(!next)delete S.target[k];
-  else S.target[k]=next==='hold'?{dir:'hold',T:MEAN[k]}:{dir:next};
-  if(S.src&&S.src!=='custom')S.src='custom';
-  render();
-}
-/* which way a lens should move: +1 up, −1 down, 0 none (hold, or a match already met) */
+function setTarget(k,T){ if(T==null)delete S.target[k]; else S.target[k]=clamp(T,0,100); S.src='own'; $('#match').classList.add('hide'); render(); }
+/* which way a lens should still move: +1, −1, or 0 when it is within MET points */
 function want(k){
-  const t=S.target[k]; if(!t||!lensOn().has(k))return 0;
-  if(t.dir==='up')return 1; if(t.dir==='down')return -1;
-  if(t.dir==='match'&&MEAN[k]!=null){const g=t.T-MEAN[k]; return Math.abs(g)<0.5?0:Math.sign(g);}
-  return 0;
+  const T=S.target[k]; if(T==null||!lensOn().has(k)||MEAN[k]==null)return 0;
+  const g=T-MEAN[k]; return Math.abs(g)<=MET?0:Math.sign(g);
 }
 /* a word's pull: points it moves the draft toward (+) or away from (−) the target,
-   averaged over the lenses in play that rated it; null if none did */
+   averaged over the lenses still to move that rated it; null if none did */
 function pull(hit){
   let s=0,n=0;
-  for(const k in S.target){const d=want(k); if(!d||MEAN[k]==null)continue; const v=lenses.score(hit,k); if(v==null)continue; s+=d*(v-MEAN[k]); n++;}
+  for(const k in S.target){const d=want(k); if(!d)continue; const v=lenses.score(hit,k); if(v==null)continue; s+=d*(v-MEAN[k]); n++;}
   return n?s/n:null;
+}
+
+function buildBars(){
+  const B=$('#bars'); B.innerHTML='';
+  FAMS.forEach(f=>{
+    const h=document.createElement('div'); h.className='fh '+f; h.dataset.fam=f; h.textContent=f; B.appendChild(h);
+    lenses.axes.filter(a=>a.family===f).forEach(a=>{
+      const row=document.createElement('div'); row.className='row'; row.dataset.k=a.key;
+      row.innerHTML=`<span class="l ${f}"></span><button class="v" aria-label="let go of the target for ${esc(a.label)}"></button><div class="bar" tabindex="0" role="slider" aria-valuemin="0" aria-valuemax="100" aria-label="target for ${esc(a.label)}"><div class="fill"></div><div class="ev"></div><div class="tg hide"></div></div>`;
+      row.querySelector('.l').textContent=a.label;
+      const bar=row.querySelector('.bar');
+      const at=e=>{const r=bar.getBoundingClientRect(); return Math.round(clamp((e.clientX-r.left)/r.width,0,1)*100);};
+      bar.addEventListener('pointerdown',e=>{bar.setPointerCapture(e.pointerId); bar.focus(); setTarget(a.key,at(e));});
+      bar.addEventListener('pointermove',e=>{if(e.buttons)setTarget(a.key,at(e));});
+      bar.addEventListener('keydown',e=>{
+        const d=(e.key==='ArrowRight'||e.key==='ArrowUp')?1:(e.key==='ArrowLeft'||e.key==='ArrowDown')?-1:0;
+        if(d){e.preventDefault(); const base=S.target[a.key]!=null?S.target[a.key]:Math.round(MEAN[a.key]!=null?MEAN[a.key]:a.run); setTarget(a.key,base+d*(e.shiftKey?10:1));}
+        else if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault(); setTarget(a.key,null);}
+      });
+      row.querySelector('.v').onclick=()=>{ if(S.target[a.key]!=null)setTarget(a.key,null); };
+      BARS[a.key]=row; B.appendChild(row);
+    });
+  });
+}
+function drawBars(on){
+  FAMS.forEach(f=>{const h=$(`#bars .fh[data-fam="${f}"]`); h.classList.toggle('hide',!lenses.axes.some(a=>a.family===f&&on.has(a.key)));});
+  lenses.axes.forEach(a=>{
+    const row=BARS[a.key], m=MEAN[a.key], T=S.target[a.key];
+    row.classList.toggle('off',!on.has(a.key));
+    const fill=row.querySelector('.fill'), tg=row.querySelector('.tg'), v=row.querySelector('.v'), bar=row.querySelector('.bar');
+    row.querySelector('.ev').style.left=a.run+'%';
+    if(m==null){fill.style.width='0';} else {fill.style.left=Math.min(m,a.run)+'%'; fill.style.width=Math.abs(m-a.run)+'%';}
+    tg.classList.toggle('hide',T==null); if(T!=null)tg.style.left=T+'%';
+    v.textContent=(m==null?'—':m.toFixed(1))+(T!=null?'→'+Math.round(T):'');
+    v.classList.toggle('set',T!=null);
+    if(T!=null)bar.setAttribute('aria-valuenow',Math.round(T)); else bar.removeAttribute('aria-valuenow');
+    bar.setAttribute('aria-valuetext',`draft ${f1(m)}, everyday ${a.run.toFixed(1)}`+(T!=null?`, target ${Math.round(T)}`:', no target'));
+  });
 }
 
 function render(){
   if(!lenses.size)return;
   const on=lensOn();
-  document.querySelectorAll('[data-p]').forEach(b=>{const on=b.dataset.p===(S.src||'none'); b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);});
-  document.querySelectorAll('[data-c]').forEach(b=>{const on=+b.dataset.c===+S.commercial; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on);});
-  $('#sw').setAttribute('aria-checked',S.commercial); slide();
+  document.querySelectorAll('[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===(S.src==null?'none':S.src)));
+  document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===S.view));
+  $('#paid').textContent='paid use only'; $('#paid').classList.toggle('on',S.commercial); $('#paid').setAttribute('aria-pressed',S.commercial);
+  $('#bars').classList.toggle('hide',S.view!=='bars'); $('#numbers').classList.toggle('hide',S.view!=='numbers');
   const toks=lenses.tokens($('#draft').value), words=toks.filter(t=>t.w);
   ROWS=lenses.profile(words); MEAN={}; ROWS.forEach(r=>MEAN[r.key]=r.mean);
-  const inplay=Object.keys(S.target).filter(k=>on.has(k));
-  const offT=Object.keys(S.target).filter(k=>!on.has(k));
-  // target note
-  let tn='';
-  if(!S.src)tn='No target. Pick one above, or tap any lens in the table: up, down, hold.';
-  else if(PRESETS[S.src])tn=`${S.src}: ${PRESETS[S.src].say}.`;
-  else if(S.src==='match')tn=Object.keys(S.target).length?`The pasted text's profile is the target, on the ${Object.keys(S.target).length} lenses where it has at least three rated words.`:'Paste a text; its profile becomes the target.';
-  else tn=`Your own target, on ${Object.keys(S.target).length} ${Object.keys(S.target).length===1?'lens':'lenses'}.`;
-  if(offT.length)tn+=` Off under paid use: ${offT.map(k=>lenses.axis(k).label).join(', ')}.`;
+  const keys=Object.keys(S.target), inplay=keys.filter(k=>on.has(k)), offT=keys.filter(k=>!on.has(k));
+  let tn;
+  if(S.src==null)tn='Drag any bar to where you want that lens. Tap its number to let go.';
+  else if(PRESETS[S.src])tn=`${S.src}: ${PRESETS[S.src].say}, ${STEP} points past everyday English.`;
+  else if(S.src==='match')tn=keys.length?`The pasted text's profile is the target, on the ${keys.length} lenses where it has at least three rated words.`:'Paste a text; its profile becomes the target.';
+  else tn=`Your own target, on ${keys.length} ${keys.length===1?'lens':'lenses'}. Tap a number to let go.`;
+  if(S.commercial){const off=lenses.axes.filter(a=>!on.has(a.key)); tn+=` Paid use only: ${on.size} lenses (Lancaster and Glasgow, CC BY 4.0); ${off.length} off, their licences non-commercial or not yet checked.`;}
+  if(offT.length)tn+=` Off here: ${offT.map(k=>lenses.axis(k).label).join(', ')}.`;
   $('#tnote').textContent=tn;
-  // licence note
-  if(S.commercial){const off=lenses.axes.filter(a=>!on.has(a.key));
-    const why={}; off.forEach(a=>{const s=lenses.SOURCES[a.source]; (why[s.licence]=why[s.licence]||[]).push(a.label);});
-    $('#cnote').textContent=`${on.size} lenses on: the Lancaster and Glasgow norms, CC BY 4.0. Off: `+Object.entries(why).map(([l,ls])=>`${ls.join(', ')} (${l})`).join('; ')+'.';}
-  else $('#cnote').textContent='Every lens is on. Some studies allow research and non-commercial use only; see the foot of the page.';
-  // readout
-  if(!words.length){$('#readout').textContent='Nothing to read yet.'; $('#table').innerHTML=''; $('#thelp').textContent=''; $('#gloss').innerHTML=''; $('#ghelp').textContent=''; return;}
+  drawBars(on); table(on);
+  if(!words.length){$('#readout').textContent='nothing to read yet'; $('#gloss').innerHTML=''; $('#ghelp').textContent=''; return;}
   const rated=words.filter(t=>t.hit).length;
-  let toward=0,live=0; inplay.forEach(k=>{const d=want(k); const t=S.target[k]; if(t.dir==='hold'||t.dir==='match'){live++; if(MEAN[k]!=null&&t.T!=null&&Math.abs(t.T-MEAN[k])<0.5)toward++;} else if(MEAN[k]!=null){live++; if(d*(MEAN[k]-lenses.axis(k).run)>0)toward++;}});
-  $('#readout').textContent=`${words.length} words · ${rated} found in at least one study`+(inplay.length?` · on target on ${toward} of ${live} lenses in play`:'');
-  table(on); gloss(toks,inplay);
+  const met=inplay.filter(k=>MEAN[k]!=null&&Math.abs(S.target[k]-MEAN[k])<=MET).length, live=inplay.filter(k=>MEAN[k]!=null).length;
+  $('#readout').textContent=`${words.length} words · ${rated} rated`+(inplay.length?` · on target on ${met} of ${live}`:'');
+  gloss(toks,inplay);
   if(S.sheet)sheet(S.sheet);
-}
-function targetCell(r){
-  const t=S.target[r.key]; let lab='·';
-  if(t){ if(t.dir==='up')lab='↑ up'; else if(t.dir==='down')lab='↓ down'; else if(t.dir==='hold')lab='hold '+f1(t.T); else lab=f1(t.T); }
-  return `<button class="t" data-k="${r.key}" aria-label="target for ${r.label}: ${t?t.dir:'none'}">${lab}</button>`;
-}
-function toGo(r){
-  const t=S.target[r.key]; if(!t||r.mean==null)return '';
-  if(t.dir==='hold'||t.dir==='match')return sgn(t.T-r.mean);
-  // up or down: met once the draft is past everyday English that way
-  const g=r.mean-r.run; return (t.dir==='up'?g>0:g<0)?'past use':'not yet';
 }
 function table(on){
   let h='<thead><tr><th>lens</th><th>draft</th><th>target</th><th>to go</th><th class="mid">in use</th><th>diff</th><th class="wide">ratio</th><th class="wide">rated</th></tr></thead><tbody>';
   FAMS.forEach(f=>{
     const rs=ROWS.filter(r=>r.family===f&&on.has(r.key)); if(!rs.length)return;
     h+=`<tr><td class="fam ${f}" colspan="8">${f}</td></tr>`;
-    rs.forEach(r=>{ const off=!on.has(r.key);
-      h+=`<tr class="${off?'off':''}"><td class="${f}">${r.label}${off?' (off)':''}</td><td>${f1(r.mean)}</td><td>${off?'':targetCell(r)}</td><td>${off?'':toGo(r)}</td><td class="mid">${r.run.toFixed(1)}</td><td>${sgn(r.diff)}</td><td class="wide">${r.ratio==null?'':'×'+r.ratio.toFixed(2)}</td><td class="wide">${r.n}</td></tr>`;});
+    rs.forEach(r=>{const T=S.target[r.key];
+      h+=`<tr><td class="${f}">${r.label}</td><td>${f1(r.mean)}</td><td>${T==null?'':Math.round(T)}</td><td>${T==null||r.mean==null?'':sgn(T-r.mean)}</td><td class="mid">${r.run.toFixed(1)}</td><td>${sgn(r.diff)}</td><td class="wide">${r.ratio==null?'':'×'+r.ratio.toFixed(2)}</td><td class="wide">${r.n}</td></tr>`;});
   });
   $('#table').innerHTML=h+'</tbody>';
-  document.querySelectorAll('#table .t').forEach(b=>b.onclick=()=>cycle(b.dataset.k));
-  $('#thelp').textContent='Tap a target to set it: up, down, hold. Diff is the draft minus everyday English (in use), in points.';
 }
 function gloss(toks,inplay){
   const G=$('#gloss'); G.innerHTML='';
   const active=inplay.some(k=>want(k)!==0);
-  $('#ghelp').textContent=active?'Under each word: points it moves the draft toward (+) or away from (−) the target, averaged over the lenses in play that rated it. Bold pulls away by 5 or more. Tap a word for its scores.':(inplay.length?'Every lens in play is on its mark; no word pulls away. Tap a word for its scores.':'Set a target to see which words pull away from it. Tap a word for its scores.');
+  $('#ghelp').textContent=active?'Under each word: points it moves the draft toward (+) or away from (−) the target. White: pulls away by 5 or more. Tap a word for its scores.':(inplay.length?'Every lens in play is on its mark. Tap a word for its scores.':'Set a target to see which words pull away from it. Tap a word for its scores.');
   toks.forEach(t=>{
     if(t.sep!=null){const p=t.sep.replace(/\s+/g,''); if(p){const last=G.lastElementChild; if(last&&last.classList.contains('g'))last.firstChild.textContent+=p; else{const s=document.createElement('span'); s.className='pn'; s.textContent=p; G.appendChild(s);}} return;}
     const v=active&&t.hit?pull(t.hit):null;
     const g=document.createElement('span'); g.tabIndex=0; g.setAttribute('role','button');
-    g.className='g'+(!t.hit||(active&&v==null)?' un':'')+(v!=null&&v<=-5?' away':'');
+    g.className='g'+(!t.hit||(active&&v==null)?' un':'')+(v!=null&&Math.round(v)<=-5?' away':'');
     g.innerHTML=`<span></span><span class="n">${v==null?'·':sgn(v,0)}</span>`; g.firstChild.textContent=t.w;
     g.onclick=()=>sheet(t); g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); sheet(t);}};
     G.appendChild(g);
@@ -262,21 +255,22 @@ function gloss(toks,inplay){
 }
 function sheet(t){
   S.sheet=t; const on=lensOn();
-  $('#sw').textContent=t.w;
+  $('#sword').textContent=t.w;
   $('#sform').textContent=!t.hit?'Not in any of the studies.':(t.hit.forms.map(f=>f.form).join(' / ')!==t.hit.word?`read as “${t.hit.forms.map(f=>f.form).join('” / “')}” · `:'')+(t.hit?'score, then difference from the draft':'');
   const g=$('#sgrid'); g.innerHTML=''; let fam='';
   if(t.hit)lenses.axes.forEach(a=>{ if(!on.has(a.key))return;
-    if(a.family!==fam){fam=a.family; const f=document.createElement('div'); f.className='fh '+fam; f.textContent=fam; g.appendChild(f);}
-    const v=lenses.score(t.hit,a.key), c=document.createElement('div'); c.className='cell'+(v==null?' un':'');
-    const d=v==null||MEAN[a.key]==null?'':' '+sgn(v-MEAN[a.key],0); const mark=S.target[a.key]&&want(a.key)?(want(a.key)>0?' ↑':' ↓'):'';
+    if(a.family!==fam){fam=a.family; const f=document.createElement('div'); f.className='sh '+fam; f.textContent=fam; g.appendChild(f);}
+    const v=lenses.score(t.hit,a.key), c=document.createElement('div'); c.className='cell';
+    const d=v==null||MEAN[a.key]==null?'':' '+sgn(v-MEAN[a.key],0); const w=want(a.key), mark=w?(w>0?' ↑':' ↓'):'';
     c.innerHTML=`<span>${esc(a.label)}${mark}</span><span>${v==null?'—':Math.round(v)+d}</span>`; g.appendChild(c); });
   $('#sheet').classList.add('open');
 }
-$('#close').onclick=()=>{S.sheet=null; $('#sheet').classList.remove('open');};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.sheet){S.sheet=null; $('#sheet').classList.remove('open');}});
-document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{S.commercial=b.dataset.c==='1'; render();});
-$('#sw').onclick=()=>{S.commercial=!S.commercial; render();};
-const later=(fn)=>{let t; return ()=>{clearTimeout(t); t=setTimeout(fn,150);};};
+const shut=()=>{S.sheet=null; $('#sheet').classList.remove('open');};
+$('#close').onclick=shut;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.sheet)shut();});
+$('#paid').onclick=()=>{S.commercial=!S.commercial; render();};
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{S.view=b.dataset.v; render();});
+const later=fn=>{let t; return ()=>{clearTimeout(t); t=setTimeout(fn,150);};};
 $('#draft').addEventListener('input',later(render));
 $('#match').addEventListener('input',later(()=>{if(S.src==='match'){fromMatch(); render();}}));
 $('#sample').onclick=()=>{$('#draft').value=SAMPLE; render();};
