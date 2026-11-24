@@ -139,7 +139,7 @@ const PRESETS={
 const STEP=15, MET=2;
 const FAMS=['essence','feeling','body','substance','life','moral'];
 const $=s=>document.querySelector(s);
-const S={src:null,target:{},side:{},commercial:false,view:'bars',sheet:null,change:30,meaning:50,pin:{},undo:[],fold:false};
+const S={src:null,target:{},side:{},commercial:false,view:'bars',sheet:null,change:30,meaning:60,pin:{},undo:[],fold:false};
 let ROWS=[],MEAN={},BARS={};
 
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -160,7 +160,7 @@ function buildPresets(){
 function setSource(p){
   S.src=p==='none'?null:p; S.target={}; S.side={};
   /* a preset asks for at least (or at most) its mark; going further is never counted against the draft */
-  if(PRESETS[p])Object.entries(PRESETS[p].t).forEach(([k,d])=>{const a=lenses.axis(k); S.target[k]=clamp(a.run+d*STEP,0,100); S.side[k]=d;});
+  if(PRESETS[p])Object.entries(PRESETS[p].t).forEach(([k,d])=>{const a=lenses.axis(k); S.target[k]=clamp(a.run+d*STEP,5,95); S.side[k]=d;});
   $('#match').classList.toggle('hide',p!=='match');
   if(p==='match'){fromMatch(); $('#match').focus();}
   render();
@@ -296,28 +296,33 @@ function sheet(t,i){
    meaning shows a low number. Nothing here is guessed; an unrated candidate is
    never used. */
 const STOP=new Set('a an the and or but nor so yet for of to in on at by from with as into onto about than then that this these those there here is am are was were be been being have has had do does did will would shall should can could may might must not no yes i me my mine we us our ours you your yours he him his she her hers it its they them their theirs who whom whose which what when where why how all any some just very too also only even still more most much many such own same other each every both either neither if because while though although until unless again ever never always now oh ok like get got go'.split(' '));
-const CAND=new Map(), ASKED=new Set(); let inflight=0; const queue=[];
+const CAND=new Map(), ASKED=new Set(), WORD=new Map(); let inflight=0; const queue=[];
 const swappable=w=>w.length>2&&!STOP.has(w.toLowerCase())&&/^[A-Za-z]+$/.test(w);
-function ask(w){
-  const k=w.toLowerCase(); if(ASKED.has(k))return; ASKED.add(k); queue.push(k); pump();
+/* one look-up per place in the draft: Datamuse ranks same-meaning words by how
+   well they fit between the word before and the word after */
+const ctxKey=(words,i)=>[words[i].w.toLowerCase(),words[i-1]?words[i-1].w.toLowerCase():'',words[i+1]?words[i+1].w.toLowerCase():''].join('|');
+function ask(key){ if(ASKED.has(key))return; ASKED.add(key); queue.push(key); pump(); }
+const dm=q=>fetch('https://api.datamuse.com/words?'+q).then(r=>r.ok?r.json():[]);
+/* per word, once: its own parts of speech, and its synonyms */
+function wordInfo(k){
+  if(!WORD.has(k))WORD.set(k,Promise.all([dm(`sp=${encodeURIComponent(k)}&md=p&max=1`),dm(`rel_syn=${encodeURIComponent(k)}&md=p&max=30`)]).then(([self,syn])=>({
+    pos:new Set(((self[0]&&self[0].word===k&&self[0].tags)||[]).filter(t=>['n','v','adj','adv'].includes(t))), syn})));
+  return WORD.get(k);
 }
 function pump(){
-  while(inflight<4&&queue.length){ const k=queue.shift(); inflight++;
-    Promise.all([
-      fetch(`https://api.datamuse.com/words?ml=${encodeURIComponent(k)}&md=p&max=40`).then(r=>r.ok?r.json():[]),
-      fetch(`https://api.datamuse.com/words?rel_syn=${encodeURIComponent(k)}&md=p&max=20`).then(r=>r.ok?r.json():[]),
-      fetch(`https://api.datamuse.com/words?sp=${encodeURIComponent(k)}&md=p&max=1`).then(r=>r.ok?r.json():[])
-    ]).then(([ml,syn,self])=>{
-      const pos=new Set(((self[0]&&self[0].word===k&&self[0].tags)||[]).filter(t=>['n','v','adj','adv'].includes(t)));
-      const top=Math.max(1,...ml.map(c=>c.score||0)), by=new Map();
+  while(inflight<4&&queue.length){ const key=queue.shift(), [k,lc,rc]=key.split('|'); inflight++;
+    const q=`ml=${encodeURIComponent(k)}`+(lc?`&lc=${encodeURIComponent(lc)}`:'')+(rc?`&rc=${encodeURIComponent(rc)}`:'')+'&md=p&max=50';
+    Promise.all([dm(q),wordInfo(k)]).then(([ml,info])=>{
+      const top=Math.max(1,...ml.map(c=>c.score||0)), by=new Map(), synset=new Set(info.syn.map(c=>c.word));
       const add=(c,rel)=>{ const w=c.word; if(!/^[a-z]+$/.test(w)||w===k)return;
-        const tags=c.tags||[]; if(pos.size&&!tags.some(t=>pos.has(t)))return;
+        const tags=c.tags||[]; if(info.pos.size&&!tags.some(t=>info.pos.has(t)))return;
         const hit=lenses.look(w); if(!hit)return;
-        const o=by.get(w)||{w,hit,rel:0,syn:false}; o.rel=Math.max(o.rel,rel); if(tags.includes('syn'))o.syn=true; by.set(w,o); };
-      ml.forEach(c=>add(c,Math.round(100*(c.score||0)/top)));
-      syn.forEach(c=>{add(c,100); const o=by.get(c.word); if(o)o.syn=true;});
-      CAND.set(k,[...by.values()]);
-    }).catch(()=>{ CAND.set(k,null); }).finally(()=>{ inflight--; pump(); later2(); });
+        const o=by.get(w)||{w,hit,rel:0,syn:false}; o.rel=Math.max(o.rel,rel); if(tags.includes('syn')||synset.has(w))o.syn=true; by.set(w,o); };
+      ml.forEach((c,r)=>add(c,Math.max(25,100-1.5*r)));
+      // a synonym the context did not rank still counts, but low
+      info.syn.forEach(c=>add(c,40));
+      CAND.set(key,[...by.values()]);
+    }).catch(()=>{ CAND.set(key,null); }).finally(()=>{ inflight--; pump(); later2(); });
   }
 }
 let rt2=null; const later2=()=>{clearTimeout(rt2); rt2=setTimeout(render,120);};
@@ -325,16 +330,25 @@ let rt2=null; const later2=()=>{clearTimeout(rt2); rt2=setTimeout(render,120);};
 /* distance of a set of sums from the target: mean points off, over the lenses in play */
 function dist(sum,n,keys){ let d=0,c=0; for(const k of keys){ if(!n[k])continue; d+=Math.abs(togo(k,sum[k]/n[k])); c++; } return c?d/c:null; }
 function apply(sum,n,keys,hit,sign){ for(const k of keys){const v=lenses.score(hit,k); if(v!=null){sum[k]+=sign*v; n[k]+=sign;}} }
+/* meaning kept, 0-100: how high Datamuse ranks the swap for this spot, times how
+   alike the two words are on every lens NOT in play (what else the word means
+   should stay put). A swap with fewer than eight lenses rated in common scores 0. */
+function meaning(orig,c,keys){
+  const inplay=new Set(keys); let d=0,n=0;
+  for(const a of lenses.axes){ if(inplay.has(a.key))continue; const u=lenses.score(orig,a.key),v=lenses.score(c.hit,a.key); if(u!=null&&v!=null){d+=Math.abs(u-v); n++;} }
+  if(n<8)return 0;
+  const P=clamp(100-4*d/n,0,100); return Math.round(Math.sqrt(c.rel*P));
+}
 let RW=null;
 function rewrite(toks){
   const on=lensOn(), keys=Object.keys(S.target).filter(k=>on.has(k));
   const words=toks.filter(t=>t.w);
-  words.forEach(t=>{ if(swappable(t.w)&&t.hit)ask(t.w); });
+  words.forEach((t,i)=>{ if(swappable(t.w)&&t.hit)ask(ctxKey(words,i)); });
   const sum={},n={}; keys.forEach(k=>{sum[k]=0;n[k]=0;});
   words.forEach(t=>{ if(t.hit)apply(sum,n,keys,t.hit,1); });
   const d0=dist(sum,n,keys);
   const pos=[]; words.forEach((t,i)=>{ if(swappable(t.w)&&t.hit)pos.push(i); });
-  const pending=pos.filter(i=>!CAND.has(words[i].w.toLowerCase())).length;
+  const pending=pos.filter(i=>!CAND.has(ctxKey(words,i))).length;
   const choice={};
   // the viewer's own picks come first, then the best remaining swaps, one at a time
   for(const i in S.pin){ const c=S.pin[i]; if(c&&words[i]){ apply(sum,n,keys,words[i].hit,-1); apply(sum,n,keys,c.hit,1); choice[i]=c; } }
@@ -342,10 +356,10 @@ function rewrite(toks){
   if(keys.length&&d0!=null){
     while(Object.keys(choice).length<cap){
       const cur=dist(sum,n,keys); let best=null;
-      for(const i of pos){ if(i in choice||i in S.pin)continue; const list=CAND.get(words[i].w.toLowerCase()); if(!list)continue;
+      for(const i of pos){ if(i in choice||i in S.pin)continue; const list=CAND.get(ctxKey(words,i)); if(!list)continue;
         apply(sum,n,keys,words[i].hit,-1);
-        for(const c of list){ if(c.rel<floor)continue; apply(sum,n,keys,c.hit,1); const d=dist(sum,n,keys); apply(sum,n,keys,c.hit,-1);
-          if(d!=null&&cur-d>0.05&&(!best||cur-d>best.g))best={i,c,g:cur-d}; }
+        for(const c of list){ const m=meaning(words[i].hit,c,keys); if(m<floor)continue; apply(sum,n,keys,c.hit,1); const d=dist(sum,n,keys); apply(sum,n,keys,c.hit,-1);
+          const v=(cur-d)*m/100; if(d!=null&&cur-d>0.05&&(!best||v>best.v))best={i,c,g:cur-d,v}; }
         apply(sum,n,keys,words[i].hit,1); }
       if(!best)break;
       apply(sum,n,keys,words[best.i].hit,-1); apply(sum,n,keys,best.c.hit,1); choice[best.i]=best.c;
@@ -370,27 +384,27 @@ function rewrite(toks){
   $('#rwst').textContent=st;
   $('#rw').classList.toggle('min',S.fold); $('#fold').textContent=S.fold?'open':'fold';
   $('#undo').classList.toggle('hide',!S.undo.length);
-  $('#rnote').textContent=`At the foot of the screen: the draft with up to ${S.change}% of its words swapped for ones that move it toward the target, keeping meaning at ${S.meaning} or above. White words are swaps; tap any underlined or white word to choose.`;
+  $('#rnote').textContent=`At the foot of the screen: the draft with up to ${S.change}% of its words swapped for ones that move it toward the target, keeping meaning at ${S.meaning} or above (how well the swap fits that spot, and how alike the two words stay on the lenses you are not moving). White words are swaps; tap any underlined or white word to choose.`;
   document.body.style.paddingBottom=$('#rw').offsetHeight+16+'px';
 }
 const caseLike=(o,w)=>o[0]===o[0].toUpperCase()?w[0].toUpperCase()+w.slice(1):w;
 function swapList(t,i){
   const box=$('#sswaps'); box.innerHTML='';
   if(i==null||!RW||!RW.keys.length||!t.hit||!swappable(t.w))return;
-  const list=CAND.get(t.w.toLowerCase()); if(!list){box.textContent=CAND.has(t.w.toLowerCase())?'No swaps found.':'Looking up swaps…'; return;}
+  const ck=ctxKey(RW.words,i), list=CAND.get(ck); if(!list){box.textContent=CAND.has(ck)?'No swaps found.':'Looking up swaps…'; return;}
   // points each candidate alone would move the rewrite as it stands
   const {words,choice,keys}=RW, sum={},n={}; keys.forEach(k=>{sum[k]=0;n[k]=0;});
   words.forEach((u,j)=>{ const h=choice[j]?choice[j].hit:u.hit; if(h)apply(sum,n,keys,h,1); });
   const here=choice[i]?choice[i].hit:t.hit; apply(sum,n,keys,here,-1);
   apply(sum,n,keys,t.hit,1); const base=dist(sum,n,keys); apply(sum,n,keys,t.hit,-1);
-  const rows=list.map(c=>{apply(sum,n,keys,c.hit,1); const d=dist(sum,n,keys); apply(sum,n,keys,c.hit,-1); return {c,g:base-d};}).sort((a,b)=>b.g-a.g).slice(0,14);
+  const rows=list.map(c=>{apply(sum,n,keys,c.hit,1); const d=dist(sum,n,keys); apply(sum,n,keys,c.hit,-1); return {c,g:base-d,m:meaning(t.hit,c,keys)};}).sort((a,b)=>b.g*b.m-a.g*a.m).slice(0,14);
   const head=document.createElement('p'); head.textContent='swap · points closer to the target · meaning'; box.appendChild(head);
   const mk=(lab,val,fn,on)=>{const b=document.createElement('button'); b.className='w'+(on?' on':''); b.innerHTML=`<span></span><span>${val}</span>`; b.firstChild.textContent=lab; b.onclick=fn; box.appendChild(b);};
   mk(t.w+' (keep)','',()=>pick(i,''),S.pin[i]===''||(!choice[i]&&!(i in S.pin)));
-  rows.forEach(r=>mk(r.c.w,`${sgn(r.g)} · ${r.c.rel}${r.c.syn?' syn':''}`,()=>pick(i,r.c),choice[i]&&choice[i].w===r.c.w));
+  rows.forEach(r=>mk(r.c.w,`${sgn(r.g)} · ${r.m}${r.m<S.meaning?' (below)':''}`,()=>pick(i,r.c),choice[i]&&choice[i].w===r.c.w));
 }
 function pick(i,c){ S.undo.push(JSON.stringify(Object.entries(S.pin).map(([k,v])=>[k,v&&v.w]))); S.pin[i]=c; shut(); render(); }
-$('#undo').onclick=()=>{ const u=S.undo.pop(); if(u==null)return; S.pin={}; JSON.parse(u).forEach(([k,w])=>{ if(w==='')S.pin[k]=''; else { const t=RW&&RW.words[k]; const list=t&&CAND.get(t.w.toLowerCase()); const c=list&&list.find(x=>x.w===w); if(c)S.pin[k]=c; } }); render(); };
+$('#undo').onclick=()=>{ const u=S.undo.pop(); if(u==null)return; S.pin={}; JSON.parse(u).forEach(([k,w])=>{ if(w==='')S.pin[k]=''; else { const t=RW&&RW.words[k]; const list=t&&CAND.get(ctxKey(RW.words,+k)); const c=list&&list.find(x=>x.w===w); if(c)S.pin[k]=c; } }); render(); };
 $('#copy').onclick=()=>{ const txt=$('#out').textContent; (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>{$('#copy').textContent='copied'; setTimeout(()=>$('#copy').textContent='copy',1500);}).catch(()=>{const r=document.createRange(); r.selectNodeContents($('#out')); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);}); };
 $('#fold').onclick=()=>{S.fold=!S.fold; render();};
 /* two knobs, XIMEREMIX sliders: how much may change, how close in meaning a swap must stay */
