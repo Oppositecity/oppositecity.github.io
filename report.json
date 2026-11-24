@@ -1,0 +1,59 @@
+{
+ "sha": "b354f23aea2caf666926a0d74727b7858b787769",
+ "pages": {
+  "slopflag-next": {
+   "url": "https://opposite.city/slopflag-next/?v=b354f23",
+   "phone": {
+    "status": 200,
+    "drawn": 0.187,
+    "hscroll": 0,
+    "title": "Slop Flag practice space",
+    "errs": [],
+    "fails": []
+   },
+   "laptop": {
+    "status": 200,
+    "drawn": 0.115,
+    "hscroll": 0,
+    "title": "Slop Flag practice space",
+    "errs": [],
+    "fails": []
+   },
+   "wide": {
+    "status": 200,
+    "drawn": 0.108,
+    "hscroll": 0,
+    "title": "Slop Flag practice space",
+    "errs": [],
+    "fails": []
+   }
+  },
+  "yard": {
+   "url": "https://opposite.city/yard/?v=b354f23",
+   "phone": {
+    "status": 200,
+    "drawn": 0.464,
+    "hscroll": 0,
+    "title": "the yard",
+    "errs": [],
+    "fails": []
+   },
+   "laptop": {
+    "status": 200,
+    "drawn": 0.216,
+    "hscroll": 0,
+    "title": "the yard",
+    "errs": [],
+    "fails": []
+   },
+   "wide": {
+    "status": 200,
+    "drawn": 0.192,
+    "hscroll": 0,
+    "title": "the yard",
+    "errs": [],
+    "fails": []
+   }
+  }
+ }
+}
